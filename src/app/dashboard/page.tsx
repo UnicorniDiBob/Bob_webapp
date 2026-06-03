@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { Stars, VerificationBadge } from "@/components/ui";
+import { ProWorkspace } from "@/components/ProWorkspace";
 
 interface CustomerRequest {
   id: string;
@@ -169,7 +169,7 @@ export default function DashboardPage() {
           ))}
         </div>
       ) : role === "professional" ? (
-        <ProDashboard
+        <ProWorkspace
           profile={proProfile}
           rating={proRating}
           name={fullName ?? "Professionista"}
@@ -238,86 +238,5 @@ function CustomerDashboard({ requests }: { requests: CustomerRequest[] }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-function ProDashboard({
-  profile,
-  rating,
-  name,
-}: {
-  profile: ProProfile | null;
-  rating: { avg: number | null; n: number };
-  name: string;
-}) {
-  if (!profile) {
-    return (
-      <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-2xl">
-          🛠️
-        </div>
-        <h3 className="font-semibold text-bob-ink">
-          Il tuo profilo professionista è in preparazione
-        </h3>
-        <p className="max-w-sm text-sm text-bob-ink/60">
-          Il nostro team ti contatterà per completare la verifica e pubblicare
-          il tuo profilo. Nel frattempo, scopri come funziona BOB per i
-          professionisti.
-        </p>
-        <Link href="/per-i-professionisti" className="btn-primary mt-1 px-5 py-2.5">
-          Scopri di più
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-4 sm:grid-cols-[1fr_280px]">
-      <div className="card p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-bob-ink">{name}</h2>
-            {profile.headline && (
-              <p className="mt-0.5 text-sm text-bob-ink/65">{profile.headline}</p>
-            )}
-            {profile.city?.name && (
-              <span className="mt-2 inline-block chip border-black/10 bg-black/[0.03] text-bob-ink/70">
-                {profile.city.name}
-              </span>
-            )}
-          </div>
-          <VerificationBadge status={profile.verification_status} />
-        </div>
-        {profile.bio && (
-          <p className="mt-4 border-t border-black/5 pt-4 text-sm leading-relaxed text-bob-ink/75">
-            {profile.bio}
-          </p>
-        )}
-        <div className="mt-4 flex gap-2">
-          <Link href={`/professionisti/${profile.id}`} className="btn-secondary px-4 py-2">
-            Vedi il mio profilo pubblico
-          </Link>
-        </div>
-      </div>
-
-      <div className="card flex flex-col gap-4 p-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/50">
-            La tua valutazione
-          </p>
-          <div className="mt-2">
-            <Stars value={rating.avg} count={rating.n} size="md" />
-          </div>
-        </div>
-        <div className="border-t border-black/5 pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/50">
-            Stato verifica
-          </p>
-          <div className="mt-2">
-            <VerificationBadge status={profile.verification_status} />
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

@@ -59,6 +59,13 @@ export function Header() {
           {!loading && user ? (
             <div className="flex items-center gap-2">
               <Link
+                href="/messaggi"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo"
+                data-testid="link-messaggi"
+              >
+                Messaggi
+              </Link>
+              <Link
                 href="/dashboard"
                 className="btn-secondary py-2"
                 data-testid="link-dashboard"
@@ -120,6 +127,9 @@ export function Header() {
             <div className="mt-2 flex gap-2">
               {user ? (
                 <>
+                  <Link href="/messaggi" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2" data-testid="link-messaggi-mobile">
+                    Messaggi
+                  </Link>
                   <Link href="/dashboard" onClick={() => setOpen(false)} className="btn-secondary flex-1 py-2">
                     Area personale
                   </Link>

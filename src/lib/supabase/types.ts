@@ -106,3 +106,39 @@ export interface ProfessionalCard {
   avgRating: number | null;
   nRatings: number;
 }
+
+// ----- Messaggi e appuntamenti (aggiunti per dashboard pro e conversazioni) -----
+
+export type AppointmentStatus = "confirmed" | "completed" | "cancelled";
+
+export interface Appointment {
+  id: string;
+  professional_id: string;
+  request_id: string | null;
+  customer_name: string;
+  title: string | null;
+  starts_at: string;
+  duration_minutes: number;
+  price: number | null;
+  status: AppointmentStatus;
+  notes: string | null;
+  created_at: string | null;
+}
+
+export interface ConversationSummary {
+  requestId: string;
+  serviceName: string | null;
+  cityName: string | null;
+  // nome dell'altra parte (per il cliente = nome pro; per il pro = nome cliente)
+  counterpartName: string;
+  lastMessage: string | null;
+  lastAt: string | null;
+  status: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  senderType: "customer" | "professional";
+  message: string;
+  createdAt: string | null;
+}
