@@ -1,0 +1,199 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import {
+  getProfessionalById,
+  getProfessionalReviews,
+} from "@/lib/data";
+import {
+  Stars,
+  VerificationBadge,
+  PriceTag,
+} from "@/components/ui";
+import { ContactButton } from "@/components/ContactButton";
+import { serviceIcon } from "@/lib/serviceIcons";
+
+export const revalidate = 120;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { id: string };
+}): Promise<Metadata> {
+  const p = await getProfessionalById(params.id);
+  if (!p) return { title: "Professionista non trovato" };
+  return {
+    title: `${p.fullName} — ${p.serviceName ?? "Professionista"} a ${p.city.name}`,
+    description:
+      p.bio ??
+      `${p.fullName}, ${p.serviceName ?? "professionista"} a ${p.city.name}. Prezzi e disponibilità su BOB.`,
+  };
+}
+
+function fmtDate(d: string | null) {
+  if (!d) return "";
+  try {
+    return new Date(d).toLocaleDateString("it-IT", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
+export default async function ProfessionalDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const p = await getProfessionalById(params.id);
+  if (!p) notFound();
+
+  const reviews = await getProfessionalReviews(p.id);
+
+  const initials = p.fullName
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="container-bob py-10">
+      <nav className="mb-4 text-sm text-bob-ink/50" aria-label="breadcrumb">
+        <Link href="/professionisti" className="hover:text-bob-indigo">
+          Professionisti
+        </Link>
+        <span className="px-1.5">/</span>
+        <span className="text-bob-ink/70">{p.fullName}</span>
+      </nav>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        {/* Colonna principale */}
+        <div className="flex flex-col gap-6">
+          {/* Intestazione */}
+          <header className="card p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-100 text-xl font-bold text-bob-indigo">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl font-bold text-bob-ink sm:text-2xl">
+                  {p.fullName}
+                </h1>
+                {p.headline && (
+                  <p className="mt-0.5 text-sm text-bob-ink/65">{p.headline}</p>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {p.serviceName && (
+                    <Link
+                      href={`/servizi/${p.serviceSlug}`}
+                      className="chip hover:bg-bob-indigo-50"
+                    >
+                      <span className="mr-1">
+                        {serviceIcon(p.serviceSlug ?? "")}
+                      </span>
+                      {p.serviceName}
+                    </Link>
+                  )}
+                  <Link
+                    href={`/citta/${p.city.slug}`}
+                    className="chip border-black/10 bg-black/[0.03] text-bob-ink/70 hover:bg-black/[0.06]"
+                  >
+                    {p.city.name}
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-black/5 pt-4">
+              <Stars value={p.avgRating} count={p.nRatings} size="md" />
+              <VerificationBadge status={p.verificationStatus} />
+              {p.yearsExperience !== null && (
+                <span className="text-sm text-bob-ink/60">
+                  {p.yearsExperience} anni di esperienza
+                </span>
+              )}
+              {p.responseTimeLabel && (
+                <span className="text-sm text-bob-ink/60">
+                  {p.responseTimeLabel}
+                </span>
+              )}
+            </div>
+          </header>
+
+          {/* Bio */}
+          {p.bio && (
+            <section className="card p-6">
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+                Chi è
+              </h2>
+              <p className="text-sm leading-relaxed text-bob-ink/75">{p.bio}</p>
+            </section>
+          )}
+
+          {/* Recensioni */}
+          <section className="card p-6">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+              Recensioni {reviews.length > 0 && `(${reviews.length})`}
+            </h2>
+            {reviews.length === 0 ? (
+              <p className="text-sm text-bob-ink/55">
+                Ancora nessuna recensione. Sii il primo a lavorare con{" "}
+                {p.fullName}.
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-4">
+                {reviews.map((r) => (
+                  <li
+                    key={r.id}
+                    className="border-b border-black/5 pb-4 last:border-0 last:pb-0"
+                    data-testid={`review-${r.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <Stars value={r.score} />
+                      <span className="text-xs text-bob-ink/45">
+                        {fmtDate(r.created_at)}
+                      </span>
+                    </div>
+                    {r.comment && (
+                      <p className="mt-2 text-sm text-bob-ink/75">{r.comment}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        {/* Colonna laterale: prezzo + contatto (sticky su desktop) */}
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="card p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/50">
+              Costo indicativo
+            </p>
+            <div className="mt-1.5 text-2xl">
+              <PriceTag min={p.minPrice} max={p.maxPrice} />
+            </div>
+            {p.priceNote && (
+              <p className="mt-1 text-xs text-bob-ink/55">{p.priceNote}</p>
+            )}
+
+            <div className="mt-5">
+              <ContactButton
+                professional={p}
+                className="btn-primary w-full py-3"
+                label={`Contatta ${p.fullName.split(" ")[0]}`}
+              />
+            </div>
+            <p className="mt-3 text-center text-xs text-bob-ink/45">
+              Usare Bob è gratis. La fee si applica solo a lavoro concluso.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
