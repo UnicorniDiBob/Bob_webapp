@@ -3,14 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { City, Service, ProfessionalCard } from "@/lib/supabase/types";
-import { guessServiceSlug, BUDGET_OPTIONS, URGENCY_OPTIONS } from "@/lib/matching";
+import type { BobMessage, BobUnderstanding, Severity } from "@/lib/bob";
+import {
+  BUDGET_OPTIONS,
+  URGENCY_OPTIONS,
+  SEVERITY_LABELS,
+} from "@/lib/matching";
 import { Stars, PriceTag, VerificationBadge } from "./ui";
 import { RequestDialog } from "./RequestDialog";
+import { QuoteDialog } from "./QuoteDialog";
 
 type Step =
   | "intent"
   | "pro-redirect"
-  | "service"
+  | "chat" // conversazione intelligente con Bob
   | "city"
   | "urgency"
   | "budget"
@@ -22,16 +28,27 @@ interface Msg {
 }
 
 interface Collected {
-  serviceSlug?: string;
+  serviceSlug?: string | null;
   serviceName?: string;
+  severity?: Severity | null;
+  summary?: string | null;
   citySlug?: string;
   cityName?: string;
-  urgency?: "bassa" | "media" | "alta";
+  urgency?: Severity;
+  // budget opzionale
   budgetLabel?: string;
   budgetMin?: number | null;
   budgetMax?: number | null;
-  problem?: string;
+  maxPrice?: number;
+  // true = l'utente vuole preventivi (nessun budget definito)
+  wantsQuotes?: boolean;
 }
+
+const EMPTY_UNDERSTANDING: BobUnderstanding = {
+  serviceSlug: null,
+  severity: null,
+  summary: null,
+};
 
 export function BobChat({
   cities,
@@ -49,11 +66,16 @@ export function BobChat({
       text: "Ciao, sono Bob. Ti aiuto a trovare un servizio o vuoi offrirne uno?",
     },
   ]);
+  const [understanding, setUnderstanding] =
+    useState<BobUnderstanding>(EMPTY_UNDERSTANDING);
   const [collected, setCollected] = useState<Collected>({});
   const [input, setInput] = useState("");
+  const [thinking, setThinking] = useState(false);
   const [results, setResults] = useState<ProfessionalCard[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [requestFor, setRequestFor] = useState<ProfessionalCard | null>(null);
+  const [quoteOpen, setQuoteOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +83,7 @@ export function BobChat({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages, results, step]);
+  }, [messages, results, step, thinking]);
 
   function bobSay(text: string) {
     setMessages((m) => [...m, { from: "bob", text }]);
@@ -70,32 +92,62 @@ export function BobChat({
     setMessages((m) => [...m, { from: "user", text }]);
   }
 
-  // ----- gestione testo libero (problema o servizio) -----
-  function handleFreeText() {
-    const text = input.trim();
-    if (!text) return;
-    userSay(text);
-    setInput("");
+  // Costruisce la cronologia in formato neutro per l'API.
+  function historyFor(extraUser?: string): BobMessage[] {
+    const base: BobMessage[] = messages.map((m) => ({
+      role: m.from,
+      content: m.text,
+    }));
+    if (extraUser) base.push({ role: "user", content: extraUser });
+    return base;
+  }
 
-    const slug = guessServiceSlug(text);
-    if (slug) {
-      const svc = services.find((s) => s.slug === slug);
+  // ----- conversazione intelligente con Bob -----
+  async function sendToBob(text: string) {
+    const clean = text.trim();
+    if (!clean || thinking) return;
+    userSay(clean);
+    setInput("");
+    setThinking(true);
+
+    try {
+      const res = await fetch("/api/bob/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: historyFor(clean),
+          understanding,
+        }),
+      });
+      const data = await res.json();
+      const u: BobUnderstanding = data.understanding ?? understanding;
+      setUnderstanding(u);
+
+      const svc = u.serviceSlug
+        ? services.find((s) => s.slug === u.serviceSlug)
+        : undefined;
       setCollected((c) => ({
         ...c,
-        problem: text,
-        serviceSlug: slug,
+        serviceSlug: u.serviceSlug,
         serviceName: svc?.name,
+        severity: u.severity,
+        summary: u.summary,
       }));
+
+      bobSay(data.reply ?? "Raccontami meglio cosa ti serve.");
+
+      if (data.next === "city") {
+        setStep("city");
+      } else {
+        setStep("chat");
+      }
+    } catch {
       bobSay(
-        `Ok, sembra un lavoro da ${svc?.name.toLowerCase()}. In che città ti serve?`
+        "Ho avuto un intoppo nel ragionare. Riprova a scrivermi cosa ti serve."
       );
-      setStep("city");
-    } else {
-      setCollected((c) => ({ ...c, problem: text }));
-      bobSay(
-        "Capito. Per essere preciso, quale di questi servizi si avvicina di più?"
-      );
-      setStep("service");
+      setStep("chat");
+    } finally {
+      setThinking(false);
     }
   }
 
@@ -109,14 +161,16 @@ export function BobChat({
     } else {
       userSay("Sto cercando un servizio");
       bobSay(
-        "Perfetto. Raccontami il problema con parole tue, oppure scegli un servizio qui sotto."
+        "Perfetto. Raccontami cosa succede con parole tue: più dettagli mi dai, meglio capisco di cosa hai bisogno. Oppure scegli un servizio qui sotto."
       );
-      setStep("service");
+      setStep("chat");
     }
   }
 
+  // L'utente sceglie un servizio dai chip: saltiamo direttamente alla città.
   function pickService(slug: string, name: string) {
     userSay(name);
+    setUnderstanding((u) => ({ ...u, serviceSlug: slug }));
     setCollected((c) => ({ ...c, serviceSlug: slug, serviceName: name }));
     bobSay(`Ottimo, ${name.toLowerCase()}. In che città ti serve?`);
     setStep("city");
@@ -124,42 +178,37 @@ export function BobChat({
 
   function pickCity(slug: string, name: string, active: boolean) {
     userSay(name);
-    setCollected((c) => ({ ...c, citySlug: slug, cityName: name }));
     if (!active) {
       bobSay(
-        `${name} è in arrivo: non ho ancora professionisti attivi lì. Per ora il pilota è a Milano. Vuoi vedere i professionisti di Milano?`
+        `${name} è in arrivo: non ho ancora professionisti attivi lì. Per ora il pilota è a Milano, ti mostro quelli di Milano. Quando ti servirebbe?`
       );
       setCollected((c) => ({ ...c, citySlug: "milano", cityName: "Milano" }));
     } else {
+      setCollected((c) => ({ ...c, citySlug: slug, cityName: name }));
       bobSay("Quando ti servirebbe?");
     }
     setStep("urgency");
   }
 
-  function pickUrgency(label: string, value: "bassa" | "media" | "alta") {
+  function pickUrgency(label: string, value: Severity) {
     userSay(label);
     setCollected((c) => ({ ...c, urgency: value }));
-    bobSay("Ultima cosa: che budget hai in mente? Anche una stima larga va bene.");
+    bobSay(
+      "Hai già un budget in mente? Se ce l'hai dimmelo, così filtro i professionisti adatti. Altrimenti nessun problema: posso chiedere dei preventivi per te."
+    );
     setStep("budget");
   }
 
-  async function pickBudget(opt: (typeof BUDGET_OPTIONS)[number]) {
-    userSay(opt.label);
-    const next = {
-      ...collected,
-      budgetLabel: opt.label,
-      budgetMin: opt.min,
-      budgetMax: opt.max,
-    };
+  async function runSearch(next: Collected) {
     setCollected(next);
     setStep("results");
+    setSelected(new Set());
     setLoadingResults(true);
-    bobSay("Perfetto, sto cercando i professionisti più adatti…");
 
     const params = new URLSearchParams();
     if (next.citySlug) params.set("city", next.citySlug);
     if (next.serviceSlug) params.set("service", next.serviceSlug);
-    if (opt.maxPrice) params.set("maxPrice", String(opt.maxPrice));
+    if (next.maxPrice) params.set("maxPrice", String(next.maxPrice));
 
     try {
       const res = await fetch(`/api/match?${params.toString()}`);
@@ -168,28 +217,67 @@ export function BobChat({
       setResults(pros);
       if (pros.length === 0) {
         bobSay(
-          "Non ho ancora un professionista che combaci al 100% con questi criteri. Puoi pubblicare la richiesta e ti avviso appena ne arriva uno adatto."
+          "Non ho ancora un professionista che combaci con questi criteri. Puoi sfogliare tutti i professionisti disponibili qui sotto."
+        );
+      } else if (next.wantsQuotes) {
+        bobSay(
+          `Ho trovato ${pros.length} ${
+            pros.length === 1 ? "professionista adatto" : "professionisti adatti"
+          }. Seleziona quelli che ti interessano e chiedo io un preventivo a ciascuno: confronti i prezzi con calma.`
         );
       } else {
         bobSay(
           `Ecco ${pros.length} ${
             pros.length === 1 ? "professionista" : "professionisti"
-          } che fanno al caso tuo. Apri un profilo per vedere il costo nel dettaglio, oppure invia subito un messaggio: te lo preparo io.`
+          } nel tuo budget. Apri un profilo per i dettagli, oppure invia subito un messaggio: te lo preparo io.`
         );
       }
     } catch {
-      bobSay(
-        "Ho avuto un problema a recuperare i professionisti. Riprova tra poco."
-      );
+      bobSay("Ho avuto un problema a recuperare i professionisti. Riprova tra poco.");
     } finally {
       setLoadingResults(false);
     }
   }
 
+  function pickBudget(opt: (typeof BUDGET_OPTIONS)[number]) {
+    userSay(opt.label);
+    runSearch({
+      ...collected,
+      budgetLabel: opt.label,
+      budgetMin: opt.min,
+      budgetMax: opt.max,
+      maxPrice: opt.maxPrice,
+      wantsQuotes: false,
+    });
+  }
+
+  function pickNoBudget() {
+    userSay("Non ho un budget, chiedi tu dei preventivi");
+    runSearch({
+      ...collected,
+      budgetLabel: undefined,
+      budgetMin: null,
+      budgetMax: null,
+      maxPrice: undefined,
+      wantsQuotes: true,
+    });
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }
+
   function restart() {
     setStep("intent");
+    setUnderstanding(EMPTY_UNDERSTANDING);
     setCollected({});
     setResults([]);
+    setSelected(new Set());
     setMessages([
       {
         from: "bob",
@@ -198,12 +286,16 @@ export function BobChat({
     ]);
   }
 
+  const selectedPros = results.filter((p) => selected.has(p.id));
+
   const bobPrefill = collected.serviceName
     ? `Ciao, ho bisogno di un ${collected.serviceName.toLowerCase()} a ${
         collected.cityName ?? "Milano"
-      }.${collected.problem ? ` ${collected.problem}.` : ""} Il mio budget indicativo è ${
-        collected.budgetLabel ?? "da definire"
-      }. Sei disponibile?`
+      }.${collected.summary ? ` ${collected.summary}.` : ""}${
+        collected.budgetLabel
+          ? ` Il mio budget indicativo è ${collected.budgetLabel}.`
+          : ""
+      } Sei disponibile?`
     : "";
 
   return (
@@ -234,7 +326,7 @@ export function BobChat({
       {/* corpo */}
       <div
         ref={scrollRef}
-        className="flex max-h-[440px] min-h-[280px] flex-col gap-3 overflow-y-auto px-4 py-4 sm:px-5"
+        className="flex max-h-[460px] min-h-[280px] flex-col gap-3 overflow-y-auto px-4 py-4 sm:px-5"
       >
         {messages.map((m, i) => (
           <div
@@ -242,7 +334,7 @@ export function BobChat({
             className={`flex ${m.from === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] animate-fade-up rounded-2xl px-4 py-2.5 text-sm ${
+              className={`max-w-[85%] animate-fade-up whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm ${
                 m.from === "user"
                   ? "rounded-br-sm bg-bob-indigo text-white"
                   : "rounded-bl-sm bg-bob-indigo-50 text-bob-ink"
@@ -253,62 +345,136 @@ export function BobChat({
           </div>
         ))}
 
+        {thinking && (
+          <div className="flex justify-start">
+            <div className="rounded-2xl rounded-bl-sm bg-bob-indigo-50 px-4 py-3 text-sm text-bob-ink/60">
+              <span className="inline-flex gap-1">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-bob-indigo/50 [animation-delay:-0.2s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-bob-indigo/50 [animation-delay:-0.1s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-bob-indigo/50" />
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* riepilogo di cosa Bob ha capito */}
+        {step !== "intent" && step !== "chat" && understanding.serviceSlug && (
+          <div className="flex flex-wrap gap-1.5">
+            {collected.serviceName && (
+              <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                {collected.serviceName}
+              </span>
+            )}
+            {understanding.severity && (
+              <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                {SEVERITY_LABELS[understanding.severity]}
+              </span>
+            )}
+            {collected.cityName && (
+              <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                {collected.cityName}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* risultati professionisti dentro la chat */}
         {step === "results" && results.length > 0 && (
           <div className="flex flex-col gap-2.5 pt-1">
-            {results.map((p) => (
-              <div
-                key={p.id}
-                className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
-                data-testid={`chat-result-${p.id}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-bob-ink">
-                      {p.fullName}
-                    </p>
-                    <p className="truncate text-xs text-bob-ink/60">
-                      {p.headline}
-                    </p>
+            {results.map((p) => {
+              const isSelected = selected.has(p.id);
+              return (
+                <div
+                  key={p.id}
+                  className={`rounded-2xl border bg-white p-3.5 shadow-sm transition-colors ${
+                    collected.wantsQuotes && isSelected
+                      ? "border-bob-indigo ring-1 ring-bob-indigo"
+                      : "border-black/5"
+                  }`}
+                  data-testid={`chat-result-${p.id}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      {collected.wantsQuotes && (
+                        <button
+                          onClick={() => toggleSelect(p.id)}
+                          aria-label={isSelected ? "Deseleziona" : "Seleziona"}
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                            isSelected
+                              ? "border-bob-indigo bg-bob-indigo text-white"
+                              : "border-black/20 bg-white"
+                          }`}
+                          data-testid={`select-pro-${p.id}`}
+                        >
+                          {isSelected && (
+                            <svg
+                              className="h-3.5 w-3.5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-bob-ink">
+                          {p.fullName}
+                        </p>
+                        <p className="truncate text-xs text-bob-ink/60">
+                          {p.headline}
+                        </p>
+                      </div>
+                    </div>
+                    <PriceTag min={p.minPrice} max={p.maxPrice} />
                   </div>
-                  <PriceTag min={p.minPrice} max={p.maxPrice} />
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Stars value={p.avgRating} count={p.nRatings} />
+                    <VerificationBadge status={p.verificationStatus} />
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Link
+                      href={`/professionisti/${p.id}`}
+                      className="btn-secondary flex-1 py-2 text-xs"
+                    >
+                      Vedi profilo
+                    </Link>
+                    {collected.wantsQuotes ? (
+                      <button
+                        onClick={() => toggleSelect(p.id)}
+                        className={`flex-1 py-2 text-xs ${
+                          isSelected ? "btn-secondary" : "btn-primary"
+                        }`}
+                        data-testid={`button-toggle-${p.id}`}
+                      >
+                        {isSelected ? "Selezionato ✓" : "Aggiungi al preventivo"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setRequestFor(p)}
+                        className="btn-primary flex-1 py-2 text-xs"
+                        data-testid={`button-contact-${p.id}`}
+                      >
+                        Invia messaggio
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Stars value={p.avgRating} count={p.nRatings} />
-                  <VerificationBadge status={p.verificationStatus} />
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <Link
-                    href={`/professionisti/${p.id}`}
-                    className="btn-secondary flex-1 py-2 text-xs"
-                  >
-                    Vedi profilo
-                  </Link>
-                  <button
-                    onClick={() => setRequestFor(p)}
-                    className="btn-primary flex-1 py-2 text-xs"
-                    data-testid={`button-contact-${p.id}`}
-                  >
-                    Invia messaggio
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {step === "results" && !loadingResults && results.length === 0 && (
           <div className="rounded-2xl border border-dashed border-bob-indigo/30 bg-bob-indigo-50/50 p-4 text-center">
-            <button
-              onClick={() => setRequestFor(null)}
-              className="btn-primary w-full py-2 text-xs"
-              disabled
-              title="Disponibile a breve"
-            >
-              Pubblica la richiesta (in arrivo)
-            </button>
-            <p className="mt-2 text-xs text-bob-ink/50">
-              Intanto puoi sfogliare tutti i{" "}
+            <p className="text-xs text-bob-ink/60">
+              Sfoglia tutti i{" "}
               <Link href="/professionisti" className="underline">
                 professionisti disponibili
               </Link>
@@ -322,10 +488,18 @@ export function BobChat({
       <div className="border-t border-black/5 bg-white px-4 py-3.5 sm:px-5">
         {step === "intent" && (
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => pickIntent("cliente")} className="btn-primary flex-1 py-2.5" data-testid="button-intent-client">
+            <button
+              onClick={() => pickIntent("cliente")}
+              className="btn-primary flex-1 py-2.5"
+              data-testid="button-intent-client"
+            >
               Cerco un servizio
             </button>
-            <button onClick={() => pickIntent("professionista")} className="btn-secondary flex-1 py-2.5" data-testid="button-intent-pro">
+            <button
+              onClick={() => pickIntent("professionista")}
+              className="btn-secondary flex-1 py-2.5"
+              data-testid="button-intent-pro"
+            >
               Offro un servizio
             </button>
           </div>
@@ -337,18 +511,26 @@ export function BobChat({
           </Link>
         )}
 
-        {step === "service" && (
+        {step === "chat" && (
           <div className="space-y-3">
             <div className="flex gap-2">
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleFreeText()}
-                placeholder="Es. ho una perdita sotto il lavandino…"
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !thinking && sendToBob(input)
+                }
+                placeholder="Es. esce acqua dal soffitto del bagno…"
                 className="input-bob py-2.5"
+                disabled={thinking}
                 data-testid="input-problem"
               />
-              <button onClick={handleFreeText} className="btn-primary py-2.5" data-testid="button-send">
+              <button
+                onClick={() => sendToBob(input)}
+                className="btn-primary py-2.5"
+                disabled={thinking || !input.trim()}
+                data-testid="button-send"
+              >
                 Invia
               </button>
             </div>
@@ -358,6 +540,7 @@ export function BobChat({
                   key={s.id}
                   onClick={() => pickService(s.slug, s.name)}
                   className="chip hover:bg-bob-indigo-100"
+                  disabled={thinking}
                   data-testid={`chip-service-${s.slug}`}
                 >
                   {s.name}
@@ -391,7 +574,7 @@ export function BobChat({
               <button
                 key={u.label}
                 onClick={() => pickUrgency(u.label, u.value)}
-                className="btn-secondary py-2.5"
+                className="btn-secondary py-2.5 text-sm"
                 data-testid={`button-urgency-${u.label}`}
               >
                 {u.label}
@@ -401,40 +584,87 @@ export function BobChat({
         )}
 
         {step === "budget" && (
-          <div className="flex flex-wrap gap-2">
-            {BUDGET_OPTIONS.map((b) => (
-              <button
-                key={b.label}
-                onClick={() => pickBudget(b)}
-                className="chip hover:bg-bob-indigo-100"
-                data-testid={`button-budget-${b.label}`}
-              >
-                {b.label}
-              </button>
-            ))}
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {BUDGET_OPTIONS.map((b) => (
+                <button
+                  key={b.label}
+                  onClick={() => pickBudget(b)}
+                  className="chip hover:bg-bob-indigo-100"
+                  data-testid={`button-budget-${b.label}`}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={pickNoBudget}
+              className="btn-primary w-full py-2.5 text-sm"
+              data-testid="button-no-budget"
+            >
+              Non ho un budget · chiedi preventivi
+            </button>
           </div>
         )}
 
         {step === "results" && (
-          <Link href="/professionisti" className="btn-ghost w-full justify-center">
-            Vedi tutti i professionisti →
-          </Link>
+          <div className="space-y-2">
+            {collected.wantsQuotes && results.length > 0 && (
+              <button
+                onClick={() => setQuoteOpen(true)}
+                disabled={selectedPros.length === 0}
+                className="btn-primary w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                data-testid="button-request-quotes"
+              >
+                {selectedPros.length === 0
+                  ? "Seleziona almeno un professionista"
+                  : `Chiedi un preventivo a ${selectedPros.length} ${
+                      selectedPros.length === 1
+                        ? "professionista"
+                        : "professionisti"
+                    }`}
+              </button>
+            )}
+            <Link
+              href="/professionisti"
+              className="btn-ghost w-full justify-center"
+            >
+              Vedi tutti i professionisti →
+            </Link>
+          </div>
         )}
       </div>
 
+      {/* invio messaggio singolo (modalità budget) */}
       {requestFor && (
         <RequestDialog
           professional={requestFor}
           prefilledMessage={bobPrefill}
           context={{
             citySlug: collected.citySlug,
-            serviceSlug: collected.serviceSlug,
-            problem: collected.problem,
+            serviceSlug: collected.serviceSlug ?? undefined,
+            problem: collected.summary ?? undefined,
             urgency: collected.urgency,
             budgetMin: collected.budgetMin ?? null,
             budgetMax: collected.budgetMax ?? null,
           }}
           onClose={() => setRequestFor(null)}
+        />
+      )}
+
+      {/* invio richieste di preventivo multiple (modalità senza budget) */}
+      {quoteOpen && (
+        <QuoteDialog
+          professionals={selectedPros}
+          context={{
+            citySlug: collected.citySlug,
+            cityName: collected.cityName,
+            serviceSlug: collected.serviceSlug ?? undefined,
+            serviceName: collected.serviceName,
+            problem: collected.summary ?? undefined,
+            urgency: collected.urgency,
+          }}
+          onClose={() => setQuoteOpen(false)}
         />
       )}
     </div>
