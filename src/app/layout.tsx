@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
+import { UnreadProvider } from "@/components/UnreadProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 
@@ -42,9 +43,11 @@ export default function RootLayout({
     <html lang="it">
       <body className="flex min-h-screen flex-col">
         <AuthProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <UnreadProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </UnreadProvider>
         </AuthProvider>
       </body>
     </html>

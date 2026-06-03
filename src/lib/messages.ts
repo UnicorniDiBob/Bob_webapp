@@ -160,6 +160,61 @@ export async function getConversations(
   return out;
 }
 
+// IDs delle richieste che appartengono all'utente (in base al ruolo).
+async function myRequestIds(
+  userId: string,
+  role: Role
+): Promise<string[]> {
+  const supabase = createClient();
+  if (role === "professional") {
+    const proId = await getMyProfessionalId(userId);
+    if (!proId) return [];
+    const { data } = await supabase
+      .from("request_professionals")
+      .select("request_id")
+      .eq("professional_id", proId);
+    return (data ?? []).map((r) => r.request_id as string);
+  }
+  const { data } = await supabase
+    .from("requests")
+    .select("id")
+    .eq("customer_id", userId);
+  return (data ?? []).map((r) => r.id as string);
+}
+
+// Numero totale di messaggi non letti ricevuti dall'utente (da usare per il badge).
+export async function getUnreadCount(
+  userId: string,
+  role: Role
+): Promise<number> {
+  const myType: "customer" | "professional" =
+    role === "professional" ? "professional" : "customer";
+  const supabase = createClient();
+  const requestIds = await myRequestIds(userId, role);
+  if (requestIds.length === 0) return 0;
+  const { count } = await supabase
+    .from("request_messages")
+    .select("id", { count: "exact", head: true })
+    .in("request_id", requestIds)
+    .neq("sender_type", myType)
+    .is("read_at", null);
+  return count ?? 0;
+}
+
+// Segna come letti i messaggi ricevuti in una conversazione.
+export async function markConversationRead(
+  requestId: string,
+  myType: "customer" | "professional"
+): Promise<void> {
+  const supabase = createClient();
+  await supabase
+    .from("request_messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("request_id", requestId)
+    .neq("sender_type", myType)
+    .is("read_at", null);
+}
+
 // Messaggi di una conversazione (in ordine cronologico).
 export async function getMessages(requestId: string): Promise<ChatMessage[]> {
   const supabase = createClient();

@@ -4,9 +4,11 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { useUnread } from "@/components/UnreadProvider";
 import {
   getConversations,
   getMessages,
+  markConversationRead,
   sendMessage,
 } from "@/lib/messages";
 import type { ChatMessage, ConversationSummary } from "@/lib/supabase/types";
@@ -43,6 +45,7 @@ function MessaggiInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { user, role, loading } = useAuth();
+  const { refresh: refreshUnread } = useUnread();
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(true);
@@ -88,8 +91,14 @@ function MessaggiInner() {
   }, []);
 
   useEffect(() => {
-    if (activeId) loadThread(activeId);
-  }, [activeId, loadThread]);
+    if (!activeId) return;
+    loadThread(activeId);
+    // segna come letti i messaggi ricevuti in questa conversazione
+    (async () => {
+      await markConversationRead(activeId, myType);
+      await refreshUnread();
+    })();
+  }, [activeId, loadThread, myType, refreshUnread]);
 
   useEffect(() => {
     threadRef.current?.scrollTo({
