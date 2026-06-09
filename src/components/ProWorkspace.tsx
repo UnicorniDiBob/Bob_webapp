@@ -152,7 +152,7 @@ export function ProWorkspace({
   return (
     <div className="space-y-5">
       {/* Riassunto richieste AI — primo blocco visibile */}
-      {proId && <ProRequestSummary proId={proId} />}
+      {proId && <ProRequestSummary />}
 
       {/* KPI */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -263,7 +263,7 @@ export function ProWorkspace({
                             {a.customer_name}
                           </span>
                         </button>
-                      )))}
+                      ))}
                     </div>
                   </div>
                 );
