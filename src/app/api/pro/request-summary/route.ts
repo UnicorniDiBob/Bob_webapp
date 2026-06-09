@@ -129,7 +129,7 @@ export async function GET() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   // Costruisce riassunti per ogni richiesta (in parallelo, max 5 per non abusare)
-  const slice = (requests as RawRequest[]).slice(0, 5);
+  const slice = (requests as unknown as RawRequest[]).slice(0, 5);
   const enriched = await Promise.all(
     slice.map(async (req) => {
       const { summary, draftReply } = await buildSummary(req, apiKey);
