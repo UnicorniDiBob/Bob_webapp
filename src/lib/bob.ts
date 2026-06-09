@@ -31,12 +31,27 @@ export interface BobDecision {
   // "budget" = chiediamo budget (opzionale) o preventivi
   // "ready" = abbiamo abbastanza per mostrare i professionisti
   next: "ask" | "city" | "budget" | "ready";
+  // [F1] Shortlist spiegata: max 3 motivi perché Bob suggerisce i professionisti
+  shortlistReason?: string | null;
+  // [F1] Messaggio precompilato migliorato da inviare al professionista
+  suggestedMessage?: string | null;
 }
 
 // Servizi disponibili passati all'LLM (slug + nome) per ancorare le sue scelte.
 export interface ServiceRef {
   slug: string;
   name: string;
+}
+
+// [F2] Memoria cliente: preferenze e storico salvati nel DB.
+export interface CustomerMemory {
+  userId: string;
+  lastServiceSlug: string | null;
+  lastCitySlug: string | null;
+  lastBudgetLabel: string | null;
+  preferredUrgency: Severity | null;
+  searchCount: number;
+  updatedAt: string | null;
 }
 
 // System prompt: definisce personalità e compito di Bob.
@@ -55,6 +70,7 @@ Regole di ragionamento:
 - Se il problema sembra GRAVE, mostra empatia e dai un consiglio di sicurezza immediato e pratico (1 frase), poi procedi.
 - Fai domande di approfondimento solo se servono a capire il servizio o la gravità (max 1-2 domande totali). Non chiedere il budget: a quello pensa il wizard dopo.
 - Quando hai chiaro SERVIZIO e GRAVITÀ, passa a chiedere la città (next="city").
+- [F1] Quando next="city", compila anche shortlistReason con 1-2 frasi che spiegano cosa Bob cercherà (es. "Cerco idraulici disponibili, verificati, con esperienza in perdite attive") e suggestedMessage con un messaggio chiaro da inviare al professionista in prima persona del cliente.
 
 Devi rispondere SEMPRE e SOLO con un oggetto JSON valido, senza testo intorno, con questa forma esatta:
 {
@@ -62,7 +78,9 @@ Devi rispondere SEMPRE e SOLO con un oggetto JSON valido, senza testo intorno, c
   "serviceSlug": "slug del servizio dedotto oppure null",
   "severity": "alta" | "media" | "bassa" | null,
   "summary": "sintesi breve del problema in prima persona del cliente, oppure null",
-  "next": "ask" | "city"
+  "next": "ask" | "city",
+  "shortlistReason": "1-2 frasi su cosa Bob cercherà per questo cliente, oppure null",
+  "suggestedMessage": "messaggio precompilato in prima persona del cliente da inviare al professionista, oppure null"
 }
 - Usa next="ask" se ti serve un'altra risposta dell'utente per capire servizio o gravità.
 - Usa next="city" quando hai capito servizio e gravità: in "reply" conferma cosa hai capito e chiedi in che città serve.`;
@@ -101,10 +119,14 @@ export function ruleBasedDecision(
       ? `Capisco, sembra una cosa seria. ${safetyTip(slug)} `
       : "";
 
+  const svcName = svc?.name.toLowerCase() ?? "professionista";
+
   return {
-    reply: `${empat}Ok, mi sembra un lavoro da ${svc?.name.toLowerCase() ?? "professionista"}. In che città ti serve?`,
+    reply: `${empat}Ok, mi sembra un lavoro da ${svcName}. In che città ti serve?`,
     understanding,
     next: "city",
+    shortlistReason: `Cerco ${svcName} disponibili e verificati per questo tipo di intervento.`,
+    suggestedMessage: `Ciao, ho bisogno di un ${svcName}. ${understanding.summary ?? text}. Sei disponibile?`,
   };
 }
 

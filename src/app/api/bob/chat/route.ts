@@ -51,6 +51,15 @@ function parseDecision(
       typeof obj.reply === "string" && obj.reply.trim()
         ? obj.reply.trim()
         : "Raccontami un po' meglio cosa ti serve.";
+    // [F1] shortlistReason e suggestedMessage
+    const shortlistReason =
+      typeof obj.shortlistReason === "string" && obj.shortlistReason.trim()
+        ? obj.shortlistReason.trim()
+        : null;
+    const suggestedMessage =
+      typeof obj.suggestedMessage === "string" && obj.suggestedMessage.trim()
+        ? obj.suggestedMessage.trim()
+        : null;
     return {
       reply,
       understanding: {
@@ -62,6 +71,8 @@ function parseDecision(
             : prev.summary,
       },
       next,
+      shortlistReason,
+      suggestedMessage,
     };
   } catch {
     return null;
@@ -97,7 +108,7 @@ export async function POST(request: Request) {
     const client = new Anthropic({ apiKey });
     const completion = await client.messages.create({
       model: "claude-3-5-haiku-latest",
-      max_tokens: 400,
+      max_tokens: 500,
       temperature: 0.4,
       system: buildSystemPrompt(services),
       messages: messages.map((m) => ({
