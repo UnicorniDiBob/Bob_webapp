@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Stars, VerificationBadge } from "@/components/ui";
 import { AppointmentDialog } from "@/components/AppointmentDialog";
+import { ProRequestSummary } from "@/components/ProRequestSummary";
 import {
   getAppointments,
   computeStats,
@@ -150,6 +151,9 @@ export function ProWorkspace({
 
   return (
     <div className="space-y-5">
+      {/* Riassunto richieste AI — primo blocco visibile */}
+      {proId && <ProRequestSummary proId={proId} />}
+
       {/* KPI */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
@@ -259,7 +263,7 @@ export function ProWorkspace({
                             {a.customer_name}
                           </span>
                         </button>
-                      ))}
+                      )))}
                     </div>
                   </div>
                 );
