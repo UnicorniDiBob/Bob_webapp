@@ -2,7 +2,7 @@
 
 export type CityStatus = "active" | "coming_soon";
 export type VerificationStatus = "unverified" | "pending" | "verified";
-export type UserRole = "customer" | "professional" | "admin";
+export type UserRole = "customer" | "professional" | "admin" | "cs";
 export type RequestStatus = "draft" | "sent" | "matched" | "closed";
 export type Urgency = "bassa" | "media" | "alta";
 
