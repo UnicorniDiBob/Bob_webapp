@@ -8,7 +8,7 @@ import type {
   ConversationSummary,
 } from "@/lib/supabase/types";
 
-type Role = "customer" | "professional" | "admin" | null;
+type Role = "customer" | "professional" | "admin" | "cs" | null;
 
 // Restituisce l'id del professionista collegato all'utente (se è un pro).
 export async function getMyProfessionalId(
