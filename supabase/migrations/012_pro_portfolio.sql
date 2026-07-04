@@ -1,5 +1,5 @@
 -- 012: Portfolio lavori (foto lavori conclusi) con limiti per tier.
--- Free = 0 foto, Pro = 5 foto, Business = illimitato + galleria in evidenza.
+-- Free = 0 foto, Pro = 1 foto, Business = illimitato + galleria in evidenza.
 
 -- 1) Tier di abbonamento sul professionista
 alter table public.professionals
@@ -57,7 +57,7 @@ language sql immutable
 as $$
   select case tier
     when 'free' then 0
-    when 'pro' then 5
+    when 'pro' then 1
     else null -- business: illimitato
   end;
 $$;

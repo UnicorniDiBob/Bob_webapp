@@ -8,7 +8,7 @@ export type SubscriptionTier = "free" | "pro" | "business";
 // Limiti foto portfolio per tier (null = illimitato). Fonte di verità: trigger DB.
 export const PORTFOLIO_LIMITS: Record<SubscriptionTier, number | null> = {
   free: 0,
-  pro: 5,
+  pro: 1,
   business: null,
 };
 export type RequestStatus = "draft" | "sent" | "matched" | "closed";

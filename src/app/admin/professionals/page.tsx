@@ -4,14 +4,17 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { VerifyButtons } from "./VerifyButtons";
+import { TierButtons } from "./TierButtons";
 
 export const revalidate = 0; // sempre aggiornato
 
 type VerificationStatus = "unverified" | "pending" | "verified";
+type SubscriptionTier = "free" | "pro" | "business";
 
 interface ProRow {
   id: string;
   verification_status: VerificationStatus;
+  subscription_tier: SubscriptionTier;
   headline: string | null;
   bio: string | null;
   years_experience: number | null;
@@ -64,6 +67,7 @@ export default async function AdminProfessionalsPage() {
       id,
       user_id,
       verification_status,
+      subscription_tier,
       headline,
       bio,
       years_experience,
@@ -188,10 +192,16 @@ export default async function AdminProfessionalsPage() {
                         </div>
 
                         {/* Bottoni azione */}
-                        <VerifyButtons
-                          proId={pro.id}
-                          currentStatus={pro.verification_status}
-                        />
+                        <div className="flex shrink-0 flex-col items-end gap-2.5">
+                          <VerifyButtons
+                            proId={pro.id}
+                            currentStatus={pro.verification_status}
+                          />
+                          <TierButtons
+                            proId={pro.id}
+                            currentTier={pro.subscription_tier ?? "free"}
+                          />
+                        </div>
                       </div>
                     </div>
                   );

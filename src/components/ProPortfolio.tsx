@@ -1,7 +1,7 @@
 "use client";
 
 // Portfolio lavori del professionista (dashboard pro).
-// Free = nessuna foto (upsell), Pro = max 5 foto, Business = illimitato.
+// Free = nessuna foto (upsell), Pro = max 1 foto, Business = illimitato.
 // Il limite è applicato anche lato DB (trigger portfolio_limit_trigger).
 
 import { useEffect, useRef, useState } from "react";
@@ -139,7 +139,7 @@ export function ProPortfolio({
         <p className="mt-2 text-sm text-bob-ink/60">
           Mostra ai clienti le foto dei tuoi lavori conclusi con una
           descrizione: i profili con portfolio ricevono più contatti. Disponibile
-          dal piano <strong>Pro</strong> (5 foto) — illimitato con{" "}
+          dal piano <strong>Pro</strong> (1 foto) — illimitato con{" "}
           <strong>Business</strong>.
         </p>
         <a
