@@ -4,6 +4,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { UnreadProvider } from "@/components/UnreadProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://bob-webapp-six.vercel.app";
@@ -42,6 +43,26 @@ export default function RootLayout({
   return (
     <html lang="it">
       <body className="flex min-h-screen flex-col">
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "BOB",
+            url: siteUrl,
+            description:
+              "Concierge digitale per i servizi locali: idraulici, elettricisti, pulizie e altri professionisti verificati, con prezzi chiari.",
+            areaServed: { "@type": "Country", name: "Italia" },
+          }}
+        />
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "BOB",
+            url: siteUrl,
+            inLanguage: "it-IT",
+          }}
+        />
         <AuthProvider>
           <UnreadProvider>
             <Header />

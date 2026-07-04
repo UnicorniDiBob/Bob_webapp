@@ -8,6 +8,10 @@ import {
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
 import { serviceIcon } from "@/lib/serviceIcons";
+import { JsonLd } from "@/components/JsonLd";
+
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bob-webapp-six.vercel.app";
 
 export const revalidate = 180;
 
@@ -18,10 +22,17 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const city = await getCityBySlug(params.slug);
   if (!city) return { title: "Città non trovata" };
-  return {
-    title: `Professionisti a ${city.name}`,
-    description: `Trova idraulici, elettricisti, pulizie e altri professionisti verificati a ${city.name} con BOB.`,
+  const meta: Metadata = {
+    title: `Idraulico, elettricista e altri professionisti a ${city.name} — prezzi chiari`,
+    description: `Cerchi un idraulico, un elettricista o un'impresa di pulizie a ${city.name}? Su BOB trovi professionisti verificati con fasce di prezzo trasparenti e recensioni vere.`,
+    alternates: { canonical: `/citta/${params.slug}` },
   };
+  // Città non attive: noindex (thin content) ma follow per passare link juice.
+  if (city.status !== "active") {
+    meta.title = `BOB sta arrivando a ${city.name}`;
+    meta.robots = { index: false, follow: true };
+  }
+  return meta;
 }
 
 export default async function CityPage({
@@ -71,6 +82,26 @@ export default async function CityPage({
 
   return (
     <div className="container-bob py-10">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            {
+              "@type": "ListItem",
+              position: 1,
+              name: "Città",
+              item: `${siteUrl}/citta`,
+            },
+            {
+              "@type": "ListItem",
+              position: 2,
+              name: city.name,
+              item: `${siteUrl}/citta/${city.slug}`,
+            },
+          ],
+        }}
+      />
       <nav className="mb-4 text-sm text-bob-ink/50" aria-label="breadcrumb">
         <Link href="/citta" className="hover:text-bob-indigo">
           Città

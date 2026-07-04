@@ -8,6 +8,10 @@ import {
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
 import { serviceIcon } from "@/lib/serviceIcons";
+import { JsonLd } from "@/components/JsonLd";
+
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bob-webapp-six.vercel.app";
 
 export const revalidate = 180;
 
@@ -18,11 +22,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const service = await getServiceBySlug(params.slug);
   if (!service) return { title: "Servizio non trovato" };
+  const lower = service.name.toLowerCase();
   return {
-    title: `${service.name} — professionisti e prezzi`,
+    title: `${service.name} vicino a te — prezzi chiari e professionisti verificati`,
     description:
       service.description ??
-      `Trova un ${service.name.toLowerCase()} con prezzi e rating trasparenti su BOB.`,
+      `Cerchi un ${lower}? Su BOB trovi ${lower} verificati a Milano con fasce di prezzo trasparenti, disponibilità e recensioni vere. Raccontaci il problema.`,
+    alternates: { canonical: `/servizi/${params.slug}` },
   };
 }
 
@@ -41,6 +47,39 @@ export default async function ServicePage({
 
   return (
     <div className="container-bob py-10">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Service",
+          name: service.name,
+          serviceType: service.name,
+          description:
+            service.description ??
+            `${service.name} con prezzi chiari e professionisti verificati su BOB.`,
+          areaServed: { "@type": "City", name: "Milano" },
+          provider: { "@type": "Organization", name: "BOB" },
+        }}
+      />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            {
+              "@type": "ListItem",
+              position: 1,
+              name: "Servizi",
+              item: `${siteUrl}/servizi`,
+            },
+            {
+              "@type": "ListItem",
+              position: 2,
+              name: service.name,
+              item: `${siteUrl}/servizi/${service.slug}`,
+            },
+          ],
+        }}
+      />
       <nav className="mb-4 text-sm text-bob-ink/50" aria-label="breadcrumb">
         <Link href="/servizi" className="hover:text-bob-indigo">
           Servizi
