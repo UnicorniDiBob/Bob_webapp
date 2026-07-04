@@ -4,6 +4,7 @@ import type {
   Service,
   Subservice,
   ProfessionalCard,
+  PortfolioItem,
   VerificationStatus,
 } from "@/lib/supabase/types";
 
@@ -229,6 +230,19 @@ export async function getProfessionalById(
   const row = data as unknown as RawProfessionalRow;
   const names = await namesByUserId([row.user_id]);
   return toCard(row, names);
+}
+
+// Foto dei lavori conclusi (galleria pubblica sul profilo).
+export async function getPortfolioItems(
+  professionalId: string
+): Promise<PortfolioItem[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("portfolio_items")
+    .select("*")
+    .eq("professional_id", professionalId)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as PortfolioItem[];
 }
 
 export interface ProfessionalReview {

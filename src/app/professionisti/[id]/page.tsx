@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   getProfessionalById,
   getProfessionalReviews,
+  getPortfolioItems,
 } from "@/lib/data";
 import {
   Stars,
@@ -51,7 +52,10 @@ export default async function ProfessionalDetailPage({
   const p = await getProfessionalById(params.id);
   if (!p) notFound();
 
-  const reviews = await getProfessionalReviews(p.id);
+  const [reviews, portfolio] = await Promise.all([
+    getProfessionalReviews(p.id),
+    getPortfolioItems(p.id),
+  ]);
 
   const initials = p.fullName
     .split(" ")
@@ -131,6 +135,42 @@ export default async function ProfessionalDetailPage({
                 Chi è
               </h2>
               <p className="text-sm leading-relaxed text-bob-ink/75">{p.bio}</p>
+            </section>
+          )}
+
+          {/* Portfolio lavori conclusi (foto caricate dai piani Pro/Business) */}
+          {portfolio.length > 0 && (
+            <section className="card p-6">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+                Lavori realizzati ({portfolio.length})
+              </h2>
+              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {portfolio.map((item) => (
+                  <li
+                    key={item.id}
+                    className="overflow-hidden rounded-xl border border-black/5"
+                    data-testid={`portfolio-${item.id}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.image_url}
+                      alt={item.title}
+                      loading="lazy"
+                      className="aspect-[4/3] w-full object-cover"
+                    />
+                    <div className="p-2.5">
+                      <p className="truncate text-xs font-semibold text-bob-ink">
+                        {item.title}
+                      </p>
+                      {item.description && (
+                        <p className="mt-0.5 line-clamp-3 text-[11px] leading-snug text-bob-ink/60">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </section>
           )}
 

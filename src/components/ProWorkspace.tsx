@@ -5,18 +5,25 @@ import Link from "next/link";
 import { Stars, VerificationBadge } from "@/components/ui";
 import { AppointmentDialog } from "@/components/AppointmentDialog";
 import { ProRequestSummary } from "@/components/ProRequestSummary";
+import { ProPortfolio } from "@/components/ProPortfolio";
 import {
   getAppointments,
   computeStats,
   type ProStats,
 } from "@/lib/messages";
-import type { Appointment, VerificationStatus } from "@/lib/supabase/types";
+import type {
+  Appointment,
+  SubscriptionTier,
+  VerificationStatus,
+} from "@/lib/supabase/types";
 
 interface ProProfile {
   id: string;
+  user_id: string;
   headline: string | null;
   bio: string | null;
   verification_status: VerificationStatus;
+  subscription_tier: SubscriptionTier;
   city: { name: string } | null;
 }
 
@@ -356,6 +363,13 @@ export function ProWorkspace({
           </div>
         </div>
       </div>
+
+      {/* Portfolio lavori (gating per tier: Free upsell, Pro 5 foto, Business illimitato) */}
+      <ProPortfolio
+        professionalId={profile.id}
+        userId={profile.user_id}
+        tier={profile.subscription_tier}
+      />
 
       {dialogOpen && proId && (
         <AppointmentDialog

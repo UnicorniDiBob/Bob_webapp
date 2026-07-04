@@ -3,6 +3,14 @@
 export type CityStatus = "active" | "coming_soon";
 export type VerificationStatus = "unverified" | "pending" | "verified";
 export type UserRole = "customer" | "professional" | "admin" | "cs";
+export type SubscriptionTier = "free" | "pro" | "business";
+
+// Limiti foto portfolio per tier (null = illimitato). Fonte di verità: trigger DB.
+export const PORTFOLIO_LIMITS: Record<SubscriptionTier, number | null> = {
+  free: 0,
+  pro: 5,
+  business: null,
+};
 export type RequestStatus = "draft" | "sent" | "matched" | "closed";
 export type Urgency = "bassa" | "media" | "alta";
 
@@ -50,6 +58,16 @@ export interface Professional {
   years_experience: number | null;
   verification_status: VerificationStatus;
   response_time_label: string | null;
+  subscription_tier: SubscriptionTier;
+  created_at: string | null;
+}
+
+export interface PortfolioItem {
+  id: string;
+  professional_id: string;
+  title: string;
+  description: string | null;
+  image_url: string;
   created_at: string | null;
 }
 

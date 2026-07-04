@@ -18,9 +18,11 @@ interface CustomerRequest {
 
 interface ProProfile {
   id: string;
+  user_id: string;
   headline: string | null;
   bio: string | null;
   verification_status: "unverified" | "pending" | "verified";
+  subscription_tier: "free" | "pro" | "business";
   city: { name: string } | null;
 }
 
@@ -73,7 +75,7 @@ export default function DashboardPage() {
         const { data: prof } = await supabase
           .from("professionals")
           .select(
-            "id, headline, bio, verification_status, cities ( name )"
+            "id, user_id, headline, bio, verification_status, subscription_tier, cities ( name )"
           )
           .eq("user_id", user.id)
           .maybeSingle();
@@ -84,11 +86,15 @@ export default function DashboardPage() {
           if (active) {
             setProProfile({
               id: p.id as string,
+              user_id: p.user_id as string,
               headline: (p.headline as string) ?? null,
               bio: (p.bio as string) ?? null,
               verification_status:
                 (p.verification_status as ProProfile["verification_status"]) ??
                 "unverified",
+              subscription_tier:
+                (p.subscription_tier as ProProfile["subscription_tier"]) ??
+                "free",
               city: cityObj ? { name: cityObj.name } : null,
             });
           }
