@@ -3,6 +3,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { EditUserButton } from "./EditUserButton";
+import { DeleteUserButton } from "./DeleteUserButton";
 
 export const revalidate = 0;
 
@@ -46,6 +47,15 @@ function fmtDate(d: string | null) {
 
 export default async function AdminUsersPage() {
   const supabase = await createClient();
+
+  // Ruolo di chi sta guardando: solo admin vede il bottone Elimina
+  const { data: { user: viewer } } = await supabase.auth.getUser();
+  const { data: viewerRow } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", viewer?.id ?? "")
+    .maybeSingle();
+  const isAdmin = viewerRow?.role === "admin";
 
   const { data: users } = await supabase
     .from("users")
@@ -109,13 +119,19 @@ export default async function AdminUsersPage() {
                 </div>
               </div>
 
-              {/* Bottone modifica */}
+              {/* Bottoni azione */}
               <EditUserButton
                 userId={u.id}
                 currentName={profile?.full_name ?? ""}
                 currentPhone={profile?.phone ?? ""}
                 currentAbout={profile?.about ?? ""}
               />
+              {isAdmin && u.id !== viewer?.id && (
+                <DeleteUserButton
+                  userId={u.id}
+                  userName={profile?.full_name ?? "questo utente"}
+                />
+              )}
             </div>
           );
         })}

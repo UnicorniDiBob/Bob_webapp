@@ -1,10 +1,11 @@
 // API: aggiorna il profilo di un utente (nome, bio, telefono, ecc.).
 // Solo admin e cs possono chiamare questo endpoint.
-// PATCH /api/admin/users/[id]
-// Body: { fullName?, phone?, about?, headline?, bio? }
+// PATCH  /api/admin/users/[id]  — Body: { fullName?, phone?, about?, headline?, bio? }
+// DELETE /api/admin/users/[id]  — elimina definitivamente l'utente (solo admin)
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function PATCH(
   request: Request,
@@ -56,6 +57,48 @@ export async function PATCH(
       .from("professionals")
       .update(proPatch)
       .eq("user_id", params.id);
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+// Elimina definitivamente un utente: account auth + tutti i dati collegati
+// (profilo, professionista, richieste, valutazioni) via cascade sul database.
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  const supabase = createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+
+  // Solo admin può eliminare utenti (non cs)
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (userRow?.role !== "admin") {
+    return NextResponse.json({ error: "Solo l'admin può eliminare utenti" }, { status: 403 });
+  }
+
+  // Non puoi eliminare il tuo stesso account
+  if (params.id === user.id) {
+    return NextResponse.json({ error: "Non puoi eliminare il tuo account" }, { status: 400 });
+  }
+
+  const adminClient = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Elimina da Supabase Auth: la FK users.id → auth.users(id) on delete cascade
+  // rimuove a catena users, profiles, professionals, requests, ratings, ecc.
+  const { error } = await adminClient.auth.admin.deleteUser(params.id);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

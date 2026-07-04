@@ -41,7 +41,7 @@ export default async function AdminLayout({
             <SidebarLink href="/admin/professionals" label="Verifiche" icon="🪪" />
             <SidebarLink href="/admin/users" label="Utenti" icon="👥" />
             {isAdmin && (
-              <SidebarLink href="/admin/cs" label="Customer Service" icon="🎧" />
+              <SidebarLink href="/admin/cs" label="Team" icon="🎧" />
             )}
           </nav>
           <div className="mt-6 border-t border-black/5 pt-4 px-2">
