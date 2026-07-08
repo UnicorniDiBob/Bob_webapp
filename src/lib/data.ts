@@ -59,6 +59,28 @@ export async function getSubservices(serviceId: string): Promise<Subservice[]> {
   return (data ?? []) as Subservice[];
 }
 
+// Tutti i sottoservizi con lo slug del servizio padre (per il brief di Bob).
+export async function getAllSubservices(): Promise<
+  { serviceSlug: string; slug: string; name: string }[]
+> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("subservices")
+    .select("slug, name, services(slug)")
+    .order("name", { ascending: true });
+  return (data ?? [])
+    .map((row) => {
+      const svc = row.services as { slug: string } | { slug: string }[] | null;
+      const serviceSlug = Array.isArray(svc) ? svc[0]?.slug : svc?.slug;
+      return serviceSlug
+        ? { serviceSlug, slug: row.slug as string, name: row.name as string }
+        : null;
+    })
+    .filter((x): x is { serviceSlug: string; slug: string; name: string } =>
+      Boolean(x)
+    );
+}
+
 // Comodità: sottocategorie a partire dallo slug del servizio.
 export async function getSubservicesByServiceSlug(
   slug: string

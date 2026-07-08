@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { City, Service, ProfessionalCard } from "@/lib/supabase/types";
-import type { BobMessage, BobUnderstanding, Severity } from "@/lib/bob";
+import { EMPTY_BRIEF } from "@/lib/bob";
+import type {
+  BobMessage,
+  BriefUrgency,
+  JobBrief,
+  Severity,
+} from "@/lib/bob";
 import {
   BUDGET_OPTIONS,
   URGENCY_OPTIONS,
@@ -25,6 +31,19 @@ type Step =
 interface Msg {
   from: "bob" | "user";
   text: string;
+  // anteprima (data URL) della foto allegata a questo messaggio
+  imageUrl?: string;
+}
+
+interface PendingPhoto {
+  base64: string;
+  mediaType: string;
+  preview: string;
+}
+
+interface SubtaskOption {
+  slug: string;
+  name: string;
 }
 
 interface Collected {
@@ -44,11 +63,6 @@ interface Collected {
   wantsQuotes?: boolean;
 }
 
-const EMPTY_UNDERSTANDING: BobUnderstanding = {
-  serviceSlug: null,
-  severity: null,
-  summary: null,
-};
 
 export function BobChat({
   cities,
@@ -66,11 +80,14 @@ export function BobChat({
       text: "Ciao, sono Bob. Ti aiuto a trovare un servizio o vuoi offrirne uno?",
     },
   ]);
-  const [understanding, setUnderstanding] =
-    useState<BobUnderstanding>(EMPTY_UNDERSTANDING);
+  const [brief, setBrief] = useState<JobBrief>(EMPTY_BRIEF);
+  const [subtaskOptions, setSubtaskOptions] = useState<SubtaskOption[]>([]);
+  const [editingSubtask, setEditingSubtask] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
   const [collected, setCollected] = useState<Collected>({});
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [results, setResults] = useState<ProfessionalCard[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -88,26 +105,69 @@ export function BobChat({
   function bobSay(text: string) {
     setMessages((m) => [...m, { from: "bob", text }]);
   }
-  function userSay(text: string) {
-    setMessages((m) => [...m, { from: "user", text }]);
+  function userSay(text: string, imageUrl?: string) {
+    setMessages((m) => [...m, { from: "user", text, imageUrl }]);
   }
 
-  // Costruisce la cronologia in formato neutro per l'API.
-  function historyFor(extraUser?: string): BobMessage[] {
+  // Costruisce la cronologia in formato neutro per l'API (solo testo:
+  // l'eventuale foto viaggia solo sul messaggio corrente).
+  function historyFor(extraUser: string, photo: PendingPhoto | null): BobMessage[] {
     const base: BobMessage[] = messages.map((m) => ({
       role: m.from,
-      content: m.text,
+      content: m.imageUrl ? `${m.text} (ho allegato una foto)` : m.text,
     }));
-    if (extraUser) base.push({ role: "user", content: extraUser });
+    base.push({
+      role: "user",
+      content: extraUser,
+      ...(photo
+        ? { imageBase64: photo.base64, imageMediaType: photo.mediaType }
+        : {}),
+    });
     return base;
+  }
+
+  // Ridimensiona e ri-codifica la foto in JPEG via canvas:
+  // il re-encoding elimina anche i metadati EXIF (incluso il GPS).
+  async function handlePhotoFile(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("img"));
+        img.src = url;
+      });
+      const maxSide = 1280;
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      setPendingPhoto({
+        base64: dataUrl.split(",")[1] ?? "",
+        mediaType: "image/jpeg",
+        preview: dataUrl,
+      });
+    } catch {
+      // foto non leggibile: ignora
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   // ----- conversazione intelligente con Bob -----
   async function sendToBob(text: string) {
     const clean = text.trim();
-    if (!clean || thinking) return;
-    userSay(clean);
+    if ((!clean && !pendingPhoto) || thinking) return;
+    const photo = pendingPhoto;
+    const content = clean || "Ecco una foto del problema.";
+    userSay(content, photo?.preview);
     setInput("");
+    setPendingPhoto(null);
     setThinking(true);
 
     try {
@@ -115,23 +175,26 @@ export function BobChat({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: historyFor(clean),
-          understanding,
+          messages: historyFor(content, photo),
+          brief,
         }),
       });
       const data = await res.json();
-      const u: BobUnderstanding = data.understanding ?? understanding;
-      setUnderstanding(u);
+      const b: JobBrief = data.brief ?? brief;
+      setBrief(b);
+      if (Array.isArray(data.subtaskOptions)) {
+        setSubtaskOptions(data.subtaskOptions as SubtaskOption[]);
+      }
 
-      const svc = u.serviceSlug
-        ? services.find((s) => s.slug === u.serviceSlug)
+      const svc = b.serviceSlug
+        ? services.find((s) => s.slug === b.serviceSlug)
         : undefined;
       setCollected((c) => ({
         ...c,
-        serviceSlug: u.serviceSlug,
+        serviceSlug: b.serviceSlug,
         serviceName: svc?.name,
-        severity: u.severity,
-        summary: u.summary,
+        severity: b.severity,
+        summary: b.summary,
       }));
 
       bobSay(data.reply ?? "Raccontami meglio cosa ti serve.");
@@ -149,6 +212,31 @@ export function BobChat({
     } finally {
       setThinking(false);
     }
+  }
+
+  // Correzioni one-tap dalla recap card (source: option_click).
+  function correctSubtask(opt: SubtaskOption) {
+    setBrief((b) => ({
+      ...b,
+      subtaskSlug: opt.slug,
+      fieldMeta: {
+        ...b.fieldMeta,
+        subtaskSlug: { confidence: "high", source: "option_click" },
+      },
+    }));
+    setEditingSubtask(false);
+  }
+
+  function correctSeverity(sev: Severity) {
+    setBrief((b) => ({
+      ...b,
+      severity: sev,
+      fieldMeta: {
+        ...b.fieldMeta,
+        severity: { confidence: "high", source: "option_click" },
+      },
+    }));
+    setCollected((c) => ({ ...c, severity: sev }));
   }
 
   function pickIntent(intent: "cliente" | "professionista") {
@@ -170,7 +258,14 @@ export function BobChat({
   // L'utente sceglie un servizio dai chip: saltiamo direttamente alla città.
   function pickService(slug: string, name: string) {
     userSay(name);
-    setUnderstanding((u) => ({ ...u, serviceSlug: slug }));
+    setBrief((b) => ({
+      ...b,
+      serviceSlug: slug,
+      fieldMeta: {
+        ...b.fieldMeta,
+        serviceSlug: { confidence: "high", source: "option_click" },
+      },
+    }));
     setCollected((c) => ({ ...c, serviceSlug: slug, serviceName: name }));
     bobSay(`Ottimo, ${name.toLowerCase()}. In che città ti serve?`);
     setStep("city");
@@ -178,6 +273,8 @@ export function BobChat({
 
   function pickCity(slug: string, name: string, active: boolean) {
     userSay(name);
+    const citySlug = active ? slug : "milano";
+    setBrief((b) => ({ ...b, citySlug }));
     if (!active) {
       bobSay(
         `${name} è in arrivo: non ho ancora professionisti attivi lì. Per ora il pilota è a Milano, ti mostro quelli di Milano. Quando ti servirebbe?`
@@ -190,8 +287,9 @@ export function BobChat({
     setStep("urgency");
   }
 
-  function pickUrgency(label: string, value: Severity) {
+  function pickUrgency(label: string, value: Severity, briefValue: BriefUrgency) {
     userSay(label);
+    setBrief((b) => ({ ...b, urgency: briefValue }));
     setCollected((c) => ({ ...c, urgency: value }));
     bobSay(
       "Hai già un budget in mente? Se ce l'hai dimmelo, così filtro i professionisti adatti. Altrimenti nessun problema: posso chiedere dei preventivi per te."
@@ -204,6 +302,21 @@ export function BobChat({
     setStep("results");
     setSelected(new Set());
     setLoadingResults(true);
+
+    // Salva il job brief completato (best-effort, non blocca la ricerca).
+    const finalBrief: JobBrief = {
+      ...brief,
+      citySlug: next.citySlug ?? brief.citySlug,
+      budgetMin: next.budgetMin ?? null,
+      budgetMax: next.budgetMax ?? null,
+      budgetFlexible: next.wantsQuotes ?? false,
+    };
+    setBrief(finalBrief);
+    fetch("/api/bob/brief", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brief: finalBrief }),
+    }).catch(() => {});
 
     const params = new URLSearchParams();
     if (next.citySlug) params.set("city", next.citySlug);
@@ -274,7 +387,10 @@ export function BobChat({
 
   function restart() {
     setStep("intent");
-    setUnderstanding(EMPTY_UNDERSTANDING);
+    setBrief(EMPTY_BRIEF);
+    setSubtaskOptions([]);
+    setEditingSubtask(false);
+    setPendingPhoto(null);
     setCollected({});
     setResults([]);
     setSelected(new Set());
@@ -340,6 +456,14 @@ export function BobChat({
                   : "rounded-bl-sm bg-bob-indigo-50 text-bob-ink"
               }`}
             >
+              {m.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={m.imageUrl}
+                  alt="Foto del problema"
+                  className="mb-2 max-h-40 rounded-xl object-cover"
+                />
+              )}
               {m.text}
             </div>
           </div>
@@ -357,23 +481,81 @@ export function BobChat({
           </div>
         )}
 
-        {/* riepilogo di cosa Bob ha capito */}
-        {step !== "intent" && step !== "chat" && understanding.serviceSlug && (
-          <div className="flex flex-wrap gap-1.5">
-            {collected.serviceName && (
-              <span className="chip bg-bob-indigo-50 text-bob-indigo">
-                {collected.serviceName}
-              </span>
+        {/* recap card: cosa Bob ha capito, correggibile con un tap */}
+        {step !== "intent" && step !== "chat" && brief.serviceSlug && (
+          <div
+            className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
+            data-testid="brief-recap"
+          >
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-bob-ink/40">
+              Ecco cosa ho capito
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {collected.serviceName && (
+                <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                  {collected.serviceName}
+                </span>
+              )}
+              {brief.subtaskSlug && !editingSubtask && (
+                <button
+                  onClick={() =>
+                    subtaskOptions.length > 0 && setEditingSubtask(true)
+                  }
+                  className="chip bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100"
+                  data-testid="chip-subtask"
+                  title="Tocca per correggere"
+                >
+                  {subtaskOptions.find((o) => o.slug === brief.subtaskSlug)
+                    ?.name ?? brief.subtaskSlug}
+                  {subtaskOptions.length > 0 && (
+                    <span className="ml-1 text-bob-indigo/50">✎</span>
+                  )}
+                </button>
+              )}
+              {collected.cityName && (
+                <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                  {collected.cityName}
+                </span>
+              )}
+            </div>
+            {editingSubtask && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {subtaskOptions.map((o) => (
+                  <button
+                    key={o.slug}
+                    onClick={() => correctSubtask(o)}
+                    className={`chip ${
+                      o.slug === brief.subtaskSlug
+                        ? "bg-bob-indigo text-white"
+                        : "hover:bg-bob-indigo-100"
+                    }`}
+                    data-testid={`chip-subtask-${o.slug}`}
+                  >
+                    {o.name}
+                  </button>
+                ))}
+              </div>
             )}
-            {understanding.severity && (
-              <span className="chip bg-bob-indigo-50 text-bob-indigo">
-                {SEVERITY_LABELS[understanding.severity]}
-              </span>
-            )}
-            {collected.cityName && (
-              <span className="chip bg-bob-indigo-50 text-bob-indigo">
-                {collected.cityName}
-              </span>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(["alta", "media", "bassa"] as Severity[]).map((sev) => (
+                <button
+                  key={sev}
+                  onClick={() => correctSeverity(sev)}
+                  className={`chip text-xs ${
+                    brief.severity === sev
+                      ? "bg-bob-indigo text-white"
+                      : "text-bob-ink/50 hover:bg-bob-indigo-100"
+                  }`}
+                  data-testid={`chip-severity-${sev}`}
+                >
+                  {SEVERITY_LABELS[sev]}
+                </button>
+              ))}
+            </div>
+            {brief.photos.length > 0 && brief.photos[0].aiCaption && (
+              <p className="mt-2 text-xs text-bob-ink/50">
+                📷 {brief.photos[0].aiCaption}
+              </p>
             )}
           </div>
         )}
@@ -513,7 +695,50 @@ export function BobChat({
 
         {step === "chat" && (
           <div className="space-y-3">
+            {pendingPhoto && (
+              <div className="flex items-center gap-2 rounded-xl bg-bob-indigo-50 p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={pendingPhoto.preview}
+                  alt="Anteprima foto"
+                  className="h-12 w-12 rounded-lg object-cover"
+                />
+                <p className="flex-1 text-xs text-bob-ink/60">
+                  Foto pronta: aggiungi due parole o invia direttamente.
+                </p>
+                <button
+                  onClick={() => setPendingPhoto(null)}
+                  className="rounded-lg px-2 py-1 text-xs text-bob-ink/50 hover:bg-white"
+                  aria-label="Rimuovi foto"
+                  data-testid="button-remove-photo"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <div className="flex gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handlePhotoFile(f);
+                  e.target.value = "";
+                }}
+                data-testid="input-photo"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-secondary shrink-0 px-3 py-2.5"
+                disabled={thinking}
+                aria-label="Allega una foto del problema"
+                title="Allega una foto del problema"
+                data-testid="button-photo"
+              >
+                📷
+              </button>
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -528,7 +753,7 @@ export function BobChat({
               <button
                 onClick={() => sendToBob(input)}
                 className="btn-primary py-2.5"
-                disabled={thinking || !input.trim()}
+                disabled={thinking || (!input.trim() && !pendingPhoto)}
                 data-testid="button-send"
               >
                 Invia
@@ -573,7 +798,7 @@ export function BobChat({
             {URGENCY_OPTIONS.map((u) => (
               <button
                 key={u.label}
-                onClick={() => pickUrgency(u.label, u.value)}
+                onClick={() => pickUrgency(u.label, u.value, u.brief)}
                 className="btn-secondary py-2.5 text-sm"
                 data-testid={`button-urgency-${u.label}`}
               >

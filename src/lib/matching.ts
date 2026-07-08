@@ -11,10 +11,10 @@ export const SERVICE_KEYWORDS: Record<string, string[]> = {
   traslochi: ["trasloc", "trasportare", "scatole", "furgone", "spostare mobili", "trasport", "imballagg"],
   tuttofare: ["tuttofare", "montaggio", "montare", "mensol", "tend", "ikea", "mobile", "riparazion", "appendere", "piccoli lavori", "fissare", "assemblar"],
   "personal-trainer": ["personal trainer", "allenament", "palestra", "fitness", "dimagrire", "preparatore", "massa muscolare"],
-  dj: ["dj", "musica", "festa", "evento", "matrimonio musica", "serata", "compleanno musica"],
+  "musica-intrattenimento": ["dj", "musica", "musicist", "band", "cantante", "festa", "evento", "matrimonio musica", "serata", "compleanno", "animazion", "animator", "karaoke", "mago", "intratten", "spettacol"],
   fotografo: ["fotograf", "foto", "ritratt", "shooting", "reportage", "book", "servizio fotografico"],
   ripetizioni: ["ripetizion", "lezioni", "studiare", "matematica", "inglese", "tutor", "doposcuola", "esame", "compiti"],
-  "supporto-excel": ["excel", "foglio di calcolo", "spreadsheet", "macro", "tabella pivot", "report excel", "formule"],
+  "supporto-informatico": ["excel", "foglio di calcolo", "spreadsheet", "macro", "tabella pivot", "report excel", "formule", "computer", "pc ", "mac ", "stampante", "wifi", "wi-fi", "virus", "lento", "backup", "recupero dati", "installare", "spid", "word", "powerpoint"],
   giardiniere: ["giardin", "potatur", "siepe", "prato", "verde", "terrazz", "piante", "aiuola", "irrigaz"],
   serramentista: ["serrament", "finestr", "porta blindata", "infiss", "zanzarier", "tapparell", "persian", "basculante"],
   "grafica-logo": ["logo", "grafica", "brand", "volantino", "biglietto da visita", "locandina", "menu grafic"],
@@ -58,10 +58,10 @@ export function guessSeverity(text: string): "alta" | "media" | "bassa" {
 }
 
 export const URGENCY_OPTIONS = [
-  { label: "È un'emergenza, subito", value: "alta" as const },
-  { label: "Questa settimana", value: "alta" as const },
-  { label: "Questo mese", value: "media" as const },
-  { label: "Sto solo esplorando", value: "bassa" as const },
+  { label: "È un'emergenza, subito", value: "alta" as const, brief: "emergenza" as const },
+  { label: "Questa settimana", value: "alta" as const, brief: "questa_settimana" as const },
+  { label: "Questo mese", value: "media" as const, brief: "questo_mese" as const },
+  { label: "Sto solo esplorando", value: "bassa" as const, brief: "esplorando" as const },
 ];
 
 // Il budget ora è OPZIONALE: l'utente può indicarlo o chiedere preventivi.

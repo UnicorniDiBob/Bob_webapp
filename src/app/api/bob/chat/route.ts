@@ -1,82 +1,93 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { getServices } from "@/lib/data";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { getServices, getAllSubservices } from "@/lib/data";
 import {
   buildSystemPrompt,
+  buildBriefTool,
+  mergeBrief,
   ruleBasedDecision,
+  EMPTY_BRIEF,
   type BobDecision,
   type BobMessage,
-  type BobUnderstanding,
+  type JobBrief,
   type ServiceRef,
-  type Severity,
 } from "@/lib/bob";
 
 export const runtime = "nodejs";
 
 interface ChatBody {
   messages: BobMessage[];
-  understanding?: BobUnderstanding;
+  brief?: JobBrief;
 }
 
-const EMPTY_UNDERSTANDING: BobUnderstanding = {
-  serviceSlug: null,
-  severity: null,
-  summary: null,
-};
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
-// Estrae il primo blocco JSON valido dalla risposta dell'LLM.
-function parseDecision(
-  raw: string,
-  services: ServiceRef[],
-  prev: BobUnderstanding
-): BobDecision | null {
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) return null;
+// Carica la foto nel bucket privato brief-photos (service role, server-only).
+// Se il service role non è configurato la foto viene comunque usata per la vision.
+async function uploadBriefPhoto(
+  base64: string,
+  mediaType: string
+): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return null;
+
   try {
-    const obj = JSON.parse(raw.slice(start, end + 1));
-    const slug: string | null =
-      typeof obj.serviceSlug === "string" &&
-      services.some((s) => s.slug === obj.serviceSlug)
-        ? obj.serviceSlug
-        : prev.serviceSlug;
-    const severity: Severity | null = ["alta", "media", "bassa"].includes(
-      obj.severity
-    )
-      ? obj.severity
-      : prev.severity;
-    const next: BobDecision["next"] =
-      obj.next === "city" ? "city" : "ask";
-    const reply =
-      typeof obj.reply === "string" && obj.reply.trim()
-        ? obj.reply.trim()
-        : "Raccontami un po' meglio cosa ti serve.";
-    // [F1] shortlistReason e suggestedMessage
-    const shortlistReason =
-      typeof obj.shortlistReason === "string" && obj.shortlistReason.trim()
-        ? obj.shortlistReason.trim()
-        : null;
-    const suggestedMessage =
-      typeof obj.suggestedMessage === "string" && obj.suggestedMessage.trim()
-        ? obj.suggestedMessage.trim()
-        : null;
-    return {
-      reply,
-      understanding: {
-        serviceSlug: slug,
-        severity,
-        summary:
-          typeof obj.summary === "string" && obj.summary.trim()
-            ? obj.summary.trim()
-            : prev.summary,
-      },
-      next,
-      shortlistReason,
-      suggestedMessage,
-    };
+    const admin = createServiceClient(url, serviceKey);
+    const ext = mediaType === "image/png" ? "png" : mediaType === "image/webp" ? "webp" : "jpg";
+    const path = `chat/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const buffer = Buffer.from(base64, "base64");
+    const { error } = await admin.storage
+      .from("brief-photos")
+      .upload(path, buffer, { contentType: mediaType });
+    return error ? null : path;
   } catch {
     return null;
   }
+}
+
+// Converte la cronologia nel formato Anthropic; solo l'ULTIMO messaggio utente
+// può portare un'immagine (i turni precedenti restano solo testo).
+function toAnthropicMessages(
+  messages: BobMessage[]
+): Anthropic.MessageParam[] {
+  const lastUserIdx = messages.reduce(
+    (acc, m, i) => (m.role === "user" ? i : acc),
+    -1
+  );
+  return messages.map((m, i) => {
+    const role = m.role === "bob" ? ("assistant" as const) : ("user" as const);
+    if (
+      i === lastUserIdx &&
+      m.imageBase64 &&
+      m.imageMediaType &&
+      ALLOWED_IMAGE_TYPES.has(m.imageMediaType)
+    ) {
+      return {
+        role,
+        content: [
+          {
+            type: "image" as const,
+            source: {
+              type: "base64" as const,
+              media_type: m.imageMediaType as
+                | "image/jpeg"
+                | "image/png"
+                | "image/webp",
+              data: m.imageBase64,
+            },
+          },
+          { type: "text" as const, text: m.content || "Ecco una foto del problema." },
+        ],
+      };
+    }
+    return { role, content: m.content };
+  });
 }
 
 export async function POST(request: Request) {
@@ -88,50 +99,107 @@ export async function POST(request: Request) {
   }
 
   const messages = Array.isArray(body.messages) ? body.messages : [];
-  const prev = body.understanding ?? EMPTY_UNDERSTANDING;
+  const prev: JobBrief = body.brief ?? EMPTY_BRIEF;
 
-  // Servizi reali dal DB per ancorare le scelte di Bob.
-  const services: ServiceRef[] = (await getServices()).map((s) => ({
+  // Catalogo reale dal DB per ancorare le scelte di Bob.
+  const [servicesRaw, subservices] = await Promise.all([
+    getServices(),
+    getAllSubservices(),
+  ]);
+  const services: ServiceRef[] = servicesRaw.map((s) => ({
     slug: s.slug,
     name: s.name,
   }));
+
+  // Foto sull'ultimo messaggio utente: upload nel bucket privato (in parallelo alla vision).
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const hasPhoto =
+    !!lastUser?.imageBase64 &&
+    !!lastUser?.imageMediaType &&
+    ALLOWED_IMAGE_TYPES.has(lastUser.imageMediaType);
+  const uploadPromise = hasPhoto
+    ? uploadBriefPhoto(lastUser!.imageBase64!, lastUser!.imageMediaType!)
+    : Promise.resolve<string | null>(null);
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   // Nessuna chiave configurata: fallback a regole (l'app funziona comunque).
   if (!apiKey) {
-    const decision = ruleBasedDecision(messages, services, prev);
+    const decision = ruleBasedDecision(messages, services, subservices, prev);
     return NextResponse.json({ ...decision, source: "rules" });
   }
 
   try {
     const client = new Anthropic({ apiKey });
+    const tool = buildBriefTool(services, subservices);
     const completion = await client.messages.create({
       model: "claude-3-5-haiku-latest",
-      max_tokens: 500,
+      max_tokens: 1000,
       temperature: 0.4,
-      system: buildSystemPrompt(services),
-      messages: messages.map((m) => ({
-        role: m.role === "bob" ? ("assistant" as const) : ("user" as const),
-        content: m.content,
-      })),
+      system: buildSystemPrompt(services, subservices),
+      tools: [tool as Anthropic.Tool],
+      tool_choice: { type: "tool", name: "update_job_brief" },
+      messages: toAnthropicMessages(messages),
     });
 
-    const raw = completion.content
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("")
-      .trim();
-
-    const decision = parseDecision(raw, services, prev);
-    if (decision) {
-      return NextResponse.json({ ...decision, source: "ai" });
+    const toolBlock = completion.content.find(
+      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+    );
+    if (!toolBlock) {
+      const fallback = ruleBasedDecision(messages, services, subservices, prev);
+      return NextResponse.json({ ...fallback, source: "rules-fallback" });
     }
-    // Parsing fallito: fallback a regole.
-    const fallback = ruleBasedDecision(messages, services, prev);
-    return NextResponse.json({ ...fallback, source: "rules-fallback" });
+
+    const input = toolBlock.input as Record<string, unknown>;
+    const briefIn =
+      input.brief && typeof input.brief === "object"
+        ? (input.brief as Record<string, unknown>)
+        : {};
+
+    let brief = mergeBrief(prev, briefIn, services, subservices);
+
+    // Aggancia la foto caricata al brief, con la didascalia dell'AI.
+    const storagePath = await uploadPromise;
+    if (storagePath) {
+      const aiCaption =
+        typeof briefIn.photoCaption === "string" && briefIn.photoCaption.trim()
+          ? briefIn.photoCaption.trim()
+          : null;
+      brief = { ...brief, photos: [...brief.photos, { storagePath, aiCaption }] };
+    }
+
+    const next: BobDecision["next"] = input.next === "city" ? "city" : "ask";
+    const reply =
+      typeof input.reply === "string" && input.reply.trim()
+        ? input.reply.trim()
+        : "Raccontami un po' meglio cosa ti serve.";
+
+    const decision: BobDecision = {
+      reply,
+      brief,
+      next,
+      shortlistReason:
+        typeof input.shortlistReason === "string" && input.shortlistReason.trim()
+          ? input.shortlistReason.trim()
+          : null,
+      suggestedMessage:
+        typeof input.suggestedMessage === "string" &&
+        input.suggestedMessage.trim()
+          ? input.suggestedMessage.trim()
+          : null,
+      // Opzioni per la recap card (correzione one-tap del sotto-servizio).
+      subtaskOptions:
+        next === "city" && brief.serviceSlug
+          ? subservices
+              .filter((x) => x.serviceSlug === brief.serviceSlug)
+              .map((x) => ({ slug: x.slug, name: x.name }))
+          : undefined,
+    };
+
+    return NextResponse.json({ ...decision, source: "ai" });
   } catch {
     // Errore API (chiave non valida, rate limit, ecc.): fallback a regole.
-    const fallback = ruleBasedDecision(messages, services, prev);
+    const fallback = ruleBasedDecision(messages, services, subservices, prev);
     return NextResponse.json({ ...fallback, source: "rules-error" });
   }
 }
