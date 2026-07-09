@@ -239,7 +239,15 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-4 text-center text-xs text-bob-ink/45">
-          Continuando accetti i termini del servizio BOB.{" "}
+          Continuando accetti i{" "}
+          <Link href="/termini" className="underline hover:text-bob-indigo">
+            termini del servizio
+          </Link>{" "}
+          e l&apos;
+          <Link href="/privacy" className="underline hover:text-bob-indigo">
+            informativa privacy
+          </Link>
+          .{" "}
           <Link href="/" className="underline hover:text-bob-indigo">
             Torna alla home
           </Link>

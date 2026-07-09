@@ -7,11 +7,12 @@ import {
   getProfessionals,
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
+import { CityWaitlistForm } from "@/components/CityWaitlistForm";
 import { serviceIcon } from "@/lib/serviceIcons";
 import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bob-webapp-six.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.meetonda.com";
 
 export const revalidate = 180;
 
@@ -55,14 +56,21 @@ export default async function CityPage({
             BOB sta arrivando a {city.name}
           </h1>
           <p className="mt-2 text-sm text-bob-ink/60">
-            Stiamo selezionando i primi professionisti verificati. Nel frattempo
-            puoi esplorare Milano o raccontare a Bob cosa ti serve.
+            Stiamo selezionando i primi professionisti verificati. Lascia il
+            tuo interesse: ti avvisiamo appena siamo operativi.
           </p>
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Link href="/citta/milano" className="btn-primary px-5 py-2.5">
+
+          {/* L'homepage promette "lascia il tuo interesse": qui la promessa
+              viene mantenuta. Le email alimentano la lista di lancio. */}
+          <div className="mt-6">
+            <CityWaitlistForm citySlug={city.slug} cityName={city.name} />
+          </div>
+
+          <div className="mt-6 flex flex-col gap-2 border-t border-black/5 pt-5 sm:flex-row sm:justify-center">
+            <Link href="/citta/milano" className="btn-secondary px-5 py-2.5">
               Vai a Milano
             </Link>
-            <Link href="/" className="btn-secondary px-5 py-2.5">
+            <Link href="/" className="btn-ghost px-5 py-2.5">
               Parla con Bob
             </Link>
           </div>

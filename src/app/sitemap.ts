@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { createStaticClient } from "@/lib/supabase/static";
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bob-webapp-six.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.meetonda.com";
 
 // Rigenerata al massimo una volta all'ora.
 export const revalidate = 3600;
@@ -18,6 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/come-funziona`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${siteUrl}/faq`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${siteUrl}/per-i-professionisti`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${siteUrl}/chi-siamo`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${siteUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${siteUrl}/cookie-policy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${siteUrl}/termini`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
   ];
 
   try {

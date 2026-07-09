@@ -671,21 +671,47 @@ export function BobChat({
       {/* area input / scelte rapide */}
       <div className="border-t border-black/5 bg-white px-4 py-3.5 sm:px-5">
         {step === "intent" && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => pickIntent("cliente")}
-              className="btn-primary flex-1 py-2.5"
-              data-testid="button-intent-client"
-            >
-              Cerco un servizio
-            </button>
-            <button
-              onClick={() => pickIntent("professionista")}
-              className="btn-secondary flex-1 py-2.5"
-              data-testid="button-intent-pro"
-            >
-              Offro un servizio
-            </button>
+          <div className="space-y-2.5">
+            {/* La promessa dell'hero è "Raccontami il problema": l'input di
+                testo è disponibile da subito. Scrivere implica l'intento
+                cliente, quindi si entra direttamente nella conversazione. */}
+            <div className="flex gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && !thinking && sendToBob(input)
+                }
+                placeholder="Es. perde il rubinetto della cucina…"
+                className="input-bob py-2.5"
+                disabled={thinking}
+                data-testid="input-intent-problem"
+              />
+              <button
+                onClick={() => sendToBob(input)}
+                className="btn-primary py-2.5"
+                disabled={thinking || !input.trim()}
+                data-testid="button-intent-send"
+              >
+                Invia
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => pickIntent("cliente")}
+                className="btn-secondary flex-1 py-2.5"
+                data-testid="button-intent-client"
+              >
+                Cerco un servizio
+              </button>
+              <button
+                onClick={() => pickIntent("professionista")}
+                className="btn-ghost flex-1 border border-black/10 py-2.5"
+                data-testid="button-intent-pro"
+              >
+                Offro un servizio
+              </button>
+            </div>
           </div>
         )}
 

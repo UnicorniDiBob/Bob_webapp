@@ -7,7 +7,7 @@ import { Footer } from "@/components/Footer";
 import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bob-webapp-six.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.meetonda.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -32,6 +32,22 @@ export const metadata: Metadata = {
     siteName: "BOB",
     locale: "it_IT",
     type: "website",
+    // Immagine per le anteprime link (WhatsApp, iMessage, social).
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "BOB — il concierge dei servizi locali",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BOB — Trova il professionista giusto, con prezzi chiari",
+    description:
+      "Bob è il concierge che ti aiuta a capire il problema e ti porta ai professionisti più adatti.",
+    images: ["/og.png"],
   },
 };
 

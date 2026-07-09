@@ -11,7 +11,7 @@ import { serviceIcon } from "@/lib/serviceIcons";
 import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://bob-webapp-six.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.meetonda.com";
 
 export const revalidate = 180;
 
