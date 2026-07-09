@@ -84,10 +84,12 @@ export function BobChat({
   const [subtaskOptions, setSubtaskOptions] = useState<SubtaskOption[]>([]);
   const [editingSubtask, setEditingSubtask] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
   const [collected, setCollected] = useState<Collected>({});
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [results, setResults] = useState<ProfessionalCard[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
