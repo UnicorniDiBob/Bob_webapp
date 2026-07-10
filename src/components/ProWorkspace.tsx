@@ -221,61 +221,135 @@ export function ProWorkspace({
           {loading ? (
             <div className="h-64 animate-pulse rounded-xl bg-black/[0.03]" />
           ) : (
-            <div className="grid grid-cols-7 gap-1.5">
-              {weekDays.map((d, i) => {
-                const dayAppts = (apptByDay.get(d.toDateString()) ?? []).sort(
-                  (a, b) => a.starts_at.localeCompare(b.starts_at)
-                );
-                const isToday = sameDay(d, new Date());
-                return (
-                  <div key={i} className="flex flex-col">
+            <>
+              {/* Vista settimanale a griglia (da sm in su) */}
+              <div className="hidden grid-cols-7 gap-1.5 sm:grid">
+                {weekDays.map((d, i) => {
+                  const dayAppts = (apptByDay.get(d.toDateString()) ?? []).sort(
+                    (a, b) => a.starts_at.localeCompare(b.starts_at)
+                  );
+                  const isToday = sameDay(d, new Date());
+                  return (
+                    <div key={i} className="flex flex-col">
+                      <div
+                        className={`mb-1.5 rounded-lg py-1 text-center text-xs font-semibold ${
+                          isToday
+                            ? "bg-bob-indigo text-white"
+                            : "text-bob-ink/55"
+                        }`}
+                      >
+                        {DAYS[i]} {d.getDate()}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const dt = new Date(d);
+                          dt.setHours(9, 0, 0, 0);
+                          setDefaultDate(dt);
+                          setEditing(null);
+                          setDialogOpen(true);
+                        }}
+                        className="mb-1 rounded-md border border-dashed border-black/10 py-1 text-[10px] text-bob-ink/35 hover:border-bob-indigo/40 hover:text-bob-indigo"
+                        aria-label={`Aggiungi appuntamento ${DAYS[i]} ${d.getDate()}`}
+                      >
+                        +
+                      </button>
+                      <div className="flex flex-col gap-1">
+                        {dayAppts.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => {
+                              setEditing(a);
+                              setDefaultDate(undefined);
+                              setDialogOpen(true);
+                            }}
+                            className={`rounded-md border px-1.5 py-1 text-left text-[10px] leading-tight ${STATUS_STYLE[a.status]}`}
+                            data-testid={`appt-${a.id}`}
+                          >
+                            <span className="block font-semibold">
+                              {fmtHour(new Date(a.starts_at))}
+                            </span>
+                            <span className="block truncate">
+                              {a.customer_name}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Vista agenda per mobile: un giorno per riga */}
+              <div className="flex flex-col gap-2 sm:hidden">
+                {weekDays.map((d, i) => {
+                  const dayAppts = (apptByDay.get(d.toDateString()) ?? []).sort(
+                    (a, b) => a.starts_at.localeCompare(b.starts_at)
+                  );
+                  const isToday = sameDay(d, new Date());
+                  return (
                     <div
-                      className={`mb-1.5 rounded-lg py-1 text-center text-xs font-semibold ${
+                      key={i}
+                      className={`rounded-xl border px-3 py-2.5 ${
                         isToday
-                          ? "bg-bob-indigo text-white"
-                          : "text-bob-ink/55"
+                          ? "border-bob-indigo/30 bg-bob-indigo-50/50"
+                          : "border-black/5"
                       }`}
                     >
-                      {DAYS[i]} {d.getDate()}
-                    </div>
-                    <button
-                      onClick={() => {
-                        const dt = new Date(d);
-                        dt.setHours(9, 0, 0, 0);
-                        setDefaultDate(dt);
-                        setEditing(null);
-                        setDialogOpen(true);
-                      }}
-                      className="mb-1 rounded-md border border-dashed border-black/10 py-1 text-[10px] text-bob-ink/35 hover:border-bob-indigo/40 hover:text-bob-indigo"
-                      aria-label="Aggiungi appuntamento"
-                    >
-                      +
-                    </button>
-                    <div className="flex flex-col gap-1">
-                      {dayAppts.map((a) => (
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`text-sm font-semibold ${
+                            isToday ? "text-bob-indigo" : "text-bob-ink/70"
+                          }`}
+                        >
+                          {DAYS[i]} {d.getDate()}
+                          {isToday && (
+                            <span className="ml-1.5 text-[10px] font-medium uppercase tracking-wide text-bob-indigo/70">
+                              oggi
+                            </span>
+                          )}
+                        </span>
                         <button
-                          key={a.id}
                           onClick={() => {
-                            setEditing(a);
-                            setDefaultDate(undefined);
+                            const dt = new Date(d);
+                            dt.setHours(9, 0, 0, 0);
+                            setDefaultDate(dt);
+                            setEditing(null);
                             setDialogOpen(true);
                           }}
-                          className={`rounded-md border px-1.5 py-1 text-left text-[10px] leading-tight ${STATUS_STYLE[a.status]}`}
-                          data-testid={`appt-${a.id}`}
+                          className="rounded-lg border border-dashed border-black/15 px-2.5 py-1 text-xs text-bob-ink/45 hover:border-bob-indigo/40 hover:text-bob-indigo"
+                          aria-label={`Aggiungi appuntamento ${DAYS[i]} ${d.getDate()}`}
                         >
-                          <span className="block font-semibold">
-                            {fmtHour(new Date(a.starts_at))}
-                          </span>
-                          <span className="block truncate">
-                            {a.customer_name}
-                          </span>
+                          +
                         </button>
-                      ))}
+                      </div>
+                      {dayAppts.length > 0 && (
+                        <div className="mt-2 flex flex-col gap-1.5">
+                          {dayAppts.map((a) => (
+                            <button
+                              key={a.id}
+                              onClick={() => {
+                                setEditing(a);
+                                setDefaultDate(undefined);
+                                setDialogOpen(true);
+                              }}
+                              className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left text-xs ${STATUS_STYLE[a.status]}`}
+                              data-testid={`appt-mobile-${a.id}`}
+                            >
+                              <span className="min-w-0 truncate font-medium">
+                                {a.customer_name}
+                              </span>
+                              <span className="shrink-0 font-semibold">
+                                {fmtHour(new Date(a.starts_at))}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
 
           <button

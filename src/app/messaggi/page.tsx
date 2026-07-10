@@ -52,6 +52,10 @@ function MessaggiInner() {
   const [activeId, setActiveId] = useState<string | null>(
     params.get("r") ?? null
   );
+  // Su mobile mostriamo lista O thread: entrando con ?r= si apre subito il thread.
+  const [mobileThread, setMobileThread] = useState<boolean>(
+    params.get("r") != null
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [draft, setDraft] = useState("");
@@ -185,14 +189,21 @@ function MessaggiInner() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-[300px_1fr]">
-          {/* lista conversazioni */}
-          <aside className="card max-h-[600px] divide-y divide-black/5 overflow-y-auto p-0">
+          {/* lista conversazioni (su mobile nascosta quando un thread è aperto) */}
+          <aside
+            className={`card max-h-[600px] divide-y divide-black/5 overflow-y-auto p-0 ${
+              mobileThread ? "hidden md:block" : ""
+            }`}
+          >
             {conversations.map((c) => {
               const isActive = c.requestId === activeId;
               return (
                 <button
                   key={c.requestId}
-                  onClick={() => setActiveId(c.requestId)}
+                  onClick={() => {
+                    setActiveId(c.requestId);
+                    setMobileThread(true);
+                  }}
                   className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition ${
                     isActive ? "bg-bob-indigo-50" : "hover:bg-black/[0.02]"
                   }`}
@@ -220,11 +231,25 @@ function MessaggiInner() {
             })}
           </aside>
 
-          {/* thread */}
-          <section className="card flex max-h-[600px] min-h-[400px] flex-col p-0">
+          {/* thread (su mobile visibile solo quando aperto; altezza legata al viewport così l'input resta in vista) */}
+          <section
+            className={`card h-[calc(100dvh-16rem)] max-h-[600px] min-h-[320px] flex-col p-0 md:h-auto md:min-h-[400px] ${
+              mobileThread ? "flex" : "hidden md:flex"
+            }`}
+          >
             {active ? (
               <>
-                <div className="flex items-center justify-between gap-2 border-b border-black/5 px-5 py-3.5">
+                <div className="flex items-center gap-2 border-b border-black/5 px-4 py-3.5 sm:px-5">
+                  <button
+                    onClick={() => setMobileThread(false)}
+                    className="shrink-0 rounded-lg p-1.5 text-bob-ink/60 hover:bg-black/[0.04] hover:text-bob-indigo md:hidden"
+                    aria-label="Torna alle conversazioni"
+                    data-testid="button-back-to-list"
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-bob-ink">
                       {active.counterpartName}

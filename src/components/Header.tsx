@@ -42,6 +42,7 @@ export function Header() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
                   active
                     ? "text-bob-indigo"
@@ -99,9 +100,18 @@ export function Header() {
               </button>
             </div>
           ) : (
-            <Link href="/login" className="btn-primary py-2" data-testid="link-login">
-              Accedi
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/login" className="btn-ghost" data-testid="link-login">
+                Accedi
+              </Link>
+              <Link
+                href="/#bob"
+                className="btn-primary py-2"
+                data-testid="link-talk-to-bob"
+              >
+                Parla con Bob
+              </Link>
+            </div>
           )}
         </div>
 
@@ -173,9 +183,14 @@ export function Header() {
                   </button>
                 </>
               ) : (
-                <Link href="/login" onClick={() => setOpen(false)} className="btn-primary flex-1 py-2">
-                  Accedi
-                </Link>
+                <>
+                  <Link href="/login" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2">
+                    Accedi
+                  </Link>
+                  <Link href="/#bob" onClick={() => setOpen(false)} className="btn-primary flex-1 py-2">
+                    Parla con Bob
+                  </Link>
+                </>
               )}
             </div>
           </div>

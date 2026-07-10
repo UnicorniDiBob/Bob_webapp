@@ -25,6 +25,34 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  // Reset password: Supabase invia una mail con un link a /auth/reimposta-password.
+  async function handleForgotPassword() {
+    setError(null);
+    setInfo(null);
+    const target = email.trim();
+    if (!target) {
+      setError("Scrivi la tua email qui sopra, poi ripremi il link.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
+        target,
+        {
+          redirectTo: `${window.location.origin}/auth/reimposta-password`,
+        }
+      );
+      if (resetErr) throw resetErr;
+      setInfo(
+        "Se l'email è registrata, ti ho inviato un link per reimpostare la password. Controlla la posta."
+      );
+    } catch {
+      setError("Non sono riuscito a inviare la mail di reset. Riprova tra poco.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -195,6 +223,19 @@ export default function LoginPage() {
                 required
                 minLength={6}
               />
+              {mode === "login" && (
+                <div className="mt-1.5 text-right">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={submitting}
+                    className="text-xs font-medium text-bob-indigo hover:underline"
+                    data-testid="button-forgot-password"
+                  >
+                    Password dimenticata?
+                  </button>
+                </div>
+              )}
             </div>
 
             {error && (

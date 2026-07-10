@@ -65,7 +65,7 @@ export default async function ProfessionalDetailPage({
     .toUpperCase();
 
   return (
-    <div className="container-bob py-10">
+    <div className="container-bob py-10 pb-28 lg:pb-10">
       <nav className="mb-4 text-sm text-bob-ink/50" aria-label="breadcrumb">
         <Link href="/professionisti" className="hover:text-bob-indigo">
           Professionisti
@@ -233,6 +233,20 @@ export default async function ProfessionalDetailPage({
             </p>
           </div>
         </aside>
+      </div>
+
+      {/* Barra contatto fissa in basso su mobile: il CTA principale resta sempre visibile */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/5 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
+        <div className="mx-auto flex max-w-md items-center gap-3">
+          <div className="min-w-0 shrink-0 text-base font-semibold">
+            <PriceTag min={p.minPrice} max={p.maxPrice} />
+          </div>
+          <ContactButton
+            professional={p}
+            className="btn-primary min-w-0 flex-1 py-3"
+            label={`Contatta ${p.fullName.split(" ")[0]}`}
+          />
+        </div>
       </div>
     </div>
   );

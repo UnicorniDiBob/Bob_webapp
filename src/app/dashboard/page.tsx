@@ -241,6 +241,15 @@ function CustomerDashboard({ requests }: { requests: CustomerRequest[] }) {
               {STATUS_LABEL[r.status] ?? r.status}
             </span>
           </div>
+          <div className="mt-3 border-t border-black/5 pt-3">
+            <Link
+              href={`/messaggi?r=${r.id}`}
+              className="text-sm font-medium text-bob-indigo hover:underline"
+              data-testid={`link-conversation-${r.id}`}
+            >
+              Apri la conversazione →
+            </Link>
+          </div>
         </li>
       ))}
     </ul>
