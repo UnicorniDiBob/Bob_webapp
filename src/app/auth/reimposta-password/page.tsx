@@ -26,8 +26,25 @@ export default function ReimpostaPasswordPage() {
     let cancelled = false;
 
     async function init() {
+      const url = new URL(window.location.href);
+
+      // Caso token_hash (template email personalizzato): il link della mail
+      // porta qui SENZA consumare il token — lo verifichiamo noi ora.
+      // Così gli scanner antispam (Gmail/Outlook) che pre-aprono il link
+      // non bruciano più il token monouso.
+      const tokenHash = url.searchParams.get("token_hash");
+      const type = url.searchParams.get("type");
+      if (tokenHash && type === "recovery") {
+        const { error: otpErr } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash: tokenHash,
+        });
+        if (!cancelled) setStatus(otpErr ? "invalid" : "ready");
+        return;
+      }
+
       // Caso PKCE: il link di reset reindirizza con ?code=
-      const code = new URL(window.location.href).searchParams.get("code");
+      const code = url.searchParams.get("code");
       if (code) {
         await supabase.auth.exchangeCodeForSession(code).catch(() => null);
       }
