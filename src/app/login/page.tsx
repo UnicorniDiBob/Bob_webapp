@@ -46,8 +46,20 @@ export default function LoginPage() {
       setInfo(
         "Se l'email è registrata, ti ho inviato un link per reimpostare la password. Controlla la posta."
       );
-    } catch {
-      setError("Non sono riuscito a inviare la mail di reset. Riprova tra poco.");
+    } catch (err) {
+      // Distinguo il rate limit (429) dagli errori generici, così l'utente
+      // capisce che la funzione non è rotta: deve solo riprovare più tardi.
+      const status = (err as { status?: number } | null)?.status;
+      const msg = err instanceof Error ? err.message : "";
+      if (status === 429 || /rate limit|security purposes/i.test(msg)) {
+        setError(
+          "Troppe richieste in poco tempo: riprova tra qualche minuto."
+        );
+      } else {
+        setError(
+          "Non sono riuscito a inviare la mail di reset. Riprova tra poco."
+        );
+      }
     } finally {
       setSubmitting(false);
     }
