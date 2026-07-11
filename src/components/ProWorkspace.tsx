@@ -143,14 +143,19 @@ export function ProWorkspace({
           🛠️
         </div>
         <h3 className="font-semibold text-bob-ink">
-          Il tuo profilo professionista è in preparazione
+          Completa il tuo profilo per iniziare
         </h3>
         <p className="max-w-sm text-sm text-bob-ink/60">
-          Il nostro team ti contatterà per completare la verifica e pubblicare il
-          tuo profilo.
+          Racconta cosa offri, in che città lavori e le tue tariffe: bastano due
+          minuti. Dopo il salvataggio il team verifica il profilo e attiva il
+          badge.
         </p>
-        <Link href="/per-i-professionisti" className="btn-primary mt-1 px-5 py-2.5">
-          Scopri di più
+        <Link
+          href="/dashboard/profilo"
+          className="btn-primary mt-1 px-5 py-2.5"
+          data-testid="link-create-profile"
+        >
+          Completa il profilo →
         </Link>
       </div>
     );
@@ -421,6 +426,13 @@ export function ProWorkspace({
               <Stars value={rating.avg} count={rating.n} />
             </div>
             <div className="mt-3 flex flex-col gap-2">
+              <Link
+                href="/dashboard/profilo"
+                className="btn-secondary py-2 text-center text-sm"
+                data-testid="link-edit-profile"
+              >
+                Modifica profilo
+              </Link>
               <Link
                 href="/messaggi"
                 className="btn-secondary py-2 text-center text-sm"
