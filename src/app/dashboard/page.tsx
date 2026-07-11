@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ProWorkspace } from "@/components/ProWorkspace";
+import { ReviewDialog } from "@/components/ReviewDialog";
 
 interface CustomerRequest {
   id: string;
@@ -14,6 +15,8 @@ interface CustomerRequest {
   created_at: string | null;
   service: { name: string } | null;
   city: { name: string } | null;
+  // professionisti contattati in questa richiesta (per la recensione)
+  pros: { id: string; name: string }[];
 }
 
 interface ProProfile {
@@ -52,6 +55,7 @@ export default function DashboardPage() {
   const { user, role, fullName, loading } = useAuth();
 
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
+  const [reviewed, setReviewed] = useState<Set<string>>(new Set());
   const [proProfile, setProProfile] = useState<ProProfile | null>(null);
   const [proRating, setProRating] = useState<{ avg: number | null; n: number }>({
     avg: null,
@@ -115,22 +119,86 @@ export default function DashboardPage() {
         const { data } = await supabase
           .from("requests")
           .select(
-            "id, status, problem_description, created_at, services ( name ), cities ( name )"
+            "id, status, problem_description, created_at, services ( name ), cities ( name ), request_professionals ( professional_id, professionals ( id, user_id ) )"
           )
           .eq("customer_id", user.id)
           .order("created_at", { ascending: false });
 
+        // Recensioni già lasciate: servono per non riproporre il bottone.
+        const { data: myRatings } = await supabase
+          .from("ratings")
+          .select("request_id, professional_id")
+          .eq("customer_id", user.id);
+
         const rows = (data ?? []) as Record<string, unknown>[];
+
+        // Nomi pubblici dei professionisti da `profiles` (stesso pattern di messages.ts)
+        const proUserIds = new Set<string>();
+        for (const r of rows) {
+          for (const rp of (r.request_professionals ?? []) as Record<
+            string,
+            unknown
+          >[]) {
+            const prof = rp.professionals as { user_id?: string } | null;
+            if (prof?.user_id) proUserIds.add(prof.user_id);
+          }
+        }
+        const nameByUser = new Map<string, string>();
+        if (proUserIds.size) {
+          const { data: profs } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", Array.from(proUserIds));
+          for (const p of (profs ?? []) as {
+            user_id: string;
+            full_name: string | null;
+          }[]) {
+            if (p.full_name) nameByUser.set(p.user_id, p.full_name);
+          }
+        }
+
         if (active) {
           setRequests(
-            rows.map((r) => ({
-              id: r.id as string,
-              status: r.status as string,
-              problem_description: (r.problem_description as string) ?? null,
-              created_at: (r.created_at as string) ?? null,
-              service: r.services as { name: string } | null,
-              city: r.cities as { name: string } | null,
-            }))
+            rows.map((r) => {
+              const rps = (r.request_professionals ?? []) as Record<
+                string,
+                unknown
+              >[];
+              const pros = rps
+                .map((rp) => {
+                  const prof = rp.professionals as {
+                    id: string;
+                    user_id: string | null;
+                  } | null;
+                  if (!prof) return null;
+                  return {
+                    id: prof.id,
+                    name:
+                      (prof.user_id && nameByUser.get(prof.user_id)) ||
+                      "Professionista",
+                  };
+                })
+                .filter(Boolean) as { id: string; name: string }[];
+              return {
+                id: r.id as string,
+                status: r.status as string,
+                problem_description: (r.problem_description as string) ?? null,
+                created_at: (r.created_at as string) ?? null,
+                service: r.services as { name: string } | null,
+                city: r.cities as { name: string } | null,
+                pros,
+              };
+            })
+          );
+          setReviewed(
+            new Set(
+              ((myRatings ?? []) as {
+                request_id: string | null;
+                professional_id: string;
+              }[])
+                .filter((x) => x.request_id)
+                .map((x) => `${x.request_id}:${x.professional_id}`)
+            )
           );
         }
       }
@@ -181,13 +249,43 @@ export default function DashboardPage() {
           name={fullName ?? "Professionista"}
         />
       ) : (
-        <CustomerDashboard requests={requests} />
+        <CustomerDashboard
+          requests={requests}
+          reviewed={reviewed}
+          onMarkClosed={async (id) => {
+            const { error } = await supabase
+              .from("requests")
+              .update({ status: "closed" })
+              .eq("id", id);
+            if (!error) {
+              setRequests((rs) =>
+                rs.map((r) => (r.id === id ? { ...r, status: "closed" } : r))
+              );
+            }
+          }}
+          onReviewed={(requestId, proId) =>
+            setReviewed((prev) => new Set([...prev, `${requestId}:${proId}`]))
+          }
+        />
       )}
     </div>
   );
 }
 
-function CustomerDashboard({ requests }: { requests: CustomerRequest[] }) {
+function CustomerDashboard({
+  requests,
+  reviewed,
+  onMarkClosed,
+  onReviewed,
+}: {
+  requests: CustomerRequest[];
+  reviewed: Set<string>;
+  onMarkClosed: (id: string) => Promise<void>;
+  onReviewed: (requestId: string, proId: string) => void;
+}) {
+  const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
+  const [closing, setClosing] = useState<string | null>(null);
+
   if (requests.length === 0) {
     return (
       <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
@@ -241,7 +339,7 @@ function CustomerDashboard({ requests }: { requests: CustomerRequest[] }) {
               {STATUS_LABEL[r.status] ?? r.status}
             </span>
           </div>
-          <div className="mt-3 border-t border-black/5 pt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-black/5 pt-3">
             <Link
               href={`/messaggi?r=${r.id}`}
               className="text-sm font-medium text-bob-indigo hover:underline"
@@ -249,9 +347,59 @@ function CustomerDashboard({ requests }: { requests: CustomerRequest[] }) {
             >
               Apri la conversazione →
             </Link>
+
+            {(r.status === "sent" ||
+              r.status === "matched" ||
+              r.status === "quote_request") && (
+              <button
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      "Confermi che il lavoro è stato concluso? Potrai lasciare una recensione."
+                    )
+                  )
+                    return;
+                  setClosing(r.id);
+                  await onMarkClosed(r.id);
+                  setClosing(null);
+                }}
+                disabled={closing === r.id}
+                className="text-sm font-medium text-bob-ink/60 hover:text-bob-indigo hover:underline"
+                data-testid={`button-close-${r.id}`}
+              >
+                {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
+              </button>
+            )}
+
+            {r.status === "closed" &&
+              r.pros.length > 0 &&
+              (r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`)) ? (
+                <button
+                  onClick={() => setReviewFor(r)}
+                  className="text-sm font-semibold text-bob-indigo hover:underline"
+                  data-testid={`button-review-${r.id}`}
+                >
+                  ★ Lascia una recensione
+                </button>
+              ) : (
+                <span className="text-sm text-emerald-700">
+                  ✓ Recensione inviata
+                </span>
+              ))}
           </div>
         </li>
       ))}
+
+      {reviewFor && (
+        <ReviewDialog
+          requestId={reviewFor.id}
+          professionals={reviewFor.pros.filter(
+            (p) => !reviewed.has(`${reviewFor.id}:${p.id}`)
+          )}
+          onClose={() => setReviewFor(null)}
+          onSubmitted={(proId) => onReviewed(reviewFor.id, proId)}
+        />
+      )}
     </ul>
   );
 }
