@@ -27,14 +27,14 @@ const BENEFITS = [
   {
     icon: "🤖",
     title: "Bob lavora per te",
-    text: "In arrivo: un assistente che ti aiuta con appuntamenti, contabilità e gestione delle richieste.",
+    text: "Nel tuo spazio di lavoro trovi già calendario appuntamenti, riassunti AI delle richieste e portfolio foto. In arrivo: contabilità.",
   },
 ];
 
 const PRO_FAQ = [
   {
     q: "Quanto mi costa essere su BOB?",
-    a: "Iscriverti e ricevere richieste è gratis. Applichiamo una fee solo quando un lavoro si chiude tramite la piattaforma: nessun costo per i semplici contatti.",
+    a: "Iscriverti, ricevere richieste e messaggiare con i clienti è gratis, oggi e sempre. Durante il pilota non paghi nulla. A regime, l'unica fee sarà l'8% sui lavori in cui scegli tu di attivare la Garanzia Bob (pagamento protetto, recensioni verificate, mediazione in caso di problemi): mai obbligatoria, mai sui semplici contatti.",
   },
   {
     q: "Come ottengo il badge verificato?",
@@ -68,7 +68,7 @@ export default function PerIProfessionistiPage() {
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row">
             <Link
-              href="/login"
+              href="/login?mode=signup&role=professional"
               className="rounded-xl bg-bob-yellow px-6 py-3 text-sm font-semibold text-bob-ink hover:brightness-95"
               data-testid="cta-registrati-pro"
             >
@@ -100,6 +100,62 @@ export default function PerIProfessionistiPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Costi in chiaro: la stessa trasparenza che chiediamo ai professionisti */}
+      <section className="container-bob pb-12">
+        <div className="rounded-2xl border border-black/5 bg-white p-7">
+          <h2 className="text-lg font-semibold text-bob-ink">
+            Quanto costa, in chiaro
+          </h2>
+          <p className="mt-1 text-sm text-bob-ink/60">
+            Chiediamo ai professionisti prezzi trasparenti: ecco i nostri.
+          </p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-black/5 p-4">
+              <p className="text-sm font-semibold text-bob-ink">
+                Iscrizione e contatti
+              </p>
+              <p className="mt-1 text-2xl font-bold text-bob-ink">Gratis</p>
+              <p className="mt-1 text-xs leading-relaxed text-bob-ink/60">
+                Profilo, richieste e messaggi con i clienti: gratuiti oggi e
+                sempre. Niente lead a pagamento.
+              </p>
+            </div>
+            <div className="rounded-xl border border-black/5 p-4">
+              <p className="text-sm font-semibold text-bob-ink">
+                Fee sul lavoro concluso
+              </p>
+              <p className="mt-1 text-2xl font-bold text-bob-ink">
+                8%
+                <span className="ml-1 text-sm font-medium text-bob-ink/50">
+                  solo con Garanzia Bob
+                </span>
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-bob-ink/60">
+                Si applica solo se attivi la Garanzia Bob sul lavoro: pagamento
+                protetto, recensioni verificate, mediazione. Mai obbligatoria.
+              </p>
+            </div>
+            <div className="rounded-xl border border-black/5 p-4">
+              <p className="text-sm font-semibold text-bob-ink">
+                Strumenti in più
+              </p>
+              <p className="mt-1 text-2xl font-bold text-bob-ink">
+                Da €19<span className="text-sm font-medium text-bob-ink/50">/mese</span>
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-bob-ink/60">
+                Abbonamenti opzionali Pro e Business per portfolio esteso e più
+                visibilità. Durante il pilota sono inclusi gratuitamente.
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-bob-ink/45">
+            Durante il pilota a Milano non paghi nulla: tutte le funzioni sono
+            gratuite mentre costruiamo la piattaforma insieme ai primi
+            professionisti.
+          </p>
         </div>
       </section>
 

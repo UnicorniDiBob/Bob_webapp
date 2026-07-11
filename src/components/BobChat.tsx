@@ -21,7 +21,6 @@ import { QuoteDialog } from "./QuoteDialog";
 
 type Step =
   | "intent"
-  | "pro-redirect"
   | "chat" // conversazione intelligente con Bob
   | "city"
   | "urgency"
@@ -241,20 +240,14 @@ export function BobChat({
     setCollected((c) => ({ ...c, severity: sev }));
   }
 
-  function pickIntent(intent: "cliente" | "professionista") {
-    if (intent === "professionista") {
-      userSay("Voglio offrire un servizio");
-      bobSay(
-        "Fantastico, ho sempre bisogno di nuovi professionisti. Niente lead pagati a vuoto: la fee si applica solo quando un lavoro si chiude davvero."
-      );
-      setStep("pro-redirect");
-    } else {
-      userSay("Sto cercando un servizio");
-      bobSay(
-        "Perfetto. Raccontami cosa succede con parole tue: più dettagli mi dai, meglio capisco di cosa hai bisogno. Oppure scegli un servizio qui sotto."
-      );
-      setStep("chat");
-    }
+  // L'homepage parla ai clienti: chi offre un servizio ha la sua porta
+  // dedicata (link sotto l'input → /per-i-professionisti).
+  function pickIntent() {
+    userSay("Sto cercando un servizio");
+    bobSay(
+      "Perfetto. Raccontami cosa succede con parole tue: più dettagli mi dai, meglio capisco di cosa hai bisogno. Oppure scegli un servizio qui sotto."
+    );
+    setStep("chat");
   }
 
   // L'utente sceglie un servizio dai chip: saltiamo direttamente alla città.
@@ -696,29 +689,24 @@ export function BobChat({
                 Invia
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => pickIntent("cliente")}
-                className="btn-secondary flex-1 py-2.5"
-                data-testid="button-intent-client"
+            <button
+              onClick={() => pickIntent()}
+              className="btn-secondary w-full py-2.5"
+              data-testid="button-intent-client"
+            >
+              Scegli tu il servizio
+            </button>
+            <p className="text-center text-xs text-bob-ink/45">
+              Sei un professionista?{" "}
+              <Link
+                href="/per-i-professionisti"
+                className="font-medium text-bob-indigo hover:underline"
+                data-testid="link-intent-pro"
               >
-                Cerco un servizio
-              </button>
-              <button
-                onClick={() => pickIntent("professionista")}
-                className="btn-ghost flex-1 border border-black/10 py-2.5"
-                data-testid="button-intent-pro"
-              >
-                Offro un servizio
-              </button>
-            </div>
+                Scopri come funziona per chi lavora →
+              </Link>
+            </p>
           </div>
-        )}
-
-        {step === "pro-redirect" && (
-          <Link href="/per-i-professionisti" className="btn-primary w-full py-2.5">
-            Scopri come iscriverti come professionista
-          </Link>
         )}
 
         {step === "chat" && (

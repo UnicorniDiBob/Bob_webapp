@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import type { UserRole } from "@/lib/supabase/types";
@@ -10,13 +10,32 @@ import type { UserRole } from "@/lib/supabase/types";
 type Mode = "login" | "signup";
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+          Carico…
+        </div>
+      }
+    >
+      <LoginInner />
+    </Suspense>
+  );
+}
+
+function LoginInner() {
   const supabase = createClient();
   const router = useRouter();
+  const params = useSearchParams();
   const { refresh } = useAuth();
 
-  const [mode, setMode] = useState<Mode>("login");
+  // Deep link dal funnel pro: /login?mode=signup&role=professional
+  // apre direttamente la registrazione con il ruolo giusto preselezionato.
+  const [mode, setMode] = useState<Mode>(
+    params.get("mode") === "signup" ? "signup" : "login"
+  );
   const [role, setRole] = useState<Extract<UserRole, "customer" | "professional">>(
-    "customer"
+    params.get("role") === "professional" ? "professional" : "customer"
   );
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
