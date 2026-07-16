@@ -28,6 +28,11 @@ See `.env.example` for the full list. You'll need, at minimum:
 - `ANTHROPIC_API_KEY` — optional; without it, Bob's AI features fall back to rule-based behavior
 - `NEXT_PUBLIC_SITE_URL` — used for SEO metadata
 
+## Contributing
+
+More than one person now works on this repo — see [CONTRIBUTING.md](./CONTRIBUTING.md)
+for branching, PRs, and the migration rule below in more detail.
+
 ## Database & migrations
 
 Schema changes live in `supabase/migrations/` as sequential `NNN_name.sql` files — see
