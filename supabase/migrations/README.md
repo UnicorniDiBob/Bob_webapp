@@ -14,6 +14,16 @@ another machine rebuilding from this folder will produce a broken database.
 
 Use the next sequential number and a short snake_case name.
 
+## 2026-07-16 backfill note
+
+Files `001`–`010` were reconstructed on this date from the live database's
+`supabase_migrations.schema_migrations` table — they existed only as applied
+changes, never as files, going back to the project's creation on 2026-06-02.
+Files that already existed (`010`–`016` at the time) were renumbered to
+`011`–`017` to make room, preserving their original order and content
+unchanged. If you have an older local clone with the previous numbering,
+re-clone rather than trying to reconcile filenames by hand.
+
 ## Keep migrations idempotent
 
 So they are safe to re-run anywhere:
