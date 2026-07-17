@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
 import type { ProfessionalCard } from "@/lib/supabase/types";
@@ -29,6 +30,8 @@ export function QuoteDialog({
 }) {
   const { user, loading } = useAuth();
   const supabase = createClient();
+  // Path corrente per il ritorno post-login (il draft chat è in localStorage).
+  const pathname = usePathname();
 
   const defaultMsg = `Ciao, ho bisogno di un ${
     context.serviceName?.toLowerCase() ?? "intervento"
@@ -220,7 +223,7 @@ export function QuoteDialog({
                   risposte.
                 </p>
                 <Link
-                  href="/login"
+                  href={`/login?returnTo=${encodeURIComponent(pathname)}`}
                   className="btn-primary mt-3 w-full py-2.5"
                   data-testid="link-login-quote"
                 >

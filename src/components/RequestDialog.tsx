@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
 import type { ProfessionalCard } from "@/lib/supabase/types";
@@ -28,6 +29,8 @@ export function RequestDialog({
 }) {
   const { user, loading } = useAuth();
   const supabase = createClient();
+  // Path corrente per il ritorno post-login (il draft chat è in localStorage).
+  const pathname = usePathname();
   const [message, setMessage] = useState(
     prefilledMessage ||
       `Ciao ${professional.fullName}, ho bisogno di un ${
@@ -186,7 +189,7 @@ export function RequestDialog({
                   {professional.fullName}.
                 </p>
                 <Link
-                  href="/login"
+                  href={`/login?returnTo=${encodeURIComponent(pathname)}`}
                   className="btn-primary mt-3 w-full py-2.5"
                   data-testid="link-login-dialog"
                 >

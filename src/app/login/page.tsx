@@ -29,6 +29,16 @@ function LoginInner() {
   const params = useSearchParams();
   const { refresh } = useAuth();
 
+  // Ritorno post-login: /login?returnTo=/percorso rimanda dove l'utente
+  // stava lavorando (es. la chat di Bob con il brief ripristinato dal
+  // draft locale) invece di forzare /dashboard. Accettiamo solo path
+  // interni ("/..." ma non "//...") per evitare open redirect.
+  const returnToParam = params.get("returnTo");
+  const returnTo =
+    returnToParam && returnToParam.startsWith("/") && !returnToParam.startsWith("//")
+      ? returnToParam
+      : "/dashboard";
+
   // Deep link dal funnel pro: /login?mode=signup&role=professional
   // apre direttamente la registrazione con il ruolo giusto preselezionato.
   const [mode, setMode] = useState<Mode>(
@@ -125,7 +135,7 @@ function LoginInner() {
       }
 
       await refresh();
-      router.push("/dashboard");
+      router.push(returnTo);
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Errore imprevisto";

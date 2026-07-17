@@ -18,11 +18,13 @@ import {
 import { Stars, PriceTag, VerificationBadge } from "./ui";
 import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
+import { CityWaitlistForm } from "./CityWaitlistForm";
 
 type Step =
   | "intent"
   | "chat" // conversazione intelligente con Bob
   | "city"
+  | "waitlist" // città non attiva: offriamo l'avviso email invece di dirottare su Milano
   | "urgency"
   | "budget"
   | "results";
@@ -63,6 +65,26 @@ interface Collected {
 }
 
 
+// ----- persistenza del draft chat -----
+// Tutto lo stato della chat vive in React: senza persistenza, un refresh o
+// il giro di login (Accedi o registrati → /login → ritorno) azzerava il
+// brief appena costruito. Salviamo i campi serializzabili in localStorage
+// e li ripristiniamo al mount; "Ricomincia" pulisce anche il draft.
+const DRAFT_KEY = "bob-chat-draft-v1";
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // dopo 24h il problema è probabilmente superato
+
+interface ChatDraft {
+  savedAt: number;
+  step: Step;
+  messages: Msg[];
+  brief: JobBrief;
+  collected: Collected;
+  subtaskOptions: SubtaskOption[];
+  results: ProfessionalCard[];
+  selectedIds: string[];
+  waitlistCity: { slug: string; name: string } | null;
+}
+
 export function BobChat({
   cities,
   services,
@@ -83,12 +105,14 @@ export function BobChat({
   const [subtaskOptions, setSubtaskOptions] = useState<SubtaskOption[]>([]);
   const [editingSubtask, setEditingSubtask] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
-  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+  const [waitlistCity, setWaitlistCity] = useState<{
+    slug: string;
+    name: string;
+  } | null>(null);
   const [collected, setCollected] = useState<Collected>({});
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [results, setResults] = useState<ProfessionalCard[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -102,6 +126,52 @@ export function BobChat({
       behavior: "smooth",
     });
   }, [messages, results, step, thinking]);
+
+  // Ripristina il draft al mount (solo client, evita mismatch di hydration).
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as ChatDraft;
+      if (!draft?.savedAt || Date.now() - draft.savedAt > DRAFT_TTL_MS) {
+        window.localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      if (draft.step === "intent" || (draft.messages?.length ?? 0) < 2) return;
+      setStep(draft.step);
+      setMessages(draft.messages);
+      setBrief(draft.brief);
+      setCollected(draft.collected ?? {});
+      setSubtaskOptions(draft.subtaskOptions ?? []);
+      setResults(draft.results ?? []);
+      setSelected(new Set(draft.selectedIds ?? []));
+      setWaitlistCity(draft.waitlistCity ?? null);
+    } catch {
+      // draft corrotto o storage inaccessibile: si riparte da zero
+    }
+  }, []);
+
+  // Salva il draft a ogni cambiamento rilevante.
+  useEffect(() => {
+    if (step === "intent") return;
+    try {
+      const draft: ChatDraft = {
+        savedAt: Date.now(),
+        step,
+        // le anteprime foto sono data-URL pesanti: restano fuori dal draft
+        messages: messages.map(({ from, text }) => ({ from, text })),
+        brief,
+        collected,
+        subtaskOptions,
+        results,
+        selectedIds: Array.from(selected),
+        waitlistCity,
+      };
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // quota piena o storage negato: la chat funziona comunque
+    }
+  }, [step, messages, brief, collected, subtaskOptions, results, selected, waitlistCity]);
 
   function bobSay(text: string) {
     setMessages((m) => [...m, { from: "bob", text }]);
@@ -268,17 +338,29 @@ export function BobChat({
 
   function pickCity(slug: string, name: string, active: boolean) {
     userSay(name);
-    const citySlug = active ? slug : "milano";
-    setBrief((b) => ({ ...b, citySlug }));
     if (!active) {
+      // Niente dirottamento silenzioso su Milano: offriamo l'avviso email
+      // (la waitlist esiste già per /citta/[slug]) e, in alternativa
+      // esplicita, i professionisti di Milano.
+      setWaitlistCity({ slug, name });
       bobSay(
-        `${name} è in arrivo: non ho ancora professionisti attivi lì. Per ora il pilota è a Milano, ti mostro quelli di Milano. Quando ti servirebbe?`
+        `${name} è in arrivo: non ho ancora professionisti attivi lì. Lasciami la tua email e ti avviso appena apro a ${name}. Oppure, se il problema non aspetta, continua con i professionisti di Milano.`
       );
-      setCollected((c) => ({ ...c, citySlug: "milano", cityName: "Milano" }));
-    } else {
-      setCollected((c) => ({ ...c, citySlug: slug, cityName: name }));
-      bobSay("Quando ti servirebbe?");
+      setStep("waitlist");
+      return;
     }
+    setBrief((b) => ({ ...b, citySlug: slug }));
+    setCollected((c) => ({ ...c, citySlug: slug, cityName: name }));
+    bobSay("Quando ti servirebbe?");
+    setStep("urgency");
+  }
+
+  // Alternativa esplicita dalla waitlist: prosegue il flusso su Milano.
+  function continueWithMilano() {
+    userSay("Continua con Milano");
+    setBrief((b) => ({ ...b, citySlug: "milano" }));
+    setCollected((c) => ({ ...c, citySlug: "milano", cityName: "Milano" }));
+    bobSay("Va bene, ti mostro i professionisti di Milano. Quando ti servirebbe?");
     setStep("urgency");
   }
 
@@ -381,11 +463,17 @@ export function BobChat({
   }
 
   function restart() {
+    try {
+      window.localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // storage negato: ignora
+    }
     setStep("intent");
     setBrief(EMPTY_BRIEF);
     setSubtaskOptions([]);
     setEditingSubtask(false);
     setPendingPhoto(null);
+    setWaitlistCity(null);
     setCollected({});
     setResults([]);
     setSelected(new Set());
@@ -552,6 +640,19 @@ export function BobChat({
                 📷 {brief.photos[0].aiCaption}
               </p>
             )}
+          </div>
+        )}
+
+        {/* città non attiva: waitlist inline al posto del dirottamento */}
+        {step === "waitlist" && waitlistCity && (
+          <div
+            className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
+            data-testid="chat-waitlist"
+          >
+            <CityWaitlistForm
+              citySlug={waitlistCity.slug}
+              cityName={waitlistCity.name}
+            />
           </div>
         )}
 
@@ -807,6 +908,16 @@ export function BobChat({
               </button>
             ))}
           </div>
+        )}
+
+        {step === "waitlist" && (
+          <button
+            onClick={continueWithMilano}
+            className="btn-secondary w-full py-2.5"
+            data-testid="button-continue-milano"
+          >
+            Continua con i professionisti di Milano →
+          </button>
         )}
 
         {step === "urgency" && (
