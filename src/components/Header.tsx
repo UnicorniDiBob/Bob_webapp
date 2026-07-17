@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Logo } from "./Logo";
 import { useAuth } from "./AuthProvider";
-import { useUnread } from "./UnreadProvider";
 
 const NAV = [
   { href: "/come-funziona", label: "Come funziona" },
@@ -18,9 +17,7 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, fullName, role, signOut, loading } = useAuth();
-  const { unread } = useUnread();
   const [open, setOpen] = useState(false);
-  const unreadLabel = unread > 9 ? "9+" : String(unread);
 
   async function handleSignOut() {
     await signOut();
@@ -77,21 +74,6 @@ export function Header() {
                   Parla con Bob
                 </Link>
               )}
-              <Link
-                href="/messaggi"
-                className="relative rounded-lg px-3 py-2 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo"
-                data-testid="link-messaggi"
-              >
-                Messaggi
-                {unread > 0 && (
-                  <span
-                    className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-bob-indigo px-1 text-[10px] font-bold leading-none text-white"
-                    data-testid="badge-unread"
-                  >
-                    {unreadLabel}
-                  </span>
-                )}
-              </Link>
               <Link
                 href="/dashboard"
                 className="btn-secondary py-2"
@@ -178,17 +160,6 @@ export function Header() {
                       Parla con Bob
                     </Link>
                   )}
-                  <Link href="/messaggi" onClick={() => setOpen(false)} className="btn-ghost relative flex-1 py-2" data-testid="link-messaggi-mobile">
-                    Messaggi
-                    {unread > 0 && (
-                      <span
-                        className="ml-1.5 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-bob-indigo px-1 text-[10px] font-bold leading-none text-white"
-                        data-testid="badge-unread-mobile"
-                      >
-                        {unreadLabel}
-                      </span>
-                    )}
-                  </Link>
                   <Link href="/dashboard" onClick={() => setOpen(false)} className="btn-secondary flex-1 py-2">
                     Area personale
                   </Link>

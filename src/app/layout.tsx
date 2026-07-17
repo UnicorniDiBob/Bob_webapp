@@ -4,6 +4,7 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { UnreadProvider } from "@/components/UnreadProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { MessagesBubble } from "@/components/MessagesBubble";
 import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
@@ -83,6 +84,7 @@ export default function RootLayout({
           <UnreadProvider>
             <Header />
             <main className="flex-1">{children}</main>
+            <MessagesBubble />
             <Footer />
           </UnreadProvider>
         </AuthProvider>

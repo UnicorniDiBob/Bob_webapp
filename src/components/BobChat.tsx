@@ -20,6 +20,7 @@ import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
+import { createClient } from "@/lib/supabase/client";
 
 type Step =
   | "intent"
@@ -48,6 +49,15 @@ interface SubtaskOption {
   name: string;
 }
 
+// Indirizzo salvato nell'account cliente (customer_addresses, migration 020).
+interface SavedAddress {
+  id: string;
+  label: string;
+  address_line: string;
+  city_slug: string | null;
+  is_default: boolean;
+}
+
 interface Collected {
   serviceSlug?: string | null;
   serviceName?: string;
@@ -63,6 +73,8 @@ interface Collected {
   maxPrice?: number;
   // true = l'utente vuole preventivi (nessun budget definito)
   wantsQuotes?: boolean;
+  // indirizzo salvato scelto dal cliente: entra nel messaggio al professionista
+  address?: string;
 }
 
 
@@ -113,6 +125,7 @@ export function BobChat({
   const { user, role } = useAuth();
   // [F2] Memoria cliente: evita di salutare due volte nella stessa sessione.
   const [memoryChecked, setMemoryChecked] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [collected, setCollected] = useState<Collected>({});
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -184,6 +197,23 @@ export function BobChat({
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoryChecked, user, role, step, messages.length]);
+
+  // Indirizzi salvati nell'account: proposti come scorciatoia al passo città.
+  useEffect(() => {
+    if (!user || role !== "customer") {
+      setSavedAddresses([]);
+      return;
+    }
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("customer_addresses")
+        .select("id,label,address_line,city_slug,is_default")
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: true });
+      setSavedAddresses((data as SavedAddress[]) ?? []);
+    })();
+  }, [user, role]);
 
   // Salva il draft a ogni cambiamento rilevante.
   useEffect(() => {
@@ -389,6 +419,35 @@ export function BobChat({
     setStep("urgency");
   }
 
+  // Scorciatoia dal passo città: un indirizzo salvato porta con sé la città
+  // e finisce nel messaggio al professionista.
+  function pickSavedAddress(a: SavedAddress) {
+    const city = cities.find((c) => c.slug === a.city_slug);
+    userSay(`${a.label} — ${a.address_line}${city ? `, ${city.name}` : ""}`);
+    setCollected((c) => ({ ...c, address: a.address_line }));
+    if (!city) {
+      bobSay("Per questo indirizzo non ho una città: dimmi tu dove.");
+      return; // resta sul passo città
+    }
+    if (city.status !== "active") {
+      setWaitlistCity({ slug: city.slug, name: city.name });
+      bobSay(
+        `${city.name} è in arrivo: non ho ancora professionisti attivi lì. Lasciami la tua email e ti avviso appena apro a ${city.name}. Oppure, se il problema non aspetta, continua con i professionisti di Milano.`
+      );
+      setStep("waitlist");
+      return;
+    }
+    setBrief((b) => ({ ...b, citySlug: city.slug }));
+    setCollected((c) => ({
+      ...c,
+      address: a.address_line,
+      citySlug: city.slug,
+      cityName: city.name,
+    }));
+    bobSay("Quando ti servirebbe?");
+    setStep("urgency");
+  }
+
   // Alternativa esplicita dalla waitlist: prosegue il flusso su Milano.
   function continueWithMilano() {
     userSay("Continua con Milano");
@@ -566,6 +625,8 @@ export function BobChat({
         collected.budgetLabel
           ? ` Il mio budget indicativo è ${collected.budgetLabel}.`
           : ""
+      }${
+        collected.address ? ` L'indirizzo è ${collected.address}.` : ""
       } Sei disponibile?`
     : "";
 
@@ -970,20 +1031,38 @@ export function BobChat({
         )}
 
         {step === "city" && (
-          <div className="flex flex-wrap gap-2">
-            {cities.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => pickCity(c.slug, c.name, c.status === "active")}
-                className="btn-secondary flex-1 py-2.5"
-                data-testid={`button-city-${c.slug}`}
-              >
-                {c.name}
-                {c.status !== "active" && (
-                  <span className="ml-1 text-[10px] text-bob-ink/40">soon</span>
-                )}
-              </button>
-            ))}
+          <div className="space-y-2">
+            {savedAddresses.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {savedAddresses.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => pickSavedAddress(a)}
+                    className="chip hover:bg-bob-indigo-100"
+                    title={a.address_line}
+                    data-testid={`chip-address-${a.id}`}
+                  >
+                    📍 {a.label}
+                    {a.is_default ? " ✓" : ""}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2">
+              {cities.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => pickCity(c.slug, c.name, c.status === "active")}
+                  className="btn-secondary flex-1 py-2.5"
+                  data-testid={`button-city-${c.slug}`}
+                >
+                  {c.name}
+                  {c.status !== "active" && (
+                    <span className="ml-1 text-[10px] text-bob-ink/40">soon</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1090,7 +1169,13 @@ export function BobChat({
             cityName: collected.cityName,
             serviceSlug: collected.serviceSlug ?? undefined,
             serviceName: collected.serviceName,
-            problem: collected.summary ?? undefined,
+            problem:
+              [
+                collected.summary,
+                collected.address ? `Indirizzo: ${collected.address}` : null,
+              ]
+                .filter(Boolean)
+                .join(" — ") || undefined,
             urgency: collected.urgency,
           }}
           onClose={() => setQuoteOpen(false)}
