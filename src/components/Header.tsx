@@ -16,7 +16,7 @@ const NAV = [
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, fullName, role, signOut, loading } = useAuth();
+  const { user, role, signOut, loading } = useAuth();
   const [open, setOpen] = useState(false);
 
   async function handleSignOut() {
@@ -58,11 +58,11 @@ export function Header() {
             <Link href="/admin" className="btn-ghost text-bob-indigo font-semibold">
               ⚙️ Admin
             </Link>
-          ) : (
+          ) : !user ? (
             <Link href="/per-i-professionisti" className="btn-ghost">
               Per i professionisti
             </Link>
-          )}
+          ) : null}
           {!loading && user ? (
             <div className="flex items-center gap-2">
               {role !== "professional" && role !== "admin" && role !== "cs" && (
@@ -79,8 +79,7 @@ export function Header() {
                 className="btn-secondary py-2"
                 data-testid="link-dashboard"
               >
-                {fullName?.split(" ")[0] ?? "Area personale"}
-                {role === "professional" ? " · Pro" : ""}
+                Account
               </Link>
               <button
                 onClick={handleSignOut}
@@ -143,7 +142,7 @@ export function Header() {
               >
                 ⚙️ Admin
               </Link>
-            ) : (
+            ) : !user ? (
               <Link
                 href="/per-i-professionisti"
                 onClick={() => setOpen(false)}
@@ -151,7 +150,7 @@ export function Header() {
               >
                 Per i professionisti
               </Link>
-            )}
+            ) : null}
             <div className="mt-2 flex gap-2">
               {user ? (
                 <>
@@ -161,7 +160,7 @@ export function Header() {
                     </Link>
                   )}
                   <Link href="/dashboard" onClick={() => setOpen(false)} className="btn-secondary flex-1 py-2">
-                    Area personale
+                    Account
                   </Link>
                   <button onClick={handleSignOut} className="btn-ghost">
                     Esci
