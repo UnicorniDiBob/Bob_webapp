@@ -11,7 +11,12 @@ export const PORTFOLIO_LIMITS: Record<SubscriptionTier, number | null> = {
   pro: 1,
   business: null,
 };
-export type RequestStatus = "draft" | "sent" | "matched" | "closed";
+export type RequestStatus =
+  | "draft"
+  | "sent"
+  | "quote_request"
+  | "matched"
+  | "closed";
 export type Urgency = "bassa" | "media" | "alta";
 
 export interface City {

@@ -68,6 +68,15 @@ export function Header() {
           )}
           {!loading && user ? (
             <div className="flex items-center gap-2">
+              {role !== "professional" && role !== "admin" && role !== "cs" && (
+                <Link
+                  href="/#bob"
+                  className="btn-primary py-2"
+                  data-testid="link-talk-to-bob-auth"
+                >
+                  Parla con Bob
+                </Link>
+              )}
               <Link
                 href="/messaggi"
                 className="relative rounded-lg px-3 py-2 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo"
@@ -164,6 +173,11 @@ export function Header() {
             <div className="mt-2 flex gap-2">
               {user ? (
                 <>
+                  {role !== "professional" && role !== "admin" && role !== "cs" && (
+                    <Link href="/#bob" onClick={() => setOpen(false)} className="btn-primary flex-1 py-2" data-testid="link-talk-to-bob-mobile">
+                      Parla con Bob
+                    </Link>
+                  )}
                   <Link href="/messaggi" onClick={() => setOpen(false)} className="btn-ghost relative flex-1 py-2" data-testid="link-messaggi-mobile">
                     Messaggi
                     {unread > 0 && (

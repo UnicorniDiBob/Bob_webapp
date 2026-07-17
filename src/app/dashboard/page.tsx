@@ -32,6 +32,7 @@ interface ProProfile {
 const STATUS_LABEL: Record<string, string> = {
   draft: "Bozza",
   sent: "Inviata",
+  quote_request: "Preventivi richiesti",
   matched: "In contatto",
   closed: "Conclusa",
 };
@@ -234,6 +235,15 @@ export default function DashboardPage() {
             ? "Qui trovi il tuo profilo e le tue valutazioni."
             : "Qui trovi tutte le richieste che hai inviato ai professionisti."}
         </p>
+        {role !== "professional" && (
+          <Link
+            href="/dashboard/account"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-bob-indigo hover:underline"
+            data-testid="link-account"
+          >
+            Gestisci il tuo account →
+          </Link>
+        )}
       </header>
 
       {loadingData ? (
@@ -285,6 +295,9 @@ function CustomerDashboard({
 }) {
   const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
   const [closing, setClosing] = useState<string | null>(null);
+  // Conferma chiusura con il dialog dell'app (coerenza con ReviewDialog,
+  // niente window.confirm nativo).
+  const [confirmClose, setConfirmClose] = useState<string | null>(null);
 
   if (requests.length === 0) {
     return (
@@ -352,17 +365,7 @@ function CustomerDashboard({
               r.status === "matched" ||
               r.status === "quote_request") && (
               <button
-                onClick={async () => {
-                  if (
-                    !window.confirm(
-                      "Confermi che il lavoro è stato concluso? Potrai lasciare una recensione."
-                    )
-                  )
-                    return;
-                  setClosing(r.id);
-                  await onMarkClosed(r.id);
-                  setClosing(null);
-                }}
+                onClick={() => setConfirmClose(r.id)}
                 disabled={closing === r.id}
                 className="text-sm font-medium text-bob-ink/60 hover:text-bob-indigo hover:underline"
                 data-testid={`button-close-${r.id}`}
@@ -389,6 +392,49 @@ function CustomerDashboard({
           </div>
         </li>
       ))}
+
+      {confirmClose && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setConfirmClose(null)}
+        >
+          <div
+            className="card w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="dialog-close-request"
+          >
+            <h3 className="text-lg font-bold text-bob-ink">Lavoro concluso?</h3>
+            <p className="mt-2 text-sm text-bob-ink/65">
+              Confermi che il lavoro è stato concluso? Dopo potrai lasciare una
+              recensione al professionista.
+            </p>
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setConfirmClose(null)}
+                className="btn-secondary flex-1 py-2.5"
+                data-testid="button-close-cancel"
+              >
+                Non ancora
+              </button>
+              <button
+                onClick={async () => {
+                  const id = confirmClose;
+                  setConfirmClose(null);
+                  setClosing(id);
+                  await onMarkClosed(id);
+                  setClosing(null);
+                }}
+                className="btn-primary flex-1 py-2.5"
+                data-testid="button-close-confirm"
+              >
+                Sì, concluso ✓
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {reviewFor && (
         <ReviewDialog

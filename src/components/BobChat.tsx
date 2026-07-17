@@ -19,6 +19,7 @@ import { Stars, PriceTag, VerificationBadge } from "./ui";
 import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
 import { CityWaitlistForm } from "./CityWaitlistForm";
+import { useAuth } from "./AuthProvider";
 
 type Step =
   | "intent"
@@ -109,6 +110,9 @@ export function BobChat({
     slug: string;
     name: string;
   } | null>(null);
+  const { user, role } = useAuth();
+  // [F2] Memoria cliente: evita di salutare due volte nella stessa sessione.
+  const [memoryChecked, setMemoryChecked] = useState(false);
   const [collected, setCollected] = useState<Collected>({});
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -150,6 +154,36 @@ export function BobChat({
       // draft corrotto o storage inaccessibile: si riparte da zero
     }
   }, []);
+
+  // [F2] Memoria cliente (customer_memory è già in DB e ha un'API dedicata,
+  // ma finora nessun componente la usava): se non c'è un draft da riprendere
+  // e il cliente è loggato, Bob personalizza il saluto con l'ultima ricerca.
+  useEffect(() => {
+    if (memoryChecked || !user || role !== "customer") return;
+    if (step !== "intent" || messages.length > 1) {
+      setMemoryChecked(true);
+      return;
+    }
+    setMemoryChecked(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/memory");
+        const { memory } = await res.json();
+        if (!memory?.last_service_slug) return;
+        const svc = services.find((s) => s.slug === memory.last_service_slug);
+        if (!svc) return;
+        const city = cities.find((c) => c.slug === memory.last_city_slug);
+        bobSay(
+          `Bentornato! L'ultima volta cercavi un ${svc.name.toLowerCase()}${
+            city ? ` a ${city.name}` : ""
+          }. Ti serve di nuovo, o hai un problema diverso? Raccontami pure.`
+        );
+      } catch {
+        // memoria non disponibile: il saluto standard basta
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoryChecked, user, role, step, messages.length]);
 
   // Salva il draft a ogni cambiamento rilevante.
   useEffect(() => {
@@ -374,8 +408,46 @@ export function BobChat({
     setStep("budget");
   }
 
+  // [F2] Aggiorna la memoria cliente a fine ricerca (best-effort).
+  async function saveMemory(next: Collected) {
+    if (!user || role !== "customer" || !next.serviceSlug) return;
+    try {
+      const res = await fetch("/api/memory");
+      const { memory } = await res.json();
+      await fetch("/api/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lastServiceSlug: next.serviceSlug,
+          lastCitySlug: next.citySlug ?? null,
+          lastBudgetLabel: next.budgetLabel ?? null,
+          preferredUrgency: next.urgency ?? null,
+          searchCount: (memory?.search_count ?? 0) + 1,
+        }),
+      });
+    } catch {
+      // best-effort: la ricerca non dipende dalla memoria
+    }
+  }
+
+  // Trasparenza del match: una riga che spiega perché il professionista
+  // è proposto (primo passo verso il ranking spiegabile, workstream #11).
+  function whyThisPro(p: ProfessionalCard): string {
+    const reasons: string[] = [];
+    if (p.verificationStatus === "verified") reasons.push("profilo verificato");
+    if (p.nRatings > 0 && (p.avgRating ?? 0) >= 4.5)
+      reasons.push(`recensioni ottime (${p.avgRating})`);
+    if (collected.maxPrice && p.maxPrice && p.maxPrice <= collected.maxPrice)
+      reasons.push("nel tuo budget");
+    if (p.responseTimeLabel) reasons.push(p.responseTimeLabel.toLowerCase());
+    return reasons.length
+      ? `Perché te lo propongo: ${reasons.slice(0, 3).join(" · ")}`
+      : "";
+  }
+
   async function runSearch(next: Collected) {
     setCollected(next);
+    saveMemory(next);
     setStep("results");
     setSelected(new Set());
     setLoadingResults(true);
@@ -716,6 +788,11 @@ export function BobChat({
                     <Stars value={p.avgRating} count={p.nRatings} />
                     <VerificationBadge status={p.verificationStatus} />
                   </div>
+                  {whyThisPro(p) && (
+                    <p className="mt-1.5 text-[11px] text-bob-ink/45">
+                      {whyThisPro(p)}
+                    </p>
+                  )}
                   <div className="mt-3 flex gap-2">
                     <Link
                       href={`/professionisti/${p.id}`}

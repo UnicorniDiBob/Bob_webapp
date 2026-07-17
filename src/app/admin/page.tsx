@@ -45,7 +45,7 @@ export default async function AdminDashboardPage() {
               {needsAction} {needsAction === 1 ? "professionista" : "professionisti"} in attesa di verifica
             </p>
             <p className="mt-0.5 text-sm text-amber-700">
-              Verifica i profili per renderli visibili ai clienti.
+              Verifica i profili: il badge dà fiducia ai clienti e priorità nei risultati.
             </p>
           </div>
           <Link

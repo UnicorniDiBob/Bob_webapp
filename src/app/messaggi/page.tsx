@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useUnread } from "@/components/UnreadProvider";
+import { createClient } from "@/lib/supabase/client";
 import {
   getConversations,
   getMessages,
@@ -93,6 +94,59 @@ function MessaggiInner() {
     setMessages(m);
     setLoadingMsgs(false);
   }, []);
+
+  // Cambio conversazione esplicito: sincronizza anche l'URL, così
+  // refresh e tasto indietro non perdono la selezione.
+  function selectConversation(rid: string) {
+    setActiveId(rid);
+    setMobileThread(true);
+    router.replace(`/messaggi?r=${rid}`, { scroll: false });
+  }
+
+  // Realtime: la risposta della controparte compare nel thread aperto
+  // senza ricaricare (prima serviva riaprire la conversazione).
+  // Richiede request_messages nella publication supabase_realtime (migration 019).
+  useEffect(() => {
+    if (!activeId || !user) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`thread-${activeId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "request_messages",
+          filter: `request_id=eq.${activeId}`,
+        },
+        (payload) => {
+          const row = payload.new as {
+            sender_type?: string;
+            message?: string;
+            created_at?: string;
+          };
+          // I miei messaggi sono già mostrati con l'update ottimistico.
+          if (row.sender_type === myType) return;
+          loadThread(activeId);
+          markConversationRead(activeId, myType).then(() => refreshUnread());
+          setConversations((cs) =>
+            cs.map((c) =>
+              c.requestId === activeId
+                ? {
+                    ...c,
+                    lastMessage: row.message ?? c.lastMessage,
+                    lastAt: row.created_at ?? c.lastAt,
+                  }
+                : c
+            )
+          );
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeId, user, myType, loadThread, refreshUnread]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -200,10 +254,7 @@ function MessaggiInner() {
               return (
                 <button
                   key={c.requestId}
-                  onClick={() => {
-                    setActiveId(c.requestId);
-                    setMobileThread(true);
-                  }}
+                  onClick={() => selectConversation(c.requestId)}
                   className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition ${
                     isActive ? "bg-bob-indigo-50" : "hover:bg-black/[0.02]"
                   }`}

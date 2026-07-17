@@ -59,34 +59,28 @@ export default async function CitiesPage() {
                     }`
                   : "Stiamo selezionando i primi professionisti."}
               </p>
-              {active && (
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-bob-indigo">
-                  Esplora {c.name}
+              {/* Anche le città in arrivo hanno una destinazione: la waitlist
+                  su /citta/[slug]. Prima erano card mute e l'interesse andava perso. */}
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-bob-indigo">
+                  {active ? `Esplora ${c.name}` : "Lascia il tuo interesse"}
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 6l6 6-6 6" />
                   </svg>
                 </span>
-              )}
             </>
           );
 
-          return active ? (
+          return (
             <Link
               key={c.id}
               href={`/citta/${c.slug}`}
-              className="card flex flex-col p-5 hover:-translate-y-0.5 hover:shadow-card-hover"
+              className={`card flex flex-col p-5 hover:-translate-y-0.5 hover:shadow-card-hover ${
+                active ? "" : "opacity-90"
+              }`}
               data-testid={`card-city-${c.slug}`}
             >
               {inner}
             </Link>
-          ) : (
-            <div
-              key={c.id}
-              className="card flex flex-col p-5 opacity-80"
-              data-testid={`card-city-${c.slug}`}
-            >
-              {inner}
-            </div>
           );
         })}
       </div>
