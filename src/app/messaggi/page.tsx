@@ -63,6 +63,17 @@ function MessaggiInner() {
   const [sending, setSending] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
 
+  // Proposta di appuntamento (solo pro): crea una riga 'proposed' in
+  // appointments (migration 021) che il cliente conferma dalla dashboard.
+  const [myProId, setMyProId] = useState<string | null>(null);
+  const [proposeOpen, setProposeOpen] = useState(false);
+  const [apptDate, setApptDate] = useState("");
+  const [apptTime, setApptTime] = useState("09:00");
+  const [apptDuration, setApptDuration] = useState(60);
+  const [apptTitle, setApptTitle] = useState("");
+  const [apptSaving, setApptSaving] = useState(false);
+  const [apptErr, setApptErr] = useState<string | null>(null);
+
   const myType: "customer" | "professional" =
     role === "professional" ? "professional" : "customer";
 
@@ -87,6 +98,64 @@ function MessaggiInner() {
       active = false;
     };
   }, [user, role]);
+
+  useEffect(() => {
+    if (!user || role !== "professional") return;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("professionals")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setMyProId((data as { id: string } | null)?.id ?? null);
+    })();
+  }, [user, role]);
+
+  async function proposeAppointment() {
+    if (!user || !myProId || !activeId || !apptDate || apptSaving) return;
+    setApptErr(null);
+    const startsAt = new Date(`${apptDate}T${apptTime}:00`);
+    if (isNaN(startsAt.getTime()) || startsAt.getTime() < Date.now()) {
+      setApptErr("Scegli una data futura.");
+      return;
+    }
+    setApptSaving(true);
+    const supabase = createClient();
+    const conv = conversations.find((c) => c.requestId === activeId);
+    const { error } = await supabase.from("appointments").insert({
+      professional_id: myProId,
+      request_id: activeId,
+      customer_name: conv?.counterpartName ?? "Cliente",
+      title: apptTitle.trim() || conv?.serviceName || null,
+      starts_at: startsAt.toISOString(),
+      duration_minutes: apptDuration,
+      status: "proposed",
+    });
+    if (error) {
+      setApptErr("Non sono riuscito a salvare la proposta. Riprova.");
+      setApptSaving(false);
+      return;
+    }
+    const when = startsAt.toLocaleString("it-IT", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    await sendMessage(
+      activeId,
+      user.id,
+      "professional",
+      `📅 Ti propongo un appuntamento: ${when} (${apptDuration} min). Puoi confermarlo dalla tua area personale.`
+    );
+    await loadThread(activeId);
+    setApptSaving(false);
+    setProposeOpen(false);
+    setApptDate("");
+    setApptTitle("");
+  }
 
   const loadThread = useCallback(async (rid: string) => {
     setLoadingMsgs(true);
@@ -310,6 +379,15 @@ function MessaggiInner() {
                       {active.cityName ? ` · ${active.cityName}` : ""}
                     </p>
                   </div>
+                  {myType === "professional" && myProId && (
+                    <button
+                      onClick={() => setProposeOpen(true)}
+                      className="btn-secondary ml-auto shrink-0 px-3 py-1.5 text-xs"
+                      data-testid="button-propose-appointment"
+                    >
+                      📅 Proponi appuntamento
+                    </button>
+                  )}
                 </div>
 
                 <div
@@ -379,6 +457,94 @@ function MessaggiInner() {
               </div>
             )}
           </section>
+        </div>
+      )}
+
+      {proposeOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setProposeOpen(false)}
+        >
+          <div
+            className="card w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="dialog-propose-appointment"
+          >
+            <h3 className="text-lg font-bold text-bob-ink">
+              Proponi un appuntamento
+            </h3>
+            <p className="mt-1 text-sm text-bob-ink/60">
+              Il cliente riceve la proposta in chat e la conferma dalla sua
+              area personale.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="label-bob" htmlFor="appt-date">Data</label>
+                <input
+                  id="appt-date"
+                  type="date"
+                  value={apptDate}
+                  onChange={(e) => setApptDate(e.target.value)}
+                  className="input-bob mt-1.5"
+                  data-testid="input-appt-date"
+                />
+              </div>
+              <div>
+                <label className="label-bob" htmlFor="appt-time">Ora</label>
+                <input
+                  id="appt-time"
+                  type="time"
+                  value={apptTime}
+                  onChange={(e) => setApptTime(e.target.value)}
+                  className="input-bob mt-1.5"
+                  data-testid="input-appt-time"
+                />
+              </div>
+              <div>
+                <label className="label-bob" htmlFor="appt-duration">Durata</label>
+                <select
+                  id="appt-duration"
+                  value={apptDuration}
+                  onChange={(e) => setApptDuration(Number(e.target.value))}
+                  className="input-bob mt-1.5"
+                >
+                  <option value={30}>30 minuti</option>
+                  <option value={60}>1 ora</option>
+                  <option value={90}>1 ora e mezza</option>
+                  <option value={120}>2 ore</option>
+                </select>
+              </div>
+              <div>
+                <label className="label-bob" htmlFor="appt-title">Titolo (opzionale)</label>
+                <input
+                  id="appt-title"
+                  value={apptTitle}
+                  onChange={(e) => setApptTitle(e.target.value)}
+                  placeholder="Es. sopralluogo"
+                  className="input-bob mt-1.5"
+                />
+              </div>
+            </div>
+            {apptErr && <p className="mt-2 text-xs text-red-600">{apptErr}</p>}
+            <div className="mt-5 flex gap-2">
+              <button
+                onClick={() => setProposeOpen(false)}
+                className="btn-secondary flex-1 py-2.5"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={proposeAppointment}
+                disabled={apptSaving || !apptDate}
+                className="btn-primary flex-1 py-2.5"
+                data-testid="button-appt-send"
+              >
+                {apptSaving ? "Invio…" : "Invia proposta"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
