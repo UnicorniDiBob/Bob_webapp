@@ -96,6 +96,7 @@ interface ChatDraft {
   results: ProfessionalCard[];
   selectedIds: string[];
   waitlistCity: { slug: string; name: string } | null;
+  briefId?: string | null;
 }
 
 export function BobChat({
@@ -126,6 +127,9 @@ export function BobChat({
   // [F2] Memoria cliente: evita di salutare due volte nella stessa sessione.
   const [memoryChecked, setMemoryChecked] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  // Id del brief salvato: viaggia con la richiesta così il pro riceve
+  // il contesto raccolto da Bob (foto incluse).
+  const [briefId, setBriefId] = useState<string | null>(null);
   const [collected, setCollected] = useState<Collected>({});
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -163,6 +167,7 @@ export function BobChat({
       setResults(draft.results ?? []);
       setSelected(new Set(draft.selectedIds ?? []));
       setWaitlistCity(draft.waitlistCity ?? null);
+      setBriefId(draft.briefId ?? null);
     } catch {
       // draft corrotto o storage inaccessibile: si riparte da zero
     }
@@ -230,12 +235,13 @@ export function BobChat({
         results,
         selectedIds: Array.from(selected),
         waitlistCity,
+        briefId,
       };
       window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       // quota piena o storage negato: la chat funziona comunque
     }
-  }, [step, messages, brief, collected, subtaskOptions, results, selected, waitlistCity]);
+  }, [step, messages, brief, collected, subtaskOptions, results, selected, waitlistCity, briefId]);
 
   function bobSay(text: string) {
     setMessages((m) => [...m, { from: "bob", text }]);
@@ -524,7 +530,12 @@ export function BobChat({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ brief: finalBrief }),
-    }).catch(() => {});
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.id) setBriefId(d.id as string);
+      })
+      .catch(() => {});
 
     const params = new URLSearchParams();
     if (next.citySlug) params.set("city", next.citySlug);
@@ -605,6 +616,7 @@ export function BobChat({
     setEditingSubtask(false);
     setPendingPhoto(null);
     setWaitlistCity(null);
+    setBriefId(null);
     setCollected({});
     setResults([]);
     setSelected(new Set());
@@ -1155,6 +1167,7 @@ export function BobChat({
             urgency: collected.urgency,
             budgetMin: collected.budgetMin ?? null,
             budgetMax: collected.budgetMax ?? null,
+            briefId,
           }}
           onClose={() => setRequestFor(null)}
         />
@@ -1177,6 +1190,7 @@ export function BobChat({
                 .filter(Boolean)
                 .join(" — ") || undefined,
             urgency: collected.urgency,
+            briefId,
           }}
           onClose={() => setQuoteOpen(false)}
         />

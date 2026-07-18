@@ -14,6 +14,8 @@ interface RequestContext {
   urgency?: "bassa" | "media" | "alta";
   budgetMin?: number | null;
   budgetMax?: number | null;
+  // brief di Bob da agganciare alla richiesta (022)
+  briefId?: string | null;
 }
 
 export function RequestDialog({
@@ -96,6 +98,7 @@ export function RequestDialog({
           urgency: context.urgency ?? null,
           budget_min: context.budgetMin ?? null,
           budget_max: context.budgetMax ?? null,
+          brief_id: context.briefId ?? null,
         })
         .select("id")
         .single();
@@ -111,6 +114,7 @@ export function RequestDialog({
         }),
         supabase.from("request_messages").insert({
           request_id: req.id,
+          professional_id: professional.id,
           sender_type: "customer",
           sender_id: user.id,
           message,

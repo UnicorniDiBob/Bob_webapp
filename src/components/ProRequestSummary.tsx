@@ -16,6 +16,8 @@ interface RequestSummaryItem {
   createdAt: string | null;
   summary: string;
   draftReply: string;
+  briefSummary: string | null;
+  briefPhotos: { url: string; caption: string | null }[];
 }
 
 function urgencyLabel(u: string | null): { label: string; color: string } {
@@ -92,6 +94,38 @@ export function ProRequestSummary() {
             {/* Riassunto AI */}
             <p className="text-sm text-bob-ink leading-relaxed">{item.summary}</p>
 
+            {/* Contesto raccolto da Bob (022): brief + foto del problema */}
+            {(item.briefSummary || item.briefPhotos?.length > 0) && (
+              <div className="rounded-xl border border-black/5 bg-black/[0.02] p-3">
+                <p className="mb-1.5 text-xs font-medium text-bob-ink/50">
+                  Dalla chat con Bob
+                </p>
+                {item.briefSummary && (
+                  <p className="text-sm text-bob-ink/75">{item.briefSummary}</p>
+                )}
+                {item.briefPhotos?.length > 0 && (
+                  <div className="mt-2 flex gap-2">
+                    {item.briefPhotos.map((ph, i) => (
+                      <a
+                        key={i}
+                        href={ph.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={ph.caption ?? "Foto del problema"}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={ph.url}
+                          alt={ph.caption ?? "Foto del problema"}
+                          className="h-16 w-16 rounded-lg object-cover"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Bozza risposta */}
             <div className="rounded-xl border border-black/5 bg-bob-indigo-50 p-3">
               <p className="mb-1.5 text-xs font-medium text-bob-ink/50">Bozza risposta</p>
@@ -107,7 +141,7 @@ export function ProRequestSummary() {
                 {copied === item.id ? "Copiato ✓" : "Copia bozza"}
               </button>
               <Link
-                href="/messaggi"
+                href={`/messaggi?r=${item.id}`}
                 className="btn-primary py-1.5 text-xs"
               >
                 Vai ai messaggi →

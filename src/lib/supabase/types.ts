@@ -150,6 +150,8 @@ export interface Appointment {
 
 export interface ConversationSummary {
   requestId: string;
+  // (022) una conversazione = coppia richiesta-professionista
+  professionalId: string | null;
   serviceName: string | null;
   cityName: string | null;
   // nome dell'altra parte (per il cliente = nome pro; per il pro = nome cliente)

@@ -119,6 +119,10 @@ export function CustomerHome() {
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
   const [reviewed, setReviewed] = useState<Set<string>>(new Set());
   const [unreadByReq, setUnreadByReq] = useState<Map<string, number>>(new Map());
+  // (022) non letti per singolo thread richiesta:pro (confronto preventivi)
+  const [unreadByPair, setUnreadByPair] = useState<Map<string, number>>(
+    new Map()
+  );
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
@@ -187,15 +191,22 @@ export function CustomerHome() {
       // Non letti per conversazione (risposte dei pro).
       const { data: unreadRows } = await supabase
         .from("request_messages")
-        .select("request_id")
+        .select("request_id, professional_id")
         .in("request_id", ids)
         .eq("sender_type", "professional")
         .is("read_at", null);
       const m = new Map<string, number>();
-      for (const u of (unreadRows ?? []) as { request_id: string }[]) {
+      const mp = new Map<string, number>();
+      for (const u of (unreadRows ?? []) as {
+        request_id: string;
+        professional_id: string | null;
+      }[]) {
         m.set(u.request_id, (m.get(u.request_id) ?? 0) + 1);
+        const k = `${u.request_id}:${u.professional_id ?? ""}`;
+        mp.set(k, (mp.get(k) ?? 0) + 1);
       }
       setUnreadByReq(m);
+      setUnreadByPair(mp);
 
       // Appuntamenti futuri (proposti o confermati) sulle mie richieste.
       const { data: appts } = await supabase
@@ -252,6 +263,7 @@ export function CustomerHome() {
       const { dow, day, time } = fmtDayParts(a.starts_at);
       await sendMessage(
         a.request_id,
+        a.professional_id,
         user.id,
         "customer",
         ok
@@ -282,21 +294,25 @@ export function CustomerHome() {
   type Todo = { key: string; text: string; sub: string; node: React.ReactNode };
   const todos: Todo[] = [];
   for (const r of openRequests) {
-    const n = unreadByReq.get(r.id) ?? 0;
-    if (n > 0) {
-      todos.push({
-        key: `unread-${r.id}`,
-        text: `${r.pros[0]?.name ?? "Un professionista"} ti ha risposto`,
-        sub: `${r.service?.name ?? "Richiesta"}${n > 1 ? ` · ${n} messaggi` : ""}`,
-        node: (
-          <Link
-            href={`/messaggi?r=${r.id}`}
-            className="shrink-0 text-sm font-semibold text-bob-indigo hover:underline"
-          >
-            Rispondi →
-          </Link>
-        ),
-      });
+    for (const p of r.pros) {
+      const n = unreadByPair.get(`${r.id}:${p.id}`) ?? 0;
+      if (n > 0) {
+        todos.push({
+          key: `unread-${r.id}-${p.id}`,
+          text: `${p.name} ti ha risposto`,
+          sub: `${r.service?.name ?? "Richiesta"}${
+            n > 1 ? ` · ${n} messaggi` : ""
+          }`,
+          node: (
+            <Link
+              href={`/messaggi?r=${r.id}&p=${p.id}`}
+              className="shrink-0 text-sm font-semibold text-bob-indigo hover:underline"
+            >
+              Rispondi →
+            </Link>
+          ),
+        });
+      }
     }
   }
   for (const a of appointments.filter((x) => x.status === "proposed")) {
@@ -486,21 +502,62 @@ export function CustomerHome() {
                       hasAppointment={apptByRequest.has(r.id)}
                       quoteCount={r.pros.length}
                     />
-                    <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 border-t border-black/5 pt-2.5">
-                      <Link
-                        href={`/messaggi?r=${r.id}`}
-                        className="text-xs font-medium text-bob-indigo hover:underline"
-                      >
-                        Apri la conversazione →
-                      </Link>
-                      <button
-                        onClick={() => setConfirmClose(r.id)}
-                        disabled={closing === r.id}
-                        className="text-xs font-medium text-bob-ink/50 hover:text-bob-indigo hover:underline"
-                      >
-                        {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
-                      </button>
-                    </div>
+                    {r.pros.length > 1 ? (
+                      <div className="mt-2.5 flex flex-col gap-1.5 border-t border-black/5 pt-2.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-bob-ink/40">
+                          Confronta le risposte
+                        </p>
+                        {r.pros.map((p) => {
+                          const un = unreadByPair.get(`${r.id}:${p.id}`) ?? 0;
+                          return (
+                            <div
+                              key={p.id}
+                              className="flex items-center justify-between gap-2"
+                            >
+                              <span className="min-w-0 truncate text-xs font-medium text-bob-ink">
+                                {p.name}
+                                {un > 0 && (
+                                  <span className="ml-2 rounded-full bg-bob-indigo px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                    {un}
+                                  </span>
+                                )}
+                              </span>
+                              <Link
+                                href={`/messaggi?r=${r.id}&p=${p.id}`}
+                                className="shrink-0 text-xs font-medium text-bob-indigo hover:underline"
+                              >
+                                Apri →
+                              </Link>
+                            </div>
+                          );
+                        })}
+                        <button
+                          onClick={() => setConfirmClose(r.id)}
+                          disabled={closing === r.id}
+                          className="mt-1 self-start text-xs font-medium text-bob-ink/50 hover:text-bob-indigo hover:underline"
+                        >
+                          {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 border-t border-black/5 pt-2.5">
+                        <Link
+                          href={`/messaggi?r=${r.id}${
+                            r.pros[0] ? `&p=${r.pros[0].id}` : ""
+                          }`}
+                          className="text-xs font-medium text-bob-indigo hover:underline"
+                        >
+                          Apri la conversazione →
+                        </Link>
+                        <button
+                          onClick={() => setConfirmClose(r.id)}
+                          disabled={closing === r.id}
+                          className="text-xs font-medium text-bob-ink/50 hover:text-bob-indigo hover:underline"
+                        >
+                          {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
+                        </button>
+                      </div>
+                    )}
                   </li>
                 );
               })}
@@ -594,7 +651,7 @@ export function CustomerHome() {
                       {p.name}
                     </Link>
                     <Link
-                      href={`/messaggi?r=${p.requestId}`}
+                      href={`/messaggi?r=${p.requestId}&p=${p.id}`}
                       className="shrink-0 text-xs font-medium text-bob-indigo hover:underline"
                     >
                       Scrivi →
@@ -643,7 +700,9 @@ export function CustomerHome() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Link
-                      href={`/messaggi?r=${r.id}`}
+                      href={`/messaggi?r=${r.id}${
+                        r.pros[0] ? `&p=${r.pros[0].id}` : ""
+                      }`}
                       className="text-xs font-medium text-bob-indigo hover:underline"
                     >
                       Conversazione

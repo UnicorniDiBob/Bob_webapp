@@ -15,6 +15,8 @@ interface QuoteContext {
   serviceName?: string;
   problem?: string;
   urgency?: Severity;
+  // brief di Bob da agganciare alla richiesta (022)
+  briefId?: string | null;
 }
 
 // Dialog per chiedere un preventivo a PIÙ professionisti selezionati.
@@ -102,6 +104,7 @@ export function QuoteDialog({
           urgency: context.urgency ?? null,
           budget_min: null,
           budget_max: null,
+          brief_id: context.briefId ?? null,
         })
         .select("id")
         .single();
@@ -114,11 +117,14 @@ export function QuoteDialog({
         professional_id: p.id,
         status: "quote_requested",
       }));
+      // (022) Un thread per professionista: ognuno riceve il messaggio nel
+      // proprio thread, senza più il suffisso "(richiesta a X)" condiviso.
       const msgs = professionals.map((p) => ({
         request_id: req.id,
+        professional_id: p.id,
         sender_type: "customer",
         sender_id: user.id,
-        message: `${message} (richiesta a ${p.fullName})`,
+        message,
       }));
 
       const [linkRes, msgRes] = await Promise.all([

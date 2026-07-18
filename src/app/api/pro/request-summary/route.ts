@@ -116,6 +116,7 @@ export async function GET() {
       budget_min,
       budget_max,
       created_at,
+      brief_id,
       services ( name ),
       cities ( name )
     `)
@@ -128,11 +129,61 @@ export async function GET() {
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
+  // (022) Contesto del brief di Bob: riassunto + foto (URL firmati, bucket
+  // privato brief-photos). Best-effort: senza service role si salta.
+  const briefIds = Array.from(
+    new Set(
+      (requests as unknown as RawRequest[])
+        .map((r) => (r as { brief_id?: string | null }).brief_id)
+        .filter(Boolean)
+    )
+  ) as string[];
+  const briefById = new Map<
+    string,
+    { summary: string | null; photos: { url: string; caption: string | null }[] }
+  >();
+  const svcUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (briefIds.length && svcUrl && svcKey) {
+    try {
+      const { createClient: createServiceClient } = await import(
+        "@supabase/supabase-js"
+      );
+      const admin = createServiceClient(svcUrl, svcKey);
+      const { data: briefs } = await admin
+        .from("job_briefs")
+        .select("id, summary, photos")
+        .in("id", briefIds);
+      for (const b of (briefs ?? []) as {
+        id: string;
+        summary: string | null;
+        photos: { storagePath?: string; aiCaption?: string | null }[];
+      }[]) {
+        const photos: { url: string; caption: string | null }[] = [];
+        for (const ph of (b.photos ?? []).slice(0, 3)) {
+          if (!ph.storagePath) continue;
+          const { data: signed } = await admin.storage
+            .from("brief-photos")
+            .createSignedUrl(ph.storagePath, 3600);
+          if (signed?.signedUrl) {
+            photos.push({ url: signed.signedUrl, caption: ph.aiCaption ?? null });
+          }
+        }
+        briefById.set(b.id, { summary: b.summary ?? null, photos });
+      }
+    } catch {
+      // il riassunto funziona anche senza contesto brief
+    }
+  }
+
   // Costruisce riassunti per ogni richiesta (in parallelo, max 5 per non abusare)
   const slice = (requests as unknown as RawRequest[]).slice(0, 5);
   const enriched = await Promise.all(
     slice.map(async (req) => {
       const { summary, draftReply } = await buildSummary(req, apiKey);
+      const brief = briefById.get(
+        ((req as { brief_id?: string | null }).brief_id ?? "") as string
+      );
       return {
         id: req.id,
         service: (req.services as { name: string } | null)?.name ?? null,
@@ -143,6 +194,8 @@ export async function GET() {
         createdAt: req.created_at,
         summary,
         draftReply,
+        briefSummary: brief?.summary ?? null,
+        briefPhotos: brief?.photos ?? [],
       };
     })
   );

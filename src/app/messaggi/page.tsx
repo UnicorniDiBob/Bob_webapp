@@ -50,9 +50,15 @@ function MessaggiInner() {
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loadingConvs, setLoadingConvs] = useState(true);
+  // (022) Chiave conversazione composta "requestId::professionalId".
+  // Con solo ?r= (deep link legacy) il pro viene risolto dopo il load.
   const [activeId, setActiveId] = useState<string | null>(
-    params.get("r") ?? null
+    params.get("r") ? `${params.get("r")}::${params.get("p") ?? ""}` : null
   );
+  const activeR = activeId ? activeId.split("::")[0] : null;
+  const activeP = activeId ? activeId.split("::")[1] || null : null;
+  const keyOf = (c: ConversationSummary) =>
+    `${c.requestId}::${c.professionalId ?? ""}`;
   // Su mobile mostriamo lista O thread: entrando con ?r= si apre subito il thread.
   const [mobileThread, setMobileThread] = useState<boolean>(
     params.get("r") != null
@@ -90,8 +96,23 @@ function MessaggiInner() {
       const convs = await getConversations(user.id, role);
       if (!active) return;
       setConversations(convs);
-      // se nessuna conversazione attiva, seleziona la prima
-      setActiveId((cur) => cur ?? convs[0]?.requestId ?? null);
+      // Risolve la selezione: chiave esatta, poi primo thread della
+      // richiesta indicata con ?r=, altrimenti la prima conversazione.
+      setActiveId((cur) => {
+        if (cur) {
+          const [r, p] = cur.split("::");
+          const exact = convs.find(
+            (c) => c.requestId === r && (c.professionalId ?? "") === (p ?? "")
+          );
+          if (exact) return `${exact.requestId}::${exact.professionalId ?? ""}`;
+          const sameReq = convs.find((c) => c.requestId === r);
+          if (sameReq)
+            return `${sameReq.requestId}::${sameReq.professionalId ?? ""}`;
+        }
+        return convs[0]
+          ? `${convs[0].requestId}::${convs[0].professionalId ?? ""}`
+          : null;
+      });
       setLoadingConvs(false);
     })();
     return () => {
@@ -113,7 +134,7 @@ function MessaggiInner() {
   }, [user, role]);
 
   async function proposeAppointment() {
-    if (!user || !myProId || !activeId || !apptDate || apptSaving) return;
+    if (!user || !myProId || !activeR || !apptDate || apptSaving) return;
     setApptErr(null);
     const startsAt = new Date(`${apptDate}T${apptTime}:00`);
     if (isNaN(startsAt.getTime()) || startsAt.getTime() < Date.now()) {
@@ -122,10 +143,10 @@ function MessaggiInner() {
     }
     setApptSaving(true);
     const supabase = createClient();
-    const conv = conversations.find((c) => c.requestId === activeId);
+    const conv = conversations.find((c) => keyOf(c) === activeId);
     const { error } = await supabase.from("appointments").insert({
       professional_id: myProId,
-      request_id: activeId,
+      request_id: activeR,
       customer_name: conv?.counterpartName ?? "Cliente",
       title: apptTitle.trim() || conv?.serviceName || null,
       starts_at: startsAt.toISOString(),
@@ -145,38 +166,47 @@ function MessaggiInner() {
       minute: "2-digit",
     });
     await sendMessage(
-      activeId,
+      activeR,
+      myProId,
       user.id,
       "professional",
       `📅 Ti propongo un appuntamento: ${when} (${apptDuration} min). Puoi confermarlo dalla tua area personale.`
     );
-    await loadThread(activeId);
+    await loadThread(activeR, activeP);
     setApptSaving(false);
     setProposeOpen(false);
     setApptDate("");
     setApptTitle("");
   }
 
-  const loadThread = useCallback(async (rid: string) => {
-    setLoadingMsgs(true);
-    const m = await getMessages(rid);
-    setMessages(m);
-    setLoadingMsgs(false);
-  }, []);
+  const loadThread = useCallback(
+    async (rid: string, pid: string | null) => {
+      setLoadingMsgs(true);
+      const m = await getMessages(rid, pid);
+      setMessages(m);
+      setLoadingMsgs(false);
+    },
+    []
+  );
 
   // Cambio conversazione esplicito: sincronizza anche l'URL, così
   // refresh e tasto indietro non perdono la selezione.
-  function selectConversation(rid: string) {
-    setActiveId(rid);
+  function selectConversation(c: ConversationSummary) {
+    setActiveId(keyOf(c));
     setMobileThread(true);
-    router.replace(`/messaggi?r=${rid}`, { scroll: false });
+    router.replace(
+      `/messaggi?r=${c.requestId}${
+        c.professionalId ? `&p=${c.professionalId}` : ""
+      }`,
+      { scroll: false }
+    );
   }
 
   // Realtime: la risposta della controparte compare nel thread aperto
   // senza ricaricare (prima serviva riaprire la conversazione).
   // Richiede request_messages nella publication supabase_realtime (migration 019).
   useEffect(() => {
-    if (!activeId || !user) return;
+    if (!activeR || !user) return;
     const supabase = createClient();
     const channel = supabase
       .channel(`thread-${activeId}`)
@@ -186,21 +216,27 @@ function MessaggiInner() {
           event: "INSERT",
           schema: "public",
           table: "request_messages",
-          filter: `request_id=eq.${activeId}`,
+          filter: `request_id=eq.${activeR}`,
         },
         (payload) => {
           const row = payload.new as {
             sender_type?: string;
+            professional_id?: string | null;
             message?: string;
             created_at?: string;
           };
           // I miei messaggi sono già mostrati con l'update ottimistico.
           if (row.sender_type === myType) return;
-          loadThread(activeId);
-          markConversationRead(activeId, myType).then(() => refreshUnread());
+          // (022) reagisce solo ai messaggi del thread aperto.
+          if (activeP && row.professional_id && row.professional_id !== activeP)
+            return;
+          loadThread(activeR, activeP);
+          markConversationRead(activeR, activeP, myType).then(() =>
+            refreshUnread()
+          );
           setConversations((cs) =>
             cs.map((c) =>
-              c.requestId === activeId
+              keyOf(c) === activeId
                 ? {
                     ...c,
                     lastMessage: row.message ?? c.lastMessage,
@@ -215,16 +251,18 @@ function MessaggiInner() {
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, user, myType, loadThread, refreshUnread]);
 
   useEffect(() => {
-    if (!activeId) return;
-    loadThread(activeId);
-    // segna come letti i messaggi ricevuti in questa conversazione
+    if (!activeR) return;
+    loadThread(activeR, activeP);
+    // segna come letti i messaggi ricevuti in questo thread
     (async () => {
-      await markConversationRead(activeId, myType);
+      await markConversationRead(activeR, activeP, myType);
       await refreshUnread();
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, loadThread, myType, refreshUnread]);
 
   useEffect(() => {
@@ -236,7 +274,7 @@ function MessaggiInner() {
 
   async function handleSend() {
     const text = draft.trim();
-    if (!text || !user || !activeId || sending) return;
+    if (!text || !user || !activeR || sending) return;
     setSending(true);
     setDraft("");
     // ottimistico
@@ -248,17 +286,23 @@ function MessaggiInner() {
     };
     setMessages((m) => [...m, optimistic]);
 
-    const { error } = await sendMessage(activeId, user.id, myType, text);
+    const { error } = await sendMessage(
+      activeR,
+      activeP ?? (myType === "professional" ? myProId : null),
+      user.id,
+      myType,
+      text
+    );
     if (error) {
       // ripristina in caso di errore
       setMessages((m) => m.filter((x) => x.id !== optimistic.id));
       setDraft(text);
     } else {
-      await loadThread(activeId);
+      await loadThread(activeR, activeP);
       // aggiorna anteprima nella lista
       setConversations((cs) =>
         cs.map((c) =>
-          c.requestId === activeId
+          keyOf(c) === activeId
             ? { ...c, lastMessage: text, lastAt: new Date().toISOString() }
             : c
         )
@@ -275,7 +319,7 @@ function MessaggiInner() {
     );
   }
 
-  const active = conversations.find((c) => c.requestId === activeId) ?? null;
+  const active = conversations.find((c) => keyOf(c) === activeId) ?? null;
 
   return (
     <div className="container-bob py-8">
@@ -319,11 +363,11 @@ function MessaggiInner() {
             }`}
           >
             {conversations.map((c) => {
-              const isActive = c.requestId === activeId;
+              const isActive = keyOf(c) === activeId;
               return (
                 <button
-                  key={c.requestId}
-                  onClick={() => selectConversation(c.requestId)}
+                  key={keyOf(c)}
+                  onClick={() => selectConversation(c)}
                   className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition ${
                     isActive ? "bg-bob-indigo-50" : "hover:bg-black/[0.02]"
                   }`}
