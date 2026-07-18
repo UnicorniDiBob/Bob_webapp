@@ -1,19 +1,51 @@
 // Calcolo degli slot liberi di un professionista, condiviso client/server.
-// Regole del pilota: lun-sab, 8:00-18:00, slot di un'ora, anticipo minimo
-// 2 ore. Quando i pro avranno orari configurabili, questo modulo li leggerà
-// dal profilo invece che dalle costanti.
+// Regole del pilota: lun-sab, 8:00-18:00 ORA ITALIANA, slot di un'ora,
+// anticipo minimo 2 ore. Le ore sono calcolate esplicitamente in
+// Europe/Rome: il server (Vercel) gira in UTC e senza questa conversione
+// gli slot uscivano spostati di 2 ore. Quando i pro avranno orari
+// configurabili, questo modulo li leggerà dal profilo.
 
 export interface BusyInterval {
   start: number; // epoch ms
   end: number; // epoch ms
 }
 
+const TZ = "Europe/Rome";
+
+function romeDay(d: Date): { ymd: string; weekday: string } {
+  return {
+    ymd: new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(d),
+    weekday: new Intl.DateTimeFormat("en-US", {
+      timeZone: TZ,
+      weekday: "short",
+    }).format(d),
+  };
+}
+
+// Istante assoluto corrispondente alle HH:00 italiane del giorno ymd.
+// Prova i due offset possibili (CEST/CET) e verifica quale è corretto.
+function atRomeHour(ymd: string, hour: number): Date {
+  const hh = String(hour).padStart(2, "0");
+  for (const off of ["+02:00", "+01:00"]) {
+    const d = new Date(`${ymd}T${hh}:00:00${off}`);
+    const check = Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: TZ,
+        hour: "2-digit",
+        hour12: false,
+      }).format(d)
+    );
+    if (check === hour % 24) return d;
+  }
+  return new Date(`${ymd}T${hh}:00:00+01:00`);
+}
+
 export function computeFreeSlots(opts: {
   busy: BusyInterval[];
   durationMinutes: number;
   days?: number; // orizzonte in giorni (default 7)
-  dayStartHour?: number; // default 8
-  dayEndHour?: number; // default 18
+  dayStartHour?: number; // default 8 (ora italiana)
+  dayEndHour?: number; // default 18 (ora italiana)
   minLeadMs?: number; // anticipo minimo (default 2 ore)
   max?: number; // massimo slot restituiti (default 24)
 }): Date[] {
@@ -28,17 +60,16 @@ export function computeFreeSlots(opts: {
   const now = Date.now();
 
   for (let d = 0; d < days && out.length < max; d++) {
-    const day = new Date();
-    day.setDate(day.getDate() + d);
-    if (day.getDay() === 0) continue; // domenica: riposo
+    const base = new Date(now + d * 24 * 3600 * 1000);
+    const { ymd, weekday } = romeDay(base);
+    if (weekday === "Sun") continue; // domenica: riposo
 
     for (
       let h = startH;
       h + durationMinutes / 60 <= endH && out.length < max;
       h++
     ) {
-      const slot = new Date(day);
-      slot.setHours(h, 0, 0, 0);
+      const slot = atRomeHour(ymd, h);
       const s = slot.getTime();
       const e = s + durationMinutes * 60000;
       if (s < now + lead) continue;

@@ -103,7 +103,10 @@ export async function POST(request: Request) {
   if (insErr) return NextResponse.json({ error: "Salvataggio fallito" }, { status: 500 });
 
   // Traccia in chat, nel thread giusto.
+  // timeZone esplicita: il server gira in UTC, il messaggio deve dire
+  // l'ora italiana che il cliente ha effettivamente scelto.
   const label = when.toLocaleString("it-IT", {
+    timeZone: "Europe/Rome",
     weekday: "short",
     day: "numeric",
     month: "short",
