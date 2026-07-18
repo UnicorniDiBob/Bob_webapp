@@ -5,6 +5,7 @@ import { UnreadProvider } from "@/components/UnreadProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { MessagesBubble } from "@/components/MessagesBubble";
+import { ProBanner } from "@/components/ProBanner";
 import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
@@ -84,6 +85,7 @@ export default function RootLayout({
           <UnreadProvider>
             <Header />
             <main className="flex-1">{children}</main>
+            <ProBanner />
             <MessagesBubble />
             <Footer />
           </UnreadProvider>

@@ -54,15 +54,11 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          {role === "admin" || role === "cs" ? (
+          {(role === "admin" || role === "cs") && (
             <Link href="/admin" className="btn-ghost text-bob-indigo font-semibold">
               ⚙️ Admin
             </Link>
-          ) : !user ? (
-            <Link href="/per-i-professionisti" className="btn-ghost">
-              Per i professionisti
-            </Link>
-          ) : null}
+          )}
           {!loading && user ? (
             <div className="flex items-center gap-2">
               {role !== "professional" && role !== "admin" && role !== "cs" && (
@@ -134,7 +130,7 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            {role === "admin" || role === "cs" ? (
+            {(role === "admin" || role === "cs") && (
               <Link
                 href="/admin"
                 onClick={() => setOpen(false)}
@@ -142,15 +138,7 @@ export function Header() {
               >
                 ⚙️ Admin
               </Link>
-            ) : !user ? (
-              <Link
-                href="/per-i-professionisti"
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-bob-ink/80 hover:bg-bob-indigo-50"
-              >
-                Per i professionisti
-              </Link>
-            ) : null}
+            )}
             <div className="mt-2 flex gap-2">
               {user ? (
                 <>
