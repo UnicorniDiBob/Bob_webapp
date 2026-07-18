@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useUnread } from "@/components/UnreadProvider";
 import { createClient } from "@/lib/supabase/client";
+import { busyFromAppointments, computeFreeSlots } from "@/lib/slots";
 import {
   getConversations,
   getMessages,
@@ -79,6 +80,11 @@ function MessaggiInner() {
   const [apptTitle, setApptTitle] = useState("");
   const [apptSaving, setApptSaving] = useState(false);
   const [apptErr, setApptErr] = useState<string | null>(null);
+  // Slot rapidi: i prossimi orari liberi del pro, un tap invece di digitare.
+  const [quickSlots, setQuickSlots] = useState<Date[]>([]);
+  const [myBusy, setMyBusy] = useState<
+    { start: number; end: number }[]
+  >([]);
 
   const myType: "customer" | "professional" =
     role === "professional" ? "professional" : "customer";
@@ -133,12 +139,59 @@ function MessaggiInner() {
     })();
   }, [user, role]);
 
+  // All'apertura del dialog carica il calendario del pro e calcola gli slot.
+  useEffect(() => {
+    if (!proposeOpen || !myProId) return;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("appointments")
+        .select("starts_at, duration_minutes, status")
+        .eq("professional_id", myProId)
+        .gte(
+          "starts_at",
+          new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+        );
+      const busy = busyFromAppointments(
+        (data ?? []) as {
+          starts_at: string;
+          duration_minutes: number;
+          status: string;
+        }[]
+      );
+      setMyBusy(busy);
+      setQuickSlots(
+        computeFreeSlots({ busy, durationMinutes: apptDuration, max: 6 })
+      );
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposeOpen, myProId, apptDuration]);
+
+  function pickQuickSlot(d: Date) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setApptDate(
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+    );
+    setApptTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+    setApptErr(null);
+  }
+
   async function proposeAppointment() {
     if (!user || !myProId || !activeR || !apptDate || apptSaving) return;
     setApptErr(null);
     const startsAt = new Date(`${apptDate}T${apptTime}:00`);
     if (isNaN(startsAt.getTime()) || startsAt.getTime() < Date.now()) {
       setApptErr("Scegli una data futura.");
+      return;
+    }
+    // Guardia doppia prenotazione: l'orario scelto non deve sovrapporsi
+    // ai tuoi appuntamenti (confermati o in attesa).
+    const s = startsAt.getTime();
+    const e = s + apptDuration * 60000;
+    if (myBusy.some((b) => s < b.end && e > b.start)) {
+      setApptErr(
+        "Hai già un appuntamento in quell'orario: scegli uno slot libero."
+      );
       return;
     }
     setApptSaving(true);
@@ -523,6 +576,40 @@ function MessaggiInner() {
               Il cliente riceve la proposta in chat e la conferma dalla sua
               area personale.
             </p>
+            {quickSlots.length > 0 && (
+              <div className="mt-4">
+                <p className="label-bob">I tuoi prossimi orari liberi</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {quickSlots.map((d) => {
+                    const pad = (n: number) => String(n).padStart(2, "0");
+                    const sel =
+                      apptDate ===
+                        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+                          d.getDate()
+                        )}` && apptTime === `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                    return (
+                      <button
+                        key={d.toISOString()}
+                        onClick={() => pickQuickSlot(d)}
+                        className={`chip ${
+                          sel
+                            ? "bg-bob-indigo text-white"
+                            : "hover:bg-bob-indigo-100"
+                        }`}
+                        data-testid={`quick-slot-${d.toISOString()}`}
+                      >
+                        {d.toLocaleString("it-IT", {
+                          weekday: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div>
                 <label className="label-bob" htmlFor="appt-date">Data</label>

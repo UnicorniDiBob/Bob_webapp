@@ -132,7 +132,12 @@ export interface ProfessionalCard {
 
 // ----- Messaggi e appuntamenti (aggiunti per dashboard pro e conversazioni) -----
 
-export type AppointmentStatus = "confirmed" | "completed" | "cancelled";
+export type AppointmentStatus =
+  | "proposed"
+  | "confirmed"
+  | "completed"
+  | "cancelled"
+  | "declined";
 
 export interface Appointment {
   id: string;
@@ -144,6 +149,8 @@ export interface Appointment {
   duration_minutes: number;
   price: number | null;
   status: AppointmentStatus;
+  // chi ha proposto (023): 'professional' o 'customer'
+  proposed_by: "professional" | "customer";
   notes: string | null;
   created_at: string | null;
 }

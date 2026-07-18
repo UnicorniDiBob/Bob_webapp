@@ -8,6 +8,8 @@ import { ProRequestSummary } from "@/components/ProRequestSummary";
 import { ProPortfolio } from "@/components/ProPortfolio";
 import {
   getAppointments,
+  updateAppointment,
+  sendMessage,
   computeStats,
   type ProStats,
 } from "@/lib/messages";
@@ -54,15 +56,19 @@ function fmtDay(d: Date): string {
 }
 
 const STATUS_STYLE: Record<Appointment["status"], string> = {
+  proposed: "bg-amber-50 text-amber-700 border-amber-200",
   confirmed: "bg-bob-indigo-50 text-bob-indigo border-bob-indigo/20",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   cancelled: "bg-black/5 text-bob-ink/40 border-black/10 line-through",
+  declined: "bg-black/5 text-bob-ink/40 border-black/10 line-through",
 };
 
 const STATUS_LABEL: Record<Appointment["status"], string> = {
+  proposed: "Da confermare",
   confirmed: "Confermato",
   completed: "Completato",
   cancelled: "Annullato",
+  declined: "Rifiutato",
 };
 
 export function ProWorkspace({
@@ -131,10 +137,54 @@ export function ProWorkspace({
   const upcoming = useMemo(() => {
     const now = new Date();
     return appointments
-      .filter((a) => new Date(a.starts_at) >= now && a.status !== "cancelled")
+      .filter(
+        (a) =>
+          new Date(a.starts_at) >= now &&
+          a.status !== "cancelled" &&
+          a.status !== "declined"
+      )
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
       .slice(0, 6);
   }, [appointments]);
+
+  // Contro-proposte del cliente in attesa della conferma del pro.
+  const pendingFromCustomers = useMemo(
+    () =>
+      appointments
+        .filter(
+          (a) =>
+            a.status === "proposed" &&
+            a.proposed_by === "customer" &&
+            new Date(a.starts_at) >= new Date()
+        )
+        .sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
+    [appointments]
+  );
+
+  async function respondToCustomerProposal(a: Appointment, ok: boolean) {
+    await updateAppointment(a.id, {
+      status: ok ? "confirmed" : "cancelled",
+    });
+    if (a.request_id && profile?.user_id && proId) {
+      const label = new Date(a.starts_at).toLocaleString("it-IT", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      await sendMessage(
+        a.request_id,
+        proId,
+        profile.user_id,
+        "professional",
+        ok
+          ? `✅ Confermo l'appuntamento di ${label}. A presto!`
+          : `❌ Purtroppo ${label} non riesco: scrivimi e troviamo un altro orario.`
+      );
+    }
+    await reload();
+  }
 
   if (!profile) {
     return (
@@ -165,6 +215,58 @@ export function ProWorkspace({
     <div className="space-y-5">
       {/* Riassunto richieste AI — primo blocco visibile */}
       {proId && <ProRequestSummary />}
+
+      {/* Contro-proposte dei clienti: un tap per confermare */}
+      {pendingFromCustomers.length > 0 && (
+        <section
+          className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4"
+          data-testid="pending-proposals"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+            📅 Orari proposti dai clienti
+          </p>
+          <ul className="mt-2.5 flex flex-col gap-2">
+            {pendingFromCustomers.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 shadow-sm"
+              >
+                <span className="min-w-0 text-sm">
+                  <span className="font-semibold text-bob-ink">
+                    {a.customer_name}
+                  </span>
+                  <span className="text-bob-ink/55">
+                    {" "}
+                    · {a.title ?? "Appuntamento"} ·{" "}
+                    {new Date(a.starts_at).toLocaleString("it-IT", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </span>
+                <span className="flex shrink-0 gap-2">
+                  <button
+                    onClick={() => respondToCustomerProposal(a, true)}
+                    className="text-sm font-semibold text-emerald-700 hover:underline"
+                    data-testid={`pro-appt-confirm-${a.id}`}
+                  >
+                    Conferma
+                  </button>
+                  <button
+                    onClick={() => respondToCustomerProposal(a, false)}
+                    className="text-sm font-medium text-bob-ink/50 hover:text-red-600 hover:underline"
+                  >
+                    Rifiuta
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* KPI */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

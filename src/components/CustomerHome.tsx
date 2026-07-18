@@ -34,6 +34,7 @@ interface Appointment {
   starts_at: string;
   duration_minutes: number;
   status: string;
+  proposed_by: "professional" | "customer";
 }
 
 const OPEN_STATUSES = ["sent", "quote_request", "matched"];
@@ -130,6 +131,12 @@ export function CustomerHome() {
   const [closing, setClosing] = useState<string | null>(null);
   const [respondingAppt, setRespondingAppt] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  // Contro-proposta: slot liberi del pro (mai il suo calendario completo).
+  const [slotPickerFor, setSlotPickerFor] = useState<Appointment | null>(null);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotSaving, setSlotSaving] = useState(false);
+  const [slotErr, setSlotErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -211,7 +218,7 @@ export function CustomerHome() {
       // Appuntamenti futuri (proposti o confermati) sulle mie richieste.
       const { data: appts } = await supabase
         .from("appointments")
-        .select("id, request_id, professional_id, title, starts_at, duration_minutes, status")
+        .select("id, request_id, professional_id, title, starts_at, duration_minutes, status, proposed_by")
         .in("request_id", ids)
         .in("status", ["proposed", "confirmed"])
         .gte("starts_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
@@ -275,6 +282,50 @@ export function CustomerHome() {
     setRespondingAppt(null);
   }
 
+  async function openSlotPicker(a: Appointment) {
+    setSlotPickerFor(a);
+    setSlots([]);
+    setSlotErr(null);
+    setSlotsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/pro/slots?professionalId=${a.professional_id}&duration=${a.duration_minutes}`
+      );
+      const d = await res.json();
+      setSlots((d.slots as string[]) ?? []);
+    } catch {
+      setSlots([]);
+    }
+    setSlotsLoading(false);
+  }
+
+  async function counterPropose(slotIso: string) {
+    if (!slotPickerFor || slotSaving) return;
+    setSlotSaving(true);
+    setSlotErr(null);
+    try {
+      const res = await fetch("/api/appointments/counter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appointmentId: slotPickerFor.id,
+          startsAt: slotIso,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        setSlotErr(d.error ?? "Qualcosa è andato storto. Riprova.");
+        setSlotSaving(false);
+        return;
+      }
+      setSlotPickerFor(null);
+      await load();
+    } catch {
+      setSlotErr("Qualcosa è andato storto. Riprova.");
+    }
+    setSlotSaving(false);
+  }
+
   const proName = (professionalId: string) => {
     for (const r of requests) {
       const p = r.pros.find((x) => x.id === professionalId);
@@ -317,12 +368,23 @@ export function CustomerHome() {
   }
   for (const a of appointments.filter((x) => x.status === "proposed")) {
     const { dow, day, time } = fmtDayParts(a.starts_at);
+    if (a.proposed_by === "customer") {
+      todos.push({
+        key: `appt-${a.id}`,
+        text: "Hai proposto un nuovo orario",
+        sub: `${dow} ${day} alle ${time} · in attesa di ${proName(a.professional_id)}`,
+        node: (
+          <span className="shrink-0 text-sm text-bob-ink/45">In attesa ⏳</span>
+        ),
+      });
+      continue;
+    }
     todos.push({
       key: `appt-${a.id}`,
       text: `${proName(a.professional_id)} propone un appuntamento`,
       sub: `${dow} ${day} alle ${time}${a.title ? ` · ${a.title}` : ""}`,
       node: (
-        <span className="flex shrink-0 gap-2">
+        <span className="flex shrink-0 flex-wrap gap-x-2.5 gap-y-1">
           <button
             onClick={() => respondToAppointment(a, true)}
             disabled={respondingAppt === a.id}
@@ -330,6 +392,14 @@ export function CustomerHome() {
             data-testid={`appt-confirm-${a.id}`}
           >
             Conferma
+          </button>
+          <button
+            onClick={() => openSlotPicker(a)}
+            disabled={respondingAppt === a.id}
+            className="text-sm font-medium text-bob-indigo hover:underline"
+            data-testid={`appt-counter-${a.id}`}
+          >
+            Altro orario
           </button>
           <button
             onClick={() => respondToAppointment(a, false)}
@@ -612,15 +682,20 @@ export function CustomerHome() {
                         {proposed ? " · da confermare" : ""}
                       </p>
                     </div>
-                    {proposed && (
-                      <button
-                        onClick={() => respondToAppointment(a, true)}
-                        disabled={respondingAppt === a.id}
-                        className="shrink-0 text-xs font-semibold text-emerald-700 hover:underline"
-                      >
-                        Conferma
-                      </button>
-                    )}
+                    {proposed &&
+                      (a.proposed_by === "customer" ? (
+                        <span className="shrink-0 text-[11px] text-bob-ink/40">
+                          In attesa ⏳
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => respondToAppointment(a, true)}
+                          disabled={respondingAppt === a.id}
+                          className="shrink-0 text-xs font-semibold text-emerald-700 hover:underline"
+                        >
+                          Conferma
+                        </button>
+                      ))}
                   </li>
                 );
               })}
@@ -727,6 +802,87 @@ export function CustomerHome() {
       )}
 
       {/* ---- dialogs ---- */}
+      {slotPickerFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setSlotPickerFor(null)}
+        >
+          <div
+            className="card max-h-[80vh] w-full max-w-md overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="dialog-slot-picker"
+          >
+            <h3 className="text-lg font-bold text-bob-ink">
+              Proponi un altro orario
+            </h3>
+            <p className="mt-1 text-sm text-bob-ink/60">
+              Questi sono gli orari liberi di{" "}
+              {proName(slotPickerFor.professional_id)} nei prossimi giorni:
+              scegline uno e glielo propongo io.
+            </p>
+            {slotsLoading ? (
+              <p className="mt-5 text-sm text-bob-ink/50">
+                Controllo le disponibilità…
+              </p>
+            ) : slots.length === 0 ? (
+              <p className="mt-5 text-sm text-bob-ink/60">
+                Non ci sono slot liberi nei prossimi 7 giorni: scrivigli in
+                chat e trovate un orario insieme.
+              </p>
+            ) : (
+              (() => {
+                const byDay = new Map<string, string[]>();
+                for (const s of slots) {
+                  const d = new Date(s);
+                  const key = d.toLocaleDateString("it-IT", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "short",
+                  });
+                  byDay.set(key, [...(byDay.get(key) ?? []), s]);
+                }
+                return (
+                  <div className="mt-4 flex flex-col gap-3">
+                    {Array.from(byDay.entries()).map(([day, daySlots]) => (
+                      <div key={day}>
+                        <p className="text-xs font-semibold capitalize text-bob-ink/55">
+                          {day}
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {daySlots.map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => counterPropose(s)}
+                              disabled={slotSaving}
+                              className="chip hover:bg-bob-indigo-100 disabled:opacity-50"
+                              data-testid={`slot-${s}`}
+                            >
+                              {new Date(s).toLocaleTimeString("it-IT", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            )}
+            {slotErr && <p className="mt-3 text-xs text-red-600">{slotErr}</p>}
+            <button
+              onClick={() => setSlotPickerFor(null)}
+              className="btn-secondary mt-5 w-full py-2.5"
+            >
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
+
       {confirmClose && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
