@@ -4,6 +4,7 @@ export type CityStatus = "active" | "coming_soon";
 export type VerificationStatus = "unverified" | "pending" | "verified";
 export type UserRole = "customer" | "professional" | "admin" | "cs";
 export type SubscriptionTier = "free" | "pro" | "business";
+export type MacroRegion = "nord" | "centro" | "sud";
 
 // Limiti foto portfolio per tier (null = illimitato). Fonte di verità: trigger DB.
 export const PORTFOLIO_LIMITS: Record<SubscriptionTier, number | null> = {
@@ -24,6 +25,9 @@ export interface City {
   name: string;
   slug: string;
   status: CityStatus;
+  province: string | null;
+  region: string | null;
+  macro_region: MacroRegion | null;
   created_at: string | null;
 }
 
@@ -51,6 +55,8 @@ export interface Profile {
   avatar_url: string | null;
   phone: string | null;
   about: string | null;
+  date_of_birth: string | null;
+  terms_accepted_at: string | null;
   created_at: string | null;
 }
 

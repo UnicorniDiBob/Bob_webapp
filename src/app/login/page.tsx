@@ -50,9 +50,23 @@ function LoginInner() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  // Calcola l'età da una data 'YYYY-MM-DD' senza dipendenze esterne.
+  function calcAge(isoDate: string): number {
+    const dob = new Date(isoDate);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age;
+  }
 
   // Reset password: Supabase invia una mail con un link a /auth/reimposta-password.
   async function handleForgotPassword() {
@@ -107,12 +121,33 @@ function LoginInner() {
           setSubmitting(false);
           return;
         }
-        // Il trigger handle_new_user legge role e full_name da raw_user_meta_data.
+        if (!dateOfBirth) {
+          setError("Inserisci la tua data di nascita.");
+          setSubmitting(false);
+          return;
+        }
+        if (calcAge(dateOfBirth) < 18) {
+          setError("Devi avere almeno 18 anni per registrarti su BOB.");
+          setSubmitting(false);
+          return;
+        }
+        if (!termsAccepted) {
+          setError("Devi accettare i termini del servizio e l'informativa privacy per continuare.");
+          setSubmitting(false);
+          return;
+        }
+        // Il trigger handle_new_user legge role, full_name, date_of_birth e
+        // terms_accepted_at da raw_user_meta_data.
         const { data, error: signErr } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { role, full_name: fullName.trim() },
+            data: {
+              role,
+              full_name: fullName.trim(),
+              date_of_birth: dateOfBirth,
+              terms_accepted_at: new Date().toISOString(),
+            },
           },
         });
         if (signErr) throw signErr;
@@ -231,6 +266,28 @@ function LoginInner() {
               </div>
             )}
 
+            {mode === "signup" && (
+              <div>
+                <label className="label-bob" htmlFor="dateOfBirth">
+                  Data di nascita
+                </label>
+                <input
+                  id="dateOfBirth"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  className="input-bob"
+                  autoComplete="bday"
+                  max={new Date().toISOString().slice(0, 10)}
+                  data-testid="input-date-of-birth"
+                  required
+                />
+                <p className="mt-1 text-xs text-bob-ink/50">
+                  Devi avere almeno 18 anni per usare BOB.
+                </p>
+              </div>
+            )}
+
             <div>
               <label className="label-bob" htmlFor="email">
                 Email
@@ -278,6 +335,30 @@ function LoginInner() {
                 </div>
               )}
             </div>
+
+            {mode === "signup" && (
+              <label className="flex items-start gap-2 text-xs text-bob-ink/65">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-black/20"
+                  data-testid="checkbox-terms"
+                  required
+                />
+                <span>
+                  Confermo di avere almeno 18 anni e accetto i{" "}
+                  <Link href="/termini" className="underline hover:text-bob-indigo" target="_blank">
+                    termini del servizio
+                  </Link>{" "}
+                  e l&apos;
+                  <Link href="/privacy" className="underline hover:text-bob-indigo" target="_blank">
+                    informativa privacy
+                  </Link>
+                  .
+                </span>
+              </label>
+            )}
 
             {error && (
               <p className="text-sm text-red-600" data-testid="text-auth-error">
