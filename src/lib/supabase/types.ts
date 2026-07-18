@@ -55,6 +55,14 @@ export interface Profile {
   avatar_url: string | null;
   phone: string | null;
   about: string | null;
+  created_at: string | null;
+}
+
+// Dati sensibili del profilo (migration 027): tabella separata con RLS
+// stretta — solo il proprietario e lo staff possono leggerla. Mai esporre
+// questi campi su superfici pubbliche.
+export interface ProfilePrivate {
+  user_id: string;
   date_of_birth: string | null;
   terms_accepted_at: string | null;
   created_at: string | null;

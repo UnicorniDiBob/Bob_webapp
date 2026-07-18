@@ -35,6 +35,7 @@ export default async function AdminAnalisiPage() {
     { data: requestMessages },
     { data: tierEvents },
     { data: searchEvents },
+    { data: privateRows },
   ] = await Promise.all([
     supabase
       .from("cities")
@@ -42,7 +43,7 @@ export default async function AdminAnalisiPage() {
     supabase.from("services").select("id, name, slug"),
     supabase.from("subservices").select("id, service_id, name, slug"),
     supabase.from("users").select("id, role, created_at"),
-    supabase.from("profiles").select("user_id, full_name, date_of_birth"),
+    supabase.from("profiles").select("user_id, full_name"),
     supabase
       .from("professionals")
       .select("id, user_id, city_id, subscription_tier, verification_status, created_at"),
@@ -62,14 +63,27 @@ export default async function AdminAnalisiPage() {
     supabase
       .from("search_events")
       .select("source, service_slug, subservice_slug, city_slug, created_at"),
+    // Dati sensibili (data di nascita) in tabella privata dalla migration
+    // 027: leggibile solo dal proprietario e dallo staff. Qui siamo admin.
+    supabase.from("profile_private").select("user_id, date_of_birth"),
   ]);
+
+  // Ricompone il profilo per la dashboard: nome (pubblico) + data di
+  // nascita (privata), senza mai esporre quest'ultima fuori dall'admin.
+  const dobByUser = Object.fromEntries(
+    (privateRows ?? []).map((r) => [r.user_id, r.date_of_birth])
+  );
+  const mergedProfiles = (profiles ?? []).map((p) => ({
+    ...p,
+    date_of_birth: dobByUser[p.user_id] ?? null,
+  }));
 
   const data: AnalisiRawData = {
     cities: cities ?? [],
     services: services ?? [],
     subservices: subservices ?? [],
     users: users ?? [],
-    profiles: profiles ?? [],
+    profiles: mergedProfiles,
     professionals: professionals ?? [],
     professionalServices: professionalServices ?? [],
     requests: requests ?? [],
