@@ -39,6 +39,13 @@ export default function DashboardPage() {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
+  // Gli account staff non hanno un'area personale: dritti al pannello admin.
+  useEffect(() => {
+    if (!loading && (role === "admin" || role === "cs")) {
+      router.replace("/admin");
+    }
+  }, [loading, role, router]);
+
   useEffect(() => {
     if (!user || role !== "professional") {
       setLoadingPro(false);
@@ -97,7 +104,7 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, role]);
 
-  if (loading || (!user && !loading)) {
+  if (loading || (!user && !loading) || role === "admin" || role === "cs") {
     return (
       <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
         Carico la tua area personale…

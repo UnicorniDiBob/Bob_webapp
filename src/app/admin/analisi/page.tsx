@@ -34,6 +34,7 @@ export default async function AdminAnalisiPage() {
     { data: requests },
     { data: requestMessages },
     { data: tierEvents },
+    { data: searchEvents },
   ] = await Promise.all([
     supabase
       .from("cities")
@@ -58,6 +59,9 @@ export default async function AdminAnalisiPage() {
     supabase
       .from("subscription_tier_events")
       .select("professional_id, old_tier, new_tier, changed_at"),
+    supabase
+      .from("search_events")
+      .select("source, service_slug, subservice_slug, city_slug, created_at"),
   ]);
 
   const data: AnalisiRawData = {
@@ -71,6 +75,7 @@ export default async function AdminAnalisiPage() {
     requests: requests ?? [],
     requestMessages: requestMessages ?? [],
     tierEvents: tierEvents ?? [],
+    searchEvents: searchEvents ?? [],
   };
 
   return (

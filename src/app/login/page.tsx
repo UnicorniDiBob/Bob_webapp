@@ -170,7 +170,25 @@ function LoginInner() {
       }
 
       await refresh();
-      router.push(returnTo);
+
+      // Gli account staff (admin/CS) non hanno un'area personale: se la
+      // destinazione è quella di default, vanno dritti al pannello admin.
+      let dest = returnTo;
+      if (returnTo === "/dashboard") {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData.user) {
+          const { data: roleRow } = await supabase
+            .from("users")
+            .select("role")
+            .eq("id", authData.user.id)
+            .maybeSingle();
+          if (roleRow?.role === "admin" || roleRow?.role === "cs") {
+            dest = "/admin";
+          }
+        }
+      }
+
+      router.push(dest);
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Errore imprevisto";

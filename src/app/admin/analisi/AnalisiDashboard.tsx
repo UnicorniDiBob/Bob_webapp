@@ -117,6 +117,16 @@ interface TierEventRow {
   changed_at: string | null;
 }
 
+// Evento di ricerca anonimo (migration 026): solo slug categoria/città e
+// data — mai user_id né testo libero, per privacy by design.
+interface SearchEventRow {
+  source: "brief" | "richiesta";
+  service_slug: string | null;
+  subservice_slug: string | null;
+  city_slug: string | null;
+  created_at: string | null;
+}
+
 export interface AnalisiRawData {
   cities: CityRow[];
   services: ServiceRow[];
@@ -128,16 +138,21 @@ export interface AnalisiRawData {
   requests: RequestRow[];
   requestMessages: RequestMessageRow[];
   tierEvents: TierEventRow[];
+  searchEvents: SearchEventRow[];
 }
 
 type Tab =
   | "roles"
-  | "conversion"
+  | "keywords"
   | "funnel"
-  | "verification"
   | "response_time"
+  | "verification"
+  | "conversion"
   | "churn";
 
+// Ordine "a funnel": chi arriva → cosa cerca → cosa chiede → quanto in
+// fretta risponde l'offerta → qualità dell'offerta → monetizzazione →
+// retention.
 const TABS: { value: Tab; label: string; title: string; desc: string }[] = [
   {
     value: "roles",
@@ -146,10 +161,10 @@ const TABS: { value: Tab; label: string; title: string; desc: string }[] = [
     desc: "Clienti e professionisti iscritti nel periodo, con distribuzione per fascia d'età.",
   },
   {
-    value: "conversion",
-    label: "Conversione Pro",
-    title: "Conversione Free → Pro",
-    desc: "Quota di professionisti con abbonamento a pagamento (snapshot sul tier attuale).",
+    value: "keywords",
+    label: "Ricerche",
+    title: "Ricerche per categoria",
+    desc: "Quante volte ogni categoria viene cercata con Bob e trasformata in richiesta. Dati anonimi.",
   },
   {
     value: "funnel",
@@ -158,16 +173,22 @@ const TABS: { value: Tab; label: string; title: string; desc: string }[] = [
     desc: "Richieste uscite dalla bozza e quante arrivano alla chiusura.",
   },
   {
+    value: "response_time",
+    label: "Prima risposta",
+    title: "Tempo di prima risposta",
+    desc: "Ore tra l'invio della richiesta e il primo messaggio di un professionista.",
+  },
+  {
     value: "verification",
     label: "Verifiche",
     title: "Verifica professionisti",
     desc: "Stato di verifica dei profili professionali nel periodo di iscrizione scelto.",
   },
   {
-    value: "response_time",
-    label: "Prima risposta",
-    title: "Tempo di prima risposta",
-    desc: "Ore tra l'invio della richiesta e il primo messaggio di un professionista.",
+    value: "conversion",
+    label: "Conversione Pro",
+    title: "Conversione Free → Pro",
+    desc: "Quota di professionisti con abbonamento a pagamento (snapshot sul tier attuale).",
   },
   {
     value: "churn",
@@ -312,6 +333,18 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
     for (const r of data.requests) (map[r.customer_id] ??= []).push(r);
     return map;
   }, [data.requests]);
+  const cityBySlug = useMemo(
+    () => Object.fromEntries(data.cities.map((c) => [c.slug, c])),
+    [data.cities]
+  );
+  const serviceNameBySlug = useMemo(
+    () => Object.fromEntries(data.services.map((s) => [s.slug, s.name])),
+    [data.services]
+  );
+  const subserviceNameBySlug = useMemo(
+    () => Object.fromEntries(data.subservices.map((s) => [s.slug, s.name])),
+    [data.subservices]
+  );
 
   // ---------- Opzioni cascading ----------
   const regionOptions = useMemo(() => {
@@ -376,6 +409,22 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
       return true;
     },
     [serviceId, subserviceId]
+  );
+
+  // Come cityMatchesGeo ma a partire dallo slug (gli eventi di ricerca
+  // anonimi non hanno l'id della città).
+  const citySlugMatchesGeo = useCallback(
+    (slug: string | null): boolean => {
+      if (!slug) return !geoActive;
+      const c = cityBySlug[slug];
+      if (!c) return false;
+      if (cityId) return c.id === cityId;
+      if (province) return c.province === province;
+      if (region) return c.region === region;
+      if (macroRegion) return c.macro_region === macroRegion;
+      return true;
+    },
+    [cityBySlug, cityId, province, region, macroRegion, geoActive]
   );
 
   const professionalMatchesCategory = useCallback(
@@ -473,6 +522,64 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
     const staffCount = data.users.length - marketplaceUsers.length;
     return { rows: filtered, customers, professionals, byBracket, staffCount };
   }, [data.users, profileByUser, dateFrom, dateTo, userMatchesAge, userMatchesGeoCat]);
+
+  // ---------- 1b. Ricerche per categoria ----------
+  // Eventi anonimi (migration 026): il filtro età non si applica per
+  // costruzione — non sappiamo chi ha cercato, ed è voluto (privacy).
+  const keywordsResult = useMemo(() => {
+    const rows = data.searchEvents.filter((e) => {
+      if (!inDateRange(e.created_at, dateFrom, dateTo)) return false;
+      if (!citySlugMatchesGeo(e.city_slug)) return false;
+      if (subserviceId) {
+        return e.subservice_slug === (subserviceById[subserviceId]?.slug ?? "");
+      }
+      if (serviceId) {
+        return e.service_slug === (serviceById[serviceId]?.slug ?? "");
+      }
+      return true;
+    });
+
+    const briefs = rows.filter((e) => e.source === "brief").length;
+    const richieste = rows.filter((e) => e.source === "richiesta").length;
+
+    // Ranking per categoria; se una categoria è già selezionata, il ranking
+    // scende al livello delle sue sottocategorie.
+    const drillToSub = !!serviceId && !subserviceId;
+    const buckets = new Map<string, { Ricerche: number; Richieste: number }>();
+    for (const e of rows) {
+      const slug = drillToSub ? e.subservice_slug : e.service_slug;
+      const name = drillToSub
+        ? slug
+          ? subserviceNameBySlug[slug] ?? slug
+          : "(generica)"
+        : slug
+        ? serviceNameBySlug[slug] ?? slug
+        : "(non riconosciuta)";
+      const b = buckets.get(name) ?? { Ricerche: 0, Richieste: 0 };
+      if (e.source === "brief") b.Ricerche++;
+      else b.Richieste++;
+      buckets.set(name, b);
+    }
+    const ranking = [...buckets.entries()]
+      .map(([categoria, v]) => ({ categoria, ...v, Totale: v.Ricerche + v.Richieste }))
+      .sort((a, b) => b.Totale - a.Totale);
+
+    const chartData = ranking.slice(0, 10);
+    const topCategory = ranking[0]?.categoria ?? "—";
+
+    return { rows, briefs, richieste, ranking, chartData, topCategory, drillToSub };
+  }, [
+    data.searchEvents,
+    dateFrom,
+    dateTo,
+    citySlugMatchesGeo,
+    serviceId,
+    subserviceId,
+    serviceById,
+    subserviceById,
+    serviceNameBySlug,
+    subserviceNameBySlug,
+  ]);
 
   // ---------- 2. Conversione Free → Pro ----------
   const conversionResult = useMemo(() => {
@@ -784,6 +891,19 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
         "Prima risposta": d.replyAt ? fmtDate(d.replyAt) : "Nessuna",
         "Ore alla risposta": d.hours != null ? Number(d.hours.toFixed(1)) : "",
       }));
+    } else if (tab === "keywords") {
+      summary.push(
+        ["Ricerche con Bob", keywordsResult.briefs],
+        ["Richieste create", keywordsResult.richieste],
+        ["Totale eventi", keywordsResult.rows.length],
+        ["Categoria più cercata", keywordsResult.topCategory]
+      );
+      detail = keywordsResult.ranking.map((r) => ({
+        [keywordsResult.drillToSub ? "Sottocategoria" : "Categoria"]: r.categoria,
+        "Ricerche (Bob)": r.Ricerche,
+        "Richieste create": r.Richieste,
+        Totale: r.Totale,
+      }));
     } else if (tab === "churn") {
       summary.push(
         ["Disdette (→ Free)", churnResult.cancellations],
@@ -1056,6 +1176,56 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
             le fasce d&apos;età con gli altri filtri applicati; il filtro età restringe solo i
             numeri in alto. Con un filtro geografico o di categoria attivo, i clienti senza
             richieste non sono conteggiati.
+          </FootNote>
+        </div>
+      )}
+
+      {tab === "keywords" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard label="Ricerche con Bob" value={keywordsResult.briefs} />
+            <StatCard label="Richieste create" value={keywordsResult.richieste} />
+            <StatCard label="Totale eventi" value={keywordsResult.rows.length} />
+            <StatCard label="Categoria top" value={keywordsResult.topCategory} highlight />
+          </div>
+          {keywordsResult.chartData.length > 0 ? (
+            <ChartCard
+              title={
+                keywordsResult.drillToSub
+                  ? "Sottocategorie più cercate (nella categoria selezionata)"
+                  : "Categorie più cercate"
+              }
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={keywordsResult.chartData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ececf3" horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="categoria"
+                    width={150}
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip cursor={{ fill: "rgba(55,48,163,0.05)" }} />
+                  <Legend iconType="circle" />
+                  <Bar dataKey="Ricerche" fill={CHART.yellow} radius={[0, 4, 4, 0]} maxBarSize={18} />
+                  <Bar dataKey="Richieste" fill={CHART.indigo} radius={[0, 4, 4, 0]} maxBarSize={18} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-black/10 py-10 text-center text-sm text-bob-ink/40">
+              Nessuna ricerca registrata con i filtri correnti.
+            </div>
+          )}
+          <FootNote>
+            &quot;Ricerche&quot; = chat con Bob completate (una per brief); &quot;Richieste&quot; =
+            richieste effettivamente create. Dati anonimi per costruzione: registriamo solo
+            categoria, città e data — mai chi ha cercato né il testo digitato. Per questo il
+            filtro fascia d&apos;età non si applica a questa scheda. Selezionando una categoria
+            il ranking scende alle sue sottocategorie.
           </FootNote>
         </div>
       )}
