@@ -61,6 +61,31 @@ qualità scaricato sul cliente) e Instapro che usa la P.IVA obbligatoria come
 argomento di vendita. Nessuno fa la via di mezzo: ingresso aperto + verifica
 come gate di visibilità. È lo spazio per Bob (v. decisione 10.x).
 
+**Cosa chiedono esattamente all'iscrizione (verificato 2026-07-19):**
+- *Instapro* (fonte: support + T&C): nome azienda, nome titolare/contatto,
+  indirizzo aziendale, telefono, email, **P.IVA valida e attiva**, **metodo di
+  pagamento** (i lead si pagano). Il funnel più pesante del mercato.
+- *ProntoPro* (funnel /prosignup percorso dal vivo): servizio offerto →
+  "azienda o libero professionista?" → nome e cognome → zona/contatti.
+  **Niente P.IVA, niente documenti, niente metodo di pagamento** — nemmeno
+  per categorie DM 37 (test fatto con "Idraulico"). I crediti si comprano dopo.
+- *Cronoshare / StarOfService*: categoria + zona + contatti. Nessun controllo
+  fiscale o documentale.
+- **Nessun competitor chiede documenti d'identità all'iscrizione.** La verifica
+  documentale nel mercato esiste solo come programma di fiducia premium
+  (benchmark: Google Guaranteed), mai come gate d'ingresso.
+
+**Decisione proposta — livelli di verifica (in attesa di ratifica):**
+- L0 Iscritto: nome, email, categoria, città. Frizione identica a ProntoPro.
+  Profilo creabile, domanda visibile in forma anonima. Nessun documento.
+- L1 P.IVA verificata (automatica, un campo, zero upload): sblocca matching e
+  contatto clienti nelle categorie regolamentate. Checksum + API stato attiva
+  + confronto denominazione.
+- L2 Badge "Verificato Bob" (facoltativo): documento + visura (e DM 37 per
+  impiantisti). Non è un gate: è un boost di ranking/conversione, se lo
+  guadagna chi vuole. Risponde all'obiezione "documenti = frizione inutile".
+- Categorie soft future: L0 basta, con etichetta "occasionale dichiarato".
+
 **Architettura proposta 10.1:** checksum nel form → chiamata server-side al
 provider commerciale alla registrazione pro (stato attiva + confronto
 denominazione/nome) → esito e snapshot salvati in tabella dedicata (audit,
