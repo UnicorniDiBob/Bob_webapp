@@ -56,9 +56,15 @@ task,9.3,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,"Analisi UI redesi
 task,9.4,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,'Ricerche per categoria' anonymous search events (mig 026); staff redirect
 project,25b,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,Privacy: birth date + terms consent moved to private table (mig 027)
 project,T1,Shared,André,Done,2026-07-19,2026-07-19,2026-07-19,Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action
+section,,,,,,,,DIRECT BOOKING & PAYMENTS GROUNDWORK  ·  Jul 2026
+project,IB,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Direct (instant) booking Phase 0 — instant vs preventivo; customer flow gated on Stripe (2027)"
+task,IB.1,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Schema + enablement trigger + RLS (mig 028); 20 eligible subservices seeded (mig 029)"
+task,IB.2,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Pro config UI: per-service rate/unit/min/slot/cancellation + enable toggle (tier-gated)"
+task,IB.3,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Admin catalog curation (/admin/catalogo) + pro weekly availability editor"
+project,PG,Shared,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Payments/subscriptions groundwork — BUILT, DORMANT (activates with Stripe, 2027) [mig 030]"
 section,,,,,,,,WEBSITE — REMAINING TO GO-LIVE  ·  Aug–Dec 2026
 project,8.9,Client/Pro,André,Planned,2026-08-15,2026-09-30,,Empty / error / loading states + server-side validation pass
-project,10,Client/Pro,André,Planned,2026-09-01,2026-10-31,,Automated pro verification + verified badge
+project,10,Client/Pro,André,In progress,2026-09-01,2026-10-31,,Automated pro verification + verified badge
 task,10.1,Shared,André,Planned,2026-09-01,2026-09-30,,VIES / Agenzia Entrate P.IVA check integration
 task,10.2,Internal,Lucio,Planned,2026-09-15,2026-10-15,,ID document upload + manual review queue in admin
 task,10.3,Client/Pro,André,Planned,2026-10-01,2026-10-31,,"Verified badge UI on profiles, listings and ranking; 48h SLA workflow"

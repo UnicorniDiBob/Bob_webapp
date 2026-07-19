@@ -2,7 +2,7 @@
 
 _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** ✅ 56 Done · 🔵 1 In progress · ⬜ 47 Planned · 🔶 3 Milestone
+**Stato:** ✅ 61 Done · 🔵 2 In progress · ⬜ 46 Planned · 🔶 3 Milestone
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -76,12 +76,22 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | **25b** | **Privacy: birth date + terms consent moved to private table (mig 027)** | Internal | Lucio | ✅ Done | 2026-07-18 → 2026-07-18 | 2026-07-18 |
 | **T1** | **Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action** | Shared | André | ✅ Done | 2026-07-19 → 2026-07-19 | 2026-07-19 |
 
+## DIRECT BOOKING & PAYMENTS GROUNDWORK  ·  Jul 2026
+
+| # | Task | Track | Owner | Stato | Periodo | Done on |
+|---|------|-------|-------|-------|---------|---------|
+| **IB** | **Direct (instant) booking Phase 0 — instant vs preventivo; customer flow gated on Stripe (2027)** | Client/Pro | Claude | ✅ Done | 2026-07-19 → 2026-07-19 | 2026-07-19 |
+| IB.1 | Schema + enablement trigger + RLS (mig 028); 20 eligible subservices seeded (mig 029) | Client/Pro | Claude | ✅ Done | 2026-07-19 → 2026-07-19 | 2026-07-19 |
+| IB.2 | Pro config UI: per-service rate/unit/min/slot/cancellation + enable toggle (tier-gated) | Client/Pro | Claude | ✅ Done | 2026-07-19 → 2026-07-19 | 2026-07-19 |
+| IB.3 | Admin catalog curation (/admin/catalogo) + pro weekly availability editor | Client/Pro | Claude | ✅ Done | 2026-07-19 → 2026-07-19 | 2026-07-19 |
+| **PG** | **Payments/subscriptions groundwork — BUILT, DORMANT (activates with Stripe, 2027) [mig 030]** | Shared | Claude | ✅ Done | 2026-07-19 → 2026-07-19 | 2026-07-19 |
+
 ## WEBSITE — REMAINING TO GO-LIVE  ·  Aug–Dec 2026
 
 | # | Task | Track | Owner | Stato | Periodo | Done on |
 |---|------|-------|-------|-------|---------|---------|
 | **8.9** | **Empty / error / loading states + server-side validation pass** | Client/Pro | André | ⬜ Planned | 2026-08-15 → 2026-09-30 |  |
-| **10** | **Automated pro verification + verified badge** | Client/Pro | André | ⬜ Planned | 2026-09-01 → 2026-10-31 |  |
+| **10** | **Automated pro verification + verified badge** | Client/Pro | André | 🔵 In progress | 2026-09-01 → 2026-10-31 |  |
 | 10.1 | VIES / Agenzia Entrate P.IVA check integration | Shared | André | ⬜ Planned | 2026-09-01 → 2026-09-30 |  |
 | 10.2 | ID document upload + manual review queue in admin | Internal | Lucio | ⬜ Planned | 2026-09-15 → 2026-10-15 |  |
 | 10.3 | Verified badge UI on profiles, listings and ranking; 48h SLA workflow | Client/Pro | André | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
