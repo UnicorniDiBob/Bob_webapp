@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import InstantBookingConfig from "@/components/InstantBookingConfig";
+import AvailabilityEditor from "@/components/AvailabilityEditor";
 import type { SubscriptionTier } from "@/lib/supabase/types";
 
 interface City {
@@ -442,6 +443,15 @@ export default function ProProfiloPage() {
             </div>
           )}
         </div>
+
+        {!isOnboarding && profileId && (
+          <div className="border-t border-black/5 pt-5">
+            <span className="label-bob">Orari di disponibilità</span>
+            <div className="mt-2">
+              <AvailabilityEditor professionalId={profileId} />
+            </div>
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-600" data-testid="profile-error">{error}</p>}
         {savedAt && !error && (
