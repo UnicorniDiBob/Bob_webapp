@@ -64,10 +64,10 @@ task,IB.3,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Admin catalog
 project,PG,Shared,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Payments/subscriptions groundwork — BUILT, DORMANT (activates with Stripe, 2027) [mig 030]"
 section,,,,,,,,WEBSITE — REMAINING TO GO-LIVE  ·  Aug–Dec 2026
 project,8.9,Client/Pro,André,Planned,2026-08-15,2026-09-30,,Empty / error / loading states + server-side validation pass
-project,10,Client/Pro,André,In progress,2026-09-01,2026-10-31,,Automated pro verification + verified badge
-task,10.1,Shared,André,Planned,2026-09-01,2026-09-30,,VIES / Agenzia Entrate P.IVA check integration
+project,10,Client/Pro,Lucio,In progress,2026-09-01,2026-10-31,,Automated pro verification + verified badge
+task,10.1,Shared,Lucio,Planned,2026-09-01,2026-09-30,,VIES / Agenzia Entrate P.IVA check integration
 task,10.2,Internal,Lucio,Planned,2026-09-15,2026-10-15,,ID document upload + manual review queue in admin
-task,10.3,Client/Pro,André,Planned,2026-10-01,2026-10-31,,"Verified badge UI on profiles, listings and ranking; 48h SLA workflow"
+task,10.3,Client/Pro,Lucio,Planned,2026-10-01,2026-10-31,,"Verified badge UI on profiles, listings and ranking; 48h SLA workflow"
 project,11,Client/Pro,André,Planned,2026-10-01,2026-11-30,,Transparent ranking + Visibility Boost
 task,11.1,Internal,Lucio,Planned,2026-10-01,2026-10-31,,"Ranking algorithm v1: response rate, closure rate, reviews (data logic)"
 task,11.2,Client/Pro,André,Planned,2026-10-15,2026-11-15,,Ranking explanation UI (seeded by 'why this pro' line)

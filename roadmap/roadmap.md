@@ -91,10 +91,10 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | # | Task | Track | Owner | Stato | Periodo | Done on |
 |---|------|-------|-------|-------|---------|---------|
 | **8.9** | **Empty / error / loading states + server-side validation pass** | Client/Pro | André | ⬜ Planned | 2026-08-15 → 2026-09-30 |  |
-| **10** | **Automated pro verification + verified badge** | Client/Pro | André | 🔵 In progress | 2026-09-01 → 2026-10-31 |  |
-| 10.1 | VIES / Agenzia Entrate P.IVA check integration | Shared | André | ⬜ Planned | 2026-09-01 → 2026-09-30 |  |
+| **10** | **Automated pro verification + verified badge** | Client/Pro | Lucio | 🔵 In progress | 2026-09-01 → 2026-10-31 |  |
+| 10.1 | VIES / Agenzia Entrate P.IVA check integration | Shared | Lucio | ⬜ Planned | 2026-09-01 → 2026-09-30 |  |
 | 10.2 | ID document upload + manual review queue in admin | Internal | Lucio | ⬜ Planned | 2026-09-15 → 2026-10-15 |  |
-| 10.3 | Verified badge UI on profiles, listings and ranking; 48h SLA workflow | Client/Pro | André | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
+| 10.3 | Verified badge UI on profiles, listings and ranking; 48h SLA workflow | Client/Pro | Lucio | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
 | **11** | **Transparent ranking + Visibility Boost** | Client/Pro | André | ⬜ Planned | 2026-10-01 → 2026-11-30 |  |
 | 11.1 | Ranking algorithm v1: response rate, closure rate, reviews (data logic) | Internal | Lucio | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
 | 11.2 | Ranking explanation UI (seeded by 'why this pro' line) | Client/Pro | André | ⬜ Planned | 2026-10-15 → 2026-11-15 |  |
