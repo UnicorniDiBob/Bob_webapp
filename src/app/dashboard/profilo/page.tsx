@@ -258,7 +258,7 @@ export default function ProProfiloPage() {
       </header>
 
       <div className="card space-y-5 p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="label-bob" htmlFor="pf-city">Città</label>
             <select
@@ -326,7 +326,7 @@ export default function ProProfiloPage() {
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="label-bob" htmlFor="pf-years">Anni di esperienza</label>
             <input

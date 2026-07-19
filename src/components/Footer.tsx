@@ -5,7 +5,7 @@ import { COMPANY } from "@/lib/company";
 export function Footer() {
   return (
     <footer className="mt-20 border-t border-black/5 bg-white">
-      <div className="container-bob grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="container-bob grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div className="sm:col-span-2 lg:col-span-2">
           <Logo />
           <p className="mt-3 max-w-xs text-sm text-bob-ink/60">

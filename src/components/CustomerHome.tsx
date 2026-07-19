@@ -464,7 +464,7 @@ export function CustomerHome() {
 
   if (loadingData) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="card h-28 animate-pulse bg-black/[0.03]" />
         ))}
@@ -518,7 +518,7 @@ export function CustomerHome() {
         </section>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
         {/* ---- 2. Lavori in corso ---- */}
         <section className="card p-5">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/55">

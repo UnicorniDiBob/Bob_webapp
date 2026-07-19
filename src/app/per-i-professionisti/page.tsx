@@ -86,7 +86,7 @@ export default function PerIProfessionistiPage() {
 
       {/* Benefici */}
       <section className="container-bob py-12">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {BENEFITS.map((b) => (
             <div key={b.title} className="card flex gap-4 p-6">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-2xl">
@@ -112,7 +112,7 @@ export default function PerIProfessionistiPage() {
           <p className="mt-1 text-sm text-bob-ink/60">
             Chiediamo ai professionisti prezzi trasparenti: ecco i nostri.
           </p>
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-xl border border-black/5 p-4">
               <p className="text-sm font-semibold text-bob-ink">
                 Iscrizione e contatti
@@ -163,7 +163,7 @@ export default function PerIProfessionistiPage() {
       <section className="container-bob pb-12">
         <div className="rounded-2xl border border-black/5 bg-white p-7">
           <h2 className="text-lg font-semibold text-bob-ink">In 3 passi</h2>
-          <ol className="mt-4 grid gap-4 sm:grid-cols-3">
+          <ol className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <li className="flex flex-col gap-1">
               <span className="text-sm font-bold text-bob-indigo">1.</span>
               <span className="font-medium text-bob-ink">Crea il profilo</span>

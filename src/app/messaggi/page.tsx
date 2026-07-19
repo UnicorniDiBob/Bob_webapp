@@ -408,7 +408,7 @@ function MessaggiInner() {
           )}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-[300px_1fr]">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
           {/* lista conversazioni (su mobile nascosta quando un thread è aperto) */}
           <aside
             className={`card max-h-[600px] divide-y divide-black/5 overflow-y-auto p-0 ${

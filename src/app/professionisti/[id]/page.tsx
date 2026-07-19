@@ -74,7 +74,7 @@ export default async function ProfessionalDetailPage({
         <span className="text-bob-ink/70">{p.fullName}</span>
       </nav>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         {/* Colonna principale */}
         <div className="flex flex-col gap-6">
           {/* Intestazione */}

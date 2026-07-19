@@ -63,7 +63,7 @@ export default async function ProfessionalsPage({
           description="Prova ad allargare la ricerca o parla con Bob: ti avvisa appena ne arriva uno adatto."
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((p) => (
             <ProfessionalCardItem key={p.id} p={p} />
           ))}

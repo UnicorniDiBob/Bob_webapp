@@ -156,7 +156,7 @@ export default async function ServicePage({
             description="Stiamo selezionando i primi professionisti. Parla con Bob: ti avvisa appena ne arriva uno adatto."
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {pros.map((p) => (
               <ProfessionalCardItem key={p.id} p={p} />
             ))}

@@ -448,7 +448,7 @@ export default function AccountPage() {
               <p className="text-xs font-semibold text-bob-ink/60">
                 Aggiungi un indirizzo
               </p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-[110px_1fr_150px]">
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[110px_1fr_150px]">
                 <input
                   value={addrLabel}
                   onChange={(e) => setAddrLabel(e.target.value)}
@@ -499,7 +499,7 @@ export default function AccountPage() {
             <p className="mt-1 text-xs text-bob-ink/45">
               Per cambiarla serve la password attuale.
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
                 <label className="label-bob" htmlFor="account-old-pwd">
                   Password attuale

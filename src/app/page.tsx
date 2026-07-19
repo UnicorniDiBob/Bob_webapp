@@ -32,7 +32,7 @@ export default async function HomePage() {
     <>
       {/* 2. HERO con Bob concierge */}
       <section id="bob" className="relative overflow-hidden border-b border-black/5 bg-gradient-to-b from-bob-indigo-50/70 to-transparent scroll-mt-20">
-        <div className="container-bob grid items-center gap-10 py-12 lg:grid-cols-2 lg:py-20">
+        <div className="container-bob grid grid-cols-1 items-center gap-10 py-12 lg:grid-cols-2 lg:py-20">
           <div className="animate-fade-up">
             <span className="chip mb-4">Pilota attivo a Milano</span>
             <h1 className="text-3xl font-extrabold leading-[1.1] tracking-tight text-bob-ink sm:text-4xl lg:text-[2.75rem]">
@@ -72,7 +72,7 @@ export default async function HomePage() {
           eyebrow="Come funziona"
           title="Quattro passi, zero attrito"
         />
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { n: "1", t: "Racconti il problema", d: "Scrivi a Bob con parole tue, anche se non sai quale professionista cercare." },
             { n: "2", t: "Bob capisce il contesto", d: "Ti chiede zona, urgenza e budget per filtrare i profili più rilevanti." },
@@ -99,7 +99,7 @@ export default async function HomePage() {
       <section className="bg-white py-14">
         <div className="container-bob">
           <SectionHead eyebrow="Città" title="Dove sono operativo" />
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {cities.map((c) => {
               const active = c.status === "active";
               return (
@@ -169,7 +169,7 @@ export default async function HomePage() {
             subtitle="Puoi sfogliare i professionisti senza passare dalla chat. Il costo è sempre visibile nella scheda."
             action={{ href: "/professionisti", label: "Vedi tutti" }}
           />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {featuredPros.map((p) => (
               <ProfessionalCardItem key={p.id} p={p} />
             ))}
@@ -179,7 +179,7 @@ export default async function HomePage() {
 
       {/* 7. TRUST SIGNALS */}
       <section className="container-bob py-14">
-        <div className="grid gap-4 rounded-2xl border border-black/5 bg-bob-indigo p-8 text-white sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-black/5 bg-bob-indigo p-8 text-white sm:grid-cols-3">
           <Trust value={`${activeCities.length}`} label="Città presidiata nel pilota" />
           <Trust value={`${professionals.length}`} label="Professionisti nel pilota" />
           <Trust value={`${verifiedCount}`} label="Profili già verificati" />

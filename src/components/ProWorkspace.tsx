@@ -291,7 +291,7 @@ export function ProWorkspace({
         />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         {/* Calendario settimanale */}
         <div className="card p-5">
           <div className="mb-4 flex items-center justify-between gap-2">

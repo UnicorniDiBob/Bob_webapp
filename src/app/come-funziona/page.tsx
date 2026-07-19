@@ -48,7 +48,7 @@ export default function ComeFunzionaPage() {
         </p>
       </header>
 
-      <div className="mx-auto mt-10 grid max-w-4xl gap-4 sm:grid-cols-2">
+      <div className="mx-auto mt-10 grid grid-cols-1 max-w-4xl gap-4 sm:grid-cols-2">
         {STEPS.map((s) => (
           <div key={s.n} className="card flex gap-4 p-6">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-2xl">

@@ -160,7 +160,7 @@ export default function AdminTeamPage() {
         </h2>
         <div className="card p-6">
           <form onSubmit={invite} className="flex flex-col gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="label-bob">Nome e cognome</label>
                 <input
@@ -187,7 +187,7 @@ export default function AdminTeamPage() {
 
             <div>
               <label className="label-bob">Ruolo</label>
-              <div className="mt-1 grid gap-3 sm:grid-cols-2">
+              <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => setRole("cs")}

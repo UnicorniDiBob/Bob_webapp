@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
       {role === "professional" ? (
         loadingPro ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[0, 1].map((i) => (
               <div key={i} className="card h-28 animate-pulse bg-black/[0.03]" />
             ))}
