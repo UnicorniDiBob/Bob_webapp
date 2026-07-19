@@ -44,6 +44,9 @@ export default async function AdminLayout({
               <SidebarLink href="/admin/analisi" label="Analisi" icon="📈" />
             )}
             {isAdmin && (
+              <SidebarLink href="/admin/catalogo" label="Prenotazione diretta" icon="⚡" />
+            )}
+            {isAdmin && (
               <SidebarLink href="/admin/cs" label="Team" icon="🎧" />
             )}
           </nav>
@@ -67,6 +70,7 @@ export default async function AdminLayout({
           <MobileLink href="/admin/professionals" label="Verifiche" />
           <MobileLink href="/admin/users" label="Utenti" />
           {isAdmin && <MobileLink href="/admin/analisi" label="Analisi" />}
+          {isAdmin && <MobileLink href="/admin/catalogo" label="Prenotazione" />}
           {isAdmin && <MobileLink href="/admin/cs" label="CS" />}
         </div>
         {children}
