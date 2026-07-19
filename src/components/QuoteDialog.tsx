@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
+import { notifyEvent } from "@/lib/notify";
 import type { ProfessionalCard } from "@/lib/supabase/types";
 import type { Severity } from "@/lib/bob";
 
@@ -134,6 +135,13 @@ export function QuoteDialog({
       if (linkRes.error) throw linkRes.error;
       if (msgRes.error) throw msgRes.error;
 
+      for (const p of professionals) {
+        notifyEvent("new_request", {
+          requestId: req.id,
+          professionalId: p.id,
+          preview: message,
+        });
+      }
       setDone(true);
     } catch {
       setError("Qualcosa è andato storto nell'invio. Riprova tra poco.");

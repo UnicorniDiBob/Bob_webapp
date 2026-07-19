@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ReviewDialog } from "@/components/ReviewDialog";
 import { sendMessage } from "@/lib/messages";
+import { notifyEvent } from "@/lib/notify";
 
 interface CustomerRequest {
   id: string;
@@ -277,6 +278,10 @@ export function CustomerHome() {
           ? `✅ Ho confermato l'appuntamento di ${dow} ${day} alle ${time}.`
           : `❌ Non posso ${dow} ${day} alle ${time}: proponi un altro orario?`
       );
+      notifyEvent(ok ? "appointment_confirmed" : "appointment_declined", {
+        requestId: a.request_id,
+        professionalId: a.professional_id,
+      });
       await load();
     }
     setRespondingAppt(null);

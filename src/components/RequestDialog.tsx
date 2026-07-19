@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
+import { notifyEvent } from "@/lib/notify";
 import type { ProfessionalCard } from "@/lib/supabase/types";
 
 interface RequestContext {
@@ -121,6 +122,11 @@ export function RequestDialog({
         }),
       ]);
 
+      notifyEvent("new_request", {
+        requestId: req.id,
+        professionalId: professional.id,
+        preview: message,
+      });
       setDone(true);
     } catch {
       setError(

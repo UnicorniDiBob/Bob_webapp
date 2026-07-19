@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { busyFromAppointments } from "@/lib/slots";
+import { buildEmail, sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
@@ -120,6 +121,44 @@ export async function POST(request: Request) {
     sender_id: user.id,
     message: `🔄 Ti propongo un orario diverso: ${label}. Puoi confermarlo dal tuo calendario.`,
   });
+
+  const relName = (rel: unknown): string | null => {
+    const r = Array.isArray(rel) ? rel[0] : rel;
+    return (r as { name?: string } | null)?.name ?? null;
+  };
+  // Notifica email al pro (dormiente senza RESEND_API_KEY): il cliente ha
+  // proposto un nuovo orario, il pro lo conferma dal suo calendario.
+  try {
+    const { data: proRow } = await admin
+      .from("professionals")
+      .select("user_id")
+      .eq("id", appt.professional_id)
+      .maybeSingle();
+    const proUserId = (proRow as { user_id: string | null } | null)?.user_id;
+    if (proUserId) {
+      const { data: proUser } = await admin.auth.admin.getUserById(proUserId);
+      const to = proUser.user?.email ?? null;
+      const { data: reqRow } = await admin
+        .from("requests")
+        .select("services ( name ), cities ( name )")
+        .eq("id", appt.request_id)
+        .maybeSingle();
+      if (to) {
+        await sendEmail(
+          buildEmail("appointment_proposed", to, {
+            recipientName: null,
+            senderName: appt.customer_name ?? null,
+            serviceName: relName((reqRow as Record<string, unknown> | null)?.services),
+            cityName: relName((reqRow as Record<string, unknown> | null)?.cities),
+            preview: `${label} (${appt.duration_minutes} min)`,
+            link: "/dashboard",
+          })
+        );
+      }
+    }
+  } catch {
+    // notifica non critica
+  }
 
   return NextResponse.json({ ok: true });
 }

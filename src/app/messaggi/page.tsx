@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { useUnread } from "@/components/UnreadProvider";
 import { createClient } from "@/lib/supabase/client";
 import { busyFromAppointments, computeFreeSlots } from "@/lib/slots";
+import { notifyEvent } from "@/lib/notify";
 import {
   getConversations,
   getMessages,
@@ -225,6 +226,11 @@ function MessaggiInner() {
       "professional",
       `📅 Ti propongo un appuntamento: ${when} (${apptDuration} min). Puoi confermarlo dalla tua area personale.`
     );
+    notifyEvent("appointment_proposed", {
+      requestId: activeR,
+      professionalId: myProId,
+      preview: `${when} (${apptDuration} min)`,
+    });
     await loadThread(activeR, activeP);
     setApptSaving(false);
     setProposeOpen(false);
@@ -351,6 +357,12 @@ function MessaggiInner() {
       setMessages((m) => m.filter((x) => x.id !== optimistic.id));
       setDraft(text);
     } else {
+      notifyEvent("new_message", {
+        requestId: activeR,
+        professionalId:
+          activeP ?? (myType === "professional" ? myProId : null),
+        preview: text,
+      });
       await loadThread(activeR, activeP);
       // aggiorna anteprima nella lista
       setConversations((cs) =>

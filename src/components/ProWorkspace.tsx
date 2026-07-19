@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { notifyEvent } from "@/lib/notify";
 import { Stars, VerificationBadge } from "@/components/ui";
 import { AppointmentDialog } from "@/components/AppointmentDialog";
 import { ProRequestSummary } from "@/components/ProRequestSummary";
@@ -182,6 +183,10 @@ export function ProWorkspace({
           ? `✅ Confermo l'appuntamento di ${label}. A presto!`
           : `❌ Purtroppo ${label} non riesco: scrivimi e troviamo un altro orario.`
       );
+      notifyEvent(ok ? "appointment_confirmed" : "appointment_declined", {
+        requestId: a.request_id,
+        professionalId: proId,
+      });
     }
     await reload();
   }
