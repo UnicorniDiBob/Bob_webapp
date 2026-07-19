@@ -11,6 +11,7 @@ André e Lucio lavorino sullo stesso file.
 | `roadmap.csv` | **Fonte di verità.** Una riga per attività. Modifica qui. |
 | `build_roadmap.py` | Genera `BOB_Roadmap_Gantt.xlsx` (barre Gantt + colori). |
 | `sync_status.py` | Incrocia i commit git col CSV e segnala cosa aggiornare. |
+| `roadmap.md` | Versione leggibile (auto-generata). Si vede nel progetto Claude. |
 | `BOB_Roadmap_Gantt.xlsx` | Output generato. Non modificarlo a mano: si rigenera. |
 
 ## Colonne del CSV
@@ -44,6 +45,20 @@ André e Lucio lavorino sullo stesso file.
 
 Metti l'id del task fra parentesi nel messaggio: `feat(8.9): stati vuoti/errore`.
 `sync_status.py` lo riconosce e segnala se quel task è ancora `Planned`.
+
+## Dove si vede il roadmap
+
+- **Nel progetto Claude, sempre:** `roadmap.md` è sincronizzato dal repo, quindi
+  compare fra i file del progetto ed è sempre aggiornato (testo leggibile).
+- **A comando, in una chat Cowork:** chiedi "mostrami il roadmap" e viene reso
+  come tabella o Gantt visivo leggendo `roadmap.csv` corrente.
+- **Gantt completo con barre:** apri `BOB_Roadmap_Gantt.xlsx` in Excel/LibreOffice.
+
+## Automazione (GitHub Action)
+
+`.github/workflows/roadmap.yml` rigenera `xlsx` + `md` a ogni push che tocca
+`roadmap.csv`, e li ri-committa (`[skip ci]`, nessun loop). Quindi in pratica:
+modifichi solo il CSV, il resto si aggiorna da solo.
 
 ## Barre Gantt
 

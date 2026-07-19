@@ -1,0 +1,45 @@
+name: Roadmap — regenerate tracker
+
+# Rigenera l'xlsx e il markdown quando cambia la fonte di verità roadmap.csv.
+# Committa i file generati (con [skip ci] per non ritriggerare l'action).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "roadmap/roadmap.csv"
+      - "roadmap/build_roadmap.py"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: roadmap-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install openpyxl
+
+      - name: Regenerate roadmap (xlsx + md)
+        run: python3 roadmap/build_roadmap.py
+
+      - name: Commit generated files if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain roadmap/BOB_Roadmap_Gantt.xlsx roadmap/roadmap.md)" ]; then
+            git add roadmap/BOB_Roadmap_Gantt.xlsx roadmap/roadmap.md
+            git commit -m "chore(roadmap): regenerate tracker from roadmap.csv [skip ci]"
+            git push
+          else
+            echo "No changes to commit."
+          fi

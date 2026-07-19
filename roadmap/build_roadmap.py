@@ -24,6 +24,43 @@ TRACK_TEXT={"Client/Pro":"3730A3","Internal":"0F6E56","Shared":"5F5E5A"}
 
 def D(s): return datetime.strptime(s,"%Y-%m-%d") if s else ""
 
+
+MD_OUT = os.path.join(HERE, "roadmap.md")
+STATUS_ICON={"Done":"✅","In progress":"🔵","Planned":"⬜","Milestone":"🔶"}
+
+def write_md(R):
+    done=sum(1 for x in R if x["status"]=="Done")
+    prog=sum(1 for x in R if x["status"]=="In progress")
+    plan=sum(1 for x in R if x["status"]=="Planned")
+    mile=sum(1 for x in R if x["status"]=="Milestone")
+    L=[]
+    L.append("# BOB — Roadmap")
+    L.append("")
+    L.append("_Generato automaticamente da `roadmap.csv` — non modificare a mano. "
+             "Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._")
+    L.append("")
+    L.append(f"**Stato:** ✅ {done} Done · 🔵 {prog} In progress · ⬜ {plan} Planned · 🔶 {mile} Milestone")
+    L.append("")
+    L.append("**Track:** Client/Pro → André · Internal → Lucio · Shared")
+    L.append("")
+    for row in R:
+        if row["kind"]=="section":
+            L.append("")
+            L.append(f"## {row['task']}")
+            L.append("")
+            L.append("| # | Task | Track | Owner | Stato | Periodo | Done on |")
+            L.append("|---|------|-------|-------|-------|---------|---------|")
+            continue
+        ic=STATUS_ICON.get(row["status"],"")
+        per=f"{row['start']} → {row['end']}" if row["start"] else ""
+        task=row["task"].replace("|","\\|")
+        idc=f"**{row['id']}**" if row["kind"]=="project" else row["id"]
+        taskc=f"**{task}**" if row["kind"]=="project" else task
+        L.append(f"| {idc} | {taskc} | {row['track']} | {row['owner']} | {ic} {row['status']} | {per} | {row['done_on']} |")
+    with open(MD_OUT,"w",encoding="utf-8") as f:
+        f.write("\n".join(L)+"\n")
+    return done
+
 def main():
     with open(CSV,encoding="utf-8") as f:
         R=list(csv.DictReader(f))
@@ -113,6 +150,7 @@ def main():
 
     ws.sheet_view.showGridLines=False
     wb.save(OUT)
+    write_md(R)
     done=sum(1 for x in R if x["status"]=="Done")
     print(f"OK: {OUT}  ({len(R)} rows, {done} done)")
 
