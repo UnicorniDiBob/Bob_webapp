@@ -9,6 +9,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import InstantBookingConfig from "@/components/InstantBookingConfig";
+import type { SubscriptionTier } from "@/lib/supabase/types";
 
 interface City {
   id: string;
@@ -44,6 +46,7 @@ export default function ProProfiloPage() {
   const [booted, setBooted] = useState(false);
   const [profileId, setProfileId] = useState<string | null>(null); // null = onboarding
   const [serviceRowId, setServiceRowId] = useState<string | null>(null);
+  const [tier, setTier] = useState<SubscriptionTier>("free");
 
   // dati di supporto
   const [cities, setCities] = useState<City[]>([]);
@@ -88,7 +91,7 @@ export default function ProProfiloPage() {
           supabase
             .from("professionals")
             .select(
-              "id, city_id, headline, bio, years_experience, response_time_label, subservice_slugs"
+              "id, city_id, headline, bio, years_experience, response_time_label, subservice_slugs, subscription_tier"
             )
             .eq("user_id", user.id)
             .maybeSingle(),
@@ -111,6 +114,7 @@ export default function ProProfiloPage() {
         if (p.response_time_label)
           setResponseLabel(p.response_time_label as string);
         setSubSlugs((p.subservice_slugs as string[]) ?? []);
+        setTier((p.subscription_tier as SubscriptionTier) ?? "free");
 
         // servizio principale + prezzi
         const { data: ps } = await supabase
@@ -418,6 +422,26 @@ export default function ProProfiloPage() {
             </div>
           </div>
         )}
+
+        <div className="border-t border-black/5 pt-5">
+          <span className="label-bob">Prenotazione diretta</span>
+          {isOnboarding || !serviceId ? (
+            <p className="mt-1 text-sm text-bob-ink/55">
+              Salva prima il profilo e i servizi: poi potrai attivare la
+              prenotazione diretta sui lavori a tariffa fissa.
+            </p>
+          ) : (
+            <div className="mt-2">
+              <InstantBookingConfig
+                professionalId={profileId as string}
+                serviceId={serviceId}
+                cityId={cityId}
+                subSlugs={subSlugs}
+                tier={tier}
+              />
+            </div>
+          )}
+        </div>
 
         {error && <p className="text-sm text-red-600" data-testid="profile-error">{error}</p>}
         {savedAt && !error && (

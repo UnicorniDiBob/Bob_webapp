@@ -6,6 +6,33 @@ export type UserRole = "customer" | "professional" | "admin" | "cs";
 export type SubscriptionTier = "free" | "pro" | "business";
 export type MacroRegion = "nord" | "centro" | "sud";
 
+// Prenotazione diretta (instant booking) — vedi docs/Bob_Instant_Booking_Spec.md
+export type RateUnit = "hour" | "m2" | "job" | "session";
+
+// Etichette IT per unità di tariffa (billable unit).
+export const RATE_UNIT_LABELS: Record<RateUnit, string> = {
+  hour: "ora",
+  m2: "m²",
+  job: "intervento",
+  session: "sessione",
+};
+
+// Finestra minima di cancellazione imposta dalla piattaforma (mirror del trigger DB).
+export const MIN_CANCELLATION_WINDOW_HOURS = 24;
+
+// Un campo del modulo di prenotazione, definito per subservice (catalogo).
+// Esattamente un campo per job ha is_billable_unit = true.
+export interface BookingField {
+  key: string;
+  label: string;
+  type: "number" | "select" | "bool" | "text";
+  unit?: string;
+  required: boolean;
+  is_billable_unit: boolean;
+  options?: string[];
+  help?: string;
+}
+
 // Limiti foto portfolio per tier (null = illimitato). Fonte di verità: trigger DB.
 export const PORTFOLIO_LIMITS: Record<SubscriptionTier, number | null> = {
   free: 0,
@@ -46,6 +73,10 @@ export interface Subservice {
   slug: string;
   description: string | null;
   created_at: string | null;
+  // Prenotazione diretta (migration 028/029)
+  instant_book_eligible: boolean;
+  booking_fields: BookingField[];
+  default_rate_unit: RateUnit | null;
 }
 
 export interface Profile {
@@ -99,6 +130,13 @@ export interface ProfessionalService {
   max_price: number | null;
   price_note: string | null;
   city_id: string;
+  // Prenotazione diretta (migration 028)
+  instant_book_enabled: boolean;
+  rate_amount: number | null;
+  rate_unit: RateUnit | null;
+  min_units: number | null;
+  slot_duration_min: number | null;
+  cancellation_window_hours: number | null;
 }
 
 export interface Rating {
