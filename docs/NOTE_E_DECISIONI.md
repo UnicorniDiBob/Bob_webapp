@@ -47,6 +47,20 @@ lancio; eventuale tier "occasionale" solo se in futuro si aprono categorie
 soft (ripetizioni, dog sitting…), con autodichiarazione, limiti e senza badge
 "Verificato".
 
+**Come si comportano i competitor (verificato 2026-07-19):**
+
+| Piattaforma | P.IVA all'iscrizione | Verifica | Note |
+| --- | --- | --- | --- |
+| Instapro | **Obbligatoria** ("valida e attiva", requisito T&C anche per persone fisiche) | Sì, all'ingresso | Ne fa un claim di fiducia: "tutti i nostri professionisti hanno P.IVA" |
+| ProntoPro | Non richiesta all'ingresso (iscrizione libera e gratuita) | No fiscale; badge "Top Pro" = solo recensioni (12+ con media ≥4.8) | Conseguenza nota: qualità percepita bassa, contatti contestati (v. Competitor Gap xlsx) |
+| Cronoshare | Non richiesta | No | Pubblica perfino guide "fatturare senza P.IVA" (prestazione occasionale) |
+| StarOfService | Non richiesta | No | Modello lead-gen aperto, nessun presidio fiscale |
+
+Pattern: il mercato si divide tra piattaforme aperte (massima offerta, rischio
+qualità scaricato sul cliente) e Instapro che usa la P.IVA obbligatoria come
+argomento di vendita. Nessuno fa la via di mezzo: ingresso aperto + verifica
+come gate di visibilità. È lo spazio per Bob (v. decisione 10.x).
+
 **Architettura proposta 10.1:** checksum nel form → chiamata server-side al
 provider commerciale alla registrazione pro (stato attiva + confronto
 denominazione/nome) → esito e snapshot salvati in tabella dedicata (audit,
