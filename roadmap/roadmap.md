@@ -2,7 +2,7 @@
 
 _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** ✅ 55 Done · 🔵 1 In progress · ⬜ 47 Planned · 🔶 3 Milestone
+**Stato:** ✅ 56 Done · 🔵 1 In progress · ⬜ 47 Planned · 🔶 3 Milestone
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -74,6 +74,7 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | 9.3 | Analisi UI redesign, Excel export, cancellations view | Internal | Lucio | ✅ Done | 2026-07-18 → 2026-07-18 | 2026-07-18 |
 | 9.4 | 'Ricerche per categoria' anonymous search events (mig 026); staff redirect | Internal | Lucio | ✅ Done | 2026-07-18 → 2026-07-18 | 2026-07-18 |
 | **25b** | **Privacy: birth date + terms consent moved to private table (mig 027)** | Internal | Lucio | ✅ Done | 2026-07-18 → 2026-07-18 | 2026-07-18 |
+| **T1** | **Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action** | Shared | André | ✅ Done | 2026-07-19 → 2026-07-19 | 2026-07-19 |
 
 ## WEBSITE — REMAINING TO GO-LIVE  ·  Aug–Dec 2026
 
