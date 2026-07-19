@@ -1,7 +1,8 @@
 name: Roadmap — regenerate tracker
 
-# Rigenera l'xlsx e il markdown quando cambia la fonte di verità roadmap.csv.
-# Committa i file generati (con [skip ci] per non ritriggerare l'action).
+# Rigenera il markdown (e l'xlsx) quando cambia la fonte di verità roadmap.csv.
+# Committa SOLO roadmap.md (testo deterministico → nessun churn). L'xlsx non è
+# tracciato in git: viene rigenerato e caricato come artifact scaricabile.
 on:
   push:
     branches: [main]
@@ -29,17 +30,24 @@ jobs:
       - name: Install deps
         run: pip install openpyxl
 
-      - name: Regenerate roadmap (xlsx + md)
+      - name: Regenerate roadmap (md + xlsx)
         run: python3 roadmap/build_roadmap.py
 
-      - name: Commit generated files if changed
+      - name: Commit roadmap.md if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -n "$(git status --porcelain roadmap/BOB_Roadmap_Gantt.xlsx roadmap/roadmap.md)" ]; then
-            git add roadmap/BOB_Roadmap_Gantt.xlsx roadmap/roadmap.md
-            git commit -m "chore(roadmap): regenerate tracker from roadmap.csv [skip ci]"
+          if [ -n "$(git status --porcelain roadmap/roadmap.md)" ]; then
+            git add roadmap/roadmap.md
+            git commit -m "chore(roadmap): regenerate roadmap.md from roadmap.csv [skip ci]"
             git push
           else
-            echo "No changes to commit."
+            echo "roadmap.md unchanged — nothing to commit."
           fi
+
+      - name: Upload Gantt xlsx as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: roadmap-gantt-xlsx
+          path: roadmap/BOB_Roadmap_Gantt.xlsx
+          if-no-files-found: warn

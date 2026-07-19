@@ -12,7 +12,7 @@ André e Lucio lavorino sullo stesso file.
 | `build_roadmap.py` | Genera `BOB_Roadmap_Gantt.xlsx` (barre Gantt + colori). |
 | `sync_status.py` | Incrocia i commit git col CSV e segnala cosa aggiornare. |
 | `roadmap.md` | Versione leggibile (auto-generata). Si vede nel progetto Claude. |
-| `BOB_Roadmap_Gantt.xlsx` | Output generato. Non modificarlo a mano: si rigenera. |
+| `BOB_Roadmap_Gantt.xlsx` | Output generato — **non tracciato in git** (in `.gitignore`). Rigeneralo con lo script; la CI lo carica come artifact scaricabile. Ha 2 fogli: **Roadmap** (Gantt) e **Dati** (tabella filtrabile per owner/track/stato/scadenza in Excel). |
 
 ## Colonne del CSV
 
@@ -59,6 +59,11 @@ Metti l'id del task fra parentesi nel messaggio: `feat(8.9): stati vuoti/errore`
 `.github/workflows/roadmap.yml` rigenera `xlsx` + `md` a ogni push che tocca
 `roadmap.csv`, e li ri-committa (`[skip ci]`, nessun loop). Quindi in pratica:
 modifichi solo il CSV, il resto si aggiorna da solo.
+
+La CI committa **solo `roadmap.md`** (testo deterministico, nessun churn) e pubblica
+l'`.xlsx` come *artifact* scaricabile dalla pagina della run. L'xlsx non sta in git
+per evitare conflitti binari: chi lo vuole lo rigenera con `python3 roadmap/build_roadmap.py`
+o lo scarica dall'ultima run della Action.
 
 ## Barre Gantt
 

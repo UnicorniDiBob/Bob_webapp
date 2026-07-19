@@ -61,6 +61,34 @@ def write_md(R):
         f.write("\n".join(L)+"\n")
     return done
 
+
+
+
+def build_dati(wb, R):
+    from openpyxl.styles import Font as _F, PatternFill as _P, Alignment as _A, Border as _B, Side as _S
+    ws2 = wb.create_sheet("Dati")
+    _thin=_S(style="thin",color="D9D9D9"); _bd=_B(_thin,_thin,_thin,_thin)
+    heads=["#","Track","Owner","Status","Start","End","Done on","Sezione","Task"]
+    section=""
+    ws2.append(heads)
+    for c in ws2[1]:
+        c.font=_F(name="Arial",bold=True,size=9,color="FFFFFF"); c.fill=_P("solid",fgColor="1F3864")
+        c.alignment=_A(horizontal="left"); c.border=_bd
+    for row in R:
+        if row["kind"]=="section": section=row["task"]; continue
+        ws2.append([row["id"],row["track"],row["owner"],row["status"],
+                    D(row["start"]),D(row["end"]),D(row["done_on"]),section,row["task"]])
+        r=ws2.max_row
+        for ci in range(1,10):
+            cc=ws2.cell(r,ci); cc.border=_bd; cc.font=_F(name="Arial",size=9)
+            if ci in (5,6,7): cc.number_format="yyyy-mm-dd"
+    ws2.auto_filter.ref=f"A1:I{ws2.max_row}"
+    ws2.freeze_panes="A2"
+    for col,w in zip("ABCDEFGHI",[7,11,9,13,12,12,12,34,60]):
+        ws2.column_dimensions[col].width=w
+    ws2.sheet_view.showGridLines=False
+
+
 def main():
     with open(CSV,encoding="utf-8") as f:
         R=list(csv.DictReader(f))
@@ -149,6 +177,11 @@ def main():
     ws.merge_cells(start_row=lr+6,start_column=4,end_row=lr+9,end_column=13)
 
     ws.sheet_view.showGridLines=False
+    build_dati(wb, R)
+    # Props fisse: xlsx riproducibile (niente diff spurie da timestamp).
+    from datetime import datetime as _dt
+    _fixed=_dt(2026,1,1)
+    wb.properties.created=_fixed; wb.properties.modified=_fixed; wb.properties.creator="roadmap-build"
     wb.save(OUT)
     write_md(R)
     done=sum(1 for x in R if x["status"]=="Done")
