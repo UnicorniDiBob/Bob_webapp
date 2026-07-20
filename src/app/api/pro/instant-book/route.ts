@@ -92,20 +92,8 @@ export async function POST(request: Request) {
     );
   }
 
-  // 3. Validazione campi obbligatori + valore fatturabile.
-  for (const f of fields) {
-    if (
-      f.required &&
-      (answers[f.key] === undefined ||
-        answers[f.key] === null ||
-        answers[f.key] === "")
-    ) {
-      return NextResponse.json(
-        { error: "Compila tutti i campi obbligatori." },
-        { status: 400 }
-      );
-    }
-  }
+  // 3. Per una prenotazione serve SOLO il campo fatturabile (es. le ore):
+  // gli altri campi sono contesto facoltativo per il pro, non bloccano.
   const qty = Number(answers[billable.key]);
   if (!(qty > 0)) {
     return NextResponse.json(
