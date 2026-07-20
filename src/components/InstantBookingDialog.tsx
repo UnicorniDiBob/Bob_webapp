@@ -2,7 +2,7 @@
 
 // Dialog di prenotazione diretta (anteprima SENZA pagamento).
 // Flusso snello: UNA domanda principale (la quantità fatturabile, es. le ore) +
-// dettagli facoltativi a scomparsa → scegli data e ora da un calendario →
+// dettagli facoltativi a scomparsa → scegli lo slot da una vista settimanale →
 // conferma → appuntamento creato e contatti del pro svelati.
 // Il passaggio di pagamento si aggiungerà tra "conferma" e creazione (2027).
 
@@ -38,7 +38,6 @@ const WD_LABELS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function romeKey(iso: string) {
-  // 'YYYY-MM-DD' del giorno italiano dello slot
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
@@ -63,6 +62,17 @@ function fullLabel(iso: string) {
     minute: "2-digit",
   });
 }
+const keyOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const addDays = (d: Date, n: number) =>
+  new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+function mondayOf(d: Date) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return addDays(x, -((x.getDay() + 6) % 7));
+}
+function keyToDate(key: string) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
 
 export default function InstantBookingDialog({
   service,
@@ -79,8 +89,7 @@ export default function InstantBookingDialog({
   const [showDetails, setShowDetails] = useState(false);
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [viewMonth, setViewMonth] = useState<{ y: number; m: number } | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [weekStart, setWeekStart] = useState<Date | null>(null);
   const [selectedIso, setSelectedIso] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,7 +158,6 @@ export default function InstantBookingDialog({
     }
   }
 
-  // Slot raggruppati per giorno italiano.
   const slotsByDate = useMemo(() => {
     const m = new Map<string, string[]>();
     for (const s of slots) {
@@ -160,102 +168,87 @@ export default function InstantBookingDialog({
     return m;
   }, [slots]);
 
-  // All'arrivo degli slot, apri il calendario sul primo giorno disponibile.
+  // All'arrivo degli slot, apri la settimana del primo giorno disponibile.
   useEffect(() => {
     if (slots.length === 0) return;
-    const firstKey = romeKey(slots[0]);
-    const [y, mo] = firstKey.split("-").map(Number);
-    setViewMonth({ y, m: mo - 1 });
-    setSelectedDate(firstKey);
+    setWeekStart(mondayOf(keyToDate(romeKey(slots[0]))));
     setSelectedIso(null);
   }, [slots]);
 
-  const todayKey = romeKey(new Date().toISOString());
+  const lastKey = slots.length ? romeKey(slots[slots.length - 1]) : "";
 
-  function shiftMonth(delta: number) {
-    setViewMonth((v) => {
-      if (!v) return v;
-      const d = new Date(v.y, v.m + delta, 1);
-      return { y: d.getFullYear(), m: d.getMonth() };
-    });
-  }
-
-  function renderCalendar() {
-    if (!viewMonth) return null;
-    const { y, m } = viewMonth;
-    const monthLabel = new Date(y, m, 1).toLocaleDateString("it-IT", {
-      month: "long",
-      year: "numeric",
-    });
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const leadBlanks = (new Date(y, m, 1).getDay() + 6) % 7; // lun-first
-    const cells: (number | null)[] = [
-      ...Array(leadBlanks).fill(null),
-      ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-    ];
-    const canPrev = `${y}-${pad(m + 1)}` > todayKey.slice(0, 7);
+  function renderWeek() {
+    if (!weekStart) return null;
+    const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    const end = addDays(weekStart, 6);
+    const label = `${weekStart.toLocaleDateString("it-IT", {
+      day: "numeric",
+    })}–${end.toLocaleDateString("it-IT", { day: "numeric", month: "short" })}`;
+    const canPrev = keyOf(weekStart) > keyOf(mondayOf(new Date()));
+    const canNext = keyOf(addDays(weekStart, 7)) <= lastKey;
 
     return (
       <div>
         <div className="mb-2 flex items-center justify-between">
           <button
-            onClick={() => canPrev && shiftMonth(-1)}
+            onClick={() => canPrev && setWeekStart(addDays(weekStart, -7))}
             disabled={!canPrev}
             className={`px-2 py-1 text-sm ${
               canPrev ? "text-bob-indigo" : "text-bob-ink/25"
             }`}
-            aria-label="Mese precedente"
+            aria-label="Settimana precedente"
           >
             ‹
           </button>
-          <span className="text-sm font-semibold capitalize text-bob-ink">
-            {monthLabel}
-          </span>
+          <span className="text-sm font-semibold text-bob-ink">{label}</span>
           <button
-            onClick={() => shiftMonth(1)}
-            className="px-2 py-1 text-sm text-bob-indigo"
-            aria-label="Mese successivo"
+            onClick={() => canNext && setWeekStart(addDays(weekStart, 7))}
+            disabled={!canNext}
+            className={`px-2 py-1 text-sm ${
+              canNext ? "text-bob-indigo" : "text-bob-ink/25"
+            }`}
+            aria-label="Settimana successiva"
           >
             ›
           </button>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center">
-          {WD_LABELS.map((w) => (
-            <div key={w} className="text-[10px] font-semibold text-bob-ink/40">
-              {w}
-            </div>
-          ))}
-          {cells.map((d, i) => {
-            if (d === null) return <div key={`b${i}`} />;
-            const key = `${y}-${pad(m + 1)}-${pad(d)}`;
-            const has = slotsByDate.has(key);
-            const isSel = key === selectedDate;
+        <div className="grid grid-cols-7 gap-1">
+          {days.map((day, i) => {
+            const dslots = slotsByDate.get(keyOf(day)) ?? [];
             return (
-              <button
-                key={key}
-                disabled={!has}
-                onClick={() => {
-                  setSelectedDate(key);
-                  setSelectedIso(null);
-                }}
-                className={`aspect-square rounded-lg text-sm ${
-                  isSel
-                    ? "bg-bob-indigo font-semibold text-white"
-                    : has
-                    ? "bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100"
-                    : "text-bob-ink/25"
-                }`}
-              >
-                {d}
-              </button>
+              <div key={keyOf(day)} className="min-w-0">
+                <div className="text-center text-[10px] font-semibold uppercase text-bob-ink/45">
+                  {WD_LABELS[i]}
+                  <div className="text-xs text-bob-ink/70">{day.getDate()}</div>
+                </div>
+                <div className="mt-1 flex flex-col gap-1">
+                  {dslots.length === 0 ? (
+                    <span className="text-center text-[10px] text-bob-ink/25">
+                      —
+                    </span>
+                  ) : (
+                    dslots.map((iso) => (
+                      <button
+                        key={iso}
+                        onClick={() => setSelectedIso(iso)}
+                        className={`rounded-md px-0.5 py-1 text-[11px] leading-tight ${
+                          selectedIso === iso
+                            ? "bg-bob-indigo text-white"
+                            : "bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100"
+                        }`}
+                      >
+                        {timeLabel(iso)}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>
       </div>
     );
   }
-
-  const daySlots = selectedDate ? slotsByDate.get(selectedDate) ?? [] : [];
 
   return (
     <div
@@ -300,7 +293,6 @@ export default function InstantBookingDialog({
           </div>
         ) : step === "form" ? (
           <div className="space-y-4">
-            {/* Domanda principale: il campo fatturabile */}
             {billable && (
               <div>
                 <label className="label-bob">
@@ -319,7 +311,6 @@ export default function InstantBookingDialog({
               </div>
             )}
 
-            {/* Dettagli facoltativi a scomparsa */}
             {details.length > 0 && (
               <div>
                 <button
@@ -327,7 +318,9 @@ export default function InstantBookingDialog({
                   onClick={() => setShowDetails((v) => !v)}
                   className="text-sm font-medium text-bob-indigo hover:underline"
                 >
-                  {showDetails ? "− Nascondi dettagli" : "+ Aggiungi dettagli (facoltativo)"}
+                  {showDetails
+                    ? "− Nascondi dettagli"
+                    : "+ Aggiungi dettagli (facoltativo)"}
                 </button>
                 {showDetails && (
                   <div className="mt-3 space-y-3">
@@ -396,7 +389,7 @@ export default function InstantBookingDialog({
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button onClick={goToSlots} className="btn-primary w-full py-2.5">
-              Scegli data e ora
+              Scegli quando
             </button>
           </div>
         ) : step === "slot" ? (
@@ -409,37 +402,14 @@ export default function InstantBookingDialog({
                 {professionalName} per un preventivo.
               </p>
             ) : (
-              <div className="space-y-4">
-                {renderCalendar()}
-                <div>
-                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-bob-ink/45">
-                    Orari disponibili
-                  </p>
-                  {daySlots.length === 0 ? (
-                    <p className="text-sm text-bob-ink/50">
-                      Scegli un giorno evidenziato nel calendario.
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {daySlots.map((iso) => (
-                        <button
-                          key={iso}
-                          onClick={() => setSelectedIso(iso)}
-                          className={`chip ${
-                            selectedIso === iso
-                              ? "bg-bob-indigo text-white"
-                              : "hover:bg-bob-indigo-100"
-                          }`}
-                        >
-                          {timeLabel(iso)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              renderWeek()
             )}
 
+            {selectedIso && (
+              <p className="text-sm text-bob-ink/70">
+                Scelto: <strong>{fullLabel(selectedIso)}</strong>
+              </p>
+            )}
             <div className="rounded-lg bg-bob-indigo-50 px-3 py-2 text-sm text-bob-ink">
               {price != null && (
                 <>
