@@ -53,6 +53,7 @@ export default function AvailabilityEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [hadSaved, setHadSaved] = useState(true); // false = mostrati solo default non salvati
 
   useEffect(() => {
     let active = true;
@@ -84,6 +85,7 @@ export default function AvailabilityEditor({
         }
         setDays(s);
       }
+      setHadSaved(rows.length > 0);
       setLoading(false);
     })();
     return () => {
@@ -171,6 +173,7 @@ export default function AvailabilityEditor({
         if (insErr) throw insErr;
       }
       setSavedAt(Date.now());
+      setHadSaved(true);
     } catch {
       setError("Non sono riuscito a salvare gli orari. Riprova tra poco.");
     } finally {
@@ -187,6 +190,12 @@ export default function AvailabilityEditor({
       <p className="text-sm text-bob-ink/60">
         {"Imposta gli orari in cui accetti prenotazioni. Serviranno a mostrare gli slot liberi quando la prenotazione diretta sarà attiva."}
       </p>
+
+      {!hadSaved && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {"⚠ Orari non ancora salvati. Questi sono valori suggeriti: controllali e premi “Salva orari” per attivarli — finché non salvi, i clienti non vedono slot liberi."}
+        </div>
+      )}
 
       <div className="space-y-2">
         {DAYS.map(({ w, label }) => {
