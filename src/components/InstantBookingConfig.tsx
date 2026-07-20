@@ -73,6 +73,30 @@ export default function InstantBookingConfig({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [catEligible, setCatEligible] = useState<{ name: string; slug: string }[]>([]);
+
+  // Servizi della categoria del pro che supportano la prenotazione diretta:
+  // serve a spiegare cosa selezionare quando non c'è ancora nulla di idoneo.
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      if (!serviceId) {
+        setCatEligible([]);
+        return;
+      }
+      const { data } = await supabase
+        .from("subservices")
+        .select("name, slug")
+        .eq("service_id", serviceId)
+        .eq("instant_book_eligible", true)
+        .order("name");
+      if (on) setCatEligible((data ?? []) as { name: string; slug: string }[]);
+    })();
+    return () => {
+      on = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceId]);
 
   useEffect(() => {
     let active = true;
@@ -236,11 +260,25 @@ export default function InstantBookingConfig({
   }
 
   if (cfgs.length === 0) {
+    const selected = new Set(subSlugs);
+    const toPick = catEligible.filter((s) => !selected.has(s.slug));
     return (
-      <p className="text-sm text-bob-ink/55">
-        {"Nessuno dei servizi selezionati è idoneo alla prenotazione diretta. "}
-        {"La prenotazione diretta è pensata per i lavori a tariffa fissa (es. pulizie, ripetizioni)."}
-      </p>
+      <div className="space-y-2 text-sm text-bob-ink/60">
+        <p>
+          {"La prenotazione diretta permette ai clienti di prenotare uno slot a tariffa fissa senza chiederti un preventivo."}
+        </p>
+        {catEligible.length === 0 ? (
+          <p className="rounded-lg bg-black/[0.03] px-3 py-2">
+            {"La tua categoria non prevede (ancora) la prenotazione diretta: è pensata per i lavori a tariffa fissa come pulizie, ripetizioni o piccoli interventi."}
+          </p>
+        ) : (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-amber-800">
+            {"È disponibile per: "}
+            <strong>{(toPick.length ? toPick : catEligible).map((s) => s.name).join(", ")}</strong>
+            {'. Selezionali qui sopra in "Di cosa ti occupi" e torna qui per impostare tariffa e attivarla.'}
+          </p>
+        )}
+      </div>
     );
   }
 
@@ -372,6 +410,9 @@ export default function InstantBookingConfig({
       >
         {saving ? "Salvo…" : "Salva prenotazione diretta"}
       </button>
+      <p className="text-xs text-bob-ink/45">
+        {"Perché i clienti possano prenotare, imposta anche i tuoi orari in “Orari di disponibilità” qui sotto."}
+      </p>
     </div>
   );
 }

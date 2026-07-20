@@ -12,6 +12,7 @@ import {
   PriceTag,
 } from "@/components/ui";
 import { ContactButton } from "@/components/ContactButton";
+import InstantBookingEntry from "@/components/InstantBookingEntry";
 import { serviceIcon } from "@/lib/serviceIcons";
 
 export const revalidate = 120;
@@ -210,6 +211,10 @@ export default async function ProfessionalDetailPage({
 
         {/* Colonna laterale: prezzo + contatto (sticky su desktop) */}
         <aside className="lg:sticky lg:top-24 lg:self-start">
+          <InstantBookingEntry
+            professionalId={p.id}
+            professionalName={p.fullName}
+          />
           <div className="card p-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/50">
               Costo indicativo

@@ -92,3 +92,87 @@ export function busyFromAppointments(
       return { start, end: start + r.duration_minutes * 60000 };
     });
 }
+
+// --- Prenotazione diretta: slot dagli orari configurati dal pro ---------------
+// A differenza di computeFreeSlots (finestra fissa 8-18), qui gli orari arrivano
+// da professional_availability (fasce settimanali per weekday, 0=dom..6=sab).
+
+export interface AvailabilityWindow {
+  weekday: number; // 0=domenica .. 6=sabato
+  start: string; // "HH:MM"
+  end: string; // "HH:MM"
+}
+
+const WEEKDAY_NUM: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+function toMinutes(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + (m || 0);
+}
+
+// Istante assoluto per le HH:MM italiane del giorno ymd (gestisce CEST/CET).
+function atRomeTime(ymd: string, hour: number, minute: number): Date {
+  const hh = String(hour).padStart(2, "0");
+  const mm = String(minute).padStart(2, "0");
+  for (const off of ["+02:00", "+01:00"]) {
+    const d = new Date(`${ymd}T${hh}:${mm}:00${off}`);
+    const check = Number(
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: TZ,
+        hour: "2-digit",
+        hour12: false,
+      }).format(d)
+    );
+    if (check === hour % 24) return d;
+  }
+  return new Date(`${ymd}T${hh}:${mm}:00+01:00`);
+}
+
+export function computeFreeSlotsWithAvailability(opts: {
+  windows: AvailabilityWindow[];
+  busy: BusyInterval[];
+  durationMinutes: number;
+  days?: number; // orizzonte (default 14)
+  minLeadMs?: number; // anticipo minimo (default 2 ore)
+  max?: number; // massimo slot restituiti (default 60)
+}): Date[] {
+  const { windows, busy, durationMinutes } = opts;
+  const days = opts.days ?? 14;
+  const lead = opts.minLeadMs ?? 2 * 3600 * 1000;
+  const max = opts.max ?? 60;
+  const out: Date[] = [];
+  const now = Date.now();
+
+  for (let d = 0; d < days && out.length < max; d++) {
+    const base = new Date(now + d * 24 * 3600 * 1000);
+    const { ymd, weekday } = romeDay(base);
+    const wd = WEEKDAY_NUM[weekday];
+    const dayWindows = windows.filter((w) => w.weekday === wd);
+    for (const w of dayWindows) {
+      const startM = toMinutes(w.start);
+      const endM = toMinutes(w.end);
+      for (
+        let m = startM;
+        m + durationMinutes <= endM && out.length < max;
+        m += durationMinutes
+      ) {
+        const slot = atRomeTime(ymd, Math.floor(m / 60), m % 60);
+        const s = slot.getTime();
+        const e = s + durationMinutes * 60000;
+        if (s < now + lead) continue;
+        if (busy.some((b) => s < b.end && e > b.start)) continue;
+        out.push(slot);
+      }
+    }
+  }
+  out.sort((a, b) => a.getTime() - b.getTime());
+  return out;
+}
