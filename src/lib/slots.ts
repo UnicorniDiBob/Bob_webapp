@@ -103,6 +103,22 @@ export interface AvailabilityWindow {
   end: string; // "HH:MM"
 }
 
+// Durata effettiva di una prenotazione diretta.
+// Servizi a ore (rate_unit = 'hour'): la durata = ore prenotate (con minimo),
+// così l'agenda blocca il tempo reale e non un solo slot fisso.
+// Altre unità (m²/job/session): durata fissa impostata dal pro (slot_duration_min).
+export function bookingDurationMinutes(opts: {
+  unit: string;
+  minUnits: number;
+  slotDurationMin: number;
+  qty: number;
+}): number {
+  if (opts.unit === "hour") {
+    return Math.max(opts.minUnits, opts.qty) * 60;
+  }
+  return opts.slotDurationMin;
+}
+
 const WEEKDAY_NUM: Record<string, number> = {
   Sun: 0,
   Mon: 1,

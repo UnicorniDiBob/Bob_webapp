@@ -74,6 +74,24 @@ export default function InstantBookingConfig({
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [catEligible, setCatEligible] = useState<{ name: string; slug: string }[]>([]);
+  const [availCount, setAvailCount] = useState<number | null>(null);
+
+  // Quante fasce orarie ha salvato il pro: se attiva la prenotazione ma non ha
+  // orari, i clienti non vedranno slot — lo segnaliamo.
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      const { count } = await supabase
+        .from("professional_availability")
+        .select("id", { count: "exact", head: true })
+        .eq("professional_id", professionalId);
+      if (on) setAvailCount(count ?? 0);
+    })();
+    return () => {
+      on = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [professionalId, savedAt]);
 
   // Servizi della categoria del pro che supportano la prenotazione diretta:
   // serve a spiegare cosa selezionare quando non c'è ancora nulla di idoneo.
@@ -287,6 +305,12 @@ export default function InstantBookingConfig({
       <p className="text-sm text-bob-ink/60">
         {"Attiva la prenotazione diretta sui lavori a tariffa fissa: i clienti potranno prenotare uno slot senza doverti scrivere prima. Puoi attivarla o disattivarla per ogni servizio quando vuoi."}
       </p>
+
+      {cfgs.some((c) => c.enabled) && availCount === 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
+          {"⚠ Hai attivato la prenotazione diretta ma non hai orari salvati: i clienti non vedono slot liberi. Imposta i tuoi orari in “Orari di disponibilità” qui sotto."}
+        </div>
+      )}
 
       {!canUse && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">

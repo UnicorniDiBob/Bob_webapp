@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import {
   busyFromAppointments,
+  bookingDurationMinutes,
   computeFreeSlotsWithAvailability,
   type AvailabilityWindow,
 } from "@/lib/slots";
@@ -16,6 +17,7 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const psid = searchParams.get("psid");
+  const qty = Number(searchParams.get("qty") ?? "0");
   if (!psid) {
     return NextResponse.json({ error: "psid mancante" }, { status: 400 });
   }
@@ -27,13 +29,23 @@ export async function GET(request: Request) {
 
   const { data: ps } = await admin
     .from("professional_services")
-    .select("id, professional_id, instant_book_enabled, slot_duration_min")
+    .select(
+      "id, professional_id, instant_book_enabled, rate_unit, min_units, slot_duration_min"
+    )
     .eq("id", psid)
     .maybeSingle();
 
   if (!ps || !ps.instant_book_enabled || !ps.slot_duration_min) {
     return NextResponse.json({ slots: [] });
   }
+
+  // Durata reale della prenotazione (per servizi a ore = ore prenotate).
+  const duration = bookingDurationMinutes({
+    unit: ps.rate_unit ?? "hour",
+    minUnits: Number(ps.min_units ?? 1),
+    slotDurationMin: ps.slot_duration_min,
+    qty,
+  });
 
   const [{ data: avail }, { data: appts }] = await Promise.all([
     admin
@@ -66,11 +78,11 @@ export async function GET(request: Request) {
         status: string;
       }[]
     ),
-    durationMinutes: ps.slot_duration_min,
+    durationMinutes: duration,
   });
 
   return NextResponse.json({
     slots: slots.map((s) => s.toISOString()),
-    durationMinutes: ps.slot_duration_min,
+    durationMinutes: duration,
   });
 }

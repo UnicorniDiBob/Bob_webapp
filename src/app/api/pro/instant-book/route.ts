@@ -11,6 +11,7 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import {
   busyFromAppointments,
+  bookingDurationMinutes,
   computeFreeSlotsWithAvailability,
   type AvailabilityWindow,
 } from "@/lib/slots";
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
   const { data: ps } = await admin
     .from("professional_services")
     .select(
-      "id, professional_id, subservice_id, instant_book_enabled, rate_amount, min_units, slot_duration_min, cancellation_window_hours"
+      "id, professional_id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours"
     )
     .eq("id", psid)
     .maybeSingle();
@@ -106,6 +107,15 @@ export async function POST(request: Request) {
   const units = Math.max(Number(ps.min_units), qty);
   const price = Math.round(units * Number(ps.rate_amount) * 100) / 100;
 
+  // Durata reale: per i servizi a ore blocca le ore prenotate (non uno slot fisso),
+  // così l'agenda non si sovrappone su lavori lunghi.
+  const duration = bookingDurationMinutes({
+    unit: ps.rate_unit ?? "hour",
+    minUnits: Number(ps.min_units),
+    slotDurationMin: ps.slot_duration_min,
+    qty,
+  });
+
   // 5. Lo slot deve essere fra quelli liberi (orari del pro meno occupati).
   const [{ data: avail }, { data: appts }] = await Promise.all([
     admin
@@ -136,7 +146,7 @@ export async function POST(request: Request) {
         status: string;
       }[]
     ),
-    durationMinutes: ps.slot_duration_min,
+    durationMinutes: duration,
   });
   const chosen = when.getTime();
   if (!free.some((s) => s.getTime() === chosen)) {
@@ -164,7 +174,7 @@ export async function POST(request: Request) {
       customer_name: customerName,
       title: (sub?.name as string | null) ?? "Prenotazione diretta",
       starts_at: when.toISOString(),
-      duration_minutes: ps.slot_duration_min,
+      duration_minutes: duration,
       price,
       status: "confirmed",
       proposed_by: "customer",

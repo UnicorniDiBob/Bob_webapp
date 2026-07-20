@@ -30,26 +30,33 @@ export default function InstantBookingEntry({
   useEffect(() => {
     let on = true;
     (async () => {
-      const [{ data: pro }, { data: rows }] = await Promise.all([
-        supabase
-          .from("professionals")
-          .select("subscription_tier")
-          .eq("id", professionalId)
-          .maybeSingle(),
-        supabase
-          .from("professional_services")
-          .select(
-            "id, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, subservices(name, booking_fields)"
-          )
-          .eq("professional_id", professionalId)
-          .eq("instant_book_enabled", true),
-      ]);
+      const [{ data: pro }, { data: rows }, { count: availCount }] =
+        await Promise.all([
+          supabase
+            .from("professionals")
+            .select("subscription_tier")
+            .eq("id", professionalId)
+            .maybeSingle(),
+          supabase
+            .from("professional_services")
+            .select(
+              "id, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, subservices(name, booking_fields)"
+            )
+            .eq("professional_id", professionalId)
+            .eq("instant_book_enabled", true),
+          supabase
+            .from("professional_availability")
+            .select("id", { count: "exact", head: true })
+            .eq("professional_id", professionalId),
+        ]);
 
       if (!on) return;
 
       const tier = (pro as { subscription_tier?: string } | null)
         ?.subscription_tier;
-      if (tier === "free") {
+      // Senza orari salvati non ci sono slot: non mostrare un ingresso che
+      // porterebbe il cliente a un vicolo cieco.
+      if (tier === "free" || !availCount || availCount === 0) {
         setReady(true);
         return;
       }

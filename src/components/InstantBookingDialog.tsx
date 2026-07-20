@@ -112,6 +112,15 @@ export default function InstantBookingDialog({
     return Math.round(units * service.rate_amount * 100) / 100;
   }, [answers, billable, service.min_units, service.rate_amount]);
 
+  // Durata reale: per i servizi a ore = ore prenotate (min compreso).
+  const durationMin = useMemo(() => {
+    if (billable && service.rate_unit === "hour") {
+      const q = Number(answers[billable.key]);
+      if (q > 0) return Math.max(service.min_units, q) * 60;
+    }
+    return service.slot_duration_min;
+  }, [answers, billable, service.rate_unit, service.min_units, service.slot_duration_min]);
+
   function setField(key: string, val: string | boolean) {
     setAnswers((p) => ({ ...p, [key]: val }));
   }
@@ -123,7 +132,10 @@ export default function InstantBookingDialog({
     setStep("slot");
     setSlotsLoading(true);
     try {
-      const res = await fetch(`/api/pro/instant-slots?psid=${service.id}`);
+      const q = billable ? Number(answers[billable.key]) || 0 : 0;
+      const res = await fetch(
+        `/api/pro/instant-slots?psid=${service.id}&qty=${q}`
+      );
       const data = await res.json();
       setSlots(Array.isArray(data.slots) ? data.slots : []);
     } catch {
@@ -414,7 +426,7 @@ export default function InstantBookingDialog({
               {price != null && (
                 <>
                   Totale: <strong>{price.toLocaleString("it-IT")}€</strong> ·{" "}
-                  {service.slot_duration_min} min
+                  {durationMin} min
                 </>
               )}
             </div>
