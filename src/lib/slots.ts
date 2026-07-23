@@ -155,15 +155,17 @@ function atRomeTime(ymd: string, hour: number, minute: number): Date {
 export function computeFreeSlotsWithAvailability(opts: {
   windows: AvailabilityWindow[];
   busy: BusyInterval[];
-  durationMinutes: number;
+  durationMinutes: number; // durata reale del blocco prenotato
+  stepMinutes?: number; // granularità degli orari di inizio (default = durata)
   days?: number; // orizzonte (default 14)
   minLeadMs?: number; // anticipo minimo (default 2 ore)
-  max?: number; // massimo slot restituiti (default 60)
+  max?: number; // massimo slot restituiti (default 400)
 }): Date[] {
   const { windows, busy, durationMinutes } = opts;
+  const step = Math.max(15, opts.stepMinutes ?? durationMinutes);
   const days = opts.days ?? 14;
   const lead = opts.minLeadMs ?? 2 * 3600 * 1000;
-  const max = opts.max ?? 60;
+  const max = opts.max ?? 400;
   const out: Date[] = [];
   const now = Date.now();
 
@@ -178,7 +180,7 @@ export function computeFreeSlotsWithAvailability(opts: {
       for (
         let m = startM;
         m + durationMinutes <= endM && out.length < max;
-        m += durationMinutes
+        m += step
       ) {
         const slot = atRomeTime(ymd, Math.floor(m / 60), m % 60);
         const s = slot.getTime();

@@ -147,6 +147,7 @@ export async function POST(request: Request) {
       }[]
     ),
     durationMinutes: duration,
+    stepMinutes: ps.slot_duration_min,
   });
   const chosen = when.getTime();
   if (!free.some((s) => s.getTime() === chosen)) {

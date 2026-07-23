@@ -79,6 +79,7 @@ export async function GET(request: Request) {
       }[]
     ),
     durationMinutes: duration,
+    stepMinutes: ps.slot_duration_min,
   });
 
   return NextResponse.json({
