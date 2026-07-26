@@ -2,7 +2,7 @@
 
 _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** ✅ 61 Done · 🔵 2 In progress · ⬜ 46 Planned · 🔶 3 Milestone
+**Stato:** ✅ 61 Done · 🔵 2 In progress · ⬜ 63 Planned · 🔶 3 Milestone
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -163,3 +163,25 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 |---|------|-------|-------|-------|---------|---------|
 | **36** | **End-Q1 2027: 60-80 active pros, 150+ req/mo, match >60%** | Internal | Lucio | 🔶 Milestone | 2027-03-01 → 2027-03-31 |  |
 | **37** | **End-2027: 600 pros, 1,500 req/mo, 25% protected-flow, CAC < EUR15** | Internal | Lucio | 🔶 Milestone | 2027-12-01 → 2027-12-31 |  |
+
+## ROADMAP CANDIDATES — POST-LAUNCH EXPANSION  ·  2027  (added 2026-07-26 · to validate)
+
+| # | Task | Track | Owner | Stato | Periodo | Done on |
+|---|------|-------|-------|-------|---------|---------|
+| **38** | **Business accounts — multi-employee organizations (manage workers + appointments)** | Client/Pro | André | ⬜ Planned | 2026-09-01 → 2027-04-30 |  |
+| 38.0 | Design spike: org data model — DECIDED, see docs/Bob_Business_Accounts_Design_Spike.md (Bundle 2, additive; workers-as-records; company assigns) | Shared | André | ⬜ Planned | 2026-09-01 → 2026-10-15 |  |
+| 38.1 | organizations + organization_members + roles (owner/admin/worker); RLS pool model via is_org_member(); retention + deletion path | Client/Pro | André | ⬜ Planned | 2027-02-01 → 2027-02-28 |  |
+| 38.2a | Worker-level scheduling: per-worker availability + assignment + DB overlap constraint (btree_gist exclude); company assigns | Client/Pro | André | ⬜ Planned | 2027-03-01 → 2027-03-31 |  |
+| 38.2b | Communication step 1 (office-as-hub): company identity + worker attribution (sender_member_id); dispatcher messages/reschedules for worker | Client/Pro | André | ⬜ Planned | 2027-03-15 → 2027-04-15 |  |
+| 38.3 | Business onboarding + docs: company VAT/visura verification, seat management (extends #10) | Internal | Lucio | ⬜ Planned | 2027-03-01 → 2027-03-31 |  |
+| 38.4 | Multi-seat Business billing — per-seat via Stripe quantity (extends #12) | Client/Pro | André | ⬜ Planned | 2027-04-01 → 2027-04-30 |  |
+| 38.5 | Compliance: employer-as-controller DPA + RoPA rows; Platform Work Directive / Annex III scope check | Shared | Lucio | ⬜ Planned | 2027-02-01 → 2027-02-28 |  |
+| 38.6 | Step 2 (PILOT-GATED, form TBD): scoped worker access — per-job magic link or limited login; least-privilege RLS | Client/Pro | André | ⬜ Planned | 2027-05-01 → 2027-06-30 |  |
+| **39** | **Two-way reviews — business to client reliability signal (PRIVATE, not public consumer scores)** | Client/Pro | André | ⬜ Planned | 2027-06-01 → 2027-08-31 |  |
+| 39.0 | DPIA + LIA + policy: private reliability signal; retaliation guard; Art 22 no auto-exclude; transparency + right to object | Shared | Lucio | ⬜ Planned | 2027-06-01 → 2027-06-30 |  |
+| 39.1 | Schema: customer reliability ratings tied to completed appointment/request; RLS; de-identify on deletion | Client/Pro | André | ⬜ Planned | 2027-07-01 → 2027-07-31 |  |
+| 39.2 | Pro UI to rate reliability; customer transparency + right-to-reply; align with verified reviews #19.2 | Client/Pro | André | ⬜ Planned | 2027-08-01 → 2027-08-31 |  |
+| **40** | **Parking & vehicle-access metric (can my car reach the address? parking nearby?)** | Client/Pro | André | ⬜ Planned | 2027-03-01 → 2027-05-31 |  |
+| 40.0 | Address geocoding enabler (address to coarse zone; maps vendor DPA/EU) — prerequisite | Client/Pro | André | ⬜ Planned | 2027-03-01 → 2027-03-31 |  |
+| 40.1 | ZTL / Area B & C vehicle-access checker (vehicle emission class + Milan zone rules) — deterministic, high value for out-of-town pros | Client/Pro | André | ⬜ Planned | 2027-04-01 → 2027-04-30 |  |
+| 40.2 | Parking-difficulty index + nearby paid-garage links (research spike first; real-time free-spot count not feasible) | Client/Pro | André | ⬜ Planned | 2027-05-01 → 2027-05-31 |  |

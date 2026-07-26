@@ -57,10 +57,10 @@ task,9.4,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,'Ricerche per cate
 project,25b,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,Privacy: birth date + terms consent moved to private table (mig 027)
 project,T1,Shared,André,Done,2026-07-19,2026-07-19,2026-07-19,Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action
 section,,,,,,,,DIRECT BOOKING & PAYMENTS GROUNDWORK  ·  Jul 2026
-project,IB,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Direct (instant) booking Phase 0 — instant vs preventivo; customer flow gated on Stripe (2027)"
-task,IB.1,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Schema + enablement trigger + RLS (mig 028); 20 eligible subservices seeded (mig 029)"
-task,IB.2,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Pro config UI: per-service rate/unit/min/slot/cancellation + enable toggle (tier-gated)"
-task,IB.3,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Admin catalog curation (/admin/catalogo) + pro weekly availability editor"
+project,IB,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,Direct (instant) booking Phase 0 — instant vs preventivo; customer flow gated on Stripe (2027)
+task,IB.1,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,Schema + enablement trigger + RLS (mig 028); 20 eligible subservices seeded (mig 029)
+task,IB.2,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,Pro config UI: per-service rate/unit/min/slot/cancellation + enable toggle (tier-gated)
+task,IB.3,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,Admin catalog curation (/admin/catalogo) + pro weekly availability editor
 project,PG,Shared,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Payments/subscriptions groundwork — BUILT, DORMANT (activates with Stripe, 2027) [mig 030]"
 section,,,,,,,,WEBSITE — REMAINING TO GO-LIVE  ·  Aug–Dec 2026
 project,8.9,Client/Pro,André,Planned,2026-08-15,2026-09-30,,Empty / error / loading states + server-side validation pass
@@ -120,3 +120,21 @@ project,34,Shared,,Planned,2027-03-01,2027-12-31,,Pro referral program + territo
 section,,,,,,,,KPI GATES  (decision checkpoints)
 project,36,Internal,Lucio,Milestone,2027-03-01,2027-03-31,,"End-Q1 2027: 60-80 active pros, 150+ req/mo, match >60%"
 project,37,Internal,Lucio,Milestone,2027-12-01,2027-12-31,,"End-2027: 600 pros, 1,500 req/mo, 25% protected-flow, CAC < EUR15"
+section,,,,,,,,ROADMAP CANDIDATES — POST-LAUNCH EXPANSION  ·  2027  (added 2026-07-26 · to validate)
+project,38,Client/Pro,André,Planned,2026-09-01,2027-04-30,,Business accounts — multi-employee organizations (manage workers + appointments)
+task,38.0,Shared,André,Planned,2026-09-01,2026-10-15,,"Design spike: org data model — DECIDED, see docs/Bob_Business_Accounts_Design_Spike.md (Bundle 2, additive; workers-as-records; company assigns)"
+task,38.1,Client/Pro,André,Planned,2027-02-01,2027-02-28,,organizations + organization_members + roles (owner/admin/worker); RLS pool model via is_org_member(); retention + deletion path
+task,38.2a,Client/Pro,André,Planned,2027-03-01,2027-03-31,,Worker-level scheduling: per-worker availability + assignment + DB overlap constraint (btree_gist exclude); company assigns
+task,38.2b,Client/Pro,André,Planned,2027-03-15,2027-04-15,,Communication step 1 (office-as-hub): company identity + worker attribution (sender_member_id); dispatcher messages/reschedules for worker
+task,38.3,Internal,Lucio,Planned,2027-03-01,2027-03-31,,"Business onboarding + docs: company VAT/visura verification, seat management (extends #10)"
+task,38.4,Client/Pro,André,Planned,2027-04-01,2027-04-30,,Multi-seat Business billing — per-seat via Stripe quantity (extends #12)
+task,38.5,Shared,Lucio,Planned,2027-02-01,2027-02-28,,Compliance: employer-as-controller DPA + RoPA rows; Platform Work Directive / Annex III scope check
+task,38.6,Client/Pro,André,Planned,2027-05-01,2027-06-30,,"Step 2 (PILOT-GATED, form TBD): scoped worker access — per-job magic link or limited login; least-privilege RLS"
+project,39,Client/Pro,André,Planned,2027-06-01,2027-08-31,,"Two-way reviews — business to client reliability signal (PRIVATE, not public consumer scores)"
+task,39.0,Shared,Lucio,Planned,2027-06-01,2027-06-30,,DPIA + LIA + policy: private reliability signal; retaliation guard; Art 22 no auto-exclude; transparency + right to object
+task,39.1,Client/Pro,André,Planned,2027-07-01,2027-07-31,,Schema: customer reliability ratings tied to completed appointment/request; RLS; de-identify on deletion
+task,39.2,Client/Pro,André,Planned,2027-08-01,2027-08-31,,Pro UI to rate reliability; customer transparency + right-to-reply; align with verified reviews #19.2
+project,40,Client/Pro,André,Planned,2027-03-01,2027-05-31,,Parking & vehicle-access metric (can my car reach the address? parking nearby?)
+task,40.0,Client/Pro,André,Planned,2027-03-01,2027-03-31,,Address geocoding enabler (address to coarse zone; maps vendor DPA/EU) — prerequisite
+task,40.1,Client/Pro,André,Planned,2027-04-01,2027-04-30,,"ZTL / Area B & C vehicle-access checker (vehicle emission class + Milan zone rules) — deterministic, high value for out-of-town pros"
+task,40.2,Client/Pro,André,Planned,2027-05-01,2027-05-31,,Parking-difficulty index + nearby paid-garage links (research spike first; real-time free-spot count not feasible)
