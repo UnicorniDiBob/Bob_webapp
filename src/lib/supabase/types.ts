@@ -205,6 +205,12 @@ export interface Appointment {
   proposed_by: "professional" | "customer";
   notes: string | null;
   created_at: string | null;
+  // colonne aggiunte da 028_instant_booking: opzionali perché non tutte le
+  // query le selezionano (es. CustomerHome usa una select ristretta).
+  customer_id?: string | null;
+  professional_service_id?: string | null;
+  booking_answers?: Record<string, unknown> | null;
+  source?: "pro" | "direct";
 }
 
 export interface ConversationSummary {
