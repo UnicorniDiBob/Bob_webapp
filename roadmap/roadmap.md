@@ -2,7 +2,7 @@
 
 _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** ✅ 61 Done · 🔵 2 In progress · ⬜ 63 Planned · 🔶 3 Milestone
+**Stato:** ✅ 63 Done · 🔵 2 In progress · ⬜ 68 Planned · 🔶 3 Milestone
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -22,6 +22,8 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | 3.1 | Bidirectional client-pro messaging | Client/Pro | André | ✅ Done | 2026-06-01 → 2026-06-10 | 2026-06-03 |
 | 3.2 | Pro dashboard: calendar, hours, earnings | Client/Pro | André | ✅ Done | 2026-06-05 → 2026-06-15 | 2026-06-03 |
 | 3.3 | Unread message badges in header (desktop + mobile) | Client/Pro | André | ✅ Done | 2026-06-10 → 2026-06-15 | 2026-06-03 |
+| 3.4 | Pro calendar v2: hour-axis week/day view, blocks sized by duration, overlap columns, appointment detail panel | Client/Pro | André | ✅ Done | 2026-07-28 → 2026-07-28 | 2026-07-28 |
+| 3.5 | Appointment location (mig 031 snapshot) + Giro del giorno itinerary with Maps links; address captured in direct booking | Client/Pro | André | ✅ Done | 2026-07-28 → 2026-07-28 | 2026-07-28 |
 | **4** | **Chat v2 + client memory + job brief** | Client/Pro | André | ✅ Done | 2026-06-05 → 2026-07-08 | 2026-07-08 |
 | 4.1 | F1 agentic chat, F2 customer memory, F3 pro request summary | Client/Pro | André | ✅ Done | 2026-06-05 → 2026-06-30 | 2026-06-09 |
 | 4.2 | Job brief v1: tool-use extraction, photo vision, recap card, subtask taxonomy | Client/Pro | André | ✅ Done | 2026-07-01 → 2026-07-08 | 2026-07-08 |
@@ -185,3 +187,8 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | 40.0 | Address geocoding enabler (address to coarse zone; maps vendor DPA/EU) — prerequisite | Client/Pro | André | ⬜ Planned | 2027-03-01 → 2027-03-31 |  |
 | 40.1 | ZTL / Area B & C vehicle-access checker (vehicle emission class + Milan zone rules) — deterministic, high value for out-of-town pros | Client/Pro | André | ⬜ Planned | 2027-04-01 → 2027-04-30 |  |
 | 40.2 | Parking-difficulty index + nearby paid-garage links (research spike first; real-time free-spot count not feasible) | Client/Pro | André | ⬜ Planned | 2027-05-01 → 2027-05-31 |  |
+| 40.3 | Map of the day itinerary in the pro calendar (pins in time order) — depends on 40.0 geocoding + vendor DPA | Client/Pro | André | ⬜ Planned | 2027-04-01 → 2027-04-30 |  |
+| **41** | **Customer address: progressive disclosure fix (today the exact address sits in clear text in requests.problem_description, readable by every pro in the quote batch before acceptance)** | Client/Pro | André | ⬜ Planned | 2026-08-01 → 2026-09-30 |  |
+| 41.1 | Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance | Client/Pro | André | ⬜ Planned | 2026-08-01 → 2026-08-31 |  |
+| 41.2 | Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization) | Client/Pro | André | ⬜ Planned | 2026-08-01 → 2026-08-31 |  |
+| 41.3 | Backfill existing rows + ROPA/notice update; commit DATA_COMPLIANCE.md into the repo (cited in-repo but untracked) | Shared | Lucio | ⬜ Planned | 2026-09-01 → 2026-09-30 |  |

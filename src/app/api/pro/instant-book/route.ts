@@ -1,4 +1,4 @@
-// POST /api/pro/instant-book  { psid, answers, startsAt }
+// POST /api/pro/instant-book  { psid, answers, startsAt, location? }
 // Prenotazione diretta di uno slot a tariffa fissa. Anteprima SENZA pagamento:
 // crea l'appuntamento confermato e svela i contatti del pro. Il pagamento
 // (Stripe) si innesterà qui in fase di attivazione (vedi spec §6).
@@ -25,7 +25,12 @@ interface BookingField {
 }
 
 export async function POST(request: Request) {
-  let body: { psid?: string; answers?: Record<string, unknown>; startsAt?: string };
+  let body: {
+    psid?: string;
+    answers?: Record<string, unknown>;
+    startsAt?: string;
+    location?: { address?: unknown; city?: unknown; notes?: unknown } | null;
+  };
   try {
     body = await request.json();
   } catch {
@@ -33,6 +38,20 @@ export async function POST(request: Request) {
   }
   const { psid, startsAt } = body;
   const answers = body.answers ?? {};
+
+  // Luogo del lavoro (031): snapshot fornito dal cliente. Facoltativo — alcuni
+  // servizi si svolgono altrove o a distanza. Ripulito e limitato in lunghezza
+  // lato server: mai fidarsi del client. Nessun geocoding, nessun vendor.
+  const str = (v: unknown, max: number): string | null => {
+    const s = typeof v === "string" ? v.trim().slice(0, max) : "";
+    return s.length > 0 ? s : null;
+  };
+  const locAddress = str(body.location?.address, 200);
+  const location = {
+    location_address: locAddress,
+    location_city: locAddress ? str(body.location?.city, 80) : null,
+    location_notes: locAddress ? str(body.location?.notes, 300) : null,
+  };
   if (!psid || !startsAt) {
     return NextResponse.json({ error: "Parametri mancanti" }, { status: 400 });
   }
@@ -181,6 +200,7 @@ export async function POST(request: Request) {
       proposed_by: "customer",
       source: "direct",
       booking_answers: answers,
+      ...location,
     })
     .select("id")
     .single();

@@ -6,8 +6,9 @@
 // conferma → appuntamento creato e contatti del pro svelati.
 // Il passaggio di pagamento si aggiungerà tra "conferma" e creazione (2027).
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { createClient } from "@/lib/supabase/client";
 import {
   RATE_UNIT_LABELS,
   type BookingField,
@@ -23,6 +24,13 @@ export interface InstantService {
   cancellation_window_hours: number | null;
   subserviceName: string;
   bookingFields: BookingField[];
+}
+
+interface SavedAddress {
+  id: string;
+  label: string;
+  address_line: string;
+  city_slug: string | null;
 }
 
 interface BookResult {
@@ -95,6 +103,17 @@ export default function InstantBookingDialog({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BookResult | null>(null);
 
+  // Dove deve venire il pro. Il cliente legge i PROPRI indirizzi salvati
+  // (policy "Own addresses select", mig 020): nessun nuovo accesso lato pro.
+  // L'indirizzo scelto viene copiato sull'appuntamento come snapshot dalla
+  // route server, così il pro sa dove andare (art. 6(1)(b), esecuzione).
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+  const [cities, setCities] = useState<{ slug: string; name: string }[]>([]);
+  const [addrChoice, setAddrChoice] = useState<string>("new");
+  const [addrLine, setAddrLine] = useState("");
+  const [addrCity, setAddrCity] = useState("");
+  const [accessNotes, setAccessNotes] = useState("");
+
   const billable = useMemo(
     () => service.bookingFields.find((f) => f.is_billable_unit),
     [service.bookingFields]
@@ -124,6 +143,45 @@ export default function InstantBookingDialog({
   function setField(key: string, val: string | boolean) {
     setAnswers((p) => ({ ...p, [key]: val }));
   }
+
+  // Indirizzi salvati del cliente + elenco città (per l'inserimento manuale).
+  const loadAddresses = useCallback(async () => {
+    if (!user) return;
+    const supabase = createClient();
+    const [{ data: addr }, { data: cityRows }] = await Promise.all([
+      supabase
+        .from("customer_addresses")
+        .select("id, label, address_line, city_slug, is_default")
+        .order("is_default", { ascending: false }),
+      supabase.from("cities").select("slug, name").order("name"),
+    ]);
+    const list = (addr ?? []) as (SavedAddress & { is_default: boolean })[];
+    setAddresses(list);
+    setCities((cityRows ?? []) as { slug: string; name: string }[]);
+    // Preselezione: l'indirizzo predefinito, se esiste.
+    const preferred = list.find((a) => a.is_default) ?? list[0];
+    if (preferred) setAddrChoice(preferred.id);
+  }, [user]);
+
+  useEffect(() => {
+    loadAddresses();
+  }, [loadAddresses]);
+
+  const cityName = useCallback(
+    (slug: string | null) =>
+      slug ? cities.find((c) => c.slug === slug)?.name ?? slug : "",
+    [cities]
+  );
+
+  // Luogo effettivo da inviare: indirizzo salvato scelto, o quello digitato.
+  const location = useMemo(() => {
+    const saved =
+      addrChoice !== "new" ? addresses.find((a) => a.id === addrChoice) : null;
+    const address = (saved ? saved.address_line : addrLine).trim();
+    const city = (saved ? cityName(saved.city_slug) : addrCity).trim();
+    if (address.length === 0) return null;
+    return { address, city, notes: accessNotes.trim() };
+  }, [addrChoice, addresses, addrLine, addrCity, accessNotes, cityName]);
 
   async function goToSlots() {
     if (!billable || !(Number(answers[billable.key]) > 0))
@@ -157,6 +215,7 @@ export default function InstantBookingDialog({
           psid: service.id,
           answers,
           startsAt: selectedIso,
+          location,
         }),
       });
       const data = await res.json();
@@ -323,6 +382,102 @@ export default function InstantBookingDialog({
               </div>
             )}
 
+            {/* Dove deve venire il pro: senza indirizzo il pro non sa dove andare */}
+            <div className="rounded-xl border border-black/[0.07] p-3">
+              <p className="text-sm font-semibold text-bob-ink">
+                Dove deve venire il pro?
+              </p>
+              <div className="mt-2 space-y-2">
+                {addresses.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {addresses.map((a) => (
+                      <label
+                        key={a.id}
+                        className={`flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
+                          addrChoice === a.id
+                            ? "border-bob-indigo/40 bg-bob-indigo-50/60"
+                            : "border-black/10 hover:bg-black/[0.02]"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="booking-address"
+                          className="mt-0.5"
+                          checked={addrChoice === a.id}
+                          onChange={() => setAddrChoice(a.id)}
+                          data-testid={`booking-address-${a.id}`}
+                        />
+                        <span className="min-w-0">
+                          <span className="font-medium text-bob-ink">
+                            {a.label}
+                          </span>
+                          <span className="block truncate text-bob-ink/60">
+                            {a.address_line}
+                            {a.city_slug ? `, ${cityName(a.city_slug)}` : ""}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                    <label
+                      className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                        addrChoice === "new"
+                          ? "border-bob-indigo/40 bg-bob-indigo-50/60"
+                          : "border-black/10 hover:bg-black/[0.02]"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="booking-address"
+                        checked={addrChoice === "new"}
+                        onChange={() => setAddrChoice("new")}
+                        data-testid="booking-address-new"
+                      />
+                      <span className="text-bob-ink/70">Un altro indirizzo</span>
+                    </label>
+                  </div>
+                )}
+
+                {addrChoice === "new" && (
+                  <div className="space-y-2">
+                    <input
+                      className="input-bob"
+                      value={addrLine}
+                      onChange={(e) => setAddrLine(e.target.value)}
+                      placeholder="Via e numero civico"
+                      maxLength={200}
+                      data-testid="booking-address-line"
+                    />
+                    <select
+                      className="input-bob"
+                      value={addrCity}
+                      onChange={(e) => setAddrCity(e.target.value)}
+                      data-testid="booking-address-city"
+                    >
+                      <option value="">Città…</option>
+                      {cities.map((c) => (
+                        <option key={c.slug} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <input
+                  className="input-bob"
+                  value={accessNotes}
+                  onChange={(e) => setAccessNotes(e.target.value)}
+                  placeholder="Citofono, piano, parcheggio (facoltativo)"
+                  maxLength={300}
+                  data-testid="booking-access-notes"
+                />
+                <p className="text-xs text-bob-ink/45">
+                  L&apos;indirizzo viene condiviso solo con il professionista che
+                  stai prenotando.
+                </p>
+              </div>
+            </div>
+
             {details.length > 0 && (
               <div>
                 <button
@@ -420,6 +575,15 @@ export default function InstantBookingDialog({
             {selectedIso && (
               <p className="text-sm text-bob-ink/70">
                 Scelto: <strong>{fullLabel(selectedIso)}</strong>
+              </p>
+            )}
+            {location && (
+              <p className="text-sm text-bob-ink/70">
+                Dove:{" "}
+                <strong>
+                  {location.address}
+                  {location.city ? `, ${location.city}` : ""}
+                </strong>
               </p>
             )}
             <div className="rounded-lg bg-bob-indigo-50 px-3 py-2 text-sm text-bob-ink">

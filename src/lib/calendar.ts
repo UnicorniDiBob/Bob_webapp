@@ -301,3 +301,57 @@ export function hourBounds(
 export function isLiveAppointment(a: Appointment): boolean {
   return a.status !== "cancelled" && a.status !== "declined";
 }
+
+// ----- luogo -----
+
+/** "Via Roma 12, Milano" — stringa unica per etichette e link a Maps. */
+export function locationLabel(a: Appointment): string | null {
+  const parts = [a.location_address, a.location_city]
+    .map((s) => (s ?? "").trim())
+    .filter((s) => s.length > 0);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/**
+ * Link di ricerca su Google Maps per un indirizzo.
+ *
+ * Nota privacy: è un semplice link, non una chiamata a un'API di mappe. Nessun
+ * dato parte da Bob: l'indirizzo raggiunge Google solo se il PRO clicca, come
+ * atto proprio del pro (che sui dati che riceve è titolare autonomo — EDPB
+ * 07/2020). Per questo non serve un DPA con un vendor geo: quello servirà per
+ * la mappa con i pin, che richiede geocoding (roadmap 40.0).
+ */
+export function mapsSearchUrl(a: Appointment): string | null {
+  const label = locationLabel(a);
+  if (!label) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(label)}`;
+}
+
+/**
+ * Percorso completo con tappe intermedie, in ordine di orario.
+ * Serve da 2 tappe in su; le tappe senza indirizzo vengono saltate.
+ */
+export function mapsRouteUrl(appts: Appointment[]): string | null {
+  const stops = appts
+    .map((a) => locationLabel(a))
+    .filter((s): s is string => s !== null);
+  if (stops.length < 2) return null;
+  const origin = encodeURIComponent(stops[0]);
+  const destination = encodeURIComponent(stops[stops.length - 1]);
+  const waypoints = stops
+    .slice(1, -1)
+    .map((s) => encodeURIComponent(s))
+    .join("|");
+  const wp = waypoints ? `&waypoints=${waypoints}` : "";
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}${wp}&travelmode=driving`;
+}
+
+/**
+ * Minuti liberi fra la fine di un appuntamento e l'inizio del successivo.
+ * Negativo se si sovrappongono.
+ */
+export function gapMinutes(prev: Appointment, next: Appointment): number {
+  return Math.round(
+    (new Date(next.starts_at).getTime() - apptEnd(prev).getTime()) / 60000
+  );
+}

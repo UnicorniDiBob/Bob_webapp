@@ -43,6 +43,13 @@ export function AppointmentDialog({
     existing?.status ?? "confirmed"
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  // Luogo del lavoro (031). Non precompilato dagli indirizzi salvati del
+  // cliente: il pro non ha accesso a customer_addresses e non gliene diamo uno
+  // nuovo qui (disclosure progressiva, DATA_COMPLIANCE §4). Nelle prenotazioni
+  // dirette l'indirizzo arriva dal cliente stesso al momento della prenotazione.
+  const [locAddress, setLocAddress] = useState(existing?.location_address ?? "");
+  const [locCity, setLocCity] = useState(existing?.location_city ?? "");
+  const [locNotes, setLocNotes] = useState(existing?.location_notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +81,9 @@ export function AppointmentDialog({
       price: price.trim() === "" ? null : Number(price),
       status,
       notes: notes.trim() || null,
+      location_address: locAddress.trim().slice(0, 200) || null,
+      location_city: locCity.trim().slice(0, 80) || null,
+      location_notes: locNotes.trim().slice(0, 300) || null,
     };
 
     const res = existing
@@ -201,6 +211,50 @@ export function AppointmentDialog({
               </select>
             </div>
           </div>
+          {/* Luogo: serve al pro per sapere dove andare e per il giro del giorno */}
+          <div className="rounded-xl border border-black/[0.07] p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-bob-ink/45">
+              Luogo
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="label-bob">Indirizzo</label>
+                <input
+                  value={locAddress}
+                  onChange={(e) => setLocAddress(e.target.value)}
+                  className="input-bob"
+                  placeholder="Via e numero civico"
+                  maxLength={200}
+                  data-testid="input-location-address"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label-bob">Città</label>
+                  <input
+                    value={locCity}
+                    onChange={(e) => setLocCity(e.target.value)}
+                    className="input-bob"
+                    placeholder="Es. Milano"
+                    maxLength={80}
+                    data-testid="input-location-city"
+                  />
+                </div>
+                <div>
+                  <label className="label-bob">Accesso</label>
+                  <input
+                    value={locNotes}
+                    onChange={(e) => setLocNotes(e.target.value)}
+                    className="input-bob"
+                    placeholder="Citofono, piano…"
+                    maxLength={300}
+                    data-testid="input-location-notes"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="label-bob">Note</label>
             <textarea

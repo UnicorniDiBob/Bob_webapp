@@ -211,6 +211,10 @@ export interface Appointment {
   professional_service_id?: string | null;
   booking_answers?: Record<string, unknown> | null;
   source?: "pro" | "direct";
+  // Luogo del lavoro (031): snapshot, non una FK a customer_addresses.
+  location_address?: string | null;
+  location_city?: string | null;
+  location_notes?: string | null;
 }
 
 export interface ConversationSummary {

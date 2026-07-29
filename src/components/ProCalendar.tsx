@@ -15,6 +15,7 @@ import {
   fmtHour,
   hourBounds,
   layoutDay,
+  locationLabel,
   sameDay,
   startOfDay,
   startOfWeek,
@@ -34,6 +35,7 @@ export function ProCalendar({
   loading,
   onCreateAt,
   onSelect,
+  onFocusDayChange,
   selectedId,
 }: {
   appointments: Appointment[];
@@ -42,6 +44,8 @@ export function ProCalendar({
   onCreateAt: (start: Date) => void;
   /** Click su un appuntamento: apre il pannello di dettaglio. */
   onSelect: (a: Appointment) => void;
+  /** Giornata "a fuoco": alimenta il giro del giorno accanto al calendario. */
+  onFocusDayChange?: (day: Date) => void;
   selectedId?: string | null;
 }) {
   const [view, setView] = useState<CalView>("week");
@@ -74,6 +78,19 @@ export function ProCalendar({
     () => hourBounds(appointments, days, fullDay),
     [appointments, days, fullDay]
   );
+
+  // In vista giorno è il giorno mostrato; in vista settimana è oggi se cade
+  // nella settimana aperta, altrimenti il lunedì di quella settimana.
+  const focusDay = useMemo(() => {
+    if (view === "day") return anchor;
+    const today = startOfDay(new Date());
+    return days.find((d) => sameDay(d, today)) ?? days[0];
+  }, [view, anchor, days]);
+
+  useEffect(() => {
+    onFocusDayChange?.(focusDay);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusDay.getTime()]);
 
   const hourPx = view === "day" ? HOUR_PX_DAY : HOUR_PX_WEEK;
   const pxPerMin = hourPx / 60;
@@ -207,24 +224,31 @@ export function ProCalendar({
             <div className="w-11 shrink-0 sm:w-12" />
             {days.map((d) => {
               const isToday = sameDay(d, new Date());
+              const isFocus = sameDay(d, focusDay);
               return (
-                <div
+                <button
                   key={d.toISOString()}
-                  className="min-w-0 flex-1 basis-0 border-l border-black/[0.06] px-1 py-1.5 text-center"
+                  type="button"
+                  onClick={() => {
+                    setAnchor(startOfDay(d));
+                    setView("day");
+                  }}
+                  className={`min-w-0 flex-1 basis-0 border-l border-black/[0.06] px-1 py-1.5 text-center hover:bg-black/[0.03] ${
+                    isFocus && view === "week" ? "bg-bob-indigo-50/50" : ""
+                  }`}
+                  aria-label={`Apri ${fmtDay(d)} in vista giorno`}
                 >
-                  <div className="text-[10px] font-medium uppercase tracking-wide text-bob-ink/45">
+                  <span className="block text-[10px] font-medium uppercase tracking-wide text-bob-ink/45">
                     {DAY_LABELS[weekdayIndex(d)]}
-                  </div>
-                  <div
+                  </span>
+                  <span
                     className={`mx-auto mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                      isToday
-                        ? "bg-bob-indigo text-white"
-                        : "text-bob-ink/75"
+                      isToday ? "bg-bob-indigo text-white" : "text-bob-ink/75"
                     }`}
                   >
                     {d.getDate()}
-                  </div>
-                </div>
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -330,7 +354,7 @@ export function ProCalendar({
                         onClick={() => onSelect(a)}
                         title={`${fmtHour(new Date(a.starts_at))} · ${a.customer_name}${
                           a.title ? ` · ${a.title}` : ""
-                        }`}
+                        }${locationLabel(a) ? ` · ${locationLabel(a)}` : ""}`}
                         className={`absolute z-10 flex overflow-hidden rounded-md border text-left transition hover:z-20 hover:shadow-card ${
                           STATUS_STYLE[a.status]
                         } ${dim ? "opacity-60" : ""} ${
@@ -383,7 +407,12 @@ export function ProCalendar({
                               {a.title}
                             </span>
                           )}
-                          {height >= 86 && a.price != null && (
+                          {height >= 78 && a.location_address && (
+                            <span className="block truncate text-[10px] opacity-70">
+                              📍 {a.location_address}
+                            </span>
+                          )}
+                          {height >= 96 && a.price != null && (
                             <span className="block truncate text-[10px] font-semibold opacity-80">
                               € {a.price}
                             </span>

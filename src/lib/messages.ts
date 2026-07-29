@@ -289,6 +289,10 @@ export interface NewAppointment {
   price: number | null;
   status: Appointment["status"];
   notes: string | null;
+  // Luogo (031): opzionali, così gli insert esistenti restano validi.
+  location_address?: string | null;
+  location_city?: string | null;
+  location_notes?: string | null;
 }
 
 export async function createAppointment(

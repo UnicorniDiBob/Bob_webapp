@@ -11,6 +11,8 @@ project,3,Client/Pro,André,Done,2026-06-01,2026-06-15,2026-06-03,Messaging + pr
 task,3.1,Client/Pro,André,Done,2026-06-01,2026-06-10,2026-06-03,Bidirectional client-pro messaging
 task,3.2,Client/Pro,André,Done,2026-06-05,2026-06-15,2026-06-03,"Pro dashboard: calendar, hours, earnings"
 task,3.3,Client/Pro,André,Done,2026-06-10,2026-06-15,2026-06-03,Unread message badges in header (desktop + mobile)
+task,3.4,Client/Pro,André,Done,2026-07-28,2026-07-28,2026-07-28,"Pro calendar v2: hour-axis week/day view, blocks sized by duration, overlap columns, appointment detail panel"
+task,3.5,Client/Pro,André,Done,2026-07-28,2026-07-28,2026-07-28,"Appointment location (mig 031 snapshot) + Giro del giorno itinerary with Maps links; address captured in direct booking"
 project,4,Client/Pro,André,Done,2026-06-05,2026-07-08,2026-07-08,Chat v2 + client memory + job brief
 task,4.1,Client/Pro,André,Done,2026-06-05,2026-06-30,2026-06-09,"F1 agentic chat, F2 customer memory, F3 pro request summary"
 task,4.2,Client/Pro,André,Done,2026-07-01,2026-07-08,2026-07-08,"Job brief v1: tool-use extraction, photo vision, recap card, subtask taxonomy"
@@ -138,3 +140,8 @@ project,40,Client/Pro,André,Planned,2027-03-01,2027-05-31,,Parking & vehicle-ac
 task,40.0,Client/Pro,André,Planned,2027-03-01,2027-03-31,,Address geocoding enabler (address to coarse zone; maps vendor DPA/EU) — prerequisite
 task,40.1,Client/Pro,André,Planned,2027-04-01,2027-04-30,,"ZTL / Area B & C vehicle-access checker (vehicle emission class + Milan zone rules) — deterministic, high value for out-of-town pros"
 task,40.2,Client/Pro,André,Planned,2027-05-01,2027-05-31,,Parking-difficulty index + nearby paid-garage links (research spike first; real-time free-spot count not feasible)
+task,40.3,Client/Pro,André,Planned,2027-04-01,2027-04-30,,"Map of the day itinerary in the pro calendar (pins in time order) — depends on 40.0 geocoding + vendor DPA"
+project,41,Client/Pro,André,Planned,2026-08-01,2026-09-30,,"Customer address: progressive disclosure fix (today the exact address sits in clear text in requests.problem_description, readable by every pro in the quote batch before acceptance)"
+task,41.1,Client/Pro,André,Planned,2026-08-01,2026-08-31,,"Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance"
+task,41.2,Client/Pro,André,Planned,2026-08-01,2026-08-31,,"Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization)"
+task,41.3,Shared,Lucio,Planned,2026-09-01,2026-09-30,,"Backfill existing rows + ROPA/notice update; commit DATA_COMPLIANCE.md into the repo (cited in-repo but untracked)"

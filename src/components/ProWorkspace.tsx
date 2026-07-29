@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { notifyEvent } from "@/lib/notify";
 import { Stars, VerificationBadge } from "@/components/ui";
 import { AppointmentDialog } from "@/components/AppointmentDialog";
 import { AppointmentDetail } from "@/components/AppointmentDetail";
 import { ProCalendar } from "@/components/ProCalendar";
+import { DayItinerary } from "@/components/DayItinerary";
 import { ProRequestSummary } from "@/components/ProRequestSummary";
 import { ProPortfolio } from "@/components/ProPortfolio";
 import { fmtDay, fmtDuration, fmtRange } from "@/lib/calendar";
@@ -50,6 +51,9 @@ export function ProWorkspace({
   // Appuntamento aperto nel pannello di dettaglio: teniamo l'id e non
   // l'oggetto, così dopo un salvataggio il pannello mostra i dati freschi.
   const [detailId, setDetailId] = useState<string | null>(null);
+  // Giornata a fuoco nel calendario: alimenta il giro del giorno.
+  const [focusDay, setFocusDay] = useState<Date>(() => new Date());
+  const handleFocusDay = useCallback((d: Date) => setFocusDay(d), []);
 
   const proId = profile?.id ?? null;
 
@@ -249,6 +253,7 @@ export function ProWorkspace({
               setDialogOpen(true);
             }}
             onSelect={(a) => setDetailId(a.id)}
+            onFocusDayChange={handleFocusDay}
             selectedId={detailId}
           />
 
@@ -265,8 +270,14 @@ export function ProWorkspace({
           </button>
         </div>
 
-        {/* Colonna laterale: prossimi + profilo */}
+        {/* Colonna laterale: giro del giorno, prossimi, profilo */}
         <div className="space-y-4">
+          <DayItinerary
+            day={focusDay}
+            appointments={appointments}
+            onSelect={(a) => setDetailId(a.id)}
+          />
+
           <div className="card p-5">
             <h3 className="mb-3 text-sm font-semibold text-bob-ink">
               Prossimi appuntamenti

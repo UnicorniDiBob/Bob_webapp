@@ -11,6 +11,7 @@ import {
   fmtDayLong,
   fmtDuration,
   fmtHour,
+  mapsSearchUrl,
 } from "@/lib/calendar";
 
 /**
@@ -44,6 +45,7 @@ export function AppointmentDetail({
   const start = new Date(appt.starts_at);
   const end = apptEnd(appt);
   const isPast = end < new Date();
+  const mapsUrl = mapsSearchUrl(appt);
 
   async function setStatus(status: Appointment["status"]) {
     setBusy(true);
@@ -113,6 +115,44 @@ export function AppointmentDetail({
               · {fmtDuration(appt.duration_minutes)}
             </span>
           </p>
+        </div>
+
+        {/* Dove */}
+        <div className="mt-3 rounded-xl border border-black/[0.07] px-3.5 py-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-bob-ink/45">
+            Dove
+          </p>
+          {appt.location_address ? (
+            <>
+              <p className="mt-1 break-words text-sm font-medium text-bob-ink">
+                {appt.location_address}
+              </p>
+              {appt.location_city && (
+                <p className="text-sm text-bob-ink/60">{appt.location_city}</p>
+              )}
+              {appt.location_notes && (
+                <p className="mt-1 break-words text-xs text-bob-ink/55">
+                  🔑 {appt.location_notes}
+                </p>
+              )}
+              {mapsUrl && (
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-sm font-semibold text-bob-indigo hover:underline"
+                  data-testid="detail-maps"
+                >
+                  Apri in Maps ↗
+                </a>
+              )}
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-bob-ink/50">
+              Nessun indirizzo. Aggiungilo con «Modifica» per vederlo nel giro
+              del giorno.
+            </p>
+          )}
         </div>
 
         <dl className="mt-4 space-y-3 text-sm">
