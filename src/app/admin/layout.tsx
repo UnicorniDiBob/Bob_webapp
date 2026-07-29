@@ -3,6 +3,15 @@
 
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
+import {
+  LayoutDashboard,
+  BadgeCheck,
+  Users,
+  TrendingUp,
+  Zap,
+  Headphones,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminLayout({
@@ -37,17 +46,17 @@ export default async function AdminLayout({
             </span>
           </div>
           <nav className="flex flex-col gap-1">
-            <SidebarLink href="/admin" label="Dashboard" icon="📊" exact />
-            <SidebarLink href="/admin/professionals" label="Verifiche" icon="🪪" />
-            <SidebarLink href="/admin/users" label="Utenti" icon="👥" />
+            <SidebarLink href="/admin" label="Dashboard" icon={LayoutDashboard} exact />
+            <SidebarLink href="/admin/professionals" label="Verifiche" icon={BadgeCheck} />
+            <SidebarLink href="/admin/users" label="Utenti" icon={Users} />
             {isAdmin && (
-              <SidebarLink href="/admin/analisi" label="Analisi" icon="📈" />
+              <SidebarLink href="/admin/analisi" label="Analisi" icon={TrendingUp} />
             )}
             {isAdmin && (
-              <SidebarLink href="/admin/catalogo" label="Prenotazione diretta" icon="⚡" />
+              <SidebarLink href="/admin/catalogo" label="Prenotazione diretta" icon={Zap} />
             )}
             {isAdmin && (
-              <SidebarLink href="/admin/cs" label="Team" icon="🎧" />
+              <SidebarLink href="/admin/cs" label="Team" icon={Headphones} />
             )}
           </nav>
           <div className="mt-6 border-t border-black/5 pt-4 px-2">
@@ -82,12 +91,12 @@ export default async function AdminLayout({
 function SidebarLink({
   href,
   label,
-  icon,
+  icon: Icon,
   exact,
 }: {
   href: string;
   label: string;
-  icon: string;
+  icon: LucideIcon;
   exact?: boolean;
 }) {
   return (
@@ -95,7 +104,7 @@ function SidebarLink({
       href={href}
       className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-bob-ink/70 transition hover:bg-bob-indigo-50 hover:text-bob-indigo"
     >
-      <span>{icon}</span>
+      <Icon className="h-4 w-4" aria-hidden="true" />
       {label}
     </Link>
   );

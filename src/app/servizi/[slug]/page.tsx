@@ -7,7 +7,7 @@ import {
   getProfessionals,
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
-import { serviceIcon } from "@/lib/serviceIcons";
+import { ServiceIcon } from "@/lib/serviceIcons";
 import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
@@ -89,8 +89,8 @@ export default async function ServicePage({
       </nav>
 
       <header className="mb-7 flex items-start gap-4">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-3xl">
-          {serviceIcon(service.slug)}
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-bob-indigo">
+          <ServiceIcon slug={service.slug} className="h-7 w-7" />
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">

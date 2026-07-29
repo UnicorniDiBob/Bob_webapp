@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Bell, Calendar, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ReviewDialog } from "@/components/ReviewDialog";
@@ -275,8 +276,8 @@ export function CustomerHome() {
         user.id,
         "customer",
         ok
-          ? `✅ Ho confermato l'appuntamento di ${dow} ${day} alle ${time}.`
-          : `❌ Non posso ${dow} ${day} alle ${time}: proponi un altro orario?`
+          ? `Ho confermato l'appuntamento di ${dow} ${day} alle ${time}.`
+          : `Non posso ${dow} ${day} alle ${time}: proponi un altro orario?`
       );
       notifyEvent(ok ? "appointment_confirmed" : "appointment_declined", {
         requestId: a.request_id,
@@ -480,8 +481,8 @@ export function CustomerHome() {
   if (requests.length === 0) {
     return (
       <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-2xl">
-          👋
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-bob-indigo">
+          <MessageCircle className="h-6 w-6" aria-hidden="true" />
         </div>
         <h3 className="font-semibold text-bob-ink">Nessuna richiesta ancora</h3>
         <p className="max-w-sm text-sm text-bob-ink/60">
@@ -503,8 +504,9 @@ export function CustomerHome() {
           className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4"
           data-testid="todo-strip"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-            🔔 Da fare ora
+          <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
+            <Bell className="h-3.5 w-3.5" aria-hidden="true" />
+            Da fare ora
           </p>
           <ul className="mt-2.5 flex flex-col gap-2">
             {todos.slice(0, 4).map((t) => (
@@ -642,8 +644,9 @@ export function CustomerHome() {
 
         {/* ---- 3. Prossimi appuntamenti ---- */}
         <section className="card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
-            📅 Prossimi appuntamenti
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+            <Calendar className="h-4 w-4" aria-hidden="true" />
+            Prossimi appuntamenti
           </h2>
           {appointments.length === 0 ? (
             <p className="mt-4 text-sm text-bob-ink/50">

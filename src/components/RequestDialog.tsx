@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
 import { notifyEvent } from "@/lib/notify";
+import { CircleCheck } from "lucide-react";
 import type { ProfessionalCard } from "@/lib/supabase/types";
 
 interface RequestContext {
@@ -149,8 +150,8 @@ export function RequestDialog({
       >
         {done ? (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-2xl">
-              ✅
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+              <CircleCheck className="h-8 w-8 text-emerald-600" aria-hidden="true" />
             </div>
             <h3 className="text-lg font-semibold text-bob-ink">
               Messaggio inviato a {professional.fullName}

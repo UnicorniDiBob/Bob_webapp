@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { Appointment } from "@/lib/supabase/types";
+import { MapPin, Key } from "lucide-react";
 import {
   fmtDayLong,
   fmtDuration,
@@ -123,8 +124,9 @@ export function DayItinerary({
                           {a.title ? ` — ${a.title}` : ""}
                         </p>
                         {label ? (
-                          <p className="truncate text-xs text-bob-ink/55">
-                            📍 {label}
+                          <p className="flex items-center gap-1 text-xs text-bob-ink/55">
+                            <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{label}</span>
                           </p>
                         ) : (
                           <p className="text-xs font-medium text-amber-700">
@@ -132,8 +134,9 @@ export function DayItinerary({
                           </p>
                         )}
                         {a.location_notes && (
-                          <p className="truncate text-xs text-bob-ink/45">
-                            🔑 {a.location_notes}
+                          <p className="flex items-center gap-1 text-xs text-bob-ink/45">
+                            <Key className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{a.location_notes}</span>
                           </p>
                         )}
                       </button>

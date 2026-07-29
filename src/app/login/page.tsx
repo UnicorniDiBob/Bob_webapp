@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { User, Wrench } from "lucide-react";
 import type { UserRole } from "@/lib/supabase/types";
 
 type Mode = "login" | "signup";
@@ -240,7 +241,10 @@ function LoginInner() {
                   }`}
                   data-testid="role-customer"
                 >
-                  🙋 Cliente
+                  <span className="inline-flex items-center gap-1.5">
+                    <User className="h-4 w-4" aria-hidden="true" />
+                    Cliente
+                  </span>
                   <span className="mt-0.5 block text-xs font-normal text-bob-ink/50">
                     Cerco un servizio
                   </span>
@@ -255,7 +259,10 @@ function LoginInner() {
                   }`}
                   data-testid="role-professional"
                 >
-                  🛠️ Professionista
+                  <span className="inline-flex items-center gap-1.5">
+                    <Wrench className="h-4 w-4" aria-hidden="true" />
+                    Professionista
+                  </span>
                   <span className="mt-0.5 block text-xs font-normal text-bob-ink/50">
                     Offro un servizio
                   </span>

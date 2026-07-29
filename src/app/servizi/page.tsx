@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getServices, getServiceCounts } from "@/lib/data";
-import { serviceIcon } from "@/lib/serviceIcons";
+import { ServiceIcon } from "@/lib/serviceIcons";
 
 export const revalidate = 300;
 
@@ -40,8 +40,8 @@ export default async function ServicesPage() {
               className="card flex items-center gap-4 p-4 hover:-translate-y-0.5 hover:shadow-card-hover"
               data-testid={`card-service-${s.slug}`}
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bob-indigo-50 text-2xl">
-                {serviceIcon(s.slug)}
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-bob-indigo-50 text-bob-indigo">
+                <ServiceIcon slug={s.slug} className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold text-bob-ink">{s.name}</h2>

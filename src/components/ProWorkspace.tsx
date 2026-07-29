@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { notifyEvent } from "@/lib/notify";
+import { Wrench, Calendar as CalendarIcon } from "lucide-react";
 import { Stars, VerificationBadge } from "@/components/ui";
 import { AppointmentDialog } from "@/components/AppointmentDialog";
 import { AppointmentDetail } from "@/components/AppointmentDetail";
@@ -125,8 +126,8 @@ export function ProWorkspace({
         profile.user_id,
         "professional",
         ok
-          ? `✅ Confermo l'appuntamento di ${label}. A presto!`
-          : `❌ Purtroppo ${label} non riesco: scrivimi e troviamo un altro orario.`
+          ? `Confermo l'appuntamento di ${label}. A presto!`
+          : `Purtroppo ${label} non riesco: scrivimi e troviamo un altro orario.`
       );
       notifyEvent(ok ? "appointment_confirmed" : "appointment_declined", {
         requestId: a.request_id,
@@ -139,8 +140,8 @@ export function ProWorkspace({
   if (!profile) {
     return (
       <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-2xl">
-          🛠️
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-bob-indigo">
+          <Wrench className="h-6 w-6" aria-hidden="true" />
         </div>
         <h3 className="font-semibold text-bob-ink">
           Completa il tuo profilo per iniziare
@@ -172,8 +173,9 @@ export function ProWorkspace({
           className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4"
           data-testid="pending-proposals"
         >
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-            📅 Orari proposti dai clienti
+          <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
+            <CalendarIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            Orari proposti dai clienti
           </p>
           <ul className="mt-2.5 flex flex-col gap-2">
             {pendingFromCustomers.map((a) => (

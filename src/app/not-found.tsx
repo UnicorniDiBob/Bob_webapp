@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { Compass } from "lucide-react";
 
 export default function NotFound() {
   return (
     <div className="container-bob flex min-h-[calc(100vh-8rem)] items-center justify-center py-16">
       <div className="text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-bob-indigo-50 text-3xl">
-          🧭
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-bob-indigo-50 text-bob-indigo">
+          <Compass className="h-8 w-8" aria-hidden="true" />
         </div>
         <p className="mt-5 text-sm font-bold uppercase tracking-wide text-bob-indigo">
           Errore 404

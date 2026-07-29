@@ -4,6 +4,7 @@
 // Filtro per ruolo + ricerca live su nome e telefono, lato client.
 
 import { useMemo, useState } from "react";
+import { Phone } from "lucide-react";
 import { EditUserButton } from "./EditUserButton";
 import { DeleteUserButton } from "./DeleteUserButton";
 
@@ -159,7 +160,12 @@ export function UsersList({
                   </span>
                 </div>
                 <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs text-bob-ink/50">
-                  {u.phone && <span>📞 {u.phone}</span>}
+                  {u.phone && (
+                    <span className="inline-flex items-center gap-1">
+                      <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+                      {u.phone}
+                    </span>
+                  )}
                   <span>Iscritto {fmtDate(u.created_at)}</span>
                 </div>
               </div>

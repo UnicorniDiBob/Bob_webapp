@@ -119,7 +119,7 @@ export default function DashboardPage() {
       <header className="mb-7">
         <span className="section-eyebrow">Area personale</span>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
-          Ciao {firstName} 👋
+          Ciao {firstName}
         </h1>
         <p className="mt-2 text-sm text-bob-ink/60">
           {role === "professional"

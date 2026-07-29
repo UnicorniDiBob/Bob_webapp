@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { getCities, getProfessionals } from "@/lib/data";
 
 export const revalidate = 300;
@@ -38,8 +39,8 @@ export default async function CitiesPage() {
           const inner = (
             <>
               <div className="flex items-start justify-between">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-bob-indigo-100 text-2xl">
-                  📍
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-bob-indigo-100 text-bob-indigo">
+                  <MapPin className="h-6 w-6" aria-hidden="true" />
                 </div>
                 {active ? (
                   <span className="chip border-emerald-200 bg-emerald-50 text-emerald-700">

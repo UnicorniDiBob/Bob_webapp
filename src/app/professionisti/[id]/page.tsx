@@ -13,7 +13,7 @@ import {
 } from "@/components/ui";
 import { ContactButton } from "@/components/ContactButton";
 import InstantBookingEntry from "@/components/InstantBookingEntry";
-import { serviceIcon } from "@/lib/serviceIcons";
+import { ServiceIcon } from "@/lib/serviceIcons";
 
 export const revalidate = 120;
 
@@ -97,9 +97,10 @@ export default async function ProfessionalDetailPage({
                       href={`/servizi/${p.serviceSlug}`}
                       className="chip hover:bg-bob-indigo-50"
                     >
-                      <span className="mr-1">
-                        {serviceIcon(p.serviceSlug ?? "")}
-                      </span>
+                      <ServiceIcon
+                        slug={p.serviceSlug ?? ""}
+                        className="mr-1 h-4 w-4 text-bob-indigo"
+                      />
                       {p.serviceName}
                     </Link>
                   )}

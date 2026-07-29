@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Settings } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "./AuthProvider";
 
@@ -55,8 +56,12 @@ export function Header() {
 
         <div className="hidden items-center gap-2 md:flex">
           {(role === "admin" || role === "cs") && (
-            <Link href="/admin" className="btn-ghost text-bob-indigo font-semibold">
-              ⚙️ Admin
+            <Link
+              href="/admin"
+              className="btn-ghost inline-flex items-center gap-1.5 font-semibold text-bob-indigo"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+              Admin
             </Link>
           )}
           {!loading && user ? (
@@ -134,9 +139,10 @@ export function Header() {
               <Link
                 href="/admin"
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm font-semibold text-bob-indigo hover:bg-bob-indigo-50"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-bob-indigo hover:bg-bob-indigo-50"
               >
-                ⚙️ Admin
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                Admin
               </Link>
             )}
             <div className="mt-2 flex gap-2">

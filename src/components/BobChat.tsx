@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Camera, MapPin } from "lucide-react";
 import type { City, Service, ProfessionalCard } from "@/lib/supabase/types";
 import { EMPTY_BRIEF } from "@/lib/bob";
 import type {
@@ -781,8 +782,9 @@ export function BobChat({
               ))}
             </div>
             {brief.photos.length > 0 && brief.photos[0].aiCaption && (
-              <p className="mt-2 text-xs text-bob-ink/50">
-                📷 {brief.photos[0].aiCaption}
+              <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/50">
+                <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                <span>{brief.photos[0].aiCaption}</span>
               </p>
             )}
           </div>
@@ -1004,7 +1006,7 @@ export function BobChat({
                 title="Allega una foto del problema"
                 data-testid="button-photo"
               >
-                📷
+                <Camera className="h-5 w-5" aria-hidden="true" />
               </button>
               <input
                 value={input}
@@ -1050,11 +1052,12 @@ export function BobChat({
                   <button
                     key={a.id}
                     onClick={() => pickSavedAddress(a)}
-                    className="chip hover:bg-bob-indigo-100"
+                    className="chip inline-flex items-center gap-1 hover:bg-bob-indigo-100"
                     title={a.address_line}
                     data-testid={`chip-address-${a.id}`}
                   >
-                    📍 {a.label}
+                    <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                    {a.label}
                     {a.is_default ? " ✓" : ""}
                   </button>
                 ))}

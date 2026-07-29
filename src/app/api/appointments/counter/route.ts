@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     professional_id: appt.professional_id,
     sender_type: "customer",
     sender_id: user.id,
-    message: `🔄 Ti propongo un orario diverso: ${label}. Puoi confermarlo dal tuo calendario.`,
+    message: `Ti propongo un orario diverso: ${label}. Puoi confermarlo dal tuo calendario.`,
   });
 
   const relName = (rel: unknown): string | null => {

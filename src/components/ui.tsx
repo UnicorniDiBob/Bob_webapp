@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Search } from "lucide-react";
 import type { VerificationStatus, ProfessionalCard } from "@/lib/supabase/types";
 
 // ---------- Rating a stelle ----------
@@ -156,8 +157,8 @@ export function EmptyState({
 }) {
   return (
     <div className="card flex flex-col items-center gap-2 px-6 py-12 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-2xl">
-        🔎
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-bob-indigo">
+        <Search className="h-6 w-6" aria-hidden="true" />
       </div>
       <h3 className="font-semibold text-bob-ink">{title}</h3>
       <p className="max-w-sm text-sm text-bob-ink/60">{description}</p>

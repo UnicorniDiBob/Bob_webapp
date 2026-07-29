@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -268,7 +269,7 @@ export default function AccountPage() {
         <header className="mb-8">
           <span className="section-eyebrow">Account</span>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
-            Ciao {firstName} 👋
+            Ciao {firstName}
           </h1>
           <p className="mt-2 text-sm text-bob-ink/60">
             Qui gestisci i tuoi dati, gli indirizzi che Bob usa per cercare i
@@ -405,7 +406,7 @@ export default function AccountPage() {
                     className="flex flex-wrap items-center gap-2 rounded-xl border border-black/5 bg-black/[0.015] px-3.5 py-2.5"
                     data-testid={`address-${a.id}`}
                   >
-                    <span className="text-lg">📍</span>
+                    <MapPin className="h-4 w-4 shrink-0 text-bob-ink/40" aria-hidden="true" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-bob-ink">
                         {a.label}

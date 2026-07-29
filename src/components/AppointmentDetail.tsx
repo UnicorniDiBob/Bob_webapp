@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { updateAppointment } from "@/lib/messages";
 import type { Appointment } from "@/lib/supabase/types";
+import { Key } from "lucide-react";
 import {
   STATUS_CHIP,
   STATUS_LABEL,
@@ -131,8 +132,9 @@ export function AppointmentDetail({
                 <p className="text-sm text-bob-ink/60">{appt.location_city}</p>
               )}
               {appt.location_notes && (
-                <p className="mt-1 break-words text-xs text-bob-ink/55">
-                  🔑 {appt.location_notes}
+                <p className="mt-1 flex items-start gap-1 break-words text-xs text-bob-ink/55">
+                  <Key className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span>{appt.location_notes}</span>
                 </p>
               )}
               {mapsUrl && (

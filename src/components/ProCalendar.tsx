@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Appointment } from "@/lib/supabase/types";
+import { MapPin } from "lucide-react";
 import {
   DAY_LABELS,
   HOUR_PX_DAY,
@@ -408,8 +409,9 @@ export function ProCalendar({
                             </span>
                           )}
                           {height >= 78 && a.location_address && (
-                            <span className="block truncate text-[10px] opacity-70">
-                              📍 {a.location_address}
+                            <span className="flex items-center gap-1 text-[10px] opacity-70">
+                              <MapPin className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
+                              <span className="truncate">{a.location_address}</span>
                             </span>
                           )}
                           {height >= 96 && a.price != null && (

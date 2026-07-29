@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BadgeCheck, Bot, Euro, HandCoins, type LucideIcon } from "lucide-react";
 import { Faq } from "@/components/Faq";
 
 export const metadata: Metadata = {
@@ -8,24 +9,24 @@ export const metadata: Metadata = {
     "Su BOB non paghi per i contatti: la fee si applica solo a lavoro concluso. Profilo verificato, prezzi in chiaro e clienti che ti scelgono davvero.",
 };
 
-const BENEFITS = [
+const BENEFITS: { icon: LucideIcon; title: string; text: string }[] = [
   {
-    icon: "🎯",
+    icon: HandCoins,
     title: "Niente lead a pagamento",
     text: "Non vendiamo contatti. Paghi una fee solo quando un lavoro si chiude davvero: zero costi a vuoto.",
   },
   {
-    icon: "🪪",
+    icon: BadgeCheck,
     title: "Profilo verificato",
     text: "Il badge di verifica racconta ai clienti che possono fidarsi. Più trasparenza, più richieste di qualità.",
   },
   {
-    icon: "💶",
+    icon: Euro,
     title: "Prezzi in chiaro",
     text: "Mostri le tue tariffe in modo onesto. I clienti arrivano già informati, le trattative sono più semplici.",
   },
   {
-    icon: "🤖",
+    icon: Bot,
     title: "Bob lavora per te",
     text: "Nel tuo spazio di lavoro trovi già calendario appuntamenti, riassunti AI delle richieste e portfolio foto. In arrivo: contabilità.",
   },
@@ -89,8 +90,8 @@ export default function PerIProfessionistiPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {BENEFITS.map((b) => (
             <div key={b.title} className="card flex gap-4 p-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-2xl">
-                {b.icon}
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-bob-indigo">
+                <b.icon className="h-6 w-6" aria-hidden="true" />
               </div>
               <div>
                 <h2 className="font-semibold text-bob-ink">{b.title}</h2>

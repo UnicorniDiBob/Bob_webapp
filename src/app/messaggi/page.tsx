@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Calendar, MessageCircle } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useUnread } from "@/components/UnreadProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -224,7 +225,7 @@ function MessaggiInner() {
       myProId,
       user.id,
       "professional",
-      `📅 Ti propongo un appuntamento: ${when} (${apptDuration} min). Puoi confermarlo dalla tua area personale.`
+      `Ti propongo un appuntamento: ${when} (${apptDuration} min). Puoi confermarlo dalla tua area personale.`
     );
     notifyEvent("appointment_proposed", {
       requestId: activeR,
@@ -404,8 +405,8 @@ function MessaggiInner() {
         <div className="card h-64 animate-pulse bg-black/[0.03]" />
       ) : conversations.length === 0 ? (
         <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-2xl">
-            💬
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-bob-indigo">
+            <MessageCircle className="h-6 w-6" aria-hidden="true" />
           </div>
           <h3 className="font-semibold text-bob-ink">Nessuna conversazione</h3>
           <p className="max-w-sm text-sm text-bob-ink/60">
@@ -491,10 +492,11 @@ function MessaggiInner() {
                   {myType === "professional" && myProId && (
                     <button
                       onClick={() => setProposeOpen(true)}
-                      className="btn-secondary ml-auto shrink-0 px-3 py-1.5 text-xs"
+                      className="btn-secondary ml-auto inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs"
                       data-testid="button-propose-appointment"
                     >
-                      📅 Proponi appuntamento
+                      <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
+                      Proponi appuntamento
                     </button>
                   )}
                 </div>

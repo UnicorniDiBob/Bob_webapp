@@ -3,6 +3,7 @@
 // Admin e CS possono approvare (verified), mettere in attesa (pending) o rifiutare (unverified).
 
 import { createClient } from "@/lib/supabase/server";
+import { Wrench, MapPin, Euro, Phone, Calendar, Clock } from "lucide-react";
 import { VerifyButtons } from "./VerifyButtons";
 import { TierButtons } from "./TierButtons";
 
@@ -159,24 +160,40 @@ export default async function AdminProfessionalsPage() {
 
                           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-bob-ink/55">
                             {svc?.services?.name && (
-                              <span>🛠 {svc.services.name}</span>
+                              <span className="inline-flex items-center gap-1">
+                                <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
+                                {svc.services.name}
+                              </span>
                             )}
                             {pro.cities?.name && (
-                              <span>📍 {pro.cities.name}</span>
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                                {pro.cities.name}
+                              </span>
                             )}
                             {pro.years_experience != null && (
-                              <span>⏱ {pro.years_experience} anni di esperienza</span>
+                              <span className="inline-flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+                                {pro.years_experience} anni di esperienza
+                              </span>
                             )}
                             {svc?.min_price != null && (
-                              <span>
-                                💶 da €{svc.min_price}
+                              <span className="inline-flex items-center gap-1">
+                                <Euro className="h-3.5 w-3.5" aria-hidden="true" />
+                                da €{svc.min_price}
                                 {svc.max_price ? ` a €${svc.max_price}` : ""}
                               </span>
                             )}
                             {profile?.phone && (
-                              <span>📞 {profile.phone}</span>
+                              <span className="inline-flex items-center gap-1">
+                                <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+                                {profile.phone}
+                              </span>
                             )}
-                            <span>📅 Iscritto {fmtDate(pro.created_at)}</span>
+                            <span className="inline-flex items-center gap-1">
+                              <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
+                              Iscritto {fmtDate(pro.created_at)}
+                            </span>
                           </div>
 
                           {pro.headline && (

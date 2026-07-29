@@ -8,7 +8,8 @@ import {
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
 import { CityWaitlistForm } from "@/components/CityWaitlistForm";
-import { serviceIcon } from "@/lib/serviceIcons";
+import { Hammer, MapPin } from "lucide-react";
+import { ServiceIcon } from "@/lib/serviceIcons";
 import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
@@ -49,8 +50,8 @@ export default async function CityPage({
     return (
       <div className="container-bob py-16">
         <div className="card mx-auto max-w-lg p-8 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-bob-indigo-50 text-3xl">
-            🛠️
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-bob-indigo-50 text-bob-indigo">
+            <Hammer className="h-7 w-7" aria-hidden="true" />
           </div>
           <h1 className="mt-4 text-2xl font-bold text-bob-ink">
             BOB sta arrivando a {city.name}
@@ -119,7 +120,10 @@ export default async function CityPage({
       </nav>
 
       <header className="mb-7">
-        <span className="section-eyebrow">📍 {city.name}</span>
+        <span className="section-eyebrow inline-flex items-center gap-1">
+          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+          {city.name}
+        </span>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
           Professionisti a {city.name}
         </h1>
@@ -143,7 +147,7 @@ export default async function CityPage({
                 className="chip border-black/10 bg-white hover:border-bob-indigo/30 hover:bg-bob-indigo-50"
                 data-testid={`chip-service-${s.slug}`}
               >
-                <span className="mr-1">{serviceIcon(s.slug)}</span>
+                <ServiceIcon slug={s.slug} className="mr-1 h-4 w-4 text-bob-indigo" />
                 {s.name}
               </Link>
             ))}

@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
+import { BadgeCheck, Users, Headphones } from "lucide-react";
 
 export const revalidate = 30;
 
@@ -69,19 +71,19 @@ export default async function AdminDashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <QuickLink
           href="/admin/professionals"
-          icon="🪪"
+          icon={BadgeCheck}
           title="Gestisci verifiche"
           desc="Approva o rifiuta le iscrizioni dei professionisti."
         />
         <QuickLink
           href="/admin/users"
-          icon="👥"
+          icon={Users}
           title="Gestisci utenti"
           desc="Visualizza e modifica i profili di clienti e professionisti."
         />
         <QuickLink
           href="/admin/cs"
-          icon="🎧"
+          icon={Headphones}
           title="Team Customer Service"
           desc="Crea e gestisci gli account del team CS."
         />
@@ -115,12 +117,12 @@ function StatCard({
 
 function QuickLink({
   href,
-  icon,
+  icon: Icon,
   title,
   desc,
 }: {
   href: string;
-  icon: string;
+  icon: LucideIcon;
   title: string;
   desc: string;
 }) {
@@ -129,8 +131,8 @@ function QuickLink({
       href={href}
       className="card flex gap-4 p-5 hover:-translate-y-0.5 hover:shadow-card-hover"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bob-indigo-50 text-xl">
-        {icon}
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-bob-indigo-50 text-bob-indigo">
+        <Icon className="h-5 w-5" aria-hidden="true" />
       </div>
       <div>
         <p className="font-semibold text-bob-ink">{title}</p>

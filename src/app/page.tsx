@@ -9,7 +9,7 @@ import { BobChat } from "@/components/BobChat";
 import { ProfessionalCardItem } from "@/components/ui";
 import { Faq } from "@/components/Faq";
 import { HOME_FAQ } from "@/lib/faqData";
-import { serviceIcon } from "@/lib/serviceIcons";
+import { ServiceIcon } from "@/lib/serviceIcons";
 
 export const revalidate = 120;
 
@@ -148,7 +148,9 @@ export default async function HomePage() {
               className="card flex flex-col gap-2 p-5 hover:-translate-y-0.5 hover:shadow-card-hover"
               data-testid={`card-service-${s.slug}`}
             >
-              <span className="text-2xl">{serviceIcon(s.slug)}</span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-bob-indigo-50 text-bob-indigo">
+                <ServiceIcon slug={s.slug} className="h-5 w-5" />
+              </span>
               <h3 className="font-semibold text-bob-ink">{s.name}</h3>
               <p className="text-xs text-bob-ink/50">
                 {serviceCounts[s.id]

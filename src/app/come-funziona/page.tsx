@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Mail, MessageCircle, Search, Star, type LucideIcon } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Come funziona",
@@ -7,28 +8,28 @@ export const metadata: Metadata = {
     "BOB ti aiuta a trovare il professionista giusto in pochi passi: racconti il problema, ricevi profili adatti con prezzi e rating, e contatti chi vuoi.",
 };
 
-const STEPS = [
+const STEPS: { n: string; icon: LucideIcon; title: string; text: string }[] = [
   {
     n: "1",
-    icon: "💬",
+    icon: MessageCircle,
     title: "Racconta a Bob cosa ti serve",
     text: "Descrivi il problema con parole tue. Bob ti fa qualche domanda su servizio, città, urgenza e budget — niente moduli complicati.",
   },
   {
     n: "2",
-    icon: "🔎",
+    icon: Search,
     title: "Bob filtra i professionisti adatti",
     text: "In base a quello che gli dici, Bob seleziona i professionisti più rilevanti. Usa il prezzo per ordinarli, ma il dettaglio lo trovi sempre nella scheda.",
   },
   {
     n: "3",
-    icon: "⭐",
+    icon: Star,
     title: "Confronti prezzo, rating e disponibilità",
     text: "Vedi subito chi è verificato, quanto costa e cosa dicono gli altri clienti. La scelta resta sempre tua.",
   },
   {
     n: "4",
-    icon: "✉️",
+    icon: Mail,
     title: "Contatti chi preferisci",
     text: "Bob prepara il primo messaggio, tu lo personalizzi e lo invii. Puoi contattare uno o più professionisti e seguire tutto dalla tua area personale.",
   },
@@ -51,8 +52,8 @@ export default function ComeFunzionaPage() {
       <div className="mx-auto mt-10 grid grid-cols-1 max-w-4xl gap-4 sm:grid-cols-2">
         {STEPS.map((s) => (
           <div key={s.n} className="card flex gap-4 p-6">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-2xl">
-              {s.icon}
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-bob-indigo">
+              <s.icon className="h-6 w-6" aria-hidden="true" />
             </div>
             <div>
               <div className="flex items-center gap-2">
