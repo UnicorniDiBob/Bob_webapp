@@ -40,7 +40,15 @@ export function AppointmentDetail({
       if (e.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    // Blocca lo scroll della pagina sotto: su iOS Safari lo scroll che
+    // "sfonda" nella pagina fa comparire/scomparire le toolbar del browser,
+    // cambiando l'altezza del viewport e tagliando il fondo del pannello.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   const start = new Date(appt.starts_at);
@@ -63,11 +71,11 @@ export function AppointmentDetail({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-bob-ink/40 backdrop-blur-sm sm:items-stretch sm:justify-end"
+      className="fixed inset-0 z-50 flex h-[100dvh] items-end justify-center bg-bob-ink/40 backdrop-blur-sm sm:items-stretch sm:justify-end"
       onClick={onClose}
     >
       <div
-        className="max-h-[85vh] w-full animate-fade-up overflow-y-auto rounded-t-2xl bg-white p-5 shadow-card-hover sm:max-h-none sm:w-[380px] sm:rounded-none sm:rounded-l-2xl"
+        className="max-h-[85dvh] w-full animate-fade-up overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-5 shadow-card-hover sm:max-h-none sm:w-[380px] sm:rounded-none sm:rounded-l-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Dettaglio appuntamento"
