@@ -117,8 +117,11 @@ export function AppointmentDialog({
       className="fixed inset-0 z-50 flex items-end justify-center bg-bob-ink/40 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
+      {/* max-h + overflow: il modulo è più alto della finestra su schermi bassi
+          o con lo zoom del browser attivo, e il pulsante di salvataggio non
+          deve mai finire fuori schermo. */}
       <div
-        className="w-full max-w-md animate-fade-up rounded-t-2xl bg-white p-5 shadow-card-hover sm:rounded-2xl"
+        className="max-h-[92vh] w-full max-w-md animate-fade-up overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-5 shadow-card-hover sm:max-h-[88vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         data-testid="appointment-dialog"
       >
@@ -273,7 +276,9 @@ export function AppointmentDialog({
             </p>
           )}
 
-          <div className="flex gap-2 pt-1">
+          {/* Barra azioni ancorata in basso: resta raggiungibile mentre si
+              scorre il modulo. */}
+          <div className="sticky bottom-0 -mx-5 -mb-5 flex gap-2 border-t border-black/5 bg-white px-5 pb-5 pt-3">
             {existing && (
               <button
                 onClick={handleDelete}
