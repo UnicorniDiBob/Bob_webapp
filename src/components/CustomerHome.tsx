@@ -812,13 +812,13 @@ export function CustomerHome() {
       {/* ---- dialogs ---- */}
       {slotPickerFor && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-50 flex h-[100dvh] items-center justify-center bg-black/40 p-4"
           role="dialog"
           aria-modal="true"
           onClick={() => setSlotPickerFor(null)}
         >
           <div
-            className="card max-h-[80vh] w-full max-w-md overflow-y-auto p-6"
+            className="card max-h-[80dvh] w-full max-w-md overflow-y-auto overscroll-contain p-6"
             onClick={(e) => e.stopPropagation()}
             data-testid="dialog-slot-picker"
           >

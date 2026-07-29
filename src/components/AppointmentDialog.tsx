@@ -114,7 +114,7 @@ export function AppointmentDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bob-ink/40 p-3 backdrop-blur-sm sm:p-4"
+      className="fixed inset-0 z-50 flex h-[100dvh] items-center justify-center bg-bob-ink/40 p-3 backdrop-blur-sm sm:p-4"
       onClick={onClose}
     >
       {/* Riquadro flottante, identico a ogni dimensione: angoli arrotondati su
@@ -124,9 +124,12 @@ export function AppointmentDialog({
           Tre fasce: intestazione fissa, corpo che scorre, azioni fisse — così
           il modulo più alto della finestra si ritaglia netto fra i due bordi e
           nulla passa sotto i pulsanti. overflow-hidden tiene i bordi delle
-          fasce dentro gli angoli arrotondati. */}
+          fasce dentro gli angoli arrotondati.
+          Le altezze sono in dvh (non vh): su iOS Safari vh misura il viewport
+          "grande" (toolbar nascoste), quindi con le toolbar visibili il fondo
+          del riquadro — e i pulsanti — finivano tagliati sotto la barra. */}
       <div
-        className="flex max-h-[88vh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl bg-white shadow-card-hover"
+        className="flex max-h-[88dvh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl bg-white shadow-card-hover"
         onClick={(e) => e.stopPropagation()}
         data-testid="appointment-dialog"
       >
