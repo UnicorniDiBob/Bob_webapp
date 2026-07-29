@@ -114,15 +114,19 @@ export function AppointmentDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-bob-ink/40 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-bob-ink/40 p-3 backdrop-blur-sm sm:p-4"
       onClick={onClose}
     >
-      {/* Tre fasce: intestazione fissa, corpo che scorre, azioni fisse.
-          Il modulo è più alto della finestra su schermi bassi o con lo zoom
-          del browser attivo: il corpo scorre e si ritaglia netto fra i due
-          bordi, così nulla passa sotto i pulsanti. */}
+      {/* Riquadro flottante, identico a ogni dimensione: angoli arrotondati su
+          tutti e quattro i lati e margine attorno, mai attaccato ai bordi
+          (niente variante "bottom sheet", che con lo zoom del browser attivo
+          compariva anche su desktop e tagliava gli angoli in basso).
+          Tre fasce: intestazione fissa, corpo che scorre, azioni fisse — così
+          il modulo più alto della finestra si ritaglia netto fra i due bordi e
+          nulla passa sotto i pulsanti. overflow-hidden tiene i bordi delle
+          fasce dentro gli angoli arrotondati. */}
       <div
-        className="flex max-h-[92vh] w-full max-w-md animate-fade-up flex-col rounded-t-2xl bg-white shadow-card-hover sm:max-h-[88vh] sm:rounded-2xl"
+        className="flex max-h-[88vh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl bg-white shadow-card-hover"
         onClick={(e) => e.stopPropagation()}
         data-testid="appointment-dialog"
       >
