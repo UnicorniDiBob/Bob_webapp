@@ -169,18 +169,23 @@ export function AppointmentDialog({
               data-testid="input-title"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          {/* 2/3 + 1/3: il controllo datetime-local di iOS ha una larghezza
+              minima intrinseca larga ("30.07.2026, 10:00"), in due colonne
+              uguali sbordava sopra la durata. min-w-0 su ogni cella è
+              necessario: un elemento di griglia ha min-width:auto e senza
+              questo non si restringe mai sotto il proprio contenuto. */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2 min-w-0">
               <label className="label-bob">Data e ora</label>
               <input
                 type="datetime-local"
                 value={startsAt}
                 onChange={(e) => setStartsAt(e.target.value)}
-                className="input-bob"
+                className="input-bob px-3"
                 data-testid="input-startsat"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="label-bob">Durata (min)</label>
               <input
                 type="number"
@@ -194,7 +199,7 @@ export function AppointmentDialog({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="min-w-0">
               <label className="label-bob">Prezzo (€)</label>
               <input
                 type="number"
@@ -206,7 +211,7 @@ export function AppointmentDialog({
                 data-testid="input-price"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="label-bob">Stato</label>
               <select
                 value={status}
@@ -240,7 +245,7 @@ export function AppointmentDialog({
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div>
+                <div className="min-w-0">
                   <label className="label-bob">Città</label>
                   <input
                     value={locCity}
@@ -251,7 +256,7 @@ export function AppointmentDialog({
                     data-testid="input-location-city"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="label-bob">Accesso</label>
                   <input
                     value={locNotes}
