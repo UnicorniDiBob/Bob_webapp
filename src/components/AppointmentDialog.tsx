@@ -117,15 +117,16 @@ export function AppointmentDialog({
       className="fixed inset-0 z-50 flex items-end justify-center bg-bob-ink/40 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
-      {/* max-h + overflow: il modulo è più alto della finestra su schermi bassi
-          o con lo zoom del browser attivo, e il pulsante di salvataggio non
-          deve mai finire fuori schermo. */}
+      {/* Tre fasce: intestazione fissa, corpo che scorre, azioni fisse.
+          Il modulo è più alto della finestra su schermi bassi o con lo zoom
+          del browser attivo: il corpo scorre e si ritaglia netto fra i due
+          bordi, così nulla passa sotto i pulsanti. */}
       <div
-        className="max-h-[92vh] w-full max-w-md animate-fade-up overflow-y-auto overscroll-contain rounded-t-2xl bg-white p-5 shadow-card-hover sm:max-h-[88vh] sm:rounded-2xl"
+        className="flex max-h-[92vh] w-full max-w-md animate-fade-up flex-col rounded-t-2xl bg-white shadow-card-hover sm:max-h-[88vh] sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         data-testid="appointment-dialog"
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between border-b border-black/[0.07] px-5 py-4">
           <h3 className="text-lg font-semibold text-bob-ink">
             {existing ? "Modifica appuntamento" : "Nuovo appuntamento"}
           </h3>
@@ -140,7 +141,7 @@ export function AppointmentDialog({
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-5 py-4">
           <div>
             <label className="label-bob">Cliente</label>
             <input
@@ -270,15 +271,18 @@ export function AppointmentDialog({
             />
           </div>
 
+        </div>
+
+        {/* Azioni sempre visibili, fuori dall'area che scorre. L'errore vive
+            qui e non in fondo al modulo: se il salvataggio fallisce mentre il
+            corpo è scorso in alto, deve restare leggibile. */}
+        <div className="shrink-0 border-t border-black/[0.07] px-5 py-4">
           {error && (
-            <p className="text-sm text-red-600" data-testid="text-appt-error">
+            <p className="mb-2.5 text-sm text-red-600" data-testid="text-appt-error">
               {error}
             </p>
           )}
-
-          {/* Barra azioni ancorata in basso: resta raggiungibile mentre si
-              scorre il modulo. */}
-          <div className="sticky bottom-0 -mx-5 -mb-5 flex gap-2 border-t border-black/5 bg-white px-5 pb-5 pt-3">
+          <div className="flex items-center gap-2">
             {existing && (
               <button
                 onClick={handleDelete}
