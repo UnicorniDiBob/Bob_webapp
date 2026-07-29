@@ -137,12 +137,10 @@ export async function POST(request: Request) {
       const to = await emailOf(t.userId);
       if (!to) continue;
       const recipientName = await nameOf(t.userId);
-      const link =
-        event === "new_request"
-          ? `/messaggi?r=${req.id}${t.proId ? `&p=${t.proId}` : ""}`
-          : event.startsWith("appointment")
-          ? `/dashboard`
-          : `/messaggi?r=${req.id}${t.proId ? `&p=${t.proId}` : ""}`;
+      // (033) anche gli eventi appuntamento portano nel thread: da lì si
+      // approva, rifiuta o si propone un altro orario senza passare
+      // dall'area personale.
+      const link = `/messaggi?r=${req.id}${t.proId ? `&p=${t.proId}` : ""}`;
       const email = buildEmail(event, to, {
         recipientName,
         senderName,

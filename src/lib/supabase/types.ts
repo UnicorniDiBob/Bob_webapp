@@ -230,9 +230,15 @@ export interface ConversationSummary {
   status: string;
 }
 
+// (033) un messaggio può essere una proposta di appuntamento collegata a una
+// riga di appointments: la chat ci attacca i tasti approva/rifiuta/modifica.
+export type ChatMessageKind = "text" | "appointment_proposal";
+
 export interface ChatMessage {
   id: string;
   senderType: "customer" | "professional";
   message: string;
   createdAt: string | null;
+  kind: ChatMessageKind;
+  appointmentId: string | null;
 }

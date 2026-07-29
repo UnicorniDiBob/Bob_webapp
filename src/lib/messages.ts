@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type {
   Appointment,
   ChatMessage,
+  ChatMessageKind,
   ConversationSummary,
 } from "@/lib/supabase/types";
 
@@ -228,7 +229,7 @@ export async function getMessages(
   const supabase = createClient();
   let q = supabase
     .from("request_messages")
-    .select("id, sender_type, message, created_at")
+    .select("id, sender_type, message, created_at, kind, appointment_id")
     .eq("request_id", requestId);
   if (professionalId) q = q.eq("professional_id", professionalId);
   const { data } = await q.order("created_at", { ascending: true });
@@ -237,6 +238,8 @@ export async function getMessages(
     senderType: m.sender_type as "customer" | "professional",
     message: m.message as string,
     createdAt: (m.created_at as string) ?? null,
+    kind: (m.kind as ChatMessageKind) ?? "text",
+    appointmentId: (m.appointment_id as string | null) ?? null,
   }));
 }
 
@@ -246,7 +249,10 @@ export async function sendMessage(
   professionalId: string | null,
   userId: string,
   senderType: "customer" | "professional",
-  message: string
+  message: string,
+  // (033) opzionale: collega il messaggio a un appuntamento, così la chat
+  // può mostrarci sotto i tasti approva/rifiuta/modifica.
+  opts?: { kind?: ChatMessageKind; appointmentId?: string | null }
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
   const { error } = await supabase.from("request_messages").insert({
@@ -255,6 +261,8 @@ export async function sendMessage(
     sender_id: userId,
     sender_type: senderType,
     message,
+    kind: opts?.kind ?? "text",
+    appointment_id: opts?.appointmentId ?? null,
   });
   // Aggiorna lo stato della richiesta a "matched" (in contatto) se ancora aperta.
   if (!error) {

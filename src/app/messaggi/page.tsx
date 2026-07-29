@@ -16,6 +16,10 @@ import {
   sendMessage,
 } from "@/lib/messages";
 import type { ChatMessage, ConversationSummary } from "@/lib/supabase/types";
+import {
+  AppointmentActions,
+  type ThreadAppointment,
+} from "@/components/AppointmentActions";
 
 function fmtTime(d: string | null) {
   if (!d) return "";
@@ -67,6 +71,11 @@ function MessaggiInner() {
     params.get("r") != null
   );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // (033) appuntamenti citati dai messaggi del thread, per stato aggiornato:
+  // il messaggio è immutabile, la riga appointments no.
+  const [threadAppts, setThreadAppts] = useState<
+    Record<string, ThreadAppointment>
+  >({});
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -82,6 +91,9 @@ function MessaggiInner() {
   const [apptTitle, setApptTitle] = useState("");
   const [apptSaving, setApptSaving] = useState(false);
   const [apptErr, setApptErr] = useState<string | null>(null);
+  // Se valorizzato, la nuova proposta sostituisce quella del cliente:
+  // è il "Modifica" del pro (il cliente invece usa /api/appointments/counter).
+  const [replacingApptId, setReplacingApptId] = useState<string | null>(null);
   // Slot rapidi: i prossimi orari liberi del pro, un tap invece di digitare.
   const [quickSlots, setQuickSlots] = useState<Date[]>([]);
   const [myBusy, setMyBusy] = useState<
@@ -199,16 +211,27 @@ function MessaggiInner() {
     setApptSaving(true);
     const supabase = createClient();
     const conv = conversations.find((c) => keyOf(c) === activeId);
-    const { error } = await supabase.from("appointments").insert({
-      professional_id: myProId,
-      request_id: activeR,
-      customer_name: conv?.counterpartName ?? "Cliente",
-      title: apptTitle.trim() || conv?.serviceName || null,
-      starts_at: startsAt.toISOString(),
-      duration_minutes: apptDuration,
-      status: "proposed",
-    });
-    if (error) {
+    // "Modifica" del pro: la proposta del cliente viene rifiutata e sostituita.
+    if (replacingApptId) {
+      await supabase
+        .from("appointments")
+        .update({ status: "declined" })
+        .eq("id", replacingApptId);
+    }
+    const { data: created, error } = await supabase
+      .from("appointments")
+      .insert({
+        professional_id: myProId,
+        request_id: activeR,
+        customer_name: conv?.counterpartName ?? "Cliente",
+        title: apptTitle.trim() || conv?.serviceName || null,
+        starts_at: startsAt.toISOString(),
+        duration_minutes: apptDuration,
+        status: "proposed",
+      })
+      .select("id")
+      .single();
+    if (error || !created) {
       setApptErr("Non sono riuscito a salvare la proposta. Riprova.");
       setApptSaving(false);
       return;
@@ -225,7 +248,11 @@ function MessaggiInner() {
       myProId,
       user.id,
       "professional",
-      `Ti propongo un appuntamento: ${when} (${apptDuration} min). Puoi confermarlo dalla tua area personale.`
+      `Ti propongo un appuntamento: ${when} (${apptDuration} min).`,
+      {
+        kind: "appointment_proposal",
+        appointmentId: (created as { id: string }).id,
+      }
     );
     notifyEvent("appointment_proposed", {
       requestId: activeR,
@@ -235,6 +262,7 @@ function MessaggiInner() {
     await loadThread(activeR, activeP);
     setApptSaving(false);
     setProposeOpen(false);
+    setReplacingApptId(null);
     setApptDate("");
     setApptTitle("");
   }
@@ -244,6 +272,28 @@ function MessaggiInner() {
       setLoadingMsgs(true);
       const m = await getMessages(rid, pid);
       setMessages(m);
+      // Carica gli appuntamenti collegati alle proposte presenti nel thread.
+      const ids = Array.from(
+        new Set(
+          m
+            .filter((x) => x.kind === "appointment_proposal" && x.appointmentId)
+            .map((x) => x.appointmentId as string)
+        )
+      );
+      if (ids.length > 0) {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("appointments")
+          .select(
+            "id, professional_id, request_id, starts_at, duration_minutes, status, proposed_by, title"
+          )
+          .in("id", ids);
+        const map: Record<string, ThreadAppointment> = {};
+        for (const row of (data ?? []) as ThreadAppointment[]) map[row.id] = row;
+        setThreadAppts(map);
+      } else {
+        setThreadAppts({});
+      }
       setLoadingMsgs(false);
     },
     []
@@ -343,6 +393,8 @@ function MessaggiInner() {
       senderType: myType,
       message: text,
       createdAt: new Date().toISOString(),
+      kind: "text",
+      appointmentId: null,
     };
     setMessages((m) => [...m, optimistic]);
 
@@ -514,10 +566,18 @@ function MessaggiInner() {
                   ) : (
                     messages.map((m) => {
                       const mine = m.senderType === myType;
+                      // (033) proposta di appuntamento: sotto la bolla
+                      // compaiono approva / modifica / rifiuta.
+                      const appt =
+                        m.kind === "appointment_proposal" && m.appointmentId
+                          ? threadAppts[m.appointmentId]
+                          : undefined;
                       return (
                         <div
                           key={m.id}
-                          className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                          className={`flex flex-col ${
+                            mine ? "items-end" : "items-start"
+                          }`}
                         >
                           <div
                             className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
@@ -535,6 +595,29 @@ function MessaggiInner() {
                               {fmtTime(m.createdAt)}
                             </p>
                           </div>
+                          {appt && user && (
+                            <div className="max-w-[80%]">
+                              <AppointmentActions
+                                appointment={appt}
+                                viewer={myType}
+                                userId={user.id}
+                                professionalId={
+                                  activeP ??
+                                  (myType === "professional" ? myProId : null)
+                                }
+                                counterpartName={
+                                  active?.counterpartName ?? "il professionista"
+                                }
+                                onChanged={() =>
+                                  loadThread(activeR as string, activeP)
+                                }
+                                onProModify={(id) => {
+                                  setReplacingApptId(id);
+                                  setProposeOpen(true);
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
                       );
                     })
@@ -576,7 +659,10 @@ function MessaggiInner() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           role="dialog"
           aria-modal="true"
-          onClick={() => setProposeOpen(false)}
+          onClick={() => {
+            setProposeOpen(false);
+            setReplacingApptId(null);
+          }}
         >
           <div
             className="card w-full max-w-sm p-6"
@@ -584,8 +670,15 @@ function MessaggiInner() {
             data-testid="dialog-propose-appointment"
           >
             <h3 className="text-lg font-bold text-bob-ink">
-              Proponi un appuntamento
+              {replacingApptId
+                ? "Proponi un altro orario"
+                : "Proponi un appuntamento"}
             </h3>
+            {replacingApptId && (
+              <p className="mt-1 text-sm text-bob-ink/60">
+                La proposta del cliente viene rifiutata e sostituita da questa.
+              </p>
+            )}
             <p className="mt-1 text-sm text-bob-ink/60">
               Il cliente riceve la proposta in chat e la conferma dalla sua
               area personale.

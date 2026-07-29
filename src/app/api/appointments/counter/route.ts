@@ -91,17 +91,22 @@ export async function POST(request: Request) {
     .eq("id", appt.id);
   if (updErr) return NextResponse.json({ error: "Salvataggio fallito" }, { status: 500 });
 
-  const { error: insErr } = await admin.from("appointments").insert({
-    professional_id: appt.professional_id,
-    request_id: appt.request_id,
-    customer_name: appt.customer_name,
-    title: appt.title,
-    starts_at: when.toISOString(),
-    duration_minutes: appt.duration_minutes,
-    status: "proposed",
-    proposed_by: "customer",
-  });
-  if (insErr) return NextResponse.json({ error: "Salvataggio fallito" }, { status: 500 });
+  const { data: created, error: insErr } = await admin
+    .from("appointments")
+    .insert({
+      professional_id: appt.professional_id,
+      request_id: appt.request_id,
+      customer_name: appt.customer_name,
+      title: appt.title,
+      starts_at: when.toISOString(),
+      duration_minutes: appt.duration_minutes,
+      status: "proposed",
+      proposed_by: "customer",
+    })
+    .select("id")
+    .single();
+  if (insErr || !created)
+    return NextResponse.json({ error: "Salvataggio fallito" }, { status: 500 });
 
   // Traccia in chat, nel thread giusto.
   // timeZone esplicita: il server gira in UTC, il messaggio deve dire
@@ -114,12 +119,16 @@ export async function POST(request: Request) {
     hour: "2-digit",
     minute: "2-digit",
   });
+  // kind + appointment_id (033): così il pro trova i tasti conferma/rifiuta/
+  // modifica direttamente sotto il messaggio, senza aprire il calendario.
   await admin.from("request_messages").insert({
     request_id: appt.request_id,
     professional_id: appt.professional_id,
     sender_type: "customer",
     sender_id: user.id,
-    message: `Ti propongo un orario diverso: ${label}. Puoi confermarlo dal tuo calendario.`,
+    message: `Ti propongo un orario diverso: ${label}.`,
+    kind: "appointment_proposal",
+    appointment_id: (created as { id: string }).id,
   });
 
   const relName = (rel: unknown): string | null => {
