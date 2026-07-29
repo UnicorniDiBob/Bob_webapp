@@ -122,6 +122,36 @@ esposizione legale opposta.
    legge*, non una scelta né una responsabilità "assunta volontariamente" — un
    motivo in più per costruire L1 ora.
 
+## Approvazione specifica delle clausole onerose — due regimi da non confondere
+
+Domanda emersa il 19/07: se una clausola vessatoria è nulla, come può un flag
+renderla valida? Risposta: **perché "vessatoria" indica due istituti distinti con
+sanzioni diverse.**
+
+| | **B2B — art. 1341, co. 2 c.c.** (ToS Professionisti) | **B2C — artt. 33-37 Cod. Consumo** (ToS Clienti) |
+| --- | --- | --- |
+| Presupposto | Condizioni generali predisposte unilateralmente | Squilibrio significativo dei diritti a danno del consumatore |
+| Sanzione | **Inefficacia** della clausola ("non hanno effetto") | **Nullità di protezione** della clausola (art. 36), contratto valido per il resto |
+| Natura del vizio | **Di forma**: manca l'approvazione specifica | **Sostanziale**: il contenuto è squilibrato |
+| Sanabile? | **Sì**, con approvazione specifica per iscritto | **No.** La trattativa individuale effettiva esclude la vessatorietà (art. 34, co. 4), ma una checkbox non è trattativa. Per le clausole della *black list* (art. 36, co. 2 — es. esclusione di responsabilità per danno alla persona) la nullità è **insanabile in ogni caso** |
+| Rilevabilità | Su eccezione di parte | **D'ufficio** dal giudice, a vantaggio del solo consumatore |
+| Elenco | **Tassativo** (non estensibile per analogia) | Aperto (art. 33, co. 1) + lista esemplificativa (co. 2) + black list (art. 36, co. 2) |
+
+**Conseguenze pratiche per Bob:**
+- Lato **professionisti** il flag separato ha senso: sana un vizio di forma. Ma
+  resta il dubbio se il point-and-click integri la "sottoscrizione" richiesta
+  dalla norma — **orientamento non consolidato**; il flag è il minimo, la certezza
+  richiederebbe firma elettronica avanzata (art. 20 CAD, D.Lgs. 82/2005).
+- Lato **clienti consumatori** il flag **non serve a nulla**: nessuna checkbox
+  rende valida una clausola squilibrata. L'unica strategia è **scrivere clausole
+  che non siano squilibrate**: massimali proporzionati, nessuna esclusione per
+  danni alla persona, foro del consumatore, manleva contenuta, modifiche con
+  giustificato motivo e preavviso.
+- Se l'approvazione specifica non regge lato pro, cadono le singole clausole
+  (limitazioni, deroga di competenza, rinnovo tacito) ma **non il contratto**: si
+  torna alla disciplina di legge (responsabilità piena, foro del convenuto).
+  Questo è il rischio concreto da quantificare, non la nullità dell'accordo.
+
 ## Sintesi in una riga
 
 Verificare **non** trasferisce responsabilità in automatico (art. 7 DSA la

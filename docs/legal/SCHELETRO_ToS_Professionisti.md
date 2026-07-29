@@ -22,11 +22,25 @@
 >
 > **Tre limiti da tenere a mente:**
 > - **Art. 1229 c.c.**: nullo ogni esonero preventivo da dolo o colpa grave.
-> - **Art. 1341, co. 2 c.c.**: nei contratti per adesione le clausole vessatorie
->   (limitazioni di responsabilità, facoltà di recesso o sospensione, decadenze,
->   deroghe di competenza) richiedono **approvazione specifica** → in ambiente
->   digitale va implementata con un flag dedicato e separato, non con l'unico
->   consenso generale.
+> - **Art. 1341, co. 2 c.c.**: nei contratti per adesione alcune clausole
+>   *particolarmente onerose* "non hanno effetto" se non **specificamente
+>   approvate per iscritto**. L'elenco è considerato **tassativo** dalla
+>   giurisprudenza: limitazioni di responsabilità; facoltà di recedere dal
+>   contratto o di sospenderne l'esecuzione; decadenze; limitazioni alla facoltà
+>   di opporre eccezioni; restrizioni alla libertà contrattuale nei rapporti con
+>   terzi; **tacita proroga o rinnovazione**; clausole compromissorie o deroghe
+>   alla competenza. (La *manleva* non è espressamente elencata: è discussa,
+>   prudenzialmente da trattare come limitazione indiretta di responsabilità. La
+>   *modifica unilaterale* non rientra nell'elenco, ma è disciplinata dall'art. 8
+>   P2B.)
+>   ⚠️ **Nodo aperto — non risolvibile con una semplice checkbox.** La norma
+>   richiede la *sottoscrizione*; se il point-and-click soddisfi il requisito di
+>   forma scritta è questione **controversa e senza orientamento consolidato**.
+>   Un flag separato è il minimo indispensabile e migliora la posizione, ma non dà
+>   certezza. Opzioni da valutare con l'avvocato: (a) ridurre al minimo le
+>   clausole che ricadono nell'elenco tassativo; (b) firma elettronica avanzata
+>   nell'onboarding pro; (c) accettare consapevolmente il rischio di inefficacia
+>   di quelle clausole. Vedi `VERIFICA_ANALISI_LEGALE.md` §Approvazione specifica.
 > - **Dir. UE 2024/2831 (Platform Work)**: introduce presunzione di subordinazione
 >   in presenza di indici di direzione e controllo → l'autonomia del
 >   Professionista va affermata **e rispettata nei fatti** (nessuna imposizione di
@@ -355,9 +369,14 @@ deliberata: foro **italiano**, a differenza di Instapro→Amsterdam,
 Cronoshare→Spagna, StarOfService→Francia); elenco delle clausole soggette ad
 approvazione specifica ex art. 1341 c.c. con implementazione tecnica del flag
 dedicato.
-**[NORME]** **Art. 1341, co. 2 c.c.**; Reg. UE 1215/2012.
-**[DECIDERE]** Città del foro (decisione A4); implementazione UI del doppio
-consenso.
+**[NORME]** **Art. 1341, co. 2 c.c.**; Reg. UE 1215/2012; art. 20, co. 1-bis
+D.Lgs. 82/2005 (CAD: efficacia del documento informatico e delle firme
+elettroniche — rilevante per capire se il flag vale come "per iscritto").
+**[DECIDERE]** Città del foro (decisione A4); **livello di robustezza
+dell'approvazione specifica**: flag separato (minimo), firma elettronica avanzata
+(certo ma frizionante), oppure riduzione delle clausole onerose. Nota: la deroga
+di competenza è essa stessa nell'elenco tassativo → se l'approvazione specifica
+non regge, si torna al foro di legge (sede del convenuto).
 
 ### Art. 36 — Clausole finali
 **[DA INSERIRE]** Nullità parziale; non rinuncia; interezza dell'accordo e
