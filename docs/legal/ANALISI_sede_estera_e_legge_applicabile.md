@@ -211,6 +211,80 @@ tua»), invece di considerarla un peso.
    innovativa** (agevolazioni e semplificazioni che richiedono società italiana):
    è la direzione opposta all'estero, e probabilmente più conveniente.
 
+---
+
+## 8. Approfondimento: residenza di un socio all'estero, e perché la "gestione virtuale" non sposta nulla
+
+**Cosa dice davvero l'art. 73, co. 3 TUIR (post D.Lgs. 209/2023).** I tre criteri
+alternativi — sede legale, **sede di direzione effettiva**, **gestione ordinaria in
+via principale** — sono criteri **sostanziali e fattuali**: guardano dove si
+assumono le decisioni strategiche e dove si compiono gli atti di gestione
+corrente. Non guardano l'indirizzo IP, non guardano dove è ospitato il server, non
+guardano da quale connessione ci si collega.
+
+**Residenza estera di un socio: incide poco, e non è il punto.** La residenza
+fiscale della *società* non dipende da dove risiedono i soci, ma da dove è
+**amministrata**. Un socio residente all'estero rileva solo se è lui ad
+amministrare effettivamente, e comunque non basta: se l'altro founder gestisce
+l'operatività dall'Italia, il criterio della «gestione ordinaria in via
+principale» resta italiano. Perché lo spostamento produca effetti reali servirebbe
+sostanza: amministratori che vivono e decidono all'estero, riunioni e decisioni
+assunte lì, personale e struttura nel Paese estero, contratti negoziati da lì. È
+un trasferimento di vita e di impresa, non un cambio di intestazione — e
+comporterebbe anche l'esame della residenza fiscale *personale* del socio (art. 2
+TUIR: iscrizione AIRE, domicilio, dimora abituale, centro degli interessi).
+
+**La VPN: irrilevante giuridicamente, e pericolosa.** Usare una VPN per far
+apparire estera una gestione che si svolge in Italia non crea alcun effetto
+fiscale: i verificatori guardano fatti, non instradamenti di rete — dove vivono e
+lavorano gli amministratori, da dove partono email e decisioni, dove sono i
+collaboratori, chi firma i contratti, dove sono i clienti e i fornitori, le utenze,
+i telefoni, gli spostamenti. Costruire artificialmente l'apparenza di una sede
+estera è **simulazione**: espone a recupero d'imposta con sanzioni e, in caso di
+omessa o infedele dichiarazione, a **profili penali tributari** (D.Lgs. 74/2000).
+Non è una zona grigia da ottimizzare: è la definizione stessa di esterovestizione
+fraudolenta. **Su questa strada non posso dare supporto operativo**, e il consiglio
+onesto è di non prenderla nemmeno in considerazione.
+
+**I precedenti dicono che non funziona nemmeno per i colossi.** Casi verificabili,
+tutti riguardanti società estere che operavano in Italia con struttura minima:
+
+- **Netflix** — versamento di **55,8 milioni** al fisco italiano (maggio 2022) a
+  chiusura di un'indagine della Procura di Milano per omessa dichiarazione.
+  Definito come primo caso al mondo di stabile organizzazione occulta contestata a
+  una società della digital economy **«completamente priva di personale»** in
+  Italia: contavano infrastruttura e attività, non la presenza di uffici.
+  Fonti: https://www.italiaoggi.it (20/05/2022);
+  https://www.today.it/economia/netflix-tasse.html
+- **Google** — versamento di **326 milioni** (febbraio 2025) per redditi prodotti
+  in Italia tramite una stabile organizzazione occulta «di tipo personale»;
+  l'Agenzia aveva chiesto circa un miliardo. Fonti:
+  https://tg24.sky.it/economia/2025/02/19 ;
+  https://www.ilsole24ore.com (26/06/2024)
+
+Se una società senza dipendenti in Italia è stata riqualificata, una società
+estera i cui due unici amministratori vivono, sviluppano e vendono in Italia non
+ha alcuna possibilità di sostenere che la direzione effettiva sia altrove.
+
+## 9. Dove sono davvero i competitor (e perché per loro è legittimo)
+
+Dati dichiarati nei rispettivi T&C/note legali, letti il 19/07/2026:
+
+| Piattaforma | Società | Sede | Note |
+| --- | --- | --- | --- |
+| ProntoPro | ProntoPro S.r.l. | **Italia** | Struttura italiana, legge e mediazione italiane |
+| Instapro | **Werkspot B.V.** | Amsterdam (NL) | Società olandese storica (gruppo Angi, USA): l'operatività *è* olandese, non è una scatola |
+| Cronoshare | **Tridea Labs S.L.** | Spagna | Piattaforma nata in Spagna, poi estesa all'Italia |
+| StarOfService | **StarOfService SAS** | Parigi (FR) | Società francese, capitale e sede reali in Francia |
+| Baze | Baze S.r.l. Società Benefit | **Italia** (Firenze) | Anche Società Benefit |
+
+**Il punto:** nessuno di loro è un caso di esterovestizione. Sono società
+*genuinamente* straniere che hanno esteso il servizio in Italia: la direzione
+effettiva è dove è sempre stata. La loro situazione non è replicabile creando
+oggi una scatola estera per un'attività italiana — sarebbe il caso opposto.
+(Non ho verificato se abbiano stabili organizzazioni dichiarate in Italia: è un
+tema loro, non un modello per noi.)
+
 ## Fonti consultate (20/07/2026)
 - Reg. (CE) 593/2008 (Roma I), artt. 3, 6, 9 —
   https://eur-lex.europa.eu/legal-content/IT/TXT/HTML/?uri=CELEX:32008R0593
