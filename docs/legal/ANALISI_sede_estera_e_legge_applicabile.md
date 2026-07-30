@@ -156,17 +156,21 @@ sottratto al prodotto, e la difesa in caso di accertamento.
 
 ## 6. Il costo non contabile: reputazione e coerenza del pitch
 
-Bob si posiziona come piattaforma che **fa emergere il lavoro nero**, chiede ai
-professionisti la P.IVA verificata e la regolarità fiscale, e su questo fonda la
-domanda di finanza agevolata pubblica. Una sede fiscale all'estero per ridurre le
-imposte italiane sarebbe:
+*(Sezione riscritta il 20/07/2026: il posizionamento "emersione del lavoro nero"
+è stato abbandonato — vedi `docs/DECISIONE_posizionamento_2026-07-20.md`. Restano
+validi gli argomenti che seguono, che non dipendono da quel framing.)*
 
-- **contraddittoria** con il messaggio verso i pro («mettiti in regola» da parte
-  di chi ha sede a Tallinn);
-- **debole** verso investitori e valutatori pubblici italiani;
-- **un rischio narrativo** su un tema che la stampa tratta con severità (il
-  posizionamento PR previsto è «AI che combatte il lavoro nero»);
-- incompatibile con l'ipotesi **Società Benefit** (come ha fatto Baze).
+Bob chiede ai professionisti dati verificabili (P.IVA, abilitazioni per le
+categorie regolamentate) e fonda su questo la fiducia dei clienti; inoltre
+prevede una domanda di finanza agevolata pubblica italiana. Una sede fiscale
+all'estero per ridurre le imposte italiane sarebbe:
+
+- **incoerente** verso i professionisti, a cui chiediamo dati fiscali e
+  abilitazioni mentre la piattaforma ha sede a Tallinn;
+- **debole** verso investitori e valutatori pubblici italiani, ai quali si
+  chiedono risorse per lo sviluppo di un'impresa "italiana";
+- **un rischio narrativo** in caso di attenzione della stampa;
+- incompatibile con l'eventuale scelta di **Società Benefit** (come ha fatto Baze).
 
 ---
 

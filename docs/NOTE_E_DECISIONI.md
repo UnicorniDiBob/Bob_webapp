@@ -40,8 +40,11 @@ esiste (lavoro autonomo non abituale, ritenuta 20%, soglia contributiva INPS
 per trovare clienti in modo continuativo difficilmente è "non abituale";
 (b) le 5 categorie core (idraulico, elettricista, ecc.) richiedono impresa
 abilitata DM 37/2008 — il lavoro occasionale non qualificato lì è illegale e
-un rischio di responsabilità; (c) il posizionamento di Bob ("emersione lavoro
-nero", leva per Invitalia) sarebbe contraddetto.
+un rischio di responsabilità.
+*(Aggiornamento 20/07/2026: il terzo argomento originario — coerenza col
+posizionamento "emersione del lavoro nero" — è stato rimosso per decisione di
+Lucio: quel posizionamento è abbandonato, vedi
+`docs/DECISIONE_posizionamento_2026-07-20.md`.)*
 **Proposta in attesa di decisione:** P.IVA obbligatoria per tutti i pro al
 lancio; eventuale tier "occasionale" solo se in futuro si aprono categorie
 soft (ripetizioni, dog sitting…), con autodichiarazione, limiti e senza badge
