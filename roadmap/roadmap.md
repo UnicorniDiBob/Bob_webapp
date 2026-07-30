@@ -156,7 +156,7 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | **30** | **Founder outreach — first 100 Milano pros** | Shared |  | ⬜ Planned | 2026-10-01 → 2027-03-31 |  |
 | **31** | **Launch incentives (3 months free Bob Pro for founding pros)** | Shared |  | ⬜ Planned | 2027-01-01 → 2027-03-31 |  |
 | **32** | **Paid ads ignition — Milano only (CAC < EUR25 Q1)** | Shared |  | ⬜ Planned | 2027-01-01 → 2027-06-30 |  |
-| **33** | **PR launch ('AI concierge that fights lavoro nero')** | Shared |  | ⬜ Planned | 2027-01-01 → 2027-03-31 |  |
+| **33** | **PR launch ('AI concierge che trova il professionista giusto con prezzi chiari')** | Shared |  | ⬜ Planned | 2027-01-01 → 2027-03-31 |  |
 | **34** | **Pro referral program + territorial partnerships** | Shared |  | ⬜ Planned | 2027-03-01 → 2027-12-31 |  |
 
 ## KPI GATES  (decision checkpoints)
