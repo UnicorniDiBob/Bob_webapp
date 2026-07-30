@@ -63,6 +63,15 @@ function LoginInner() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  // Cambiando ruolo cambia il testo dei termini applicabile: azzeriamo lettura
+  // e consenso, altrimenti l'utente risulterebbe aver accettato l'altro testo.
+  function changeRole(next: Extract<UserRole, "customer" | "professional">) {
+    if (next === role) return;
+    setRole(next);
+    setTermsOpened(false);
+    setTermsAccepted(false);
+  }
+
   // Calcola l'età da una data 'YYYY-MM-DD' senza dipendenze esterne.
   function calcAge(isoDate: string): number {
     const dob = new Date(isoDate);
@@ -232,6 +241,7 @@ function LoginInner() {
       {/* Modal dei termini: aprirlo sblocca la casella di consenso. */}
       <TermsDialog
         open={termsDialogOpen}
+        audience={role}
         onClose={() => {
           setTermsDialogOpen(false);
           // Anche la semplice apertura conta come "visualizzato": sbloccarlo
@@ -268,7 +278,7 @@ function LoginInner() {
               <div className="mt-1.5 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setRole("customer")}
+                  onClick={() => changeRole("customer")}
                   className={`rounded-xl border px-3 py-3 text-sm font-medium transition ${
                     role === "customer"
                       ? "border-bob-indigo bg-bob-indigo-50 text-bob-indigo"
@@ -286,7 +296,7 @@ function LoginInner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRole("professional")}
+                  onClick={() => changeRole("professional")}
                   className={`rounded-xl border px-3 py-3 text-sm font-medium transition ${
                     role === "professional"
                       ? "border-bob-indigo bg-bob-indigo-50 text-bob-indigo"
@@ -427,7 +437,21 @@ function LoginInner() {
                   />
                   <span>
                     Confermo di avere almeno 18 anni, di aver letto e di
-                    accettare i termini del servizio e l&apos;
+                    accettare i{" "}
+                    <Link
+                      href={
+                        role === "professional"
+                          ? "/termini/professionisti"
+                          : "/termini"
+                      }
+                      className="underline hover:text-bob-indigo"
+                      target="_blank"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      termini del servizio
+                      {role === "professional" ? " per i professionisti" : ""}
+                    </Link>{" "}
+                    e l&apos;
                     <Link
                       href="/privacy"
                       className="underline hover:text-bob-indigo"
