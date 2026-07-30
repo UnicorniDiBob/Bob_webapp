@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { User, Wrench } from "lucide-react";
+import { User, Wrench, FileText, Check } from "lucide-react";
+import { TermsDialog } from "@/components/TermsDialog";
+import { TERMS_VERSION } from "@/components/TermsContent";
 import type { UserRole } from "@/lib/supabase/types";
 
 type Mode = "login" | "signup";
@@ -53,6 +55,10 @@ function LoginInner() {
   const [password, setPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // Il consenso si sblocca solo dopo che i termini sono stati aperti: non si
+  // può accettare qualcosa che non si è nemmeno visto.
+  const [termsOpened, setTermsOpened] = useState(false);
+  const [termsDialogOpen, setTermsDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -132,8 +138,18 @@ function LoginInner() {
           setSubmitting(false);
           return;
         }
+        if (!termsOpened) {
+          setError(
+            "Per continuare apri e leggi i termini del servizio: trovi il link qui sotto."
+          );
+          setTermsDialogOpen(true);
+          setSubmitting(false);
+          return;
+        }
         if (!termsAccepted) {
-          setError("Devi accettare i termini del servizio e l'informativa privacy per continuare.");
+          setError(
+            "Spunta la casella per confermare che accetti i termini del servizio e l'informativa privacy."
+          );
           setSubmitting(false);
           return;
         }
@@ -148,6 +164,9 @@ function LoginInner() {
               full_name: fullName.trim(),
               date_of_birth: dateOfBirth,
               terms_accepted_at: new Date().toISOString(),
+              // Registriamo QUALE versione dei termini è stata accettata
+              // (migration 028): serve come prova di cosa l'utente ha letto.
+              terms_version: TERMS_VERSION,
             },
           },
         });
@@ -210,6 +229,22 @@ function LoginInner() {
 
   return (
     <div className="container-bob flex min-h-[calc(100vh-8rem)] items-center justify-center py-10">
+      {/* Modal dei termini: aprirlo sblocca la casella di consenso. */}
+      <TermsDialog
+        open={termsDialogOpen}
+        onClose={() => {
+          setTermsDialogOpen(false);
+          // Anche la semplice apertura conta come "visualizzato": sbloccarlo
+          // solo con il pulsante renderebbe il flusso inutilmente rigido.
+          setTermsOpened(true);
+        }}
+        onAccept={() => {
+          setTermsDialogOpen(false);
+          setTermsOpened(true);
+          setTermsAccepted(true);
+          setError(null);
+        }}
+      />
       <div className="w-full max-w-md">
         <div className="card p-7">
           <div className="mb-5 text-center">
@@ -362,27 +397,71 @@ function LoginInner() {
             </div>
 
             {mode === "signup" && (
-              <label className="flex items-start gap-2 text-xs text-bob-ink/65">
-                <input
-                  type="checkbox"
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-black/20"
-                  data-testid="checkbox-terms"
-                  required
-                />
-                <span>
-                  Confermo di avere almeno 18 anni e accetto i{" "}
-                  <Link href="/termini" className="underline hover:text-bob-indigo" target="_blank">
-                    termini del servizio
-                  </Link>{" "}
-                  e l&apos;
-                  <Link href="/privacy" className="underline hover:text-bob-indigo" target="_blank">
-                    informativa privacy
-                  </Link>
-                  .
-                </span>
-              </label>
+              <div
+                className={`rounded-xl border p-3 transition ${
+                  termsOpened
+                    ? "border-black/10 bg-transparent"
+                    : "border-bob-indigo/25 bg-bob-indigo-50/60"
+                }`}
+              >
+                {/* Gate: finché i termini non sono stati aperti, il consenso
+                    resta bloccato. Cliccare la casella apre il testo invece di
+                    mostrare un errore: più utile che punitivo. */}
+                <label
+                  className="flex items-start gap-2 text-xs text-bob-ink/65"
+                  onClick={(e) => {
+                    if (!termsOpened) {
+                      e.preventDefault();
+                      setTermsDialogOpen(true);
+                    }
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    disabled={!termsOpened}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-black/20 disabled:cursor-pointer disabled:opacity-50"
+                    data-testid="checkbox-terms"
+                    aria-describedby="terms-gate-hint"
+                  />
+                  <span>
+                    Confermo di avere almeno 18 anni, di aver letto e di
+                    accettare i termini del servizio e l&apos;
+                    <Link
+                      href="/privacy"
+                      className="underline hover:text-bob-indigo"
+                      target="_blank"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      informativa privacy
+                    </Link>
+                    .
+                  </span>
+                </label>
+
+                <div id="terms-gate-hint" className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <button
+                    type="button"
+                    onClick={() => setTermsDialogOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-bob-indigo shadow-sm ring-1 ring-bob-indigo/20 transition hover:bg-bob-indigo-50"
+                    data-testid="button-open-terms"
+                  >
+                    <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                    {termsOpened ? "Rileggi i termini" : "Leggi i termini del servizio"}
+                  </button>
+                  {termsOpened ? (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      Termini visualizzati
+                    </span>
+                  ) : (
+                    <span className="text-xs text-bob-ink/50">
+                      Aprili per poter spuntare la casella
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
 
             {error && (
