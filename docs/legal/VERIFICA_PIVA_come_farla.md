@@ -25,6 +25,18 @@ GET https://ec.europa.eu/taxation_customs/vies/rest-api/ms/IT/vat/{partitaIVA}
 | 12485671007 | Openapi SpA | `true` | `OPENAPI SPA` | Viale F. T. Marinetti 221, 00143 Roma RM |
 | 06012790876 | Baze S.r.l. Società Benefit | `true` | `BAZE S.R.L. SOCIETA' BENEFIT` | Piazza di Cestello 10, 50124 Firenze FI |
 
+**Test aggiuntivi 31/07/2026** (stesso endpoint):
+
+| P.IVA | Soggetto | Esito |
+| --- | --- | --- |
+| 00743110157 | Motorola Solutions Italia S.r.l. | `isValid: true`, denominazione restituita |
+| 12345678901 | numero con checksum valido ma inesistente | `isValid: false`, `userError: "INVALID"`, `name: "---"` |
+
+Quindi il VIES distingue correttamente un numero formalmente valido ma
+inesistente: il checksum da solo non basta, e la combinazione dei due gradini
+funziona. Nota tecnica: il campo `name` vale `"---"` quando il dato non c'è, e
+il client lo normalizza a `null`.
+
 Risposta JSON utile: `isValid`, `requestDate` (timestamp da conservare come prova
 della data del controllo), `name`, `address`, `userError` ("VALID").
 
