@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { User, Wrench, FileText, Check } from "lucide-react";
+import { LogoMark } from "@/components/Logo";
 import { TermsDialog } from "@/components/TermsDialog";
 import { TERMS_VERSION } from "@/components/TermsContent";
 import type { UserRole } from "@/lib/supabase/types";
@@ -258,9 +259,7 @@ function LoginInner() {
       <div className="w-full max-w-md">
         <div className="card p-7">
           <div className="mb-5 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-bob-indigo text-xl font-bold text-white">
-              B
-            </div>
+            <LogoMark className="mx-auto mb-3" />
             <h1 className="text-xl font-bold text-bob-ink">
               {mode === "login" ? "Bentornato" : "Crea il tuo account"}
             </h1>
