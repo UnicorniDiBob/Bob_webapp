@@ -41,7 +41,8 @@ type ApiStatus =
   | "pending"
   | "rate_limited"
   | "invalid_format"
-  | "already_verified";
+  | "already_verified"
+  | "already_claimed";
 
 // Stesso fuso del badge pubblico (ui.tsx): il pro e il cliente devono leggere
 // la stessa data per lo stesso controllo.
@@ -241,8 +242,11 @@ export default function VatVerification({
             <p className="text-sm text-bob-ink/65">
               Comunicando la partita IVA passi al livello <strong>Pro</strong>:
               sul tuo profilo i clienti vedono che l&apos;abbiamo riscontrata,
-              con la data del controllo. Nella maggior parte dei casi ci
-              vogliono pochi secondi.
+              con la data del controllo. Se l&apos;intestazione risultante
+              corrisponde al nome del tuo profilo bastano pochi secondi;
+              altrimenti — per esempio se lavori con un nome commerciale o con
+              una società — la controlliamo a mano, perché non concediamo il
+              livello a chi inserisce una partita IVA che non è sua.
             </p>
           )}
 
@@ -298,7 +302,8 @@ export default function VatVerification({
             result.status === "verified"
               ? "bg-emerald-50 text-emerald-700"
               : result.status === "invalid_format" ||
-                result.status === "rate_limited"
+                result.status === "rate_limited" ||
+                result.status === "already_claimed"
               ? "bg-red-50 text-red-700"
               : "bg-amber-50 text-amber-800"
           }`}

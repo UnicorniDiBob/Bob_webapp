@@ -126,6 +126,34 @@ export async function POST(request: Request) {
     );
   }
 
+  // Nessuno può rivendicare una partita IVA già attribuita a un altro profilo:
+  // sarebbe il modo più semplice per appropriarsi dell'identità fiscale di un
+  // concorrente. Se succede, non è un errore di battitura: va guardato.
+  const { data: claimed } = await admin
+    .from("professional_verification")
+    .select("professional_id")
+    .eq("vat_number", vat)
+    .neq("professional_id", pro.id)
+    .not("level", "eq", "none")
+    .maybeSingle();
+
+  if (claimed) {
+    await admin.from("verification_events").insert({
+      professional_id: pro.id,
+      event: "vat_check_failed",
+      note: "Tentativo di comunicare una partita IVA già attribuita a un altro profilo verificato.",
+      actor_user_id: user.id,
+    });
+    return NextResponse.json(
+      {
+        status: "already_claimed",
+        message:
+          "Questa partita IVA risulta già associata a un altro profilo verificato. Se è la tua, scrivici: controlliamo noi e sistemiamo.",
+      },
+      { status: 409 }
+    );
+  }
+
   // Registriamo il tentativo prima di chiamare l'esterno: così il limite vale
   // anche se la richiesta va in errore a metà. Se questa scrittura fallisce il
   // limite non varrebbe più: meglio fermarsi che restare senza freno.
@@ -199,10 +227,52 @@ export async function POST(request: Request) {
       ? nameLooksConsistent(profile.full_name, snap.name)
       : null;
 
+  if (outcome.status === "confirmed" && nameMatches !== true) {
+    // IL PUNTO PIÙ IMPORTANTE DI TUTTO IL FLUSSO.
+    // "Esiste" non vuol dire "è sua": il VIES conferma che quel numero è
+    // valido, non che appartiene a chi lo sta digitando. Senza il riscontro
+    // sull'intestazione, chiunque potrebbe incollare la partita IVA di
+    // un'azienda vera e prendersi il badge. Quindi la concessione automatica
+    // avviene SOLO quando la denominazione del registro somiglia al nome del
+    // profilo; in tutti gli altri casi — nomi diversi, o denominazione non
+    // restituita — il caso va all'esame umano, che è esattamente ciò per cui
+    // la coda esiste.
+    const { error: writeError } = await admin
+      .from("professional_verification")
+      .update({
+        vat_number: vat,
+        vat_active: true,
+        vat_holder_name: snap.name,
+        vat_checked_at: snap.requestDate ?? new Date().toISOString(),
+        vat_check_source: "vies",
+        vat_check_payload: snap,
+        vat_review_state: "pending",
+        vat_review_note: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("professional_id", pro.id);
+    if (writeError) return failedWrite();
+
+    await admin.from("verification_events").insert({
+      professional_id: pro.id,
+      event: "vat_check_ok",
+      note: snap.name
+        ? `Partita IVA valida ma intestata a "${snap.name}", che non corrisponde al nome del profilo: da attribuire a mano prima di concedere il livello.`
+        : "Partita IVA valida ma il registro non ha restituito l'intestazione: impossibile attribuirla automaticamente.",
+      actor_user_id: user.id,
+    });
+
+    return NextResponse.json({
+      status: "needs_review",
+      message: snap.name
+        ? `La partita IVA risulta attiva, ma è intestata a "${snap.name}" e sul profilo hai un altro nome. Non concediamo il livello in automatico: controlliamo a mano che sia la tua e ti facciamo sapere. Se il nome del profilo è un nome commerciale, va benissimo — ci serve solo il riscontro.`
+        : "La partita IVA risulta attiva ma il registro non ci ha restituito l'intestazione, quindi non possiamo attribuirla automaticamente al tuo profilo. Completiamo il controllo a mano.",
+    });
+  }
+
   if (outcome.status === "confirmed") {
-    // Concessione del livello. La discordanza di nome NON blocca (le ditte
-    // individuali risultano col nome della persona, il profilo può avere un
-    // nome commerciale): viene annotata per l'eventuale controllo umano.
+    // Qui e solo qui la concessione è automatica: numero valido E intestazione
+    // che corrisponde al nome del profilo.
     const { error: writeError } = await admin
       .from("professional_verification")
       .update({
@@ -226,9 +296,7 @@ export async function POST(request: Request) {
       {
         professional_id: pro.id,
         event: "vat_check_ok",
-        note: nameMatches === false
-          ? `Confermata dal VIES come "${snap.name}", da verificare la corrispondenza col nome del profilo.`
-          : `Confermata dal VIES come "${snap.name}".`,
+        note: `Confermata dal VIES e intestata a "${snap.name}", coerente col nome del profilo.`,
         actor_user_id: user.id,
       },
       {

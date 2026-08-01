@@ -132,6 +132,26 @@ export async function POST(
       );
     }
 
+    // Stessa partita IVA su due profili verificati: il database lo impedisce
+    // (indice unico, migration 039), ma un errore secco 500 non dice niente a
+    // chi sta decidendo. Qui il caso si spiega.
+    const { data: claimed } = await admin
+      .from("professional_verification")
+      .select("professional_id")
+      .eq("vat_number", current.vat_number)
+      .neq("professional_id", params.id)
+      .not("level", "eq", "none")
+      .maybeSingle();
+    if (claimed) {
+      return NextResponse.json(
+        {
+          error:
+            "Questa partita IVA è già attribuita a un altro profilo verificato. Prima di concederla qui va revocata là: due profili non possono avere la stessa.",
+        },
+        { status: 409 }
+      );
+    }
+
     // Chi è già Pro+ non va declassato da una conferma sulla P.IVA: il livello
     // documentale include quello fiscale. Senza questo, il registro
     // scriverebbe una revoca chiamandola concessione.

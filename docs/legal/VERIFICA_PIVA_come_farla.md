@@ -243,6 +243,66 @@ Non fatto:
   vecchio `verification_status`. Se il livello deve contare nel ranking è una
   decisione da prendere (vedi §6), non un dettaglio tecnico.
 
+## 5-ter. "Esiste" non vuol dire "è sua" (correzione del 01/08, sera)
+
+Domanda di Lucio: la verifica ci dice solo che la partita IVA esiste, o anche
+che è la sua? Risposta: il VIES restituisce **anche la denominazione**
+dell'intestatario, ma fino a stasera il codice la confrontava col nome del
+profilo **senza bloccare**: se il numero era valido il livello veniva concesso
+lo stesso e la discordanza finiva in una nota. Quindi chiunque poteva incollare
+la partita IVA di un'azienda vera e prendersi il badge.
+
+Corretto così:
+
+- **Concessione automatica solo se l'intestazione corrisponde** al nome del
+  profilo. In tutti gli altri casi — nome diverso, oppure denominazione non
+  restituita — il caso va in coda per l'esame umano. Nessun rifiuto: solo
+  nessuna concessione automatica.
+- **Una partita IVA verificata appartiene a un solo profilo**: controllo nella
+  route e indice unico parziale nel database (migration 039). Due richieste
+  *in attesa* sullo stesso numero restano possibili — capita col
+  commercialista o col refuso — e le decide una persona.
+
+Conseguenza da mettere in conto: la coda diventa la via normale, non
+l'eccezione. Le ditte individuali passano in automatico (il registro riporta
+nome e cognome della persona); le società e chi usa un nome commerciale
+finiscono davanti a un operatore.
+
+## 5-quater. Chi non è nel VIES: da dove si verifica davvero
+
+Il VIES copre solo chi è abilitato alle operazioni intra-UE. Per gli altri, in
+ordine di costo:
+
+1. **Agenzia delle Entrate — "Verifica partita Iva"**
+   (`telematici.agenziaentrate.gov.it/VerificaPIVA/`). Gratuito e ufficiale, ed
+   è **più completo del VIES**: restituisce stato (attiva / sospesa per affitto
+   d'azienda / cessata), **denominazione o cognome e nome del titolare**, data
+   di inizio attività ed eventuale appartenenza a un Gruppo IVA. Protetto da
+   CAPTCHA (immagine e audio), nessuna API pubblica: **non si integra e non si
+   aggira**, ma è esattamente lo strumento che l'operatore usa nella coda. È la
+   risposta operativa per la maggioranza dei nostri professionisti.
+2. **Registro Imprese** (registroimprese.it). Ricerca libera su denominazione,
+   sede e stato dell'impresa: utile a confermare che l'impresa esiste ed è
+   attiva, e in prospettiva è la stessa fonte dove guardare i requisiti
+   D.M. 37/2008 per il livello Pro+.
+3. **Provider commerciale (gradino 3)**: Openapi, InfoCamere, Cerved, A-Cube.
+   Stessi dati dell'Agenzia via API, centesimi a chiamata. Se la telemetria
+   conferma che la maggioranza non è nel VIES, questo smette di essere
+   "eventuale" e diventa il modo per non annegare la coda.
+4. **Prova di possesso via PEC (INI-PEC, AgID/InfoCamere)**. Idea diversa dalle
+   prime tre: invece di chiedersi *se* la partita IVA esiste, si verifica che il
+   professionista **controlli** la casella PEC associata a quel soggetto,
+   inviando un codice usa-e-getta. Risponde alla domanda vera — è sua? — che
+   nessuna delle fonti sopra risolve da sola, ed è gratuita. Da valutare: la
+   ricerca INI-PEC è pubblica via web, l'accesso via API è riservato, quindi
+   servirebbe un intermediario (di nuovo Openapi & co.) oppure il recupero
+   manuale nella coda.
+
+Nota: nessuna di queste fonti, da sola, dimostra la **titolarità**. Le prove
+solide restano tre: la corrispondenza dell'intestazione (gratis, automatica,
+copre le ditte individuali), il codice inviato alla PEC del soggetto, e il
+livello Pro+ con documento e visura.
+
 ## 6. Decisioni che restano tue
 
 - **Quali categorie richiedono almeno "Pro"** per contattare i clienti
