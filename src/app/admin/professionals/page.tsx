@@ -384,6 +384,37 @@ export default async function AdminProfessionalsPage() {
   );
 }
 
+// Riepilogo del caso in testo semplice: si incolla in una mail al
+// professionista, in un appunto o in una chat col resto del team senza dover
+// ricopiare a mano dei dati che, se ricopiati male, portano a decidere su un
+// numero sbagliato.
+function schedaDelCaso(
+  row: VerificationRow,
+  name: string,
+  pro: ProRow | undefined,
+  profile: { full_name: string | null; phone: string | null } | undefined
+): string {
+  const svc = pro?.professional_services?.[0]?.services?.name;
+  const righe = [
+    `Verifica P.IVA — ${name}`,
+    `Partita IVA dichiarata: ${row.vat_number ?? "—"}`,
+    `Intestazione dal registro: ${row.vat_holder_name ?? "non disponibile"}`,
+    `Esito automatico: ${
+      row.vat_active === true
+        ? "confermata"
+        : row.vat_check_source === "vies"
+        ? "non confermata dal VIES"
+        : "nessuna risposta"
+    }`,
+    `Ultimo controllo: ${fmtDate(row.vat_checked_at)}`,
+    `Livello attuale: ${VERIFICATION_LABEL[row.level]}`,
+    `Servizio e città: ${svc ?? "—"}${pro?.cities?.name ? `, ${pro.cities.name}` : ""}`,
+    profile?.phone ? `Telefono: ${profile.phone}` : null,
+    `Profilo: /professionisti/${row.professional_id}`,
+  ];
+  return righe.filter(Boolean).join("\n");
+}
+
 // ---- Un caso della coda P.IVA ----
 // Mostra tutto quello che serve per decidere senza aprire altre schede: cosa
 // ha dichiarato il professionista, cosa ha risposto il VIES e se la
@@ -490,6 +521,9 @@ function VatCaseCard({
         proId={row.professional_id}
         proName={name}
         hasLevel={row.level !== "none"}
+        vatNumber={row.vat_number}
+        holderName={row.vat_holder_name}
+        scheda={schedaDelCaso(row, name, pro, profile)}
       />
     </div>
   );
