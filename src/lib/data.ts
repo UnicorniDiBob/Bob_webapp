@@ -7,6 +7,7 @@ import type {
   PortfolioItem,
   VerificationStatus,
 } from "@/lib/supabase/types";
+import { withArticle, afterDi } from "@/lib/italian";
 
 // ---------- Catalogo (lettura pubblica via RLS) ----------
 
@@ -119,7 +120,13 @@ type RawProfessionalRow = {
     max_price: number | null;
     price_note: string | null;
     service_id: string;
-    services: { name: string; slug: string } | null;
+    services: {
+      name: string;
+      slug: string;
+      gender: string | null;
+      is_plural: boolean | null;
+      takes_article: boolean | null;
+    } | null;
   }[];
   ratings: { score: number }[];
 };
@@ -136,7 +143,7 @@ const PROFESSIONAL_SELECT = `
   response_time_label,
   city_id,
   cities ( name, slug ),
-  professional_services ( min_price, max_price, price_note, service_id, services ( name, slug ) ),
+  professional_services ( min_price, max_price, price_note, service_id, services ( name, slug, gender, is_plural, takes_article ) ),
   ratings ( score )
 `;
 
@@ -182,6 +189,11 @@ function toCard(
     city: { name: row.cities?.name ?? "", slug: row.cities?.slug ?? "" },
     serviceName: ps?.services?.name ?? null,
     serviceSlug: ps?.services?.slug ?? null,
+    // Nome già articolato, calcolato qui una volta così i componenti non devono
+    // conoscere il genere grammaticale. Due forme perché il contesto cambia:
+    // "cercavi delle pulizie" ma "ho bisogno di pulizie".
+    serviceWithArticle: ps?.services ? withArticle(ps.services) : null,
+    serviceNeedPhrase: ps?.services ? afterDi(ps.services) : null,
     minPrice: ps?.min_price ?? null,
     maxPrice: ps?.max_price ?? null,
     priceNote: ps?.price_note ?? null,

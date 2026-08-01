@@ -64,6 +64,11 @@ export interface Service {
   slug: string;
   description: string | null;
   created_at: string | null;
+  // Concordanza grammaticale (migration 035): il nome del servizio finisce
+  // dentro frasi nostre, e "un pulizie" non è italiano. Vedi src/lib/italian.ts.
+  gender: "m" | "f";
+  is_plural: boolean;
+  takes_article: boolean;
 }
 
 export interface Subservice {
@@ -175,6 +180,11 @@ export interface ProfessionalCard {
   city: { name: string; slug: string };
   serviceName: string | null;
   serviceSlug: string | null;
+  // Nome articolato come complemento oggetto ("un idraulico", "delle pulizie").
+  serviceWithArticle: string | null;
+  // Nome retto da "di", per "ho bisogno ___" ("di un idraulico", "di pulizie"):
+  // dopo "di" il partitivo si fonde. Derivati in data.ts, vedi src/lib/italian.ts.
+  serviceNeedPhrase: string | null;
   minPrice: number | null;
   maxPrice: number | null;
   priceNote: string | null;

@@ -109,6 +109,10 @@ export async function POST(request: Request) {
   const services: ServiceRef[] = servicesRaw.map((s) => ({
     slug: s.slug,
     name: s.name,
+    // Genere e numero servono a Bob per articolare il nome nei messaggi.
+    gender: s.gender,
+    is_plural: s.is_plural,
+    takes_article: s.takes_article,
   }));
 
   // Foto sull'ultimo messaggio utente: upload nel bucket privato (in parallelo alla vision).

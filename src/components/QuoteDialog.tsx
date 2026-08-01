@@ -15,6 +15,9 @@ interface QuoteContext {
   cityName?: string;
   serviceSlug?: string;
   serviceName?: string;
+  // Nome retto da "di" ("di pulizie"): chi apre il dialog lo ricava dal
+  // catalogo, qui non conosciamo il genere grammaticale. Vedi src/lib/italian.ts.
+  serviceNeedPhrase?: string;
   problem?: string;
   urgency?: Severity;
   // brief di Bob da agganciare alla richiesta (022)
@@ -37,8 +40,11 @@ export function QuoteDialog({
   // Path corrente per il ritorno post-login (il draft chat è in localStorage).
   const pathname = usePathname();
 
-  const defaultMsg = `Ciao, ho bisogno di un ${
-    context.serviceName?.toLowerCase() ?? "intervento"
+  const defaultMsg = `Ciao, ho bisogno ${
+    context.serviceNeedPhrase ??
+    (context.serviceName
+      ? `di ${context.serviceName.toLowerCase()}`
+      : "di un intervento")
   } a ${context.cityName ?? "Milano"}.${
     context.problem ? ` ${context.problem}.` : ""
   } Vorrei un preventivo: puoi farmi sapere prezzo e disponibilità? Grazie.`;

@@ -21,6 +21,7 @@ import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
+import { withArticle, afterDi } from "@/lib/italian";
 import { createClient } from "@/lib/supabase/client";
 
 type Step =
@@ -226,7 +227,7 @@ export function BobChat({
         if (!svc) return;
         const city = cities.find((c) => c.slug === memory.last_city_slug);
         bobSay(
-          `Bentornato! L'ultima volta cercavi un ${svc.name.toLowerCase()}${
+          `Bentornato! L'ultima volta cercavi ${withArticle(svc)}${
             city ? ` a ${city.name}` : ""
           }. Ti serve di nuovo, o hai un problema diverso? Raccontami pure.`
         );
@@ -669,8 +670,19 @@ export function BobChat({
 
   const selectedPros = results.filter((p) => selected.has(p.id));
 
+  // Il servizio dal catalogo porta genere e numero: serve per l'articolo
+  // ("delle pulizie", non "un pulizie"). Se manca, si ripiega sul solo nome.
+  const prefillService = collected.serviceSlug
+    ? services.find((s) => s.slug === collected.serviceSlug)
+    : undefined;
+  const prefillNeedPhrase = prefillService
+    ? afterDi(prefillService)
+    : collected.serviceName
+      ? `di ${collected.serviceName.toLowerCase()}`
+      : undefined;
+
   const bobPrefill = collected.serviceName
-    ? `Ciao, ho bisogno di un ${collected.serviceName.toLowerCase()} a ${
+    ? `Ciao, ho bisogno ${prefillNeedPhrase} a ${
         collected.cityName ?? "Milano"
       }.${collected.summary ? ` ${collected.summary}.` : ""}${
         collected.budgetLabel
@@ -1223,6 +1235,7 @@ export function BobChat({
             cityName: collected.cityName,
             serviceSlug: collected.serviceSlug ?? undefined,
             serviceName: collected.serviceName,
+            serviceNeedPhrase: prefillNeedPhrase,
             problem:
               [
                 collected.summary,

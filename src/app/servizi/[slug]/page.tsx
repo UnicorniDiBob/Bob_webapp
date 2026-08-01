@@ -8,6 +8,7 @@ import {
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
 import { ServiceIcon } from "@/lib/serviceIcons";
+import { withArticle, quale } from "@/lib/italian";
 import { JsonLd } from "@/components/JsonLd";
 
 const siteUrl =
@@ -22,12 +23,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const service = await getServiceBySlug(params.slug);
   if (!service) return { title: "Servizio non trovato" };
-  const lower = service.name.toLowerCase();
   return {
     title: `${service.name} vicino a te — prezzi chiari e professionisti verificati`,
     description:
       service.description ??
-      `Cerchi un ${lower}? Su BOB trovi ${lower} verificati a Milano con fasce di prezzo trasparenti, disponibilità e recensioni vere. Raccontaci il problema.`,
+      // La frase parla di "professionisti" e non mette al plurale il nome del
+      // servizio: "elettricista" → "elettricisti" richiederebbe un'altra
+      // colonna, e l'articolo concordato basta a tenere l'italiano corretto.
+      `Cerchi ${withArticle(service)} a Milano? Su BOB trovi professionisti verificati, con fasce di prezzo trasparenti, disponibilità e recensioni vere. Raccontaci il problema.`,
     alternates: { canonical: `/servizi/${params.slug}` },
   };
 }
@@ -128,7 +131,8 @@ export default async function ServicePage({
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold">
-              Non sai quale {service.name.toLowerCase()} fa per te?
+              Non sai {quale(service).quale} {quale(service).subject}{" "}
+              {quale(service).fa} per te?
             </h2>
             <p className="mt-1 text-sm text-white/80">
               Raccontami il problema e ti aiuto a capire chi contattare, con più
