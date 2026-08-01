@@ -37,8 +37,8 @@ export function RequestDialog({
   const pathname = usePathname();
   const [message, setMessage] = useState(
     prefilledMessage ||
-      `Ciao ${professional.fullName}, ho bisogno di un ${
-        professional.serviceName?.toLowerCase() ?? "intervento"
+      `Ciao ${professional.fullName}, ho bisogno ${
+        professional.serviceNeedPhrase ?? "di un intervento"
       } a ${professional.city.name}. Sei disponibile?`
   );
   const [submitting, setSubmitting] = useState(false);

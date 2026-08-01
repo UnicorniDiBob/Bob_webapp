@@ -21,6 +21,7 @@ import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
+import { withArticle, afterDi } from "@/lib/italian";
 import { createClient } from "@/lib/supabase/client";
 
 type Step =
@@ -86,6 +87,15 @@ interface Collected {
 // e li ripristiniamo al mount; "Ricomincia" pulisce anche il draft.
 const DRAFT_KEY = "bob-chat-draft-v1";
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // dopo 24h il problema è probabilmente superato
+
+// ----- [F2] saluto personalizzato dalla memoria cliente -----
+// Il saluto "Bentornato! L'ultima volta cercavi..." ha senso solo se la ricerca
+// è davvero recente: un problema di casa si risolve in fretta, quindi dopo 24h
+// la memoria non è più un contesto utile ma rumore. Inoltre l'effect gira a
+// ogni mount con step === "intent": senza un flag di sessione il saluto
+// ricompariva a ogni login e a ogni refresh della home.
+const MEMORY_GREETING_TTL_MS = 24 * 60 * 60 * 1000;
+const MEMORY_GREETING_SHOWN_KEY = "bob-memory-greeting-shown-v1";
 
 interface ChatDraft {
   savedAt: number;
@@ -177,11 +187,27 @@ export function BobChat({
   // [F2] Memoria cliente (customer_memory è già in DB e ha un'API dedicata,
   // ma finora nessun componente la usava): se non c'è un draft da riprendere
   // e il cliente è loggato, Bob personalizza il saluto con l'ultima ricerca.
+  // Due limiti espliciti: la memoria scade dopo MEMORY_GREETING_TTL_MS e il
+  // saluto si mostra una volta sola per sessione del browser.
   useEffect(() => {
     if (memoryChecked || !user || role !== "customer") return;
     if (step !== "intent" || messages.length > 1) {
       setMemoryChecked(true);
       return;
+    }
+    // Chiave per utente: se in una stessa scheda si alternano due account, il
+    // flag del primo non deve zittire il saluto del secondo.
+    const shownKey = `${MEMORY_GREETING_SHOWN_KEY}:${user.id}`;
+    // Controllo prima della fetch: se il saluto è già stato dato in questa
+    // sessione non serve nemmeno leggere i dati personali dalla memoria.
+    try {
+      if (window.sessionStorage.getItem(shownKey)) {
+        setMemoryChecked(true);
+        return;
+      }
+    } catch {
+      // sessionStorage negato (Safari in privata, storage pieno): si prosegue,
+      // al massimo il saluto si ripete come prima.
     }
     setMemoryChecked(true);
     (async () => {
@@ -189,14 +215,27 @@ export function BobChat({
         const res = await fetch("/api/memory");
         const { memory } = await res.json();
         if (!memory?.last_service_slug) return;
+        // Memoria stantia: meglio il saluto neutro che un contesto sbagliato.
+        const updatedAt = memory.updated_at ? Date.parse(memory.updated_at) : NaN;
+        if (
+          Number.isNaN(updatedAt) ||
+          Date.now() - updatedAt > MEMORY_GREETING_TTL_MS
+        ) {
+          return;
+        }
         const svc = services.find((s) => s.slug === memory.last_service_slug);
         if (!svc) return;
         const city = cities.find((c) => c.slug === memory.last_city_slug);
         bobSay(
-          `Bentornato! L'ultima volta cercavi un ${svc.name.toLowerCase()}${
+          `Bentornato! L'ultima volta cercavi ${withArticle(svc)}${
             city ? ` a ${city.name}` : ""
           }. Ti serve di nuovo, o hai un problema diverso? Raccontami pure.`
         );
+        try {
+          window.sessionStorage.setItem(shownKey, "1");
+        } catch {
+          // vedi sopra: il flag è un'ottimizzazione, non una precondizione
+        }
       } catch {
         // memoria non disponibile: il saluto standard basta
       }
@@ -631,8 +670,19 @@ export function BobChat({
 
   const selectedPros = results.filter((p) => selected.has(p.id));
 
+  // Il servizio dal catalogo porta genere e numero: serve per l'articolo
+  // ("delle pulizie", non "un pulizie"). Se manca, si ripiega sul solo nome.
+  const prefillService = collected.serviceSlug
+    ? services.find((s) => s.slug === collected.serviceSlug)
+    : undefined;
+  const prefillNeedPhrase = prefillService
+    ? afterDi(prefillService)
+    : collected.serviceName
+      ? `di ${collected.serviceName.toLowerCase()}`
+      : undefined;
+
   const bobPrefill = collected.serviceName
-    ? `Ciao, ho bisogno di un ${collected.serviceName.toLowerCase()} a ${
+    ? `Ciao, ho bisogno ${prefillNeedPhrase} a ${
         collected.cityName ?? "Milano"
       }.${collected.summary ? ` ${collected.summary}.` : ""}${
         collected.budgetLabel
@@ -1189,6 +1239,7 @@ export function BobChat({
             cityName: collected.cityName,
             serviceSlug: collected.serviceSlug ?? undefined,
             serviceName: collected.serviceName,
+            serviceNeedPhrase: prefillNeedPhrase,
             problem:
               [
                 collected.summary,

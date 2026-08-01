@@ -121,3 +121,32 @@ pro resta pubblicamente leggibile per la stessa policy (oggi vuoto per tutti)
 La migration applicata live col nome `021_profile_age_terms_and_city_geo` nel
 repo si chiama `024_…` (rinumerata per collisione con il lavoro parallelo
 021–023 di André). Schema identico, solo il nome nella history diverge.
+
+## 2026-08-01 · Bob — Memoria cliente e concordanza grammaticale
+
+**Memoria cliente.** Il saluto "Bentornato! L'ultima volta cercavi…" usa la
+memoria solo se `customer_memory.updated_at` è entro 24h e si mostra una volta
+per sessione del browser (flag in `sessionStorage`, chiave per `user.id`). Prima
+scattava a ogni mount con `step === "intent"`, quindi a ogni login e a ogni
+refresh, e senza controllo di freschezza: in produzione riproponeva una ricerca
+di 12 giorni prima. Retention lato DB nella migrazione 034 (`pg_cron`
+giornaliero, purga a 30 giorni). Vedi DATA_COMPLIANCE §5 e il registro
+trattamenti.
+
+**Concordanza grammaticale (mig 035).** In sette punti il nome del servizio
+veniva incollato dopo un `un` fisso: giusto per i nove mestieri maschili
+singolari, sbagliato per gli altri sei ("un pulizie", "un traslochi", "un
+sviluppo web"). `services` ha ora `gender`, `is_plural`, `takes_article`;
+l'articolo si deriva in `src/lib/italian.ts` (`withArticle`, `quale`).
+
+- **Aggiungendo un servizio a catalogo, compilare i tre campi.** I default
+  (`'m'`, `false`, `true`) riproducono il comportamento vecchio, quindi un
+  servizio dimenticato non rompe nulla ma può leggersi male. Non c'è una UI
+  admin per creare servizi: si inseriscono da Supabase, quindi il promemoria
+  vive qui.
+- `takes_article = false` per i nomi di categoria non numerabili ("Grafica e
+  Logo", "Musica e intrattenimento"): con qualsiasi articolo suonano sbagliati.
+- **Limite noto:** manca il plurale del nome ("elettricista" → "elettricisti").
+  Le frasi che lo richiedevano ("trovi X verificati") sono state riscritte per
+  parlare di "professionisti". Se in futuro serve il plurale, va una colonna
+  `name_plural`, non un'euristica sul suffisso.

@@ -5,6 +5,7 @@
 // Se manca la chiave o l'AI fallisce, si usa un fallback a regole (matching.ts).
 
 import { guessServiceSlug, guessSeverity } from "./matching";
+import { afterDi } from "./italian";
 
 export type Severity = "alta" | "media" | "bassa";
 export type BriefUrgency =
@@ -102,6 +103,11 @@ export interface BobDecision {
 export interface ServiceRef {
   slug: string;
   name: string;
+  // Concordanza grammaticale dal catalogo (migration 035): serve per costruire
+  // "delle pulizie" invece di "un pulizie". Opzionali per retrocompatibilità.
+  gender?: string | null;
+  is_plural?: boolean | null;
+  takes_article?: boolean | null;
 }
 export interface SubserviceRef {
   serviceSlug: string;
@@ -394,13 +400,17 @@ export function ruleBasedDecision(
       : "";
 
   const svcName = svc?.name.toLowerCase() ?? "professionista";
+  // Retto da "di": "di un idraulico", "di pulizie", "di grafica e logo".
+  const svcNeed = svc ? afterDi(svc) : "di un professionista";
 
   return {
     reply: `${empat}Ok, mi sembra un lavoro da ${svcName}. In che città ti serve?`,
     brief,
     next: "city",
-    shortlistReason: `Cerco ${svcName} disponibili e verificati per questo tipo di intervento.`,
-    suggestedMessage: `Ciao, ho bisogno di un ${svcName}. ${brief.summary ?? text}. Sei disponibile?`,
+    // Il nome del servizio non si può mettere al plurale senza un'altra colonna
+    // ("elettricista" → "elettricisti"), quindi la frase parla di professionisti.
+    shortlistReason: `Cerco professionisti disponibili e verificati per questo tipo di intervento.`,
+    suggestedMessage: `Ciao, ho bisogno ${svcNeed}. ${brief.summary ?? text}. Sei disponibile?`,
     subtaskOptions: subservices
       .filter((x) => x.serviceSlug === slug)
       .map((x) => ({ slug: x.slug, name: x.name })),
