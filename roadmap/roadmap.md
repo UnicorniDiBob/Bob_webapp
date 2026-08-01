@@ -2,7 +2,7 @@
 
 _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** ✅ 65 Done · 🔵 2 In progress · ⬜ 68 Planned · 🔶 3 Milestone
+**Stato:** ✅ 71 Done · 🔵 2 In progress · ⬜ 75 Planned · 🔶 4 Milestone
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -96,9 +96,23 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | **10** | **Automated pro verification + verified badge (levels Iscritto/Pro/Pro+)** | Client/Pro | Lucio | 🔵 In progress | 2026-07-19 → 2026-10-31 |  |
 | 10.0 | Research: VIES insufficiente, AdE senza API; provider commerciale + DAC7 (docs/legal) | Internal | Lucio | ✅ Done | 2026-07-19 → 2026-07-19 | 2026-07-19 |
 | 10.1a | Schema verifica (mig 029) + checksum P.IVA lib/vat.ts con test | Internal | Lucio | ✅ Done | 2026-07-30 → 2026-07-30 | 2026-07-30 |
-| 10.1b | P.IVA check via provider commerciale (sandbox poi produzione) | Shared | Lucio | ⬜ Planned | 2026-08-01 → 2026-09-30 |  |
-| 10.2 | ID document upload + manual review queue in admin | Internal | Lucio | ⬜ Planned | 2026-09-15 → 2026-10-15 |  |
-| 10.3 | Verified badge UI on profiles, listings and ranking; 48h SLA workflow | Client/Pro | Lucio | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
+| 10.1b | Gradino 3: provider commerciale via sandbox Openapi poi produzione (serve DPA art.28) — si accende se 10.7 dice che il VIES non basta | Shared | Lucio | ⬜ Planned | 2026-09-01 → 2026-10-15 |  |
+| 10.1c | Client VIES + route /api/pro/verifica-piva: tre gradini, limite 3/24h, mai un rifiuto automatico | Internal | Lucio | ✅ Done | 2026-07-31 → 2026-07-31 | 2026-07-31 |
+| 10.1d | UI verifica nel profilo pro + badge pubblico Iscritto/Pro/Pro+ con data e tooltip (profilo, card, chat) [mig 038] | Client/Pro | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
+| 10.1e | Coda verifiche in admin: concedi / chiedi documenti / rifiuta con motivazione obbligatoria + email di esito | Internal | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
+| 10.1f | Antifrode: livello automatico solo se l'intestazione combacia col nome; una P.IVA per un solo profilo [mig 039] | Internal | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
+| 10.1g | Firma delle decisioni (chi, ruolo, quando) + registro consultabile dalla coda admin [mig 040] | Internal | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
+| 10.1h | Scorciatoie operatore: copia P.IVA e apri il servizio dell'Agenzia, scheda copiabile, modelli di motivazione | Internal | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
+| 10.4 | Scadenza della verifica (proposta 6 mesi) + ricontrollo periodico con declassamento assistito, mai automatico | Internal | Lucio | ⬜ Planned | 2026-08-04 → 2026-08-12 |  |
+| 10.5 | Ritentativo automatico dei casi rimasti senza risposta dal VIES (lavoro pianificato orario), oggi restano in coda umana | Internal | Lucio | ⬜ Planned | 2026-08-04 → 2026-08-08 |  |
+| 10.6 | Campo 'nome e cognome del titolare' nel profilo pro + confronto sul nome piu' stretto (oggi basta una parola in comune) | Client/Pro | Lucio | ⬜ Planned | 2026-08-06 → 2026-08-15 |  |
+| 10.7 | Telemetria in /admin/analisi: quanti tentano, quanti conferma il VIES, quanti finiscono a mano, tempi di lavorazione | Internal | Lucio | ⬜ Planned | 2026-08-08 → 2026-08-22 |  |
+| 10.8 | Invito alla verifica: avviso nella dashboard pro (oggi mostra ancora il vecchio badge staff) + P.IVA nell'onboarding | Client/Pro | Lucio | ⬜ Planned | 2026-08-11 → 2026-08-25 |  |
+| 10.9 | Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7) | Internal | Lucio | ⬜ Planned | 2026-09-01 → 2026-09-20 |  |
+| 10.10 | Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata) | Shared | Lucio | ⬜ Planned | 2026-08-04 → 2026-08-29 |  |
+| 10.11 | DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6) | Shared | Lucio | 🔶 Milestone | 2026-08-08 → 2026-08-08 |  |
+| 10.2 | Caricamento documenti per il livello Pro+ (upload, storage, retention) — la coda di revisione e' gia' fatta in 10.1e | Internal | Lucio | ⬜ Planned | 2026-09-15 → 2026-10-15 |  |
+| 10.3 | Il livello pesa nel ranking (parametri dichiarati, Reg. P2B) + SLA 48h sulla coda | Client/Pro | Lucio | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
 | **11** | **Transparent ranking + Visibility Boost** | Client/Pro | André | ⬜ Planned | 2026-10-01 → 2026-11-30 |  |
 | 11.1 | Ranking algorithm v1: response rate, closure rate, reviews (data logic) | Internal | Lucio | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
 | 11.2 | Ranking explanation UI (seeded by 'why this pro' line) | Client/Pro | André | ⬜ Planned | 2026-10-15 → 2026-11-15 |  |
