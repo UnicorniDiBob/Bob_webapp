@@ -47,11 +47,19 @@ export async function sendEmail(email: OutgoingEmail): Promise<boolean> {
   }
 }
 
+// Perché ricevo questa email: cambia col tipo di comunicazione, e deve essere
+// vero. Le email di verifica non nascono da una richiesta o da una chat.
+const FOOTER_THREAD =
+  "Ricevi questa email perché hai una richiesta o una conversazione attiva su BOB. È una comunicazione di servizio, non promozionale.";
+const FOOTER_VERIFICATION =
+  "Ricevi questa email perché hai chiesto la verifica del tuo profilo professionale su BOB. È una comunicazione di servizio, non promozionale.";
+
 function shell(
   title: string,
   bodyHtml: string,
   ctaLabel: string,
-  ctaHref: string
+  ctaHref: string,
+  footer: string = FOOTER_THREAD
 ): string {
   return `<!doctype html><html lang="it"><body style="margin:0;background:#f4f4f8;font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;">
   <div style="max-width:520px;margin:0 auto;padding:24px;">
@@ -62,8 +70,7 @@ function shell(
       <a href="${ctaHref}" style="display:inline-block;margin-top:20px;background:#3730a3;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:bold;">${ctaLabel}</a>
     </div>
     <p style="font-size:12px;color:#6b7280;margin-top:16px;line-height:1.5;">
-      Ricevi questa email perché hai una richiesta o una conversazione attiva su BOB.
-      È una comunicazione di servizio, non promozionale.
+      ${footer}
     </p>
   </div></body></html>`;
 }
@@ -73,7 +80,19 @@ export type NotifyEvent =
   | "new_message"
   | "appointment_proposed"
   | "appointment_confirmed"
-  | "appointment_declined";
+  | "appointment_declined"
+  // Esiti della verifica del profilo (blocco 10). Non passano da /api/notify:
+  // non nascono da una richiesta, li invia la route admin che decide il caso.
+  | "verification_granted"
+  | "verification_docs_requested"
+  | "verification_rejected";
+
+/** Gli eventi legati a una richiesta o a un thread: hanno un piè di pagina diverso. */
+const VERIFICATION_EVENTS: NotifyEvent[] = [
+  "verification_granted",
+  "verification_docs_requested",
+  "verification_rejected",
+];
 
 export interface EmailContext {
   recipientName: string | null;
@@ -186,9 +205,69 @@ export function buildEmail(
       cta = "Apri la conversazione";
       text = `${hi}\n${who} non può nell'orario proposto.\n${href}`;
       break;
+
+    // --- Esiti della verifica (blocco 10) ---
+    // ctx.preview porta la motivazione scritta da chi ha esaminato il caso:
+    // è la stessa che il professionista legge nel suo profilo, e per il
+    // Reg. UE 2019/1150 (P2B) deve essere una motivazione vera, non una formula.
+    case "verification_granted":
+      subject = "Il tuo profilo ora è verificato come Pro";
+      bodyHtml =
+        p(`${hi}`) +
+        p(
+          "abbiamo riscontrato la tua partita IVA: sul tuo profilo pubblico compare l'etichetta <b>Pro</b> con la data del controllo."
+        ) +
+        quote +
+        p(
+          "Il numero della partita IVA non è visibile ai clienti: vedono solo l'etichetta e la data."
+        );
+      cta = "Vedi il tuo profilo";
+      text = `${hi}\nAbbiamo riscontrato la tua partita IVA: il tuo profilo ora mostra l'etichetta Pro con la data del controllo.\n${
+        ctx.preview ?? ""
+      }\n${href}`;
+      break;
+    case "verification_docs_requested":
+      subject = "Ci serve un documento per completare la verifica";
+      bodyHtml =
+        p(`${hi}`) +
+        p(
+          "per completare la verifica della tua partita IVA ci serve un documento in più."
+        ) +
+        quote +
+        p("Rispondi a questa email allegando quanto richiesto: facciamo il resto noi.");
+      cta = "Vai al tuo profilo";
+      text = `${hi}\nPer completare la verifica ci serve un documento in più.\n${
+        ctx.preview ?? ""
+      }\n${href}`;
+      break;
+    case "verification_rejected":
+      subject = "Esito della verifica della tua partita IVA";
+      bodyHtml =
+        p(`${hi}`) +
+        p("abbiamo esaminato la tua richiesta di verifica e non possiamo accoglierla.") +
+        quote +
+        p(
+          "Se i dati che abbiamo controllato non sono corretti, puoi correggerli dal tuo profilo e ripresentare la richiesta: la rivediamo a mano."
+        );
+      cta = "Vai al tuo profilo";
+      text = `${hi}\nAbbiamo esaminato la tua richiesta di verifica e non possiamo accoglierla.\n${
+        ctx.preview ?? ""
+      }\nPuoi correggere i dati dal tuo profilo e ripresentarla: ${href}`;
+      break;
   }
 
-  return { to, subject, html: shell(subject, bodyHtml, cta, href), text };
+  return {
+    to,
+    subject,
+    html: shell(
+      subject,
+      bodyHtml,
+      cta,
+      href,
+      VERIFICATION_EVENTS.includes(event) ? FOOTER_VERIFICATION : FOOTER_THREAD
+    ),
+    text,
+  };
 }
 
 function escapeHtml(s: string): string {

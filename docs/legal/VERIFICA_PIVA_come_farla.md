@@ -163,6 +163,86 @@ I punti 1-4 li posso fare **subito, senza account e senza spese**, perché il
 VIES non richiede nulla. Il punto 5 dà la risposta sul se e quando fare il
 gradino 3.
 
+## 5-bis. Stato al 31/07/2026 (fine giornata)
+
+Fatto e in repo:
+
+- **Gradino 1** — `src/lib/vat.ts` (checksum, normalizzazione, confronto nomi).
+- **Gradino 2** — `src/lib/vies.ts` (client server-side, tre esiti distinti).
+- **Motore** — `POST /api/pro/verifica-piva` (i tre gradini, limite 3/24h,
+  registro eventi, nessun rifiuto automatico).
+- **Punto 2 — UI nel profilo pro** — `src/components/VatVerification.tsx`,
+  innestato in `/dashboard/profilo`: checksum mentre digita, tasto di verifica,
+  stato corrente, motivazione visibile al pro, e la riga che dice che il numero
+  non è pubblico. Il caso "non nel VIES" è spiegato come non-rifiuto.
+- **Punto 4 — Badge pubblico** — `VerificationLevelBadge` in
+  `src/components/ui.tsx`: etichetta + **data** + tooltip con cosa attesta e
+  cosa **non** attesta (allineato al §3.2 dei ToS professionisti). Vive sul
+  profilo pubblico, nelle card di elenco e nei risultati della chat di Bob.
+  Sostituisce il vecchio badge "Verificato" su quelle tre superfici: quello
+  diceva più di quanto avessimo controllato e non portava la data. Resta in uso
+  nella dashboard del pro e in admin, dove indica l'approvazione dello staff.
+- **Migration 038** (applicata in produzione il 31/07 col nome provvisorio
+  034; rinumerata perché nel frattempo sono arrivate 034/035 di André, e
+  perché la 036 e la 037 — anch'esse sul badge — sono state applicate live
+  **senza file in repo**: drift da sanare, vedi l'intestazione del file 038)
+  — tre cose: (a) livello e data rispecchiati su
+  `professionals` da un trigger, così il badge pubblico non passa più da una
+  vista `security_invoker = off` (era un ERROR dell'advisor Supabase aperto
+  dalla 029, ora chiuso; la P.IVA resta in `professional_verification` con RLS
+  stretta); (b) colonne `vat_review_*` per lo stato e la motivazione dell'esame
+  umano; (c) eventi `documents_requested` e `vat_rejected` nel registro.
+  Applicata in Supabase il 31/07/2026.
+
+- **Punto 3 — coda in admin** — sezione in cima a `/admin/professionals`
+  (la voce di menu si chiamava già "Verifiche"), più
+  `POST /api/admin/verifiche/[id]`. Tre azioni umane: concedi Pro, chiedi
+  documenti, rifiuta — con **motivazione obbligatoria** (minimo 15 caratteri)
+  sulle ultime due, perché è quella che il professionista legge nel profilo e
+  riceve per email: obbligo di motivazione del Reg. UE 2019/1150. Ogni azione
+  scrive in `verification_events` con autore e data; se il registro non
+  accetta la scrittura la route risponde errore invece di far finta di niente.
+  Nella stessa sezione ci sono anche i **livelli attivi**, così una
+  concessione automatica sbagliata si revoca da lì e non via SQL.
+  In dashboard admin c'è il contatore dei casi aperti.
+- **Email di esito** (`lib/email.ts`): tre eventi nuovi, dormienti finché non
+  c'è `RESEND_API_KEY`. Testo di servizio, mai promozionale, con un piè di
+  pagina che dice il vero motivo dell'invio.
+
+Correzioni fatte durante la revisione del 01/08 (valgono come nota per il
+futuro, erano tutti errori veri):
+
+- Un secondo tentativo **non confermato** da parte di chi era già verificato
+  riscriveva `vat_checked_at` lasciando il livello: il badge pubblico avrebbe
+  detto "Pro · oggi" sulla base di un controllo fallito. Ora chi è già
+  verificato riceve 409 e il cambio di P.IVA passa dallo staff.
+- Le `update` della route pro non guardavano l'errore: si poteva rispondere
+  "verificata" con il database invariato.
+- La data del VIES (`"2026-03-11+01:00"`, senza orario) diventava il giorno
+  prima in UTC. Ora è normalizzata alla mezzanotte del suo fuso e tutte le
+  date si formattano con `timeZone: "Europe/Rome"`, altrimenti il pro e il
+  cliente leggevano due giorni diversi per lo stesso controllo.
+- Il pro con richiesta in coda non poteva correggere un numero sbagliato:
+  doveva aspettare di essere **respinto**. Ora il campo resta disponibile.
+- `revoke ... from anon, authenticated` non toglie il grant implicito a
+  `PUBLIC`: la revoca era inefficace (la 032 lo faceva già giusto).
+- La policy di INSERT su `professionals` non vincolava le colonne nuove: un
+  pro poteva teoricamente nascere `documents_verified`. Ora è nella policy,
+  non solo in un effetto collaterale dei trigger.
+
+Non fatto:
+
+- **Punto 5 — telemetria** e **punto 6 — ricontrollo periodico**: invariati.
+- Nessun canale per **caricare i documenti**: "chiedi documenti" oggi apre uno
+  scambio via email, non un upload. Da valutare quando arriva il livello Pro+.
+- **Riga nel registro dei trattamenti** (DATA_COMPLIANCE §4): da aggiungere,
+  finalità "verifica dei requisiti dei professionisti", base giuridica
+  esecuzione del contratto. Il testo per l'informativa è già quello mostrato
+  nella card del profilo pro.
+- L'ordinamento degli elenchi **non** è stato toccato: continua a pesare il
+  vecchio `verification_status`. Se il livello deve contare nel ranking è una
+  decisione da prendere (vedi §6), non un dettaglio tecnico.
+
 ## 6. Decisioni che restano tue
 
 - **Quali categorie richiedono almeno "Pro"** per contattare i clienti

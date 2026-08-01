@@ -16,7 +16,7 @@ import {
   URGENCY_OPTIONS,
   SEVERITY_LABELS,
 } from "@/lib/matching";
-import { Stars, PriceTag, VerificationBadge } from "./ui";
+import { Stars, PriceTag, VerificationLevelBadge } from "./ui";
 import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
 import { CityWaitlistForm } from "./CityWaitlistForm";
@@ -861,7 +861,11 @@ export function BobChat({
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <Stars value={p.avgRating} count={p.nRatings} />
-                    <VerificationBadge status={p.verificationStatus} />
+                    <VerificationLevelBadge
+                      level={p.verificationLevel}
+                      verifiedAt={p.verifiedAt}
+                      compact
+                    />
                   </div>
                   {whyThisPro(p) && (
                     <p className="mt-1.5 text-[11px] text-bob-ink/45">

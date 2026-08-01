@@ -1,5 +1,7 @@
 // Tipi del database BOB — allineati allo schema Supabase (progetto bijgitnulucdzluqjxrx).
 
+import type { VerificationLevel, VatReviewState } from "@/lib/vat";
+
 export type CityStatus = "active" | "coming_soon";
 export type VerificationStatus = "unverified" | "pending" | "verified";
 export type UserRole = "customer" | "professional" | "admin" | "cs";
@@ -171,6 +173,10 @@ export interface ProfessionalCard {
   bio: string | null;
   yearsExperience: number | null;
   verificationStatus: VerificationStatus;
+  /** Livello del blocco 10 già "abbassato" per il pubblico (vedi publicVerificationLevel). */
+  verificationLevel: VerificationLevel;
+  /** Data del riscontro che ha prodotto il livello: si mostra sempre col badge. */
+  verifiedAt: string | null;
   responseTimeLabel: string | null;
   city: { name: string; slug: string };
   serviceName: string | null;
@@ -180,6 +186,25 @@ export interface ProfessionalCard {
   priceNote: string | null;
   avgRating: number | null;
   nRatings: number;
+}
+
+// ----- Verifica dei professionisti (blocco 10, migration 029 + 034) -----
+// La riga completa la vede solo il professionista stesso e lo staff (RLS):
+// contiene la partita IVA, che per una ditta individuale è dato personale.
+export interface ProfessionalVerification {
+  professional_id: string;
+  level: VerificationLevel;
+  vat_number: string | null;
+  vat_checked_at: string | null;
+  vat_active: boolean | null;
+  vat_holder_name: string | null;
+  vat_check_source: string | null;
+  documents_checked_at: string | null;
+  documents_note: string | null;
+  vat_review_state: VatReviewState | null;
+  vat_review_note: string | null;
+  vat_reviewed_at: string | null;
+  updated_at: string;
 }
 
 // ----- Messaggi e appuntamenti (aggiunti per dashboard pro e conversazioni) -----

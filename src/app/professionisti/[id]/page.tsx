@@ -8,7 +8,7 @@ import {
 } from "@/lib/data";
 import {
   Stars,
-  VerificationBadge,
+  VerificationLevelBadge,
   PriceTag,
 } from "@/components/ui";
 import { ContactButton } from "@/components/ContactButton";
@@ -116,7 +116,10 @@ export default async function ProfessionalDetailPage({
 
             <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3 border-t border-black/5 pt-4">
               <Stars value={p.avgRating} count={p.nRatings} size="md" />
-              <VerificationBadge status={p.verificationStatus} />
+              <VerificationLevelBadge
+                level={p.verificationLevel}
+                verifiedAt={p.verifiedAt}
+              />
               {p.yearsExperience !== null && (
                 <span className="text-sm text-bob-ink/60">
                   {p.yearsExperience} anni di esperienza

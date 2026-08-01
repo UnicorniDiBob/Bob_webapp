@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
 import type { VerificationStatus, ProfessionalCard } from "@/lib/supabase/types";
+import {
+  VERIFICATION_LABEL,
+  VERIFICATION_MEANING,
+  VERIFICATION_CAVEAT,
+  type VerificationLevel,
+} from "@/lib/vat";
 
 // ---------- Rating a stelle ----------
 export function Stars({
@@ -76,6 +82,91 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
   );
 }
 
+// ---------- Badge del livello di verifica (blocco 10) ----------
+//
+// Il livello da solo non è un'informazione onesta: mostriamo sempre la DATA del
+// riscontro, e nel tooltip cosa attesta e cosa NON attesta (ToS §3.2).
+// Nelle card usiamo `compact`: nessun popup, solo il title del browser, per non
+// annidare elementi interattivi dentro il link della card.
+// Fuso esplicito: questo componente rende sia sul server (Vercel, UTC) sia nel
+// browser del professionista. Senza timeZone la stessa verifica risulterebbe
+// fatta in due giorni diversi a seconda di chi guarda.
+function fmtVerifiedDate(d: string | null): string | null {
+  if (!d) return null;
+  try {
+    return new Date(d).toLocaleDateString("it-IT", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "Europe/Rome",
+    });
+  } catch {
+    return null;
+  }
+}
+
+const LEVEL_STYLE: Record<VerificationLevel, string> = {
+  none: "bg-black/5 text-bob-ink/60",
+  vat_verified: "bg-bob-indigo-50 text-bob-indigo",
+  documents_verified: "bg-emerald-50 text-emerald-700",
+};
+
+export function VerificationLevelBadge({
+  level,
+  verifiedAt,
+  compact = false,
+}: {
+  level: VerificationLevel;
+  verifiedAt: string | null;
+  compact?: boolean;
+}) {
+  const label = VERIFICATION_LABEL[level];
+  const date = fmtVerifiedDate(verifiedAt);
+  const meaning = VERIFICATION_MEANING[level];
+  const caveat = VERIFICATION_CAVEAT[level];
+
+  const pill = (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${LEVEL_STYLE[level]}`}
+    >
+      {level !== "none" && (
+        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path
+            fillRule="evenodd"
+            d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.7-9.3a1 1 0 0 0-1.4-1.4L9 10.58l-1.3-1.3a1 1 0 0 0-1.4 1.42l2 2a1 1 0 0 0 1.4 0l4-4Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      )}
+      {label}
+      {date && <span className="font-normal opacity-70">· {date}</span>}
+    </span>
+  );
+
+  if (compact) {
+    return (
+      <span title={`${meaning} ${caveat}`} data-testid={`badge-level-${level}`}>
+        {pill}
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="group relative inline-flex"
+      tabIndex={0}
+      data-testid={`badge-level-${level}`}
+    >
+      {pill}
+      <span className="pointer-events-none absolute left-0 top-full z-20 mt-1.5 hidden w-64 rounded-xl bg-bob-ink px-3 py-2 text-xs leading-relaxed text-white shadow-lg group-hover:block group-focus:block">
+        <span className="block font-semibold">{label}</span>
+        <span className="mt-1 block opacity-90">{meaning}</span>
+        <span className="mt-1 block opacity-70">{caveat}</span>
+      </span>
+    </span>
+  );
+}
+
 // ---------- Prezzo ----------
 export function PriceTag({
   min,
@@ -138,7 +229,11 @@ export function ProfessionalCardItem({ p }: { p: ProfessionalCard }) {
       </div>
 
       <div className="flex items-center justify-between">
-        <VerificationBadge status={p.verificationStatus} />
+        <VerificationLevelBadge
+          level={p.verificationLevel}
+          verifiedAt={p.verifiedAt}
+          compact
+        />
         {p.responseTimeLabel && (
           <span className="text-xs text-bob-ink/50">{p.responseTimeLabel}</span>
         )}

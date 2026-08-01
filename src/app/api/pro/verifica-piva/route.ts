@@ -99,24 +99,66 @@ export async function POST(request: Request) {
     );
   }
 
-  // Registriamo il tentativo prima di chiamare l'esterno: così il limite vale
-  // anche se la richiesta va in errore a metà.
-  await admin.from("verification_events").insert({
-    professional_id: pro.id,
-    event: "vat_submitted",
-    actor_user_id: user.id,
-  });
-
-  // --- 4. Gradino 2: VIES ---
-  const outcome = await checkVatOnVies(vat);
-
-  // Stato corrente, per registrare la transizione di livello.
+  // Stato corrente: serve per la transizione di livello e per non rovinare una
+  // verifica già ottenuta con un tentativo nuovo (vedi il controllo qui sotto).
   const { data: current } = await admin
     .from("professional_verification")
     .select("level")
     .eq("professional_id", pro.id)
     .maybeSingle();
-  const fromLevel = current?.level ?? "none";
+  const fromLevel = (current?.level ?? "none") as
+    | "none"
+    | "vat_verified"
+    | "documents_verified";
+
+  // Chi è già verificato non ripassa da qui. Senza questo controllo un secondo
+  // tentativo non confermato riscriverebbe la data del riscontro lasciando il
+  // livello in piedi: il badge pubblico direbbe "Pro · oggi" sulla base di un
+  // controllo fallito. Un cambio di partita IVA lo gestisce lo staff.
+  if (fromLevel !== "none") {
+    return NextResponse.json(
+      {
+        status: "already_verified",
+        message:
+          "Il tuo profilo risulta già verificato. Se la tua partita IVA è cambiata, scrivici: la aggiorniamo noi dopo un controllo.",
+      },
+      { status: 409 }
+    );
+  }
+
+  // Registriamo il tentativo prima di chiamare l'esterno: così il limite vale
+  // anche se la richiesta va in errore a metà. Se questa scrittura fallisce il
+  // limite non varrebbe più: meglio fermarsi che restare senza freno.
+  const { error: attemptError } = await admin
+    .from("verification_events")
+    .insert({
+      professional_id: pro.id,
+      event: "vat_submitted",
+      actor_user_id: user.id,
+    });
+  if (attemptError) {
+    return NextResponse.json(
+      {
+        error:
+          "Non sono riuscito a registrare la richiesta. Riprova tra poco: se il problema resta, scrivici.",
+      },
+      { status: 500 }
+    );
+  }
+
+  // --- 4. Gradino 2: VIES ---
+  const outcome = await checkVatOnVies(vat);
+
+  // Una scrittura che fallisce in silenzio direbbe al pro "verificata" con il
+  // database invariato: qui l'errore si vede.
+  const failedWrite = () =>
+    NextResponse.json(
+      {
+        error:
+          "Il controllo è stato eseguito ma non sono riuscito a salvarne l'esito. Riprova: se il problema resta, scrivici.",
+      },
+      { status: 500 }
+    );
 
   if (outcome.status === "unavailable") {
     await admin.from("verification_events").insert({
@@ -126,10 +168,23 @@ export async function POST(request: Request) {
       actor_user_id: user.id,
     });
     // Salviamo comunque la P.IVA dichiarata: la verifica riprenderà da lì.
-    await admin
+    // vat_review_state = 'pending' (migration 034) la mette nella coda umana:
+    // finché non esiste un ritentativo automatico, il caso deve comunque
+    // finire davanti a qualcuno. Azzeriamo l'esito precedente: non abbiamo
+    // controllato niente, e l'operatore non deve leggere "confermata" su un
+    // caso che è in coda proprio perché il controllo non è avvenuto.
+    const { error: writeError } = await admin
       .from("professional_verification")
-      .update({ vat_number: vat, updated_at: new Date().toISOString() })
+      .update({
+        vat_number: vat,
+        vat_active: null,
+        vat_holder_name: null,
+        vat_check_source: null,
+        vat_review_state: "pending",
+        updated_at: new Date().toISOString(),
+      })
       .eq("professional_id", pro.id);
+    if (writeError) return failedWrite();
 
     return NextResponse.json({
       status: "pending",
@@ -148,7 +203,7 @@ export async function POST(request: Request) {
     // Concessione del livello. La discordanza di nome NON blocca (le ditte
     // individuali risultano col nome della persona, il profilo può avere un
     // nome commerciale): viene annotata per l'eventuale controllo umano.
-    await admin
+    const { error: writeError } = await admin
       .from("professional_verification")
       .update({
         level: "vat_verified",
@@ -158,9 +213,14 @@ export async function POST(request: Request) {
         vat_checked_at: snap.requestDate ?? new Date().toISOString(),
         vat_check_source: "vies",
         vat_check_payload: snap,
+        // Niente più in sospeso: se c'era un caso aperto (o un rifiuto
+        // precedente), il riscontro positivo lo chiude.
+        vat_review_state: null,
+        vat_review_note: null,
         updated_at: new Date().toISOString(),
       })
       .eq("professional_id", pro.id);
+    if (writeError) return failedWrite();
 
     await admin.from("verification_events").insert([
       {
@@ -192,17 +252,24 @@ export async function POST(request: Request) {
   }
 
   // outcome.status === "not_confirmed": in attesa di esame umano, non rifiuto.
-  await admin
+  // Il livello resta 'none' (chi era già verificato non arriva qui: si ferma al
+  // controllo in cima), quindi scrivere la data del controllo è corretto.
+  const { error: writeError } = await admin
     .from("professional_verification")
     .update({
       vat_number: vat,
       vat_active: false,
+      vat_holder_name: snap.name,
       vat_checked_at: snap.requestDate ?? new Date().toISOString(),
       vat_check_source: "vies",
       vat_check_payload: snap,
+      // In coda per l'esame umano, con la motivazione precedente azzerata.
+      vat_review_state: "pending",
+      vat_review_note: null,
       updated_at: new Date().toISOString(),
     })
     .eq("professional_id", pro.id);
+  if (writeError) return failedWrite();
 
   await admin.from("verification_events").insert({
     professional_id: pro.id,

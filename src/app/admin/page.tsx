@@ -16,6 +16,7 @@ export default async function AdminDashboardPage() {
     { count: unverifiedPros },
     { count: totalUsers },
     { count: totalRequests },
+    { count: openVatCases },
   ] = await Promise.all([
     supabase.from("professionals").select("*", { count: "exact", head: true }),
     supabase
@@ -28,9 +29,16 @@ export default async function AdminDashboardPage() {
       .eq("verification_status", "unverified"),
     supabase.from("users").select("*", { count: "exact", head: true }),
     supabase.from("requests").select("*", { count: "exact", head: true }),
+    // Casi P.IVA che aspettano una persona (blocco 10): senza questo contatore
+    // la coda resterebbe invisibile finché qualcuno non apre la pagina.
+    supabase
+      .from("professional_verification")
+      .select("*", { count: "exact", head: true })
+      .in("vat_review_state", ["pending", "docs_requested"]),
   ]);
 
   const needsAction = (pendingPros ?? 0) + (unverifiedPros ?? 0);
+  const vatCases = openVatCases ?? 0;
 
   return (
     <div className="space-y-6">
@@ -38,6 +46,27 @@ export default async function AdminDashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight text-bob-ink">Dashboard</h1>
         <p className="mt-1 text-sm text-bob-ink/55">Panoramica del marketplace BOB.</p>
       </div>
+
+      {/* Coda P.IVA: casi che il controllo automatico non ha confermato */}
+      {vatCases > 0 && (
+        <div className="flex items-center justify-between rounded-2xl border border-bob-indigo/20 bg-bob-indigo-50 px-5 py-4">
+          <div>
+            <p className="font-semibold text-bob-indigo">
+              {vatCases} {vatCases === 1 ? "partita IVA" : "partite IVA"} da esaminare
+            </p>
+            <p className="mt-0.5 text-sm text-bob-indigo/80">
+              Il controllo automatico non le ha confermate: serve una decisione
+              umana, con motivazione.
+            </p>
+          </div>
+          <Link
+            href="/admin/professionals#vat-queue"
+            className="shrink-0 rounded-xl bg-bob-indigo px-4 py-2 text-sm font-semibold text-white hover:bg-bob-indigo/90"
+          >
+            Apri la coda →
+          </Link>
+        </div>
+      )}
 
       {/* Alert verifiche in attesa */}
       {needsAction > 0 && (

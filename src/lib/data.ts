@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { publicVerificationLevel, type VerificationLevel } from "@/lib/vat";
 import type {
   City,
   Service,
@@ -112,6 +113,8 @@ type RawProfessionalRow = {
   bio: string | null;
   years_experience: number | null;
   verification_status: VerificationStatus;
+  verification_level: VerificationLevel | null;
+  verification_level_at: string | null;
   response_time_label: string | null;
   cities: { name: string; slug: string } | null;
   professional_services: {
@@ -133,6 +136,8 @@ const PROFESSIONAL_SELECT = `
   bio,
   years_experience,
   verification_status,
+  verification_level,
+  verification_level_at,
   response_time_label,
   city_id,
   cities ( name, slug ),
@@ -178,6 +183,13 @@ function toCard(
     bio: row.bio,
     yearsExperience: row.years_experience,
     verificationStatus: row.verification_status,
+    // "Pro+" si mostra solo se anche lo staff ha approvato il profilo: la
+    // regola sta in publicVerificationLevel, qui non si decide nulla.
+    verificationLevel: publicVerificationLevel(
+      row.verification_level ?? "none",
+      row.verification_status
+    ),
+    verifiedAt: row.verification_level_at,
     responseTimeLabel: row.response_time_label,
     city: { name: row.cities?.name ?? "", slug: row.cities?.slug ?? "" },
     serviceName: ps?.services?.name ?? null,

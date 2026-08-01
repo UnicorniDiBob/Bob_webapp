@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import InstantBookingConfig from "@/components/InstantBookingConfig";
 import AvailabilityEditor from "@/components/AvailabilityEditor";
+import VatVerification from "@/components/VatVerification";
 import type { SubscriptionTier } from "@/lib/supabase/types";
 
 interface City {
@@ -421,6 +422,13 @@ export default function ProProfiloPage() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {!isOnboarding && profileId && (
+          <div className="border-t border-black/5 pt-5">
+            <span className="label-bob">Verifica della partita IVA</span>
+            <VatVerification professionalId={profileId} />
           </div>
         )}
 

@@ -30,6 +30,50 @@ export const VERIFICATION_MEANING: Record<VerificationLevel, string> = {
 };
 
 /**
+ * Cosa il livello NON attesta. Va mostrato accanto al significato, non nascosto
+ * in fondo ai termini: è la parte che ci separa da una certificazione, e la
+ * frase è allineata al §3.2 dei ToS professionisti.
+ */
+export const VERIFICATION_CAVEAT: Record<VerificationLevel, string> = {
+  none: "Nessun controllo svolto da BOB su questo profilo.",
+  vat_verified:
+    "Non è una certificazione né una garanzia sulla qualità del lavoro, e non attesta le abilitazioni tecniche richieste per la categoria.",
+  documents_verified:
+    "È un esame formale dei documenti alla data indicata, non una certificazione, un'omologazione o una garanzia di BOB sul lavoro svolto.",
+};
+
+/**
+ * Stato dell'esame umano sui casi che il VIES non conferma (migration 034).
+ * null in DB = niente in sospeso.
+ */
+export type VatReviewState = "pending" | "docs_requested" | "rejected";
+
+/** Peso per ordinare o confrontare i livelli (più alto = più verificato). */
+export function verificationLevelWeight(level: VerificationLevel): number {
+  if (level === "documents_verified") return 2;
+  if (level === "vat_verified") return 1;
+  return 0;
+}
+
+/**
+ * Livello da mostrare al pubblico.
+ *
+ * "Pro+" attesta un esame documentale umano: lo mostriamo solo se anche lo
+ * staff ha approvato il profilo (professionals.verification_status), come
+ * previsto dalla 029. Se il livello dice documents_verified ma l'approvazione
+ * non c'è, mostriamo "Pro": meglio dire meno del vero che di più.
+ */
+export function publicVerificationLevel(
+  level: VerificationLevel,
+  staffStatus: "unverified" | "pending" | "verified"
+): VerificationLevel {
+  if (level === "documents_verified" && staffStatus !== "verified") {
+    return "vat_verified";
+  }
+  return level;
+}
+
+/**
  * Rimuove spazi, punti e il prefisso IT, e porta in maiuscolo.
  * Accetta quindi "IT 12345678901", "12.345.678.901" ecc.
  */

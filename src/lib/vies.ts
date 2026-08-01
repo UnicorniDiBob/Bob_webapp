@@ -35,6 +35,24 @@ const ENDPOINT = "https://ec.europa.eu/taxation_customs/vies/rest-api/ms";
 const TIMEOUT_MS = 6000;
 
 /**
+ * Il VIES risponde con una data senza orario ma CON il fuso: "2026-03-11+01:00".
+ * Passata così a Postgres diventa 2026-03-10T23:00Z, e la data del controllo
+ * mostrata nel badge slitta indietro di un giorno per chi legge in UTC.
+ * La riportiamo alla mezzanotte del suo fuso, che è ciò che il VIES intende.
+ */
+function normalizeRequestDate(raw: string | undefined): string | null {
+  if (!raw) return null;
+  const value = raw.trim();
+  const onlyDate = /^(\d{4}-\d{2}-\d{2})([+-]\d{2}:\d{2}|Z)?$/.exec(value);
+  if (onlyDate) {
+    const offset = onlyDate[2] && onlyDate[2] !== "Z" ? onlyDate[2] : "Z";
+    return `${onlyDate[1]}T00:00:00${offset}`;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+/**
  * Interroga il VIES per una partita IVA italiana.
  * Non lancia eccezioni: gli errori diventano status "unavailable", così la UI
  * non si rompe mai e la richiesta può essere ritentata.
@@ -75,7 +93,7 @@ export async function checkVatOnVies(
         data.address && data.address !== "---"
           ? data.address.replace(/\s*\n\s*/g, ", ").trim()
           : null,
-      requestDate: data.requestDate ?? null,
+      requestDate: normalizeRequestDate(data.requestDate),
     };
 
     // Alcuni errori lato Stato membro arrivano con HTTP 200: sono guasti
