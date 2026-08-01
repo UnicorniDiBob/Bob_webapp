@@ -22,7 +22,14 @@
 --
 -- Idempotente: create or replace + unschedule-then-schedule del job.
 
--- 1. La purga. SECURITY DEFINER perché deve poter cancellare righe di tutti
+-- 1. Lo scheduler. pg_cron non era installata su questo progetto: senza di lei
+--    la funzione di purga esisterebbe ma non girerebbe mai, e una regola di
+--    retention che non cancella nulla non è una regola. Va in pg_catalog come
+--    da indicazione Supabase. Serve anche alle retention ancora da scrivere
+--    (fatture 10 anni, chat, prospect ≤12 mesi).
+create extension if not exists pg_cron with schema pg_catalog;
+
+-- 2. La purga. SECURITY DEFINER perché deve poter cancellare righe di tutti
 --    gli utenti, cosa che le policy RLS della 011 (solo la propria riga)
 --    vietano al chiamante. search_path fissato come da 032.
 create or replace function public.purge_stale_customer_memory()
@@ -44,14 +51,14 @@ $$;
 comment on function public.purge_stale_customer_memory() is
   'Retention customer_memory: cancella le righe non aggiornate da 30 giorni. Vedi docs/DATA_COMPLIANCE.md §5.';
 
--- 2. Non è un endpoint: come in 032, si revoca EXECUTE a PUBLIC/anon/
+-- 3. Non è un endpoint: come in 032, si revoca EXECUTE a PUBLIC/anon/
 --    authenticated per non esporla su /rest/v1/rpc/.
 revoke execute on function public.purge_stale_customer_memory() from public, anon, authenticated;
 
--- 3. Schedulazione giornaliera con pg_cron. Il blocco è condizionale così la
---    migrazione resta applicabile anche dove l'estensione non c'è (es. un
---    ambiente locale minimale): in quel caso la funzione esiste comunque e la
---    purga si può invocare a mano o da un cron esterno.
+-- 4. Schedulazione giornaliera (03:17 UTC, fuori dai picchi). Il blocco resta
+--    condizionale così la migrazione si applica anche dove pg_cron non è
+--    disponibile (es. un ambiente locale minimale): lì la funzione esiste
+--    comunque e la purga si può invocare a mano o da un cron esterno.
 do $$
 begin
   if exists (select 1 from pg_extension where extname = 'pg_cron') then
