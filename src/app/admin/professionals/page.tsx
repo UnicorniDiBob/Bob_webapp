@@ -13,6 +13,7 @@ import {
   type VerificationLevel,
   type VatReviewState,
 } from "@/lib/vat";
+import type { VerificationEvent } from "@/lib/supabase/types";
 
 export const revalidate = 0; // sempre aggiornato
 
@@ -30,7 +31,57 @@ interface VerificationRow {
   vat_review_state: VatReviewState | null;
   vat_review_note: string | null;
   vat_reviewed_at: string | null;
+  vat_reviewed_by_name: string | null;
   updated_at: string;
+}
+
+// Etichette leggibili del registro: chi lo consulta non deve conoscere i nomi
+// tecnici degli eventi per capire cosa è successo.
+const EVENT_LABEL: Record<VerificationEvent["event"], string> = {
+  vat_submitted: "Partita IVA comunicata",
+  vat_check_ok: "Controllo automatico superato",
+  vat_check_failed: "Controllo automatico non superato",
+  documents_submitted: "Documenti ricevuti",
+  documents_requested: "Documenti richiesti",
+  vat_rejected: "Richiesta respinta",
+  level_granted: "Livello concesso",
+  level_revoked: "Livello revocato",
+};
+
+function fmtDateTime(d: string) {
+  return new Date(d).toLocaleString("it-IT", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Rome",
+  });
+}
+
+// Una riga del registro: cosa, quando, per mano di chi.
+function EventRow({ e, proName }: { e: VerificationEvent; proName?: string }) {
+  return (
+    <li className="border-l-2 border-black/5 py-1.5 pl-3 text-xs">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <span className="font-semibold text-bob-ink/80">{EVENT_LABEL[e.event]}</span>
+        {proName && <span className="text-bob-ink/50">· {proName}</span>}
+        <span className="text-bob-ink/40">{fmtDateTime(e.created_at)}</span>
+      </div>
+      <div className="mt-0.5 text-bob-ink/55">
+        {e.actor_name ? (
+          <>
+            Firmato da <span className="font-medium text-bob-ink/75">{e.actor_name}</span>
+            {e.actor_role ? ` (${e.actor_role})` : ""}
+          </>
+        ) : (
+          "Autore non registrato (evento precedente alla firma)"
+        )}
+        {e.from_level && e.to_level ? ` · ${e.from_level} → ${e.to_level}` : ""}
+      </div>
+      {e.note && <p className="mt-0.5 text-bob-ink/60">{e.note}</p>}
+    </li>
+  );
 }
 
 const REVIEW_LABEL: Record<VatReviewState, string> = {
@@ -135,13 +186,36 @@ export default async function AdminProfessionalsPage() {
   const { data: reviewData } = await supabase
     .from("professional_verification")
     .select(
-      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, updated_at"
+      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, updated_at"
     )
     .or("vat_review_state.not.is.null,level.neq.none")
     .order("updated_at", { ascending: false });
 
   const reviewRows = (reviewData ?? []) as unknown as VerificationRow[];
   const proById = Object.fromEntries(pros.map((p) => [p.id, p]));
+
+  // Il registro delle verifiche. Non sta in prima pagina — chi lavora la coda
+  // deve decidere, non leggere cronologie — ma è a un clic da qui, perché è
+  // l'unico posto dove si vede chi ha fatto cosa e quando.
+  const { data: eventsData } = await supabase
+    .from("verification_events")
+    .select(
+      "id, professional_id, event, from_level, to_level, note, actor_name, actor_role, created_at"
+    )
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const events = (eventsData ?? []) as unknown as VerificationEvent[];
+  const eventsByPro = new Map<string, VerificationEvent[]>();
+  for (const e of events) {
+    const list = eventsByPro.get(e.professional_id) ?? [];
+    list.push(e);
+    eventsByPro.set(e.professional_id, list);
+  }
+  const nameByPro = new Map<string, string>();
+  for (const p of pros) {
+    nameByPro.set(p.id, profileMap[p.user_id]?.full_name ?? "Professionista");
+  }
 
   // Da lavorare; già decisi (per rispondere a chi chiede "come mai?"); e
   // livelli attivi, dove l'azione utile è semmai la revoca motivata.
@@ -215,6 +289,7 @@ export default async function AdminProfessionalsPage() {
                     ? profileMap[proById[row.professional_id].user_id]
                     : undefined
                 }
+                storico={eventsByPro.get(row.professional_id) ?? []}
               />
             ))}
           </div>
@@ -237,6 +312,7 @@ export default async function AdminProfessionalsPage() {
                       ? profileMap[proById[row.professional_id].user_id]
                       : undefined
                   }
+                  storico={eventsByPro.get(row.professional_id) ?? []}
                 />
               ))}
             </div>
@@ -259,12 +335,37 @@ export default async function AdminProfessionalsPage() {
                       ? profileMap[proById[row.professional_id].user_id]
                       : undefined
                   }
+                  storico={eventsByPro.get(row.professional_id) ?? []}
                 />
               ))}
             </div>
           </details>
         )}
       </section>
+
+      {/* Registro completo: chiuso di default, ma sempre qui sotto. */}
+      {events.length > 0 && (
+        <details className="mt-4" data-testid="vat-registro">
+          <summary className="cursor-pointer text-sm font-medium text-bob-ink/60 hover:text-bob-indigo">
+            Registro delle verifiche — ultimi {events.length} movimenti, con la
+            firma di chi li ha fatti
+          </summary>
+          <p className="mt-2 text-xs text-bob-ink/45">
+            Si scrive solo in aggiunta: nessuna riga può essere modificata o
+            cancellata, nemmeno da un amministratore. È quello che lo rende una
+            prova di cosa è stato fatto e da chi.
+          </p>
+          <ul className="mt-2 max-h-96 space-y-1 overflow-y-auto pr-2">
+            {events.map((e) => (
+              <EventRow
+                key={e.id}
+                e={e}
+                proName={nameByPro.get(e.professional_id)}
+              />
+            ))}
+          </ul>
+        </details>
+      )}
 
       {order.map((status) => {
         const list = grouped[status];
@@ -424,10 +525,13 @@ function VatCaseCard({
   row,
   pro,
   profile,
+  storico = [],
 }: {
   row: VerificationRow;
   pro: ProRow | undefined;
   profile: { full_name: string | null; phone: string | null } | undefined;
+  /** Registro degli eventi di questo professionista, dal più recente. */
+  storico?: VerificationEvent[];
 }) {
   const name = profile?.full_name ?? "Professionista";
   const state = row.vat_review_state;
@@ -514,7 +618,28 @@ function VatCaseCard({
           <span className="font-semibold">Ultima motivazione</span>
           {row.vat_reviewed_at ? ` (${fmtDate(row.vat_reviewed_at)})` : ""}:{" "}
           {row.vat_review_note}
+          {row.vat_reviewed_by_name && (
+            <span className="mt-0.5 block text-bob-ink/50">
+              Decisione firmata da{" "}
+              <span className="font-medium text-bob-ink/75">
+                {row.vat_reviewed_by_name}
+              </span>
+            </span>
+          )}
         </p>
+      )}
+
+      {storico.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs font-medium text-bob-ink/50 hover:text-bob-indigo">
+            Storico dei controlli ({storico.length}) — chi ha fatto cosa
+          </summary>
+          <ul className="mt-2 space-y-1">
+            {storico.map((e) => (
+              <EventRow key={e.id} e={e} />
+            ))}
+          </ul>
+        </details>
       )}
 
       <VatReviewActions

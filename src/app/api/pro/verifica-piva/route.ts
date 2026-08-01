@@ -143,6 +143,8 @@ export async function POST(request: Request) {
       event: "vat_check_failed",
       note: "Tentativo di comunicare una partita IVA già attribuita a un altro profilo verificato.",
       actor_user_id: user.id,
+      actor_name: profile?.full_name ?? "Professionista",
+      actor_role: "professional",
     });
     return NextResponse.json(
       {
@@ -163,6 +165,8 @@ export async function POST(request: Request) {
       professional_id: pro.id,
       event: "vat_submitted",
       actor_user_id: user.id,
+      actor_name: profile?.full_name ?? "Professionista",
+      actor_role: "professional",
     });
   if (attemptError) {
     return NextResponse.json(
@@ -194,6 +198,8 @@ export async function POST(request: Request) {
       event: "vat_check_failed",
       note: `Servizio VIES non raggiungibile (${outcome.reason}). Da ritentare.`,
       actor_user_id: user.id,
+      actor_name: profile?.full_name ?? "Professionista",
+      actor_role: "professional",
     });
     // Salviamo comunque la P.IVA dichiarata: la verifica riprenderà da lì.
     // vat_review_state = 'pending' (migration 034) la mette nella coda umana:
@@ -260,6 +266,8 @@ export async function POST(request: Request) {
         ? `Partita IVA valida ma intestata a "${snap.name}", che non corrisponde al nome del profilo: da attribuire a mano prima di concedere il livello.`
         : "Partita IVA valida ma il registro non ha restituito l'intestazione: impossibile attribuirla automaticamente.",
       actor_user_id: user.id,
+      actor_name: profile?.full_name ?? "Professionista",
+      actor_role: "professional",
     });
 
     return NextResponse.json({
@@ -298,6 +306,8 @@ export async function POST(request: Request) {
         event: "vat_check_ok",
         note: `Confermata dal VIES e intestata a "${snap.name}", coerente col nome del profilo.`,
         actor_user_id: user.id,
+      actor_name: profile?.full_name ?? "Professionista",
+      actor_role: "professional",
       },
       {
         professional_id: pro.id,
@@ -306,6 +316,8 @@ export async function POST(request: Request) {
         to_level: "vat_verified",
         note: "Concesso automaticamente dopo riscontro positivo sul VIES.",
         actor_user_id: user.id,
+      actor_name: profile?.full_name ?? "Professionista",
+      actor_role: "professional",
       },
     ]);
 
@@ -344,6 +356,8 @@ export async function POST(request: Request) {
     event: "vat_check_failed",
     note: "Il VIES non ha confermato la partita IVA: può non essere iscritta alle operazioni intra-UE. Da esaminare manualmente.",
     actor_user_id: user.id,
+      actor_name: profile?.full_name ?? "Professionista",
+      actor_role: "professional",
   });
 
   return NextResponse.json({

@@ -214,7 +214,35 @@ export interface ProfessionalVerification {
   vat_review_state: VatReviewState | null;
   vat_review_note: string | null;
   vat_reviewed_at: string | null;
+  /** Chi ha firmato l'ultima decisione manuale (migration 040). */
+  vat_reviewed_by_name: string | null;
   updated_at: string;
+}
+
+/**
+ * Una riga del registro delle verifiche: append-only, con la firma di chi ha
+ * agito fotografata al momento del fatto. È la prova di cosa è stato fatto,
+ * da chi e quando — perciò nessuna policy consente di modificarla o
+ * cancellarla.
+ */
+export interface VerificationEvent {
+  id: string;
+  professional_id: string;
+  event:
+    | "vat_submitted"
+    | "vat_check_ok"
+    | "vat_check_failed"
+    | "documents_submitted"
+    | "documents_requested"
+    | "vat_rejected"
+    | "level_granted"
+    | "level_revoked";
+  from_level: string | null;
+  to_level: string | null;
+  note: string | null;
+  actor_name: string | null;
+  actor_role: string | null;
+  created_at: string;
 }
 
 // ----- Messaggi e appuntamenti (aggiunti per dashboard pro e conversazioni) -----

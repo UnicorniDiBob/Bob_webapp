@@ -55,6 +55,20 @@ export async function POST(
     return NextResponse.json({ error: "Non autorizzato" }, { status: 403 });
   }
 
+  // La firma della decisione: nome e ruolo di chi sta decidendo, fotografati
+  // adesso (migration 040). Il riferimento all'account da solo non basta —
+  // se un domani quell'account non c'è più, il registro non saprebbe più dire
+  // chi ha concesso quel livello.
+  const { data: actorProfile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const actorName =
+    (actorProfile as { full_name: string | null } | null)?.full_name ??
+    user.email ??
+    "Staff BOB";
+
   // --- 2. Cosa ha deciso ---
   let body: { action?: string; note?: string };
   try {
@@ -106,6 +120,7 @@ export async function POST(
   const now = new Date().toISOString();
 
   // --- 4. Applica la decisione ---
+  // Ogni riga porta la firma: chi, con che ruolo, e cosa ha scritto.
   const events: {
     professional_id: string;
     event: string;
@@ -113,6 +128,8 @@ export async function POST(
     to_level?: string;
     note?: string;
     actor_user_id: string;
+    actor_name: string;
+    actor_role: string;
   }[] = [];
 
   let update: Record<string, unknown>;
@@ -170,6 +187,7 @@ export async function POST(
       vat_review_note: null,
       vat_reviewed_at: now,
       vat_reviewed_by: user.id,
+      vat_reviewed_by_name: actorName,
       updated_at: now,
     };
     events.push({
@@ -181,6 +199,8 @@ export async function POST(
         note ||
         "Partita IVA riscontrata a mano dopo che il controllo automatico non l'aveva confermata.",
       actor_user_id: user.id,
+      actor_name: actorName,
+      actor_role: role,
     });
     emailEvent = "verification_granted";
     responseMessage =
@@ -194,6 +214,7 @@ export async function POST(
       vat_review_note: note,
       vat_reviewed_at: now,
       vat_reviewed_by: user.id,
+      vat_reviewed_by_name: actorName,
       updated_at: now,
     };
     events.push({
@@ -201,6 +222,8 @@ export async function POST(
       event: "documents_requested",
       note,
       actor_user_id: user.id,
+      actor_name: actorName,
+      actor_role: role,
     });
     emailEvent = "verification_docs_requested";
     responseMessage = "Documenti richiesti al professionista.";
@@ -214,6 +237,7 @@ export async function POST(
       vat_review_note: note,
       vat_reviewed_at: now,
       vat_reviewed_by: user.id,
+      vat_reviewed_by_name: actorName,
       updated_at: now,
     };
     events.push({
@@ -221,6 +245,8 @@ export async function POST(
       event: "vat_rejected",
       note,
       actor_user_id: user.id,
+      actor_name: actorName,
+      actor_role: role,
     });
     if (fromLevel !== "none") {
       events.push({
@@ -230,6 +256,8 @@ export async function POST(
         to_level: "none",
         note,
         actor_user_id: user.id,
+        actor_name: actorName,
+        actor_role: role,
       });
     }
     emailEvent = "verification_rejected";

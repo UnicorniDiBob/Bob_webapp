@@ -303,6 +303,48 @@ solide restano tre: la corrispondenza dell'intestazione (gratis, automatica,
 copre le ditte individuali), il codice inviato alla PEC del soggetto, e il
 livello Pro+ con documento e visura.
 
+## 5-quinquies. Firma delle decisioni e registro consultabile (01/08)
+
+- Ogni evento porta ora **nome e ruolo di chi ha agito**, fotografati al momento
+  del fatto (migration 040), oltre al riferimento all'account. Serve perché
+  `actor_user_id` ha `on delete set null`: quando un collaboratore lascia il
+  team, senza l'istantanea il registro perderebbe il nome proprio delle
+  decisioni che quella persona ha firmato. Provato: cancellato l'account, la
+  firma resta leggibile.
+- La scheda del caso in admin mostra **chi ha firmato l'ultima decisione**, e
+  sotto c'è lo **storico dei controlli** di quel professionista. In fondo alla
+  coda, chiuso, il **registro completo** degli ultimi movimenti con la firma di
+  ciascuno: non in prima pagina, ma a un clic.
+- `verification_events` resta **append-only**: nessuna policy di update o
+  delete per i ruoli applicativi. È la proprietà che lo rende una prova; non va
+  tolta per comodità.
+- Non è una firma crittografica. Se un domani servisse opponibilità verso terzi
+  (contenzioso con un professionista escluso, richiesta di un'autorità), il
+  passo successivo è una catena di hash sulle righe del registro, o la firma
+  del riepilogo con una chiave conservata fuori dal database. Oggi sarebbe
+  complessità senza un problema da risolvere.
+
+## 5-sexies. Quando la coda non basterà più (nota per il futuro)
+
+Promemoria da rileggere quando i professionisti iscritti superano qualche
+decina, o quando la coda smette di svuotarsi in giornata.
+
+Gratuito **e** automatizzabile c'è solo il VIES, che copre la minoranza. Tutte
+le altre fonti gratuite — Agenzia delle Entrate, Registro Imprese, INI-PEC —
+richiedono una persona davanti a un browser: sostenibili con dieci casi al
+giorno, non con cento. Il costo vero non è il prezzo delle chiamate API
+(centesimi, **una volta per professionista**, perché l'esito lo conserviamo:
+cinquecento pro sono pochi euro) ma il tempo di chi lavora la coda —
+cinquecento controlli manuali da due minuti sono una ventina di ore.
+
+Mossa consigliata quando arriva quel momento, o prima se c'è tempo:
+**integrare la sandbox di Openapi**, che è un ambiente di prova gratuito e
+senza contratto. Non risponde su partite IVA vere, ma permette di scrivere e
+collaudare tutto il gradino 3 a costo zero; il giorno della decisione si cambia
+la chiave, si carica il credito e il codice è già provato. Prima di accendere
+servono comunque contratto, **DPA ex art. 28**, server UE e la riga nel
+registro dei trattamenti.
+
 ## 6. Decisioni che restano tue
 
 - **Quali categorie richiedono almeno "Pro"** per contattare i clienti
