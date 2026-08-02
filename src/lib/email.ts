@@ -256,6 +256,20 @@ export function buildEmail(
       break;
   }
 
+  // Firma di chi ha seguito la pratica, come in fondo a una mail vera. Vale
+  // solo per gli esiti di verifica: dietro c'è una persona che ha deciso, e
+  // chi riceve un "no" ha diritto di sapere chi gliel'ha detto.
+  const firma =
+    VERIFICATION_EVENTS.includes(event) && ctx.senderName
+      ? `<p style="font-size:14px;line-height:1.6;margin:16px 0 0;color:#6b7280;">Ha seguito la tua richiesta <b>${escapeHtml(
+          ctx.senderName
+        )}</b> — team BOB</p>`
+      : "";
+  if (firma) {
+    bodyHtml += firma;
+    text += `\n\nHa seguito la tua richiesta ${ctx.senderName} — team BOB`;
+  }
+
   return {
     to,
     subject,

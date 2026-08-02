@@ -84,6 +84,7 @@ task,10.7,Internal,Lucio,Planned,2026-08-08,2026-08-22,,"Telemetria in /admin/an
 task,10.8a,Client/Pro,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"Avviso discreto nella dashboard pro con i vantaggi + badge del livello al posto del vecchio stato staff; prezzo pronto in una costante"
 task,10.8,Client/Pro,Lucio,Planned,2026-08-11,2026-08-25,,"Richiesta della P.IVA come ultimo passo dell'onboarding professionista"
 task,10.9,Internal,Lucio,Planned,2026-09-01,2026-09-20,,"Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7)"
+task,10.13,Internal,Lucio,Planned,2026-09-08,2026-09-25,,"Registro verifiche: pagina dedicata con filtri (professionista, tipo evento, periodo, operatore), paginazione ed export CSV. Oggi in coda si vedono solo gli ultimi 100 movimenti"
 task,10.12,Internal,Lucio,Planned,2026-08-06,2026-08-12,,"URGENTE: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere"
 task,10.10,Shared,Lucio,Planned,2026-08-04,2026-08-29,,"Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata)"
 task,10.11,Shared,Lucio,Milestone,2026-08-08,2026-08-08,,"DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6)"

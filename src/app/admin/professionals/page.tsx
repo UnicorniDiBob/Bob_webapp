@@ -195,24 +195,46 @@ export default async function AdminProfessionalsPage() {
   const reviewRows = (reviewData ?? []) as unknown as VerificationRow[];
   const proById = Object.fromEntries(pros.map((p) => [p.id, p]));
 
-  // Il registro delle verifiche. Non sta in prima pagina — chi lavora la coda
-  // deve decidere, non leggere cronologie — ma è a un clic da qui, perché è
-  // l'unico posto dove si vede chi ha fatto cosa e quando.
-  const { data: eventsData } = await supabase
-    .from("verification_events")
-    .select(
-      "id, professional_id, event, from_level, to_level, note, actor_name, actor_role, created_at"
-    )
-    .order("created_at", { ascending: false })
-    .limit(200);
+  // Il registro delle verifiche, letto in due modi diversi perché servono a
+  // due cose diverse.
+  //
+  // 1) Lo storico DEL CASO che ho davanti: deve essere completo, sempre. Prima
+  //    lo ricavavo dai 200 movimenti più recenti di tutti, e per un caso vecchio
+  //    la cronologia risultava vuota pur esistendo: una cronologia che a volte
+  //    mente è peggio di nessuna cronologia. Ora si chiede per i professionisti
+  //    effettivamente mostrati in pagina.
+  const idsInPagina = reviewRows.map((r) => r.professional_id);
+  const { data: eventsPerCaso } = idsInPagina.length
+    ? await supabase
+        .from("verification_events")
+        .select(
+          "id, professional_id, event, from_level, to_level, note, actor_name, actor_role, created_at"
+        )
+        .in("professional_id", idsInPagina)
+        .order("created_at", { ascending: false })
+    : { data: [] };
 
-  const events = (eventsData ?? []) as unknown as VerificationEvent[];
   const eventsByPro = new Map<string, VerificationEvent[]>();
-  for (const e of events) {
+  for (const e of (eventsPerCaso ?? []) as unknown as VerificationEvent[]) {
     const list = eventsByPro.get(e.professional_id) ?? [];
     list.push(e);
     eventsByPro.set(e.professional_id, list);
   }
+
+  // 2) La vista d'insieme "cosa è successo di recente", che serve a controllare
+  //    il lavoro del team. Qui il taglio è dichiarato, non nascosto: crescendo,
+  //    questa lista va sostituita da una pagina con filtri e ricerca (10.13).
+  const REGISTRO_RECENTI = 100;
+  const { data: eventsData, count: totaleMovimenti } = await supabase
+    .from("verification_events")
+    .select(
+      "id, professional_id, event, from_level, to_level, note, actor_name, actor_role, created_at",
+      { count: "exact" }
+    )
+    .order("created_at", { ascending: false })
+    .limit(REGISTRO_RECENTI);
+
+  const events = (eventsData ?? []) as unknown as VerificationEvent[];
   const nameByPro = new Map<string, string>();
   for (const p of pros) {
     nameByPro.set(p.id, profileMap[p.user_id]?.full_name ?? "Professionista");
@@ -348,13 +370,19 @@ export default async function AdminProfessionalsPage() {
       {events.length > 0 && (
         <details className="mt-4" data-testid="vat-registro">
           <summary className="cursor-pointer text-sm font-medium text-bob-ink/60 hover:text-bob-indigo">
-            Registro delle verifiche — ultimi {events.length} movimenti, con la
-            firma di chi li ha fatti
+            Registro delle verifiche — ultimi {events.length} movimenti
+            {typeof totaleMovimenti === "number" && totaleMovimenti > events.length
+              ? ` su ${totaleMovimenti}`
+              : ""}
+            , con la firma di chi li ha fatti
           </summary>
           <p className="mt-2 text-xs text-bob-ink/45">
             Si scrive solo in aggiunta: nessuna riga può essere modificata o
             cancellata, nemmeno da un amministratore. È quello che lo rende una
-            prova di cosa è stato fatto e da chi.
+            prova di cosa è stato fatto e da chi. Lo vedono tutti gli account
+            admin e customer service; il professionista vede solo le righe che
+            riguardano lui. Qui sotto ci sono i movimenti più recenti: la
+            cronologia completa di un singolo caso sta nella sua scheda.
           </p>
           <ul className="mt-2 max-h-96 space-y-1 overflow-y-auto pr-2">
             {events.map((e) => (

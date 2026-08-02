@@ -312,7 +312,9 @@ export async function POST(
             buildEmail(emailEvent, to, {
               recipientName:
                 (profile as { full_name: string | null } | null)?.full_name ?? null,
-              senderName: null,
+              // Chi ha deciso firma la mail: è la stessa firma che finisce nel
+              // registro, così il professionista e noi leggiamo lo stesso nome.
+              senderName: actorName,
               serviceName: null,
               cityName: null,
               preview: note || null,
