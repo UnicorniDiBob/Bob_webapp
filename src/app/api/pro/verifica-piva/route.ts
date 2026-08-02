@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   // --- 2. Input ---
-  let body: { vatNumber?: string };
+  let body: { vatNumber?: string; businessName?: string };
   try {
     body = await request.json();
   } catch {
@@ -68,6 +68,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "invalid_format", message: formatError }, { status: 400 });
   }
   const vat = normalizeVat(body.vatNumber ?? "");
+  // Ragione sociale dichiarata (migration 041): secondo termine di confronto
+  // con l'intestazione del registro. È testo scritto da lui, quindi da sola non
+  // concede niente — serve a far decidere in fretta chi guarda il caso.
+  const businessName = (body.businessName ?? "").trim().slice(0, 120) || null;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -211,6 +215,7 @@ export async function POST(request: Request) {
       .from("professional_verification")
       .update({
         vat_number: vat,
+        declared_business_name: businessName,
         vat_active: null,
         vat_holder_name: null,
         vat_check_source: null,
@@ -228,10 +233,19 @@ export async function POST(request: Request) {
   }
 
   const snap = outcome.snapshot;
+  // Il confronto che vale per la concessione automatica è quello col nome
+  // PUBBLICO del profilo: è la cosa che i clienti vedranno accanto al badge.
   const nameMatches =
     snap.name && profile?.full_name
       ? nameLooksConsistent(profile.full_name, snap.name)
       : null;
+  // Quello sulla ragione sociale dichiarata non concede, ma spiega: se
+  // combacia, chi lavora il caso lo chiude in cinque secondi invece di
+  // scrivere al professionista per chiedergli come si chiama la sua impresa.
+  const declaredMatches =
+    snap.name && businessName
+      ? nameLooksConsistent(businessName, snap.name)
+      : false;
 
   if (outcome.status === "confirmed" && nameMatches !== true) {
     // IL PUNTO PIÙ IMPORTANTE DI TUTTO IL FLUSSO.
@@ -247,6 +261,7 @@ export async function POST(request: Request) {
       .from("professional_verification")
       .update({
         vat_number: vat,
+        declared_business_name: businessName,
         vat_active: true,
         vat_holder_name: snap.name,
         vat_checked_at: snap.requestDate ?? new Date().toISOString(),
@@ -263,7 +278,9 @@ export async function POST(request: Request) {
       professional_id: pro.id,
       event: "vat_check_ok",
       note: snap.name
-        ? `Partita IVA valida ma intestata a "${snap.name}", che non corrisponde al nome del profilo: da attribuire a mano prima di concedere il livello.`
+        ? declaredMatches
+          ? `Partita IVA valida e intestata a "${snap.name}": non corrisponde al nome del profilo ma COINCIDE con la ragione sociale dichiarata ("${businessName}"). Da confermare a mano.`
+          : `Partita IVA valida ma intestata a "${snap.name}", che non corrisponde né al nome del profilo né alla ragione sociale dichiarata: da attribuire a mano prima di concedere il livello.`
         : "Partita IVA valida ma il registro non ha restituito l'intestazione: impossibile attribuirla automaticamente.",
       actor_user_id: user.id,
       actor_name: profile?.full_name ?? "Professionista",
@@ -286,6 +303,7 @@ export async function POST(request: Request) {
       .update({
         level: "vat_verified",
         vat_number: vat,
+        declared_business_name: businessName,
         vat_active: true,
         vat_holder_name: snap.name,
         vat_checked_at: snap.requestDate ?? new Date().toISOString(),
@@ -338,6 +356,7 @@ export async function POST(request: Request) {
     .from("professional_verification")
     .update({
       vat_number: vat,
+      declared_business_name: businessName,
       vat_active: false,
       vat_holder_name: snap.name,
       vat_checked_at: snap.requestDate ?? new Date().toISOString(),

@@ -32,6 +32,7 @@ interface VerificationRow {
   vat_review_note: string | null;
   vat_reviewed_at: string | null;
   vat_reviewed_by_name: string | null;
+  declared_business_name: string | null;
   updated_at: string;
 }
 
@@ -186,7 +187,7 @@ export default async function AdminProfessionalsPage() {
   const { data: reviewData } = await supabase
     .from("professional_verification")
     .select(
-      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, updated_at"
+      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, declared_business_name, updated_at"
     )
     .or("vat_review_state.not.is.null,level.neq.none")
     .order("updated_at", { ascending: false });
@@ -603,7 +604,23 @@ function VatCaseCard({
           <dt className="text-bob-ink/50">Intestazione dal registro:</dt>
           <dd className="text-bob-ink">{row.vat_holder_name ?? "non disponibile"}</dd>
         </div>
+        {row.declared_business_name && (
+          <div className="flex gap-2 sm:col-span-2">
+            <dt className="text-bob-ink/50">Ragione sociale dichiarata:</dt>
+            <dd className="text-bob-ink">{row.declared_business_name}</dd>
+          </div>
+        )}
       </dl>
+
+      {row.vat_check_source === null && (
+        <p className="mt-2 rounded-xl bg-bob-indigo-50 px-3 py-2 text-xs text-bob-indigo">
+          <span className="font-semibold">Il controllo automatico non è stato
+          eseguito</span> su questa partita IVA: il servizio europeo non ha
+          risposto. Non è un esito — non concedere e non rifiutare sulla base di
+          questo. Il ritentativo parte stanotte da solo; se hai fretta, apri il
+          servizio dell&apos;Agenzia qui sotto e guarda tu.
+        </p>
+      )}
 
       {mismatch && (
         <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">

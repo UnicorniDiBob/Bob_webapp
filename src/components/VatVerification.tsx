@@ -13,7 +13,7 @@
 //  3. La partita IVA non compare mai sul profilo pubblico. Va detto qui, dove
 //     la stiamo chiedendo, non solo nell'informativa.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { VerificationLevelBadge } from "@/components/ui";
@@ -33,6 +33,7 @@ interface VerificationRow {
   vat_holder_name: string | null;
   vat_review_state: VatReviewState | null;
   vat_review_note: string | null;
+  declared_business_name: string | null;
 }
 
 type ApiStatus =
@@ -70,7 +71,9 @@ export default function VatVerification({
   const [row, setRow] = useState<VerificationRow | null>(null);
   const [booted, setBooted] = useState(false);
   const [vat, setVat] = useState("");
+  const [ragioneSociale, setRagioneSociale] = useState("");
   const [touched, setTouched] = useState(false);
+  const campoVat = useRef<HTMLInputElement | null>(null);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ status: ApiStatus; message: string } | null>(
     null
@@ -81,17 +84,29 @@ export default function VatVerification({
     const { data } = await supabase
       .from("professional_verification")
       .select(
-        "level, vat_checked_at, vat_holder_name, vat_review_state, vat_review_note"
+        "level, vat_checked_at, vat_holder_name, vat_review_state, vat_review_note, declared_business_name"
       )
       .eq("professional_id", professionalId)
       .maybeSingle();
-    setRow((data as VerificationRow) ?? null);
+    const riga = (data as VerificationRow) ?? null;
+    setRow(riga);
+    if (riga?.declared_business_name) setRagioneSociale(riga.declared_business_name);
     setBooted(true);
   }, [supabase, professionalId]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Chi arriva dall'avviso in dashboard ha gia' deciso di farlo: portarlo qui
+  // e lasciarlo cercare il campo e' un modo per farglielo rimandare.
+  useEffect(() => {
+    if (!booted) return;
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#verifica-piva") return;
+    const t = setTimeout(() => campoVat.current?.focus(), 150);
+    return () => clearTimeout(t);
+  }, [booted]);
 
   // Gradino 1: checksum locale, mentre digita. Nessuna chiamata esterna.
   const formatError = touched && vat.trim() ? vatValidationError(vat) : null;
@@ -106,7 +121,10 @@ export default function VatVerification({
       const res = await fetch("/api/pro/verifica-piva", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vatNumber: normalizeVat(vat) }),
+        body: JSON.stringify({
+          vatNumber: normalizeVat(vat),
+          businessName: ragioneSociale.trim() || undefined,
+        }),
       });
       const json = (await res.json()) as {
         status?: ApiStatus;
@@ -144,12 +162,12 @@ export default function VatVerification({
   const level: VerificationLevel = row?.level ?? "none";
   const review = row?.vat_review_state ?? null;
   const verified = level === "vat_verified" || level === "documents_verified";
-  // Il form resta disponibile anche mentre la richiesta è in coda: un numero
-  // sbagliato può superare il checksum (11 cifre valide di un'altra azienda) e
-  // senza questa via il pro dovrebbe aspettare di essere RESPINTO per potersi
-  // correggere. Lo nascondiamo solo a chi è già verificato (l'API lo rifiuta
-  // comunque) e a chi deve mandarci un documento.
-  const showForm = !verified && review !== "docs_requested";
+  // Il form resta disponibile in ogni stato tranne "già verificato" (e lì
+  // l'API rifiuta comunque). Vale anche mentre la pratica è in coda o quando
+  // abbiamo chiesto un documento: nella maggior parte dei casi il problema è
+  // un dato sbagliato — una cifra, o la ragione sociale mancante — e lasciarlo
+  // correggere chiude il caso senza far muovere nessuno.
+  const showForm = !verified;
 
   return (
     <div className="mt-2 space-y-3">
@@ -256,6 +274,7 @@ export default function VatVerification({
             </label>
             <div className="mt-1 flex flex-col gap-2 sm:flex-row">
               <input
+                ref={campoVat}
                 id="pf-vat"
                 value={vat}
                 onChange={(e) => setVat(e.target.value)}
@@ -291,6 +310,27 @@ export default function VatVerification({
             <p className="mt-1.5 text-xs text-bob-ink/45">
               Puoi scriverla con o senza il prefisso IT. Massimo 3 tentativi al
               giorno.
+            </p>
+          </div>
+
+          <div>
+            <label className="label-bob" htmlFor="pf-ragione-sociale">
+              Nome completo dell&apos;azienda{" "}
+              <span className="font-normal text-bob-ink/45">(facoltativo)</span>
+            </label>
+            <input
+              id="pf-ragione-sociale"
+              value={ragioneSociale}
+              onChange={(e) => setRagioneSociale(e.target.value)}
+              maxLength={120}
+              autoComplete="organization"
+              placeholder="Es. Idraulica Rossi S.r.l."
+              className="input-bob mt-1"
+              data-testid="vat-business-name"
+            />
+            <p className="mt-1.5 text-xs text-bob-ink/45">
+              Compilalo se la partita IVA è intestata a un nome diverso da
+              quello del tuo profilo: ci evita di doverti scrivere per chiedertelo.
             </p>
           </div>
         </>

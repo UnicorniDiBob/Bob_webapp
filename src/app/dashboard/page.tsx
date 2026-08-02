@@ -14,6 +14,12 @@ import { ProWorkspace } from "@/components/ProWorkspace";
 import VerificaPromoBanner from "@/components/VerificaPromoBanner";
 import { CustomerHome } from "@/components/CustomerHome";
 
+interface StatoVerifica {
+  level: "none" | "vat_verified" | "documents_verified";
+  reviewState: "pending" | "docs_requested" | "rejected" | null;
+  reviewNote: string | null;
+}
+
 interface ProProfile {
   id: string;
   user_id: string;
@@ -32,6 +38,7 @@ export default function DashboardPage() {
   const { user, role, fullName, loading } = useAuth();
 
   const [proProfile, setProProfile] = useState<ProProfile | null>(null);
+  const [statoVerifica, setStatoVerifica] = useState<StatoVerifica | null>(null);
   const [proRating, setProRating] = useState<{ avg: number | null; n: number }>({
     avg: null,
     n: 0,
@@ -68,6 +75,23 @@ export default function DashboardPage() {
 
       if (prof) {
         const p = prof as Record<string, unknown>;
+        // Stato della pratica di verifica: la riga è sua e la RLS gliela fa
+        // leggere. Serve al banner per dire a che punto è, invece di ripetere
+        // "verifica ora" a chi ha già mandato tutto.
+        const { data: ver } = await supabase
+          .from("professional_verification")
+          .select("level, vat_review_state, vat_review_note")
+          .eq("professional_id", p.id as string)
+          .maybeSingle();
+        if (active) {
+          const v = (ver ?? {}) as Record<string, unknown>;
+          setStatoVerifica({
+            level: (v.level as StatoVerifica["level"]) ?? "none",
+            reviewState:
+              (v.vat_review_state as StatoVerifica["reviewState"]) ?? null,
+            reviewNote: (v.vat_review_note as string) ?? null,
+          });
+        }
         const cityObj = p.cities as { name: string } | null;
         if (active) {
           setProProfile({
@@ -153,8 +177,11 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-4">
             {/* Invito alla verifica: solo a chi non ce l'ha ancora. */}
-            {proProfile && proProfile.verification_level === "none" && (
-              <VerificaPromoBanner />
+            {proProfile && statoVerifica && statoVerifica.level === "none" && (
+              <VerificaPromoBanner
+                reviewState={statoVerifica.reviewState}
+                reviewNote={statoVerifica.reviewNote}
+              />
             )}
             <ProWorkspace
               profile={proProfile}

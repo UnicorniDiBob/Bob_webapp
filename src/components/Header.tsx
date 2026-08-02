@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { Settings } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "./AuthProvider";
+import { VERIFICATION_LABEL } from "@/lib/vat";
+import { BadgeCheck } from "lucide-react";
 
 const NAV = [
   { href: "/come-funziona", label: "Come funziona" },
@@ -17,7 +19,7 @@ const NAV = [
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, signOut, loading } = useAuth();
+  const { user, role, verificationLevel, signOut, loading } = useAuth();
   const [open, setOpen] = useState(false);
 
   async function handleSignOut() {
@@ -75,6 +77,20 @@ export function Header() {
                   Parla con Bob
                 </Link>
               )}
+              {/* Il professionista verificato deve vederselo scritto: è la
+                  stessa etichetta che vedono i clienti sul suo profilo. */}
+              {role === "professional" &&
+                verificationLevel &&
+                verificationLevel !== "none" && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+                    title="Il tuo profilo è verificato: i clienti vedono questa etichetta con la data del controllo."
+                    data-testid="header-verification-level"
+                  >
+                    <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    {VERIFICATION_LABEL[verificationLevel]}
+                  </span>
+                )}
               <Link
                 href="/dashboard"
                 className="btn-secondary py-2"
@@ -155,6 +171,10 @@ export function Header() {
                   )}
                   <Link href="/dashboard" onClick={() => setOpen(false)} className="btn-secondary flex-1 py-2">
                     Account
+                    {role === "professional" &&
+                      verificationLevel &&
+                      verificationLevel !== "none" &&
+                      ` · ${VERIFICATION_LABEL[verificationLevel]}`}
                   </Link>
                   <button onClick={handleSignOut} className="btn-ghost">
                     Esci

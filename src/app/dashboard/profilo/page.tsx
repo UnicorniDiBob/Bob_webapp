@@ -426,7 +426,7 @@ export default function ProProfiloPage() {
         )}
 
         {!isOnboarding && profileId && (
-          <div className="border-t border-black/5 pt-5">
+          <div id="verifica-piva" className="scroll-mt-24 border-t border-black/5 pt-5">
             <span className="label-bob">Verifica della partita IVA</span>
             <VatVerification professionalId={profileId} />
           </div>
