@@ -330,6 +330,32 @@ livello Pro+ con documento e visura.
   del riepilogo con una chiave conservata fuori dal database. Oggi sarebbe
   complessità senza un problema da risolvere.
 
+## 5-nonies. Scoperta del 01/08: "chiusa" non vuol dire "cessata"
+
+Cercando partite IVA di aziende defunte per fare delle prove è saltata fuori una
+cosa che cambia una regola. **Una società in liquidazione, in amministrazione
+straordinaria o in LCA mantiene la partita IVA ATTIVA, e il VIES la conferma.**
+Provato oggi, tutte e cinque `isValid: true`:
+
+| Partita IVA | Denominazione restituita dal VIES | Stato reale |
+| --- | --- | --- |
+| 13029381004 | ALITALIA SOCIETA' AEREA ITALIANA S.P.A. IN A.S. | in A.S. dal 2017, voli cessati 2021 |
+| 00903301000 | ALITALIA - LINEE AEREE ITALIANE S.P.A. | in A.S. dal 2008 |
+| 08228671007 | ALITALIA SERVIZI S.P.A. | procedura dal 2008 |
+| 00204010243 | BANCA POPOLARE DI VICENZA SPA IN LIQUIDAZIONE COATTA AMMINIS | LCA dal 2017 |
+| 00208740266 | VENETO BANCA SPA IN LCA | LCA dal 2017 |
+
+Conseguenza pratica: il nostro percorso automatico oggi concederebbe il livello
+"Pro" a un'azienda in liquidazione da otto anni, se il nome combaciasse. Il
+segnale però c'è ed è nella denominazione stessa — "IN A.S.", "IN LCA", "IN
+LIQUIDAZIONE". Va intercettato e mandato in coda invece che concesso
+(task 10.12).
+
+Nota di metodo: nessuna di queste è "cessata" nel senso fiscale. La cessazione
+vera la vede **solo** la pagina dell'Agenzia, che distingue attiva / sospesa /
+cessata con le relative date — un motivo in più per cui il gradino 3 o il
+controllo manuale non sono sostituibili dal VIES.
+
 ## 5-septies. Quanto costa automatizzare davvero (listino letto il 01/08/2026)
 
 Prezzi presi dal listino pubblico di Openapi (`openapi.com/pricing`), IVA

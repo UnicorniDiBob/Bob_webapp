@@ -2,7 +2,7 @@
 
 _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** ✅ 74 Done · 🔵 2 In progress · ⬜ 74 Planned · 🔶 4 Milestone
+**Stato:** ✅ 74 Done · 🔵 2 In progress · ⬜ 75 Planned · 🔶 4 Milestone
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -111,6 +111,7 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | 10.8a | Avviso discreto nella dashboard pro con i vantaggi + badge del livello al posto del vecchio stato staff; prezzo pronto in una costante | Client/Pro | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
 | 10.8 | Richiesta della P.IVA come ultimo passo dell'onboarding professionista | Client/Pro | Lucio | ⬜ Planned | 2026-08-11 → 2026-08-25 |  |
 | 10.9 | Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7) | Internal | Lucio | ⬜ Planned | 2026-09-01 → 2026-09-20 |  |
+| 10.12 | URGENTE: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere | Internal | Lucio | ⬜ Planned | 2026-08-06 → 2026-08-12 |  |
 | 10.10 | Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata) | Shared | Lucio | ⬜ Planned | 2026-08-04 → 2026-08-29 |  |
 | 10.11 | DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6) | Shared | Lucio | 🔶 Milestone | 2026-08-08 → 2026-08-08 |  |
 | 10.2 | Caricamento documenti per il livello Pro+ (upload, storage, retention) — la coda di revisione e' gia' fatta in 10.1e | Internal | Lucio | ⬜ Planned | 2026-09-15 → 2026-10-15 |  |
