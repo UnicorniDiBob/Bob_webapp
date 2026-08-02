@@ -2,7 +2,7 @@
 
 _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** ✅ 74 Done · 🔵 2 In progress · ⬜ 76 Planned · 🔶 4 Milestone
+**Stato:** ✅ 75 Done · 🔵 2 In progress · ⬜ 77 Planned · 🔶 4 Milestone
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -106,16 +106,18 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | 10.4a | Riga in piccolo sul profilo pubblico: quando e' stata fatta la verifica e che vale per quella data (provvisorio) | Client/Pro | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
 | 10.4 | Scadenza della verifica (proposta 6 mesi) + ricontrollo periodico con declassamento assistito, mai automatico | Internal | Lucio | ⬜ Planned | 2026-08-04 → 2026-08-12 |  |
 | 10.5 | Ritentativo notturno (cron Vercel, 22:00 UTC = mezzanotte italiana) dei casi senza risposta dal VIES; concede solo col riscontro pieno | Internal | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
-| 10.6 | Campo 'nome e cognome del titolare' nel profilo pro + confronto sul nome piu' stretto (oggi basta una parola in comune) | Client/Pro | Lucio | ⬜ Planned | 2026-08-06 → 2026-08-15 |  |
+| 10.6a | Campo 'nome completo dell''azienda' nella card di verifica, usato come secondo termine di confronto (mig 041) | Client/Pro | Lucio | ✅ Done | 2026-08-02 → 2026-08-02 | 2026-08-02 |
+| 10.6 | Stringere nameLooksConsistent: oggi basta una parola in comune di 3 lettere, e da ieri quel confronto CONCEDE un livello | Internal | Lucio | ⬜ Planned | 2026-08-03 → 2026-08-06 |  |
 | 10.7 | Telemetria in /admin/analisi: quanti tentano, quanti conferma il VIES, quanti finiscono a mano, tempi di lavorazione | Internal | Lucio | ⬜ Planned | 2026-08-08 → 2026-08-22 |  |
 | 10.8a | Avviso discreto nella dashboard pro con i vantaggi + badge del livello al posto del vecchio stato staff; prezzo pronto in una costante | Client/Pro | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
 | 10.8 | Richiesta della P.IVA come ultimo passo dell'onboarding professionista | Client/Pro | Lucio | ⬜ Planned | 2026-08-11 → 2026-08-25 |  |
 | 10.9 | Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7) | Internal | Lucio | ⬜ Planned | 2026-09-01 → 2026-09-20 |  |
 | 10.13 | Registro verifiche: pagina dedicata con filtri (professionista, tipo evento, periodo, operatore), paginazione ed export CSV. Oggi in coda si vedono solo gli ultimi 100 movimenti | Internal | Lucio | ⬜ Planned | 2026-09-08 → 2026-09-25 |  |
-| 10.12 | URGENTE: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere | Internal | Lucio | ⬜ Planned | 2026-08-06 → 2026-08-12 |  |
+| 10.14 | PRIMA DI TUTTO: push dei commit di ieri, CRON_SECRET tra le variabili Vercel e controllo che il ritentativo notturno sia partito (senza il segreto la route resta spenta) | Shared | Lucio | ⬜ Planned | 2026-08-03 → 2026-08-03 |  |
+| 10.12 | URGENTE: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere | Internal | Lucio | ⬜ Planned | 2026-08-03 → 2026-08-04 |  |
 | 10.10 | Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata) | Shared | Lucio | ⬜ Planned | 2026-08-04 → 2026-08-29 |  |
 | 10.11 | DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6) | Shared | Lucio | 🔶 Milestone | 2026-08-08 → 2026-08-08 |  |
-| 10.2 | Caricamento documenti per il livello Pro+ (upload, storage, retention) — la coda di revisione e' gia' fatta in 10.1e | Internal | Lucio | ⬜ Planned | 2026-09-15 → 2026-10-15 |  |
+| 10.2 | Caricamento documenti per il livello Pro+ (upload, storage, retention, RLS). Priorita' salita: 'chiedi documenti' ora e' un'azione vera ma il pro non ha dove caricarli | Internal | Lucio | ⬜ Planned | 2026-08-24 → 2026-09-30 |  |
 | 10.3 | Il livello pesa nel ranking (parametri dichiarati, Reg. P2B) + SLA 48h sulla coda | Client/Pro | Lucio | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
 | **11** | **Transparent ranking + Visibility Boost** | Client/Pro | André | ⬜ Planned | 2026-10-01 → 2026-11-30 |  |
 | 11.1 | Ranking algorithm v1: response rate, closure rate, reviews (data logic) | Internal | Lucio | ⬜ Planned | 2026-10-01 → 2026-10-31 |  |
