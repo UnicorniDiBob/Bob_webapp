@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { notifyEvent } from "@/lib/notify";
 import { Wrench, Calendar as CalendarIcon } from "lucide-react";
-import { Stars, VerificationBadge } from "@/components/ui";
+import { Stars, VerificationLevelBadge } from "@/components/ui";
+import type { VerificationLevel } from "@/lib/vat";
 import { AppointmentDialog } from "@/components/AppointmentDialog";
 import { AppointmentDetail } from "@/components/AppointmentDetail";
 import { ProCalendar } from "@/components/ProCalendar";
@@ -31,6 +32,8 @@ interface ProProfile {
   headline: string | null;
   bio: string | null;
   verification_status: VerificationStatus;
+  /** Livello del blocco 10: è quello che vedono i clienti. */
+  verification_level: VerificationLevel;
   subscription_tier: SubscriptionTier;
   city: { name: string } | null;
 }
@@ -336,7 +339,13 @@ export function ProWorkspace({
                   </p>
                 )}
               </div>
-              <VerificationBadge status={profile.verification_status} />
+              {/* Qui il pro deve vedere la stessa etichetta che vedono i
+                  clienti, non lo stato interno dell'approvazione staff. */}
+              <VerificationLevelBadge
+                level={profile.verification_level}
+                verifiedAt={null}
+                compact
+              />
             </div>
             <div className="mt-3 border-t border-black/5 pt-3">
               <Stars value={rating.avg} count={rating.n} />

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ProWorkspace } from "@/components/ProWorkspace";
+import VerificaPromoBanner from "@/components/VerificaPromoBanner";
 import { CustomerHome } from "@/components/CustomerHome";
 
 interface ProProfile {
@@ -19,6 +20,8 @@ interface ProProfile {
   headline: string | null;
   bio: string | null;
   verification_status: "unverified" | "pending" | "verified";
+  /** Livello del blocco 10: decide sia il badge sia l'invito alla verifica. */
+  verification_level: "none" | "vat_verified" | "documents_verified";
   subscription_tier: "free" | "pro" | "business";
   city: { name: string } | null;
 }
@@ -58,7 +61,7 @@ export default function DashboardPage() {
       const { data: prof } = await supabase
         .from("professionals")
         .select(
-          "id, user_id, headline, bio, verification_status, subscription_tier, cities ( name )"
+          "id, user_id, headline, bio, verification_status, verification_level, subscription_tier, cities ( name )"
         )
         .eq("user_id", user.id)
         .maybeSingle();
@@ -75,6 +78,9 @@ export default function DashboardPage() {
             verification_status:
               (p.verification_status as ProProfile["verification_status"]) ??
               "unverified",
+            verification_level:
+              (p.verification_level as ProProfile["verification_level"]) ??
+              "none",
             subscription_tier:
               (p.subscription_tier as ProProfile["subscription_tier"]) ?? "free",
             city: cityObj ? { name: cityObj.name } : null,
@@ -145,11 +151,17 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : (
-          <ProWorkspace
-            profile={proProfile}
-            rating={proRating}
-            name={fullName ?? "Professionista"}
-          />
+          <div className="space-y-4">
+            {/* Invito alla verifica: solo a chi non ce l'ha ancora. */}
+            {proProfile && proProfile.verification_level === "none" && (
+              <VerificaPromoBanner />
+            )}
+            <ProWorkspace
+              profile={proProfile}
+              rating={proRating}
+              name={fullName ?? "Professionista"}
+            />
+          </div>
         )
       ) : (
         <CustomerHome />

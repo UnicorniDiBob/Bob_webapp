@@ -39,6 +39,9 @@ function fmtDate(d: string | null) {
       day: "numeric",
       month: "long",
       year: "numeric",
+      // Questa pagina rende sul server (UTC): senza fuso esplicito la data del
+      // controllo cambierebbe giorno rispetto a quella che vede il pro.
+      timeZone: "Europe/Rome",
     });
   } catch {
     return "";
@@ -131,6 +134,19 @@ export default async function ProfessionalDetailPage({
                 </span>
               )}
             </div>
+
+            {/* Data del riscontro dichiarata per esteso (10.4, versione
+                provvisoria). Il badge la mostra già in forma breve, ma qui
+                serve dire a chiare lettere che il controllo vale per QUELLA
+                data: finché non esiste il ricontrollo periodico, è l'unica
+                cosa onesta da scrivere accanto a un'etichetta che non scade. */}
+            {p.verificationLevel !== "none" && p.verifiedAt && (
+              <p className="mt-3 text-xs text-bob-ink/45">
+                Verifica effettuata il {fmtDate(p.verifiedAt)}. Il riscontro si
+                riferisce a quella data e non è una garanzia di BOB sul lavoro
+                svolto.
+              </p>
+            )}
           </header>
 
           {/* Bio */}

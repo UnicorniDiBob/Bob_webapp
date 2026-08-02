@@ -324,6 +324,72 @@ livello Pro+ con documento e visura.
   del riepilogo con una chiave conservata fuori dal database. Oggi sarebbe
   complessità senza un problema da risolvere.
 
+## 5-septies. Quanto costa automatizzare davvero (listino letto il 01/08/2026)
+
+Prezzi presi dal listino pubblico di Openapi (`openapi.com/pricing`), IVA
+esclusa, "singola" = pagamento a consumo senza abbonamento:
+
+| Servizio | A consumo | In abbonamento | Cosa ci darebbe |
+| --- | --- | --- | --- |
+| Company Status Check – Italy | € 0,02 | — | stato della partita IVA |
+| Company Name – Italy | € 0,001 | — | denominazione |
+| Start Company Data – Italy | € 0,05 | da € 0,015 | stato + denominazione + dati base, in tempo reale |
+| Advanced Company Data – Italy | € 0,10 | da € 0,028 | come sopra, più completo |
+| European VAT Check (VIES) | € 0,02 | da € 0,014 | quello che oggi facciamo gratis da soli |
+| Company Registered e-mail Address – Italy | € 0,03 | da € 0,015 | **la PEC dell'impresa** — la strada del codice di possesso |
+| Tax Code Check for a Person – Italy | € 0,045 | da € 0,0081 | riscontro del codice fiscale |
+| Freelancer Data Check – Italy | € 0,80 | — | dati del libero professionista (2 ore lavorative) |
+| Visura ditta individuale | € 2,90 | da € 2,75 | documento vero, per il livello Pro+ |
+
+**Il conto per noi.** Quello che serve al gradino 3 è stato + denominazione:
+`Company Status Check` + `Company Name` fanno **2,1 centesimi**, oppure
+`Start Company Data` a **5 centesimi** con tutto in una chiamata. Una volta per
+professionista, perché l'esito lo conserviamo.
+
+- 100 professionisti verificati: **2–5 €**
+- 500 professionisti: **10–25 €**
+- 500 professionisti con ricontrollo semestrale: **20–50 € l'anno**
+
+**Il confronto che conta.** Lo stesso controllo fatto a mano è due minuti di
+una persona: a 15 €/ora sono circa **50 centesimi** a professionista, cioè
+**dieci-venti volte il costo dell'API**, e con tempi di ore o giorni invece di
+secondi. Il gradino 3 non è una spesa da valutare: è la voce più economica del
+processo. Quello che va valutato è il contorno — contratto, DPA art. 28, server
+UE, riga nel registro dei trattamenti.
+
+Nota interessante emersa dal listino: la **PEC dell'impresa costa 3 centesimi**.
+Rende praticabile la prova di possesso (codice inviato alla PEC del soggetto),
+che è l'unica cosa che dimostra davvero *è sua* e non solo *esiste*.
+
+## 5-octies. Verifica a pagamento per il professionista? (nota di discussione)
+
+Idea di Lucio: far pagare la verifica al professionista. Con i numeri sopra la
+domanda cambia di natura, perché **il costo non è il problema**: cinque
+centesimi non si fanno pagare per coprirsi. Se si fa pagare, è una scelta di
+posizionamento, e ha due facce.
+
+A favore: un piccolo importo filtra chi non è serio, crea valore percepito e
+lega un ricavo alla fiducia invece che ai contatti (come fa Instapro, che
+vende i lead).
+
+Contro, e pesa: il badge che i clienti guardano diventa **acquistabile**. Il
+messaggio "verificato" vale finché significa *abbiamo controllato*, non *ha
+pagato*; se i due si confondono, si sta vendendo esattamente il segnale che si
+voleva dare. In più la frizione arriva nel momento peggiore — oggi ci sono
+cinque professionisti e il problema è farla usare, non monetizzarla. E c'è una
+coda operativa: se la verifica è a pagamento e l'esito è negativo, va deciso
+prima cosa succede al pagamento, e scritto nei ToS.
+
+Proposta: **la verifica base della partita IVA resta inclusa** — costa
+centesimi ed è il pavimento di qualità del marketplace, non un servizio
+accessorio. Se si vuole monetizzare la fiducia, il posto giusto è il livello
+**Pro+**, dove il costo vero c'è davvero (esame documentale umano, visura a
+2,90 €), oppure la visibilità. Nel frattempo il banner nella dashboard è già
+predisposto: il prezzo è una costante unica in
+`src/components/VerificaPromoBanner.tsx`, oggi `null` (= "inclusa nel pilota");
+si scrive lì il giorno della decisione e il testo si adegua da solo. L'incasso
+non è integrato di proposito.
+
 ## 5-sexies. Quando la coda non basterà più (nota per il futuro)
 
 Promemoria da rileggere quando i professionisti iscritti superano qualche
