@@ -30,7 +30,13 @@ GET https://ec.europa.eu/taxation_customs/vies/rest-api/ms/IT/vat/{partitaIVA}
 | P.IVA | Soggetto | Esito |
 | --- | --- | --- |
 | 00743110157 | Motorola Solutions Italia S.r.l. | `isValid: true`, denominazione restituita |
-| 12345678901 | numero con checksum valido ma inesistente | `isValid: false`, `userError: "INVALID"`, `name: "---"` |
+| 12345678901 | numero inesistente | `isValid: false`, `userError: "INVALID"`, `name: "---"` |
+
+*(Correzione del 01/08: la riga qui sopra diceva "checksum valido". Non lo è —
+per 1234567890 la cifra di controllo corretta è 3, quindi il numero valido
+sarebbe 1234567890**3**. Quel test interrogava il VIES direttamente, saltando il
+gradino 1: nel flusso vero un numero così si ferma prima, senza uscire da casa
+nostra. Per provare la coppia "checksum ok + inesistente" si usa 12345678903.)*
 
 Quindi il VIES distingue correttamente un numero formalmente valido ma
 inesistente: il checksum da solo non basta, e la combinazione dei due gradini
