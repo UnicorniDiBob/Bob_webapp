@@ -330,6 +330,47 @@ livello Pro+ con documento e visura.
   del riepilogo con una chiave conservata fuori dal database. Oggi sarebbe
   complessità senza un problema da risolvere.
 
+## 5-decies. Come si decide oggi, in tre condizioni (aggiornato 03/08)
+
+Il livello **Pro** si concede da solo **solo se** valgono tutte e tre:
+
+1. il numero passa il controllo della cifra di controllo (gradino 1, offline);
+2. il registro conferma la partita IVA **e** restituisce l'intestazione;
+3. quell'intestazione **corrisponde** a un nome che già conosciamo del
+   professionista — il nome pubblico del profilo oppure la ragione sociale che
+   ha dichiarato — **e** non contiene segnali di una procedura in corso.
+
+Tutto il resto finisce in coda umana. Mai un rifiuto automatico.
+
+**Il confronto sui nomi (10.6).** Prima bastava una parola in comune di tre
+lettere: "Studio Milano" e "Milano Servizi" risultavano la stessa azienda.
+Ora servono due parole significative che coprano almeno il 60% del nome più
+corto; con un nome di una parola sola, quella parola deve essere specifica
+(almeno 5 lettere e non generica: "Openapi" sì, "Milano" no). Forme societarie
+e parole da insegna vengono scartate prima. Provato su 12 casi reali, inclusi
+i falsi positivi di prima.
+
+**Un solo passaggio, tutti i nomi.** Il confronto gira in un colpo contro il
+nome del profilo e la ragione sociale dichiarata: il professionista non deve
+fare un secondo giro. Ma i due nomi non hanno lo stesso valore probatorio — il
+secondo lo scrive lui — quindi `vat_match_source` (mig 042) registra quale ha
+deciso, e le concessioni fondate sul nome dichiarato compaiono in coda con la
+dicitura "da ricontrollare a campione". Velocità per lui, controllo a
+posteriori per noi.
+
+**Procedure concorsuali (10.12).** Se la denominazione contiene *in
+liquidazione*, *LCA*, *amministrazione straordinaria*, *in A.S.*, *concordato*,
+*fallimento*, *scioglimento* o *cessata*, l'automatismo si ferma. Non è un
+rifiuto: un'impresa in concordato in continuità lavora ancora, e la decisione
+spetta a una persona. Limite noto: `ALITALIA - LINEE AEREE ITALIANE S.P.A.` è
+in procedura dal 2008 ma nella denominazione non c'è nessun segnale, quindi il
+filtro non lo prende — per questo in coda c'è anche l'avviso all'operatore.
+
+**Freni al ritentativo notturno (10.5).** Esce subito se non c'è niente in
+attesa; ogni caso ha un budget di 5 notti, oltre il quale il silenzio del VIES
+smette di essere considerato un guasto passeggero e la palla torna alla coda
+umana (scritto nel registro); non ripete lo stesso caso entro 20 ore.
+
 ## 5-nonies. Scoperta del 01/08: "chiusa" non vuol dire "cessata"
 
 Cercando partite IVA di aziende defunte per fare delle prove è saltata fuori una

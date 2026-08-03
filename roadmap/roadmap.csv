@@ -86,7 +86,7 @@ task,10.8a,Client/Pro,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"Avviso discre
 task,10.8,Client/Pro,Lucio,Planned,2026-08-11,2026-08-25,,"Richiesta della P.IVA come ultimo passo dell'onboarding professionista"
 task,10.9,Internal,Lucio,Planned,2026-09-01,2026-09-20,,"Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7)"
 task,10.13,Internal,Lucio,Planned,2026-09-08,2026-09-25,,"Registro verifiche: pagina dedicata con filtri (professionista, tipo evento, periodo, operatore), paginazione ed export CSV. Oggi in coda si vedono solo gli ultimi 100 movimenti"
-task,10.14,Shared,Lucio,Planned,2026-08-03,2026-08-03,,"PRIMA DI TUTTO: push dei commit di ieri, CRON_SECRET tra le variabili Vercel e controllo che il ritentativo notturno sia partito (senza il segreto la route resta spenta)"
+task,10.14,Shared,Lucio,In progress,2026-08-03,2026-08-04,,"Messa in linea: commit pushati e cron registrato in vercel.json. RESTA: CRON_SECRET tra le variabili Vercel (Production) + un deploy, poi controllo che il ritentativo notturno abbia girato"
 task,10.12,Internal,Lucio,Done,2026-08-03,2026-08-03,2026-08-03,"FATTO: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere"
 task,10.10,Shared,Lucio,Planned,2026-08-04,2026-08-29,,"Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata)"
 task,10.11,Shared,Lucio,Milestone,2026-08-08,2026-08-08,,"DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6)"

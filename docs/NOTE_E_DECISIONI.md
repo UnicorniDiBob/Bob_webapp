@@ -6,6 +6,36 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 
 ---
 
+## 2026-08-03 · 10.x — Blocco 10 in produzione: cosa è cambiato nelle regole
+
+Il blocco 10 è passato da motore a funzione visibile. Le tre cose che vale la
+pena ricordare perché cambiano una regola, non solo il codice:
+
+1. **"Esiste" non prova "è sua".** Il VIES restituisce anche l'intestazione, e
+   fino al 01/08 il codice la confrontava col nome del profilo **senza
+   bloccare**: chiunque poteva incollare la partita IVA di un'azienda vera e
+   prendersi il badge. Ora il livello automatico richiede la corrispondenza; il
+   confronto è stretto (due parole significative, 60% di copertura) e gira su
+   tutti i nomi che già abbiamo, registrando quale ha deciso. Una partita IVA
+   verificata può appartenere a un solo profilo (indice unico, mig 039).
+
+2. **Una società in liquidazione ha la partita IVA ATTIVA e il VIES la
+   conferma.** Verificato su Alitalia in A.S., Banca Popolare di Vicenza e
+   Veneto Banca in LCA: `isValid: true` tutte. Il riscontro fiscale da solo
+   direbbe "Pro" a un'azienda ferma da otto anni. Intercettiamo il segnale nella
+   denominazione e mandiamo in coda (mai rifiuto automatico).
+
+3. **Gratuito e automatizzabile esiste solo il VIES**, che copre la minoranza.
+   Agenzia delle Entrate, Registro Imprese e INI-PEC sono gratuiti ma vogliono
+   una persona davanti a un browser. Listino Openapi letto il 01/08: stato +
+   denominazione **2-5 centesimi per professionista**, PEC dell'impresa 3
+   centesimi. Lo stesso controllo a mano costa ~50 centesimi di tempo: il
+   gradino 3 è la voce più economica del processo, non la più cara.
+
+Decisione ancora aperta e in mano a Lucio (milestone 10.11): cosa sblocca
+davvero il livello — gate sulle categorie, peso nel ranking, durata. Metà dei
+task rimasti dipende da quella risposta.
+
 ## 2026-07-19 · 10.0 — Ricerca verifica P.IVA (esito)
 
 **Come si verifica una P.IVA italiana, in pratica:**
