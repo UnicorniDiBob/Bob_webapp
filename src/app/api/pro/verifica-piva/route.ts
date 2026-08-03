@@ -18,7 +18,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { vatValidationError, normalizeVat, nameLooksConsistent } from "@/lib/vat";
+import { vatValidationError, normalizeVat, matchRegistryName } from "@/lib/vat";
 import { checkVatOnVies } from "@/lib/vies";
 
 export const runtime = "nodejs";
@@ -233,19 +233,15 @@ export async function POST(request: Request) {
   }
 
   const snap = outcome.snapshot;
-  // Il confronto che vale per la concessione automatica è quello col nome
-  // PUBBLICO del profilo: è la cosa che i clienti vedranno accanto al badge.
-  const nameMatches =
-    snap.name && profile?.full_name
-      ? nameLooksConsistent(profile.full_name, snap.name)
-      : null;
-  // Quello sulla ragione sociale dichiarata non concede, ma spiega: se
-  // combacia, chi lavora il caso lo chiude in cinque secondi invece di
-  // scrivere al professionista per chiedergli come si chiama la sua impresa.
-  const declaredMatches =
-    snap.name && businessName
-      ? nameLooksConsistent(businessName, snap.name)
-      : false;
+  // Un solo confronto, contro tutti i nomi che già abbiamo: il nome pubblico
+  // del profilo e la ragione sociale dichiarata. Al professionista non
+  // chiediamo niente in più e non gli facciamo fare un secondo giro; a noi
+  // resta scritto QUALE nome ha deciso, che non è un dettaglio (vedi 042).
+  const matchSource = matchRegistryName(snap.name, {
+    profileName: profile?.full_name ?? null,
+    declaredName: businessName,
+  });
+  const nameMatches = snap.name ? matchSource !== null : null;
 
   if (outcome.status === "confirmed" && nameMatches !== true) {
     // IL PUNTO PIÙ IMPORTANTE DI TUTTO IL FLUSSO.
@@ -278,9 +274,9 @@ export async function POST(request: Request) {
       professional_id: pro.id,
       event: "vat_check_ok",
       note: snap.name
-        ? declaredMatches
-          ? `Partita IVA valida e intestata a "${snap.name}": non corrisponde al nome del profilo ma COINCIDE con la ragione sociale dichiarata ("${businessName}"). Da confermare a mano.`
-          : `Partita IVA valida ma intestata a "${snap.name}", che non corrisponde né al nome del profilo né alla ragione sociale dichiarata: da attribuire a mano prima di concedere il livello.`
+        ? `Partita IVA valida ma intestata a "${snap.name}", che non corrisponde né al nome del profilo${
+            businessName ? ` né alla ragione sociale dichiarata ("${businessName}")` : ""
+          }: da attribuire a mano prima di concedere il livello.`
         : "Partita IVA valida ma il registro non ha restituito l'intestazione: impossibile attribuirla automaticamente.",
       actor_user_id: user.id,
       actor_name: profile?.full_name ?? "Professionista",
@@ -309,6 +305,7 @@ export async function POST(request: Request) {
         vat_checked_at: snap.requestDate ?? new Date().toISOString(),
         vat_check_source: "vies",
         vat_check_payload: snap,
+        vat_match_source: matchSource,
         // Niente più in sospeso: se c'era un caso aperto (o un rifiuto
         // precedente), il riscontro positivo lo chiude.
         vat_review_state: null,
@@ -322,7 +319,10 @@ export async function POST(request: Request) {
       {
         professional_id: pro.id,
         event: "vat_check_ok",
-        note: `Confermata dal VIES e intestata a "${snap.name}", coerente col nome del profilo.`,
+        note:
+          matchSource === "declared_name"
+            ? `Confermata dal VIES e intestata a "${snap.name}": coincide con la ragione sociale dichiarata dal professionista ("${businessName}"), non col nome pubblico del profilo. Concessa in automatico, da ricontrollare a campione.`
+            : `Confermata dal VIES e intestata a "${snap.name}", coerente col nome del profilo.`,
         actor_user_id: user.id,
       actor_name: profile?.full_name ?? "Professionista",
       actor_role: "professional",

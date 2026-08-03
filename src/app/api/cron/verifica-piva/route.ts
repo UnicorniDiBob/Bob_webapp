@@ -26,7 +26,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { checkVatOnVies } from "@/lib/vies";
-import { nameLooksConsistent } from "@/lib/vat";
+import { matchRegistryName } from "@/lib/vat";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   // tocca: una macchina non riapre una decisione umana.
   const { data: daRiprendere, error: readError } = await admin
     .from("professional_verification")
-    .select("professional_id, vat_number")
+    .select("professional_id, vat_number, declared_business_name")
     .eq("vat_review_state", "pending")
     .eq("level", "none")
     .is("vat_check_source", null)
@@ -81,6 +81,7 @@ export async function GET(request: Request) {
   const casi = (daRiprendere ?? []) as {
     professional_id: string;
     vat_number: string;
+    declared_business_name: string | null;
   }[];
 
   let confermati = 0;
@@ -117,8 +118,12 @@ export async function GET(request: Request) {
       nomeProfilo =
         (profile as { full_name: string | null } | null)?.full_name ?? null;
     }
-    const nomeCombacia =
-      snap.name && nomeProfilo ? nameLooksConsistent(nomeProfilo, snap.name) : false;
+    // Stesso confronto della route del professionista: tutti i nomi che
+    // conosciamo, e teniamo da conto quale ha deciso.
+    const matchSource = matchRegistryName(snap.name, {
+      profileName: nomeProfilo,
+      declaredName: caso.declared_business_name,
+    });
 
     const base = {
       vat_active: esito.status === "confirmed",
@@ -129,13 +134,14 @@ export async function GET(request: Request) {
       updated_at: adesso,
     };
 
-    if (esito.status === "confirmed" && nomeCombacia) {
+    if (esito.status === "confirmed" && matchSource) {
       // Riscontro pieno: il livello si concede, come farebbe la route del pro.
       await admin
         .from("professional_verification")
         .update({
           ...base,
           level: "vat_verified",
+          vat_match_source: matchSource,
           vat_review_state: null,
           vat_review_note: null,
         })
@@ -145,7 +151,11 @@ export async function GET(request: Request) {
         {
           professional_id: caso.professional_id,
           event: "vat_check_ok",
-          note: `Ritentativo notturno: confermata dal VIES e intestata a "${snap.name}", coerente col nome del profilo.`,
+          note: `Ritentativo notturno: confermata dal VIES e intestata a "${snap.name}", coerente col ${
+            matchSource === "declared_name"
+              ? "nome dichiarato dal professionista (da ricontrollare a campione)"
+              : "nome del profilo"
+          }.`,
           actor_name: "Ritentativo automatico",
           actor_role: "system",
         },

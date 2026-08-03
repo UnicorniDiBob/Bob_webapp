@@ -209,6 +209,9 @@ export interface ProfessionalVerification {
   vat_active: boolean | null;
   vat_holder_name: string | null;
   vat_check_source: string | null;
+  /** Quale nome ha attribuito la P.IVA: profilo, dichiarato o staff (mig 042). */
+  vat_match_source: "profile_name" | "declared_name" | "staff" | null;
+  declared_business_name: string | null;
   documents_checked_at: string | null;
   documents_note: string | null;
   vat_review_state: VatReviewState | null;

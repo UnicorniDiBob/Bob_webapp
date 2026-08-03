@@ -260,11 +260,12 @@ export default function VatVerification({
             <p className="text-sm text-bob-ink/65">
               Comunicando la partita IVA passi al livello <strong>Pro</strong>:
               sul tuo profilo i clienti vedono che l&apos;abbiamo riscontrata,
-              con la data del controllo. Se l&apos;intestazione risultante
-              corrisponde al nome del tuo profilo bastano pochi secondi;
-              altrimenti — per esempio se lavori con un nome commerciale o con
-              una società — la controlliamo a mano, perché non concediamo il
-              livello a chi inserisce una partita IVA che non è sua.
+              con la data del controllo. Bastano pochi secondi quando
+              l&apos;intestazione che risulta nei registri corrisponde al nome
+              del tuo profilo o alla ragione sociale che scrivi qui sotto; se
+              non corrisponde a nessuno dei due la controlliamo a mano, perché
+              non concediamo il livello a chi inserisce una partita IVA che non
+              è sua.
             </p>
           )}
 
@@ -330,7 +331,8 @@ export default function VatVerification({
             />
             <p className="mt-1.5 text-xs text-bob-ink/45">
               Compilalo se la partita IVA è intestata a un nome diverso da
-              quello del tuo profilo: ci evita di doverti scrivere per chiedertelo.
+              quello del tuo profilo — per esempio una società: così la verifica
+              può concludersi subito invece di passare da un controllo a mano.
             </p>
           </div>
         </>

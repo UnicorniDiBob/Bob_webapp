@@ -128,32 +128,107 @@ export function vatValidationError(input: string): string | null {
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Confronto fra la denominazione del registro e i nomi che conosciamo del
+// professionista.
+//
+// Questo confronto non è più un semplice avviso: da quando la concessione
+// automatica dipende da lui, decide se un profilo diventa "Pro". Quindi la
+// vecchia regola — bastava UNA parola in comune di tre lettere — non va più
+// bene: faceva combaciare "Studio Milano" con "Milano Servizi", cioè due
+// aziende diverse della stessa città.
+//
+// La regola nuova, in parole povere: devono combaciare almeno due parole
+// significative e coprire la maggior parte del nome più corto. Con un nome di
+// una sola parola si accetta la corrispondenza piena, ma solo se quella parola
+// è specifica: "Milano" da sola non identifica nessuno.
+// ---------------------------------------------------------------------------
+
+/** Forme societarie e parole di servizio: non distinguono un'azienda da un'altra. */
+const FORME_SOCIETARIE =
+  /\b(s\.?r\.?l\.?s?|s\.?p\.?a\.?|s\.?n\.?c\.?|s\.?a\.?s\.?|s\.?a\.?p\.?a\.?|s\.?s\.?|societa|soc|cooperativa|coop|ditta|impresa|individuale|unipersonale|di|del|della|dei|delle|and)\b/g;
+
 /**
- * Confronto tollerante tra la denominazione restituita dalla banca dati e il
- * nome sul profilo: serve a segnalare le discordanze evidenti senza bocciare
- * differenze innocue (forma societaria, punteggiatura, ordine nome/cognome).
- * Non decide da solo: alimenta il controllo umano (regola "human in the loop").
+ * Parole troppo comuni per identificare qualcuno da sole: città, mestieri,
+ * aggettivi da insegna. Contano nel confronto, ma non bastano da sole.
  */
-export function nameLooksConsistent(
-  profileName: string,
-  registryName: string
-): boolean {
-  const clean = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      // via le forme societarie e le abbreviazioni più comuni
-      .replace(/\b(s\.?r\.?l\.?s?|s\.?p\.?a|s\.?n\.?c|s\.?a\.?s|ditta|impresa|individuale|di)\b/g, " ")
-      .replace(/[^a-z0-9 ]/g, " ")
-      .split(/\s+/)
-      .filter((w) => w.length > 2);
+const PAROLE_GENERICHE = new Set([
+  "milano", "roma", "torino", "napoli", "firenze", "bologna", "genova",
+  "italia", "italiana", "italiane", "italiano", "nord", "sud", "centro",
+  "servizi", "service", "impianti", "impianto", "costruzioni", "edile",
+  "edilizia", "studio", "group", "groupe", "holding", "consulting", "lavori",
+  "casa", "house", "home", "tecnica", "tecnico", "tecnologie", "sistemi",
+  "express", "professional", "professionale", "green", "eco", "new", "top",
+]);
 
-  const profileWords = clean(profileName);
-  const registryWords = new Set(clean(registryName));
-  if (profileWords.length === 0 || registryWords.size === 0) return false;
+/** Riduce un nome alle sue parole significative, in forma confrontabile. */
+function paroleSignificative(nome: string): string[] {
+  return nome
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(FORME_SOCIETARIE, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 2);
+}
 
-  // Basta che una parola significativa combaci: nomi commerciali e ragioni
-  // sociali raramente coincidono parola per parola.
-  return profileWords.some((w) => registryWords.has(w));
+/**
+ * I due nomi indicano plausibilmente lo stesso soggetto?
+ *
+ * Vero quando: due o più parole significative in comune che coprono almeno il
+ * 60% del nome più corto; oppure il nome più corto è una sola parola specifica
+ * (almeno 5 lettere, non generica) e quella parola c'è anche nell'altro.
+ */
+export function namesMatch(nomeA: string, nomeB: string): boolean {
+  const a = paroleSignificative(nomeA);
+  const b = paroleSignificative(nomeB);
+  if (a.length === 0 || b.length === 0) return false;
+
+  const setB = new Set(b);
+  const comuni = [...new Set(a)].filter((w) => setB.has(w));
+  if (comuni.length === 0) return false;
+
+  const minParole = Math.min(new Set(a).size, setB.size);
+  const copertura = comuni.length / minParole;
+
+  if (comuni.length >= 2 && copertura >= 0.6) return true;
+
+  if (
+    minParole === 1 &&
+    comuni.length === 1 &&
+    comuni[0].length >= 5 &&
+    !PAROLE_GENERICHE.has(comuni[0])
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/** Da dove è arrivata la corrispondenza: serve nel registro e nella telemetria. */
+export type NameMatchSource = "profile_name" | "declared_name";
+
+/**
+ * Confronta la denominazione del registro con TUTTI i nomi che già abbiamo del
+ * professionista, senza chiedergli niente in più: prima il nome pubblico del
+ * profilo, poi la ragione sociale che ha dichiarato.
+ *
+ * Restituisce quale dei due ha combaciato, perché non sono equivalenti: il
+ * nome del profilo è quello che i clienti vedranno accanto al badge, mentre la
+ * ragione sociale è un testo che ha scritto lui. Chi legge il registro deve
+ * poter distinguere.
+ */
+export function matchRegistryName(
+  registryName: string | null,
+  nomi: { profileName?: string | null; declaredName?: string | null }
+): NameMatchSource | null {
+  if (!registryName) return null;
+  if (nomi.profileName && namesMatch(nomi.profileName, registryName)) {
+    return "profile_name";
+  }
+  if (nomi.declaredName && namesMatch(nomi.declaredName, registryName)) {
+    return "declared_name";
+  }
+  return null;
 }

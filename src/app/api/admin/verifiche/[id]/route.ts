@@ -183,6 +183,7 @@ export async function POST(
       vat_active: true,
       vat_checked_at: now,
       vat_check_source: "staff",
+      vat_match_source: "staff",
       vat_review_state: null,
       vat_review_note: null,
       vat_reviewed_at: now,

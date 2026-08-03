@@ -8,7 +8,7 @@ import { VerifyButtons } from "./VerifyButtons";
 import { TierButtons } from "./TierButtons";
 import { VatReviewActions } from "./VatReviewActions";
 import {
-  nameLooksConsistent,
+  namesMatch,
   VERIFICATION_LABEL,
   type VerificationLevel,
   type VatReviewState,
@@ -33,6 +33,7 @@ interface VerificationRow {
   vat_reviewed_at: string | null;
   vat_reviewed_by_name: string | null;
   declared_business_name: string | null;
+  vat_match_source: string | null;
   updated_at: string;
 }
 
@@ -187,7 +188,7 @@ export default async function AdminProfessionalsPage() {
   const { data: reviewData } = await supabase
     .from("professional_verification")
     .select(
-      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, declared_business_name, updated_at"
+      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, declared_business_name, vat_match_source, updated_at"
     )
     .or("vat_review_state.not.is.null,level.neq.none")
     .order("updated_at", { ascending: false });
@@ -567,7 +568,7 @@ function VatCaseCard({
   const svc = pro?.professional_services?.[0];
   const mismatch =
     profile?.full_name && row.vat_holder_name
-      ? !nameLooksConsistent(profile.full_name, row.vat_holder_name)
+      ? !namesMatch(profile.full_name, row.vat_holder_name)
       : false;
 
   return (
@@ -632,6 +633,15 @@ function VatCaseCard({
           <dt className="text-bob-ink/50">Intestazione dal registro:</dt>
           <dd className="text-bob-ink">{row.vat_holder_name ?? "non disponibile"}</dd>
         </div>
+        {row.vat_match_source === "declared_name" && (
+          <div className="flex gap-2 sm:col-span-2">
+            <dt className="text-bob-ink/50">Attribuita in base a:</dt>
+            <dd className="font-medium text-amber-700">
+              ragione sociale dichiarata dal professionista — da ricontrollare a
+              campione
+            </dd>
+          </div>
+        )}
         {row.declared_business_name && (
           <div className="flex gap-2 sm:col-span-2">
             <dt className="text-bob-ink/50">Ragione sociale dichiarata:</dt>
