@@ -9,6 +9,7 @@ import { TierButtons } from "./TierButtons";
 import { VatReviewActions } from "./VatReviewActions";
 import {
   namesMatch,
+  procedureFlagInName,
   VERIFICATION_LABEL,
   type VerificationLevel,
   type VatReviewState,
@@ -566,6 +567,7 @@ function VatCaseCard({
   const name = profile?.full_name ?? "Professionista";
   const state = row.vat_review_state;
   const svc = pro?.professional_services?.[0];
+  const procedura = procedureFlagInName(row.vat_holder_name);
   const mismatch =
     profile?.full_name && row.vat_holder_name
       ? !namesMatch(profile.full_name, row.vat_holder_name)
@@ -649,6 +651,18 @@ function VatCaseCard({
           </div>
         )}
       </dl>
+
+      {procedura && (
+        <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">
+          <span className="font-semibold">
+            La denominazione segnala una procedura in corso: {procedura}.
+          </span>{" "}
+          Una società in liquidazione o in amministrazione straordinaria conserva
+          la partita IVA attiva, quindi il riscontro fiscale qui non dice niente
+          sulla sua operatività. Prima di concedere il livello guarda lo stato
+          sul servizio dell&apos;Agenzia e valuta se può stare sul marketplace.
+        </p>
+      )}
 
       {row.vat_check_source === null && (
         <p className="mt-2 rounded-xl bg-bob-indigo-50 px-3 py-2 text-xs text-bob-indigo">

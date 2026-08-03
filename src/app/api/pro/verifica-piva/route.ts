@@ -18,7 +18,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { vatValidationError, normalizeVat, matchRegistryName } from "@/lib/vat";
+import {
+  vatValidationError,
+  normalizeVat,
+  matchRegistryName,
+  procedureFlagInName,
+} from "@/lib/vat";
 import { checkVatOnVies } from "@/lib/vies";
 
 export const runtime = "nodejs";
@@ -242,8 +247,13 @@ export async function POST(request: Request) {
     declaredName: businessName,
   });
   const nameMatches = snap.name ? matchSource !== null : null;
+  // Una società in liquidazione o in amministrazione straordinaria ha la partita
+  // IVA ancora attiva e il VIES la conferma (provato su Alitalia, BPVi, Veneto
+  // Banca): il riscontro fiscale da solo direbbe "Pro" a un'azienda ferma da
+  // anni. Il segnale è nella denominazione, e sospende l'automatismo.
+  const procedura = procedureFlagInName(snap.name);
 
-  if (outcome.status === "confirmed" && nameMatches !== true) {
+  if (outcome.status === "confirmed" && (nameMatches !== true || procedura)) {
     // IL PUNTO PIÙ IMPORTANTE DI TUTTO IL FLUSSO.
     // "Esiste" non vuol dire "è sua": il VIES conferma che quel numero è
     // valido, non che appartiene a chi lo sta digitando. Senza il riscontro
@@ -273,7 +283,9 @@ export async function POST(request: Request) {
     await admin.from("verification_events").insert({
       professional_id: pro.id,
       event: "vat_check_ok",
-      note: snap.name
+      note: procedura
+        ? `Partita IVA attiva e intestata a "${snap.name}", ma la denominazione segnala una procedura in corso: ${procedura}. Una società in questa condizione conserva la partita IVA, quindi il riscontro fiscale non basta: decidere a mano se può stare sul marketplace.`
+        : snap.name
         ? `Partita IVA valida ma intestata a "${snap.name}", che non corrisponde né al nome del profilo${
             businessName ? ` né alla ragione sociale dichiarata ("${businessName}")` : ""
           }: da attribuire a mano prima di concedere il livello.`
@@ -285,7 +297,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       status: "needs_review",
-      message: snap.name
+      message: procedura
+        ? `La partita IVA risulta attiva e intestata a "${snap.name}", ma nei registri quella società risulta ${procedura}. Prima di concedere il livello vogliamo controllare a mano: ti facciamo sapere.`
+        : snap.name
         ? `La partita IVA risulta attiva, ma è intestata a "${snap.name}" e sul profilo hai un altro nome. Non concediamo il livello in automatico: controlliamo a mano che sia la tua e ti facciamo sapere. Se il nome del profilo è un nome commerciale, va benissimo — ci serve solo il riscontro.`
         : "La partita IVA risulta attiva ma il registro non ci ha restituito l'intestazione, quindi non possiamo attribuirla automaticamente al tuo profilo. Completiamo il controllo a mano.",
     });

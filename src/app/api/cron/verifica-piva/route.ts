@@ -26,7 +26,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { checkVatOnVies } from "@/lib/vies";
-import { matchRegistryName } from "@/lib/vat";
+import { matchRegistryName, procedureFlagInName } from "@/lib/vat";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -172,6 +172,8 @@ export async function GET(request: Request) {
       profileName: nomeProfilo,
       declaredName: caso.declared_business_name,
     });
+    // Procedura in corso: la partita IVA resta attiva ma la decisione è umana.
+    const procedura = procedureFlagInName(snap.name);
 
     const base = {
       vat_active: esito.status === "confirmed",
@@ -184,7 +186,7 @@ export async function GET(request: Request) {
       updated_at: adesso,
     };
 
-    if (esito.status === "confirmed" && matchSource) {
+    if (esito.status === "confirmed" && matchSource && !procedura) {
       // Riscontro pieno: il livello si concede, come farebbe la route del pro.
       await admin
         .from("professional_verification")
@@ -232,11 +234,14 @@ export async function GET(request: Request) {
         professional_id: caso.professional_id,
         event: esito.status === "confirmed" ? "vat_check_ok" : "vat_check_failed",
         note:
-          esito.status === "confirmed"
+          esito.status === "confirmed" && procedura
+            ? `Ritentativo notturno: partita IVA attiva ma la denominazione "${snap.name}" segnala una procedura in corso (${procedura}): decisione umana.`
+            : esito.status === "confirmed"
             ? `Ritentativo notturno: partita IVA valida ma intestata a "${
                 snap.name ?? "intestatario non restituito"
               }", da attribuire a mano.`
             : "Ritentativo notturno: il VIES non ha confermato la partita IVA. Da esaminare.",
+        // nota: se c'era una procedura in corso lo dice il ramo qui sopra
         actor_name: "Ritentativo automatico",
         actor_role: "system",
       });

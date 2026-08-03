@@ -206,6 +206,51 @@ export function namesMatch(nomeA: string, nomeB: string): boolean {
   return false;
 }
 
+// ---------------------------------------------------------------------------
+// Procedure concorsuali nella denominazione (blocco 10, task 10.12)
+//
+// Scoperta il 01/08 provando partite IVA di aziende defunte: una società in
+// liquidazione, in amministrazione straordinaria o in LCA **mantiene la partita
+// IVA attiva**, e il VIES la conferma. Verificato su Alitalia (in A.S. dal
+// 2017), Alitalia Linee Aeree (dal 2008), Banca Popolare di Vicenza e Veneto
+// Banca (LCA dal 2017): tutte `isValid: true`.
+//
+// Quindi il riscontro fiscale, da solo, direbbe "Pro" a un'azienda ferma da
+// otto anni. Il segnale però è scritto nella denominazione stessa, ed è quello
+// che intercettiamo qui.
+//
+// Cosa NON fa: non rifiuta. Un'impresa in concordato in continuità lavora
+// ancora, e non sta a un'espressione regolare decidere se può stare sul
+// marketplace. Sospende la concessione automatica e passa la palla a una
+// persona — la stessa regola di tutto il resto del blocco.
+// ---------------------------------------------------------------------------
+
+/** Espressioni che indicano una procedura in corso, come le scrive il registro. */
+const SEGNALI_PROCEDURA: { pattern: RegExp; etichetta: string }[] = [
+  { pattern: /\bin\s+liquidazione\s+coatta(\s+amministrativa)?\b/i, etichetta: "liquidazione coatta amministrativa" },
+  { pattern: /\bl\.?\s?c\.?\s?a\.?\b/i, etichetta: "liquidazione coatta amministrativa (LCA)" },
+  { pattern: /\bin\s+liquidazione\b/i, etichetta: "in liquidazione" },
+  { pattern: /\bamministrazione\s+straordinaria\b/i, etichetta: "amministrazione straordinaria" },
+  { pattern: /\bin\s+a\.?\s?s\.?\b/i, etichetta: "amministrazione straordinaria (A.S.)" },
+  { pattern: /\bconcordato\s+preventivo\b/i, etichetta: "concordato preventivo" },
+  { pattern: /\bin\s+concordato\b/i, etichetta: "concordato" },
+  { pattern: /\bfallimento\b|\bfallit[ao]\b/i, etichetta: "fallimento" },
+  { pattern: /\bin\s+scioglimento\b/i, etichetta: "scioglimento" },
+  { pattern: /\bcessat[ao]\b/i, etichetta: "cessata" },
+];
+
+/**
+ * La denominazione restituita dal registro segnala una procedura in corso?
+ * Restituisce l'etichetta leggibile da mettere nella nota, o null.
+ */
+export function procedureFlagInName(registryName: string | null): string | null {
+  if (!registryName) return null;
+  for (const { pattern, etichetta } of SEGNALI_PROCEDURA) {
+    if (pattern.test(registryName)) return etichetta;
+  }
+  return null;
+}
+
 /** Da dove è arrivata la corrispondenza: serve nel registro e nella telemetria. */
 export type NameMatchSource = "profile_name" | "declared_name";
 

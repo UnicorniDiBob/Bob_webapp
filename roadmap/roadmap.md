@@ -2,7 +2,7 @@
 
 _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** ✅ 76 Done · 🔵 2 In progress · ⬜ 76 Planned · 🔶 4 Milestone
+**Stato:** ✅ 77 Done · 🔵 2 In progress · ⬜ 75 Planned · 🔶 4 Milestone
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -114,7 +114,7 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | 10.9 | Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7) | Internal | Lucio | ⬜ Planned | 2026-09-01 → 2026-09-20 |  |
 | 10.13 | Registro verifiche: pagina dedicata con filtri (professionista, tipo evento, periodo, operatore), paginazione ed export CSV. Oggi in coda si vedono solo gli ultimi 100 movimenti | Internal | Lucio | ⬜ Planned | 2026-09-08 → 2026-09-25 |  |
 | 10.14 | PRIMA DI TUTTO: push dei commit di ieri, CRON_SECRET tra le variabili Vercel e controllo che il ritentativo notturno sia partito (senza il segreto la route resta spenta) | Shared | Lucio | ⬜ Planned | 2026-08-03 → 2026-08-03 |  |
-| 10.12 | URGENTE: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere | Internal | Lucio | ⬜ Planned | 2026-08-03 → 2026-08-04 |  |
+| 10.12 | FATTO: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere | Internal | Lucio | ✅ Done | 2026-08-03 → 2026-08-03 | 2026-08-03 |
 | 10.10 | Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata) | Shared | Lucio | ⬜ Planned | 2026-08-04 → 2026-08-29 |  |
 | 10.11 | DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6) | Shared | Lucio | 🔶 Milestone | 2026-08-08 → 2026-08-08 |  |
 | 10.2 | Caricamento documenti per il livello Pro+ (upload, storage, retention, RLS). Priorita' salita: 'chiedi documenti' ora e' un'azione vera ma il pro non ha dove caricarli | Internal | Lucio | ⬜ Planned | 2026-08-24 → 2026-09-30 |  |
