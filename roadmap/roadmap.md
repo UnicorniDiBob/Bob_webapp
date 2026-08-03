@@ -105,7 +105,7 @@ _Generato automaticamente da `roadmap.csv` — non modificare a mano. Aggiorna i
 | 10.1h | Scorciatoie operatore: copia P.IVA e apri il servizio dell'Agenzia, scheda copiabile, modelli di motivazione | Internal | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
 | 10.4a | Riga in piccolo sul profilo pubblico: quando e' stata fatta la verifica e che vale per quella data (provvisorio) | Client/Pro | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
 | 10.4 | Scadenza della verifica (proposta 6 mesi) + ricontrollo periodico con declassamento assistito, mai automatico | Internal | Lucio | ⬜ Planned | 2026-08-04 → 2026-08-12 |  |
-| 10.5 | Ritentativo notturno (cron Vercel, 22:00 UTC = mezzanotte italiana) dei casi senza risposta dal VIES; concede solo col riscontro pieno | Internal | Lucio | ✅ Done | 2026-08-01 → 2026-08-01 | 2026-08-01 |
+| 10.5 | Ritentativo notturno (cron Vercel, 22:00 UTC = mezzanotte italiana): esce subito se non c'e' nulla in attesa, max 5 notti per caso, non ripete a meno di 20h [mig 043] | Internal | Lucio | ✅ Done | 2026-08-01 → 2026-08-03 | 2026-08-03 |
 | 10.6a | Campo 'nome completo dell''azienda' nella card di verifica, usato come secondo termine di confronto (mig 041) | Client/Pro | Lucio | ✅ Done | 2026-08-02 → 2026-08-02 | 2026-08-02 |
 | 10.6 | Confronto nomi stretto (2 parole + 60% di copertura, o una parola specifica) provato su 12 casi; un solo passaggio contro tutti i nomi noti, con traccia di quale ha deciso [mig 042] | Internal | Lucio | ✅ Done | 2026-08-03 → 2026-08-03 | 2026-08-03 |
 | 10.7 | Telemetria in /admin/analisi: quanti tentano, quanti conferma il VIES, quanti finiscono a mano, tempi di lavorazione | Internal | Lucio | ⬜ Planned | 2026-08-08 → 2026-08-22 |  |

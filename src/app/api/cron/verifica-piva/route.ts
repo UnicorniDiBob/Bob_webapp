@@ -35,6 +35,13 @@ export const dynamic = "force-dynamic";
 const MAX_PER_RUN = 50;
 /** Pausa tra una chiamata e l'altra, per non arrivare a raffica. */
 const PAUSA_MS = 400;
+/**
+ * Quante notti insistere sullo stesso caso. Oltre, il silenzio del VIES non è
+ * più un guasto passeggero: è la risposta, e la decisione torna a una persona.
+ */
+const MAX_RITENTATIVI = 5;
+/** Non ritentare lo stesso caso due volte nello stesso giro di notte. */
+const PAUSA_TRA_TENTATIVI_ORE = 20;
 
 const attendi = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -64,13 +71,24 @@ export async function GET(request: Request) {
   // vat_check_source resta null solo nel ramo "servizio irraggiungibile".
   // Chi è stato esaminato da una persona (docs_requested, rejected) non si
   // tocca: una macchina non riapre una decisione umana.
+  // Chi ha già esaurito i tentativi non si tocca più, e chi è stato ritentato
+  // poche ore fa nemmeno: se non è cambiato niente, rifare la stessa chiamata
+  // non produce informazione, produce solo traffico.
+  const sogliaRitentativo = new Date(
+    Date.now() - PAUSA_TRA_TENTATIVI_ORE * 3600 * 1000
+  ).toISOString();
+
   const { data: daRiprendere, error: readError } = await admin
     .from("professional_verification")
-    .select("professional_id, vat_number, declared_business_name")
+    .select(
+      "professional_id, vat_number, declared_business_name, vat_retry_count"
+    )
     .eq("vat_review_state", "pending")
     .eq("level", "none")
     .is("vat_check_source", null)
     .not("vat_number", "is", null)
+    .lt("vat_retry_count", MAX_RITENTATIVI)
+    .or(`vat_last_retry_at.is.null,vat_last_retry_at.lt.${sogliaRitentativo}`)
     .order("updated_at", { ascending: true })
     .limit(MAX_PER_RUN);
 
@@ -82,7 +100,18 @@ export async function GET(request: Request) {
     professional_id: string;
     vat_number: string;
     declared_business_name: string | null;
+    vat_retry_count: number;
   }[];
+
+  // Niente in attesa: si esce subito, senza contattare nessuno. È il caso
+  // normale nella maggior parte delle notti.
+  if (casi.length === 0) {
+    return NextResponse.json({
+      ok: true,
+      esaminati: 0,
+      nota: "Niente in attesa di un ritentativo: nessuna chiamata effettuata.",
+    });
+  }
 
   let confermati = 0;
   let daEsaminare = 0;
@@ -93,7 +122,26 @@ export async function GET(request: Request) {
     const adesso = new Date().toISOString();
 
     if (esito.status === "unavailable") {
-      // Il servizio è ancora giù: si riprova domani, senza toccare niente.
+      // Il servizio è ancora giù: si riprova domani. Segniamo però il
+      // tentativo, altrimenti insisteremmo all'infinito su un caso che il VIES
+      // non sa chiudere; all'ultimo tentativo lo diciamo nel registro, così chi
+      // apre la coda sa che la macchina ha smesso di provarci.
+      const tentativi = caso.vat_retry_count + 1;
+      await admin
+        .from("professional_verification")
+        .update({ vat_retry_count: tentativi, vat_last_retry_at: adesso })
+        .eq("professional_id", caso.professional_id);
+
+      if (tentativi >= MAX_RITENTATIVI) {
+        await admin.from("verification_events").insert({
+          professional_id: caso.professional_id,
+          event: "vat_check_failed",
+          note: `Il servizio europeo non ha risposto per ${MAX_RITENTATIVI} notti di seguito: i ritentativi automatici si fermano qui, il caso resta da esaminare a mano.`,
+          actor_name: "Ritentativo automatico",
+          actor_role: "system",
+        });
+      }
+
       ancoraGiu++;
       await attendi(PAUSA_MS);
       continue;
@@ -131,6 +179,8 @@ export async function GET(request: Request) {
       vat_checked_at: snap.requestDate ?? adesso,
       vat_check_source: "vies",
       vat_check_payload: snap,
+      vat_retry_count: caso.vat_retry_count + 1,
+      vat_last_retry_at: adesso,
       updated_at: adesso,
     };
 
