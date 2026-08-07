@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { zoneLabel, zoneCoords, distanceKm, formatDistance } from "@/lib/zones";
 
 interface RequestSummaryItem {
   id: string;
@@ -18,6 +19,8 @@ interface RequestSummaryItem {
   draftReply: string;
   briefSummary: string | null;
   briefPhotos: { url: string; caption: string | null }[];
+  zoneSlug: string | null;
+  postalCode: string | null;
 }
 
 function urgencyLabel(u: string | null): { label: string; color: string } {
@@ -28,6 +31,22 @@ function urgencyLabel(u: string | null): { label: string; color: string } {
 
 export function ProRequestSummary() {
   const [items, setItems] = useState<RequestSummaryItem[]>([]);
+  // (045) La distanza si calcola QUI, sul telefono del professionista, fra la
+  // sua posizione e il centro del quartiere del cliente. Nessuna delle due
+  // coordinate viene inviata al server: la posizione del pro non ci serve e
+  // quella del cliente non esiste — abbiamo solo lo slug del quartiere.
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoAsked, setGeoAsked] = useState(false);
+
+  function locateMe() {
+    setGeoAsked(true);
+    if (!("geolocation" in navigator)) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setMe({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setMe(null),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+    );
+  }
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -64,9 +83,25 @@ export function ProRequestSummary() {
 
   return (
     <div className="flex flex-col gap-3">
-      <h3 className="text-sm font-semibold text-bob-ink">Nuove richieste</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-bob-ink">Nuove richieste</h3>
+        {/* Compare solo se c'è almeno una zona con coordinate: senza, la
+            distanza non è calcolabile e il pulsante sarebbe una promessa vuota. */}
+        {!me && items.some((i) => zoneCoords(i.zoneSlug)) && (
+          <button
+            onClick={locateMe}
+            className="text-xs text-bob-indigo underline hover:text-bob-indigo-600"
+            data-testid="pro-locate-me"
+          >
+            {geoAsked ? "Posizione non disponibile" : "Mostra le distanze da me"}
+          </button>
+        )}
+      </div>
       {items.map((item) => {
         const urg = urgencyLabel(item.urgency);
+        const zLabel = zoneLabel(item.zoneSlug);
+        const zPoint = zoneCoords(item.zoneSlug);
+        const dist = me && zPoint ? formatDistance(distanceKm(me, zPoint)) : null;
         const budget =
           item.budgetMin || item.budgetMax
             ? `€${item.budgetMin ?? 0}–€${item.budgetMax ?? "?"}`
@@ -83,6 +118,23 @@ export function ProRequestSummary() {
               {item.city && (
                 <span className="chip bg-gray-100 text-bob-ink text-xs">
                   {item.city}
+                </span>
+              )}
+              {!zLabel && item.postalCode && (
+                <span
+                  className="chip bg-gray-100 text-bob-ink text-xs"
+                  title="Zona indicativa dal CAP. L&apos;indirizzo esatto arriva quando il cliente conferma l&apos;appuntamento."
+                >
+                  CAP {item.postalCode}
+                </span>
+              )}
+              {zLabel && (
+                <span
+                  className="chip bg-gray-100 text-bob-ink text-xs"
+                  title="Zona indicativa. L&apos;indirizzo esatto arriva quando il cliente conferma l&apos;appuntamento."
+                >
+                  {zLabel}
+                  {dist ? ` · ${dist}` : ""}
                 </span>
               )}
               <span className={`chip text-xs ${urg.color}`}>{urg.label}</span>

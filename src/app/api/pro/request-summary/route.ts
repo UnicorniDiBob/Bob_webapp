@@ -13,6 +13,8 @@ export const runtime = "nodejs";
 interface RawRequest {
   id: string;
   problem_description: string | null;
+  zone_slug?: string | null;
+  postal_code?: string | null;
   urgency: string | null;
   budget_min: number | null;
   budget_max: number | null;
@@ -121,6 +123,8 @@ export async function GET() {
       budget_max,
       created_at,
       brief_id,
+      zone_slug,
+      postal_code,
       services ( name ),
       cities ( name )
     `)
@@ -192,6 +196,11 @@ export async function GET() {
         id: req.id,
         service: (req.services as { name: string } | null)?.name ?? null,
         city: (req.cities as { name: string } | null)?.name ?? null,
+        // (045) quartiere: posizione grossolana, visibile prima della scelta.
+        // Via e civico restano chiusi in request_addresses fino
+        // all'appuntamento confermato (mig 044).
+        zoneSlug: req.zone_slug ?? null,
+        postalCode: req.postal_code ?? null,
         urgency: req.urgency,
         budgetMin: req.budget_min,
         budgetMax: req.budget_max,

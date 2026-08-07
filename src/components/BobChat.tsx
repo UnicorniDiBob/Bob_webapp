@@ -22,6 +22,7 @@ import { QuoteDialog } from "./QuoteDialog";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
 import { withArticle, afterDi } from "@/lib/italian";
+import { zonesForCity } from "@/lib/zones";
 import { createClient } from "@/lib/supabase/client";
 
 type Step =
@@ -29,6 +30,8 @@ type Step =
   | "chat" // conversazione intelligente con Bob
   | "city"
   | "waitlist" // città non attiva: offriamo l'avviso email invece di dirottare su Milano
+  | "zone" // quartiere: la posizione grossolana che il pro vede prima di essere scelto (mig 045)
+  | "cap" // ripiego del passo zona: cinque cifre invece di un nome (mig 046)
   | "urgency"
   | "budget"
   | "results";
@@ -75,8 +78,14 @@ interface Collected {
   maxPrice?: number;
   // true = l'utente vuole preventivi (nessun budget definito)
   wantsQuotes?: boolean;
-  // indirizzo salvato scelto dal cliente: entra nel messaggio al professionista
+  // indirizzo salvato scelto dal cliente: NON entra nel messaggio (41.1),
+  // va in request_addresses e si apre solo dopo l'appuntamento confermato
   address?: string;
+  // quartiere scelto dal cliente: volutamente grossolano, è quello che i
+  // professionisti invitati vedono prima di essere scelti (mig 045)
+  zoneSlug?: string;
+  // ripiego quando nessun quartiere viene riconosciuto (mig 046)
+  postalCode?: string;
 }
 
 
@@ -130,6 +139,8 @@ export function BobChat({
   const [subtaskOptions, setSubtaskOptions] = useState<SubtaskOption[]>([]);
   const [editingSubtask, setEditingSubtask] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
+  const [capInput, setCapInput] = useState("");
+  const [capError, setCapError] = useState<string | null>(null);
   const [waitlistCity, setWaitlistCity] = useState<{
     slug: string;
     name: string;
@@ -461,7 +472,58 @@ export function BobChat({
     }
     setBrief((b) => ({ ...b, citySlug: slug }));
     setCollected((c) => ({ ...c, citySlug: slug, cityName: name }));
+    askZoneOrUrgency(slug);
+  }
+
+  // Il quartiere serve al professionista per valutare la trasferta senza sapere
+  // via e civico (mig 045). È facoltativo e per ora esiste solo su Milano: dove
+  // non c'è un elenco si tira dritto, la chat non deve inventare passaggi.
+  function askZoneOrUrgency(citySlug: string) {
+    if (zonesForCity(citySlug).length > 0) {
+      bobSay(
+        "In che zona? Serve al professionista per capire la distanza — l'indirizzo esatto glielo dai solo dopo, quando scegli lui."
+      );
+      setStep("zone");
+      return;
+    }
     bobSay("Quando ti servirebbe?");
+    setStep("urgency");
+  }
+
+  function pickZone(slug: string, label: string) {
+    userSay(label);
+    setCollected((c) => ({ ...c, zoneSlug: slug }));
+    bobSay("Quando ti servirebbe?");
+    setStep("urgency");
+  }
+
+  // Il ripiego non è "niente": è il CAP. Se il cliente non riconosce i nomi dei
+  // quartieri, cinque cifre danno al professionista la stessa grana e le sanno
+  // tutti. Restare senza è comunque possibile — la posizione non è obbligatoria.
+  function askCap() {
+    userSay("Non conosco la zona");
+    bobSay("Nessun problema: mi dici il CAP? Bastano le cinque cifre.");
+    setStep("cap");
+  }
+
+  function submitCap() {
+    const cap = capInput.trim();
+    if (!/^[0-9]{5}$/.test(cap)) {
+      setCapError("Il CAP è di cinque cifre, per esempio 20159.");
+      return;
+    }
+    setCapError(null);
+    userSay(cap);
+    setCollected((c) => ({ ...c, postalCode: cap }));
+    bobSay("Quando ti servirebbe?");
+    setStep("urgency");
+  }
+
+  function skipLocation() {
+    userSay("Preferisco non dirlo");
+    bobSay(
+      "Va bene, il professionista vedrà solo la città. Quando ti servirebbe?"
+    );
     setStep("urgency");
   }
 
@@ -490,8 +552,7 @@ export function BobChat({
       citySlug: city.slug,
       cityName: city.name,
     }));
-    bobSay("Quando ti servirebbe?");
-    setStep("urgency");
+    askZoneOrUrgency(city.slug);
   }
 
   // Alternativa esplicita dalla waitlist: prosegue il flusso su Milano.
@@ -1146,6 +1207,69 @@ export function BobChat({
           </button>
         )}
 
+        {step === "zone" && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {zonesForCity(collected.citySlug).map((z) => (
+                <button
+                  key={z.slug}
+                  onClick={() => pickZone(z.slug, z.label)}
+                  className="chip hover:bg-bob-indigo-100"
+                  data-testid={`chip-zone-${z.slug}`}
+                >
+                  {z.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={askCap}
+              className="text-xs text-slate-500 underline hover:text-bob-indigo"
+              data-testid="chip-zone-skip"
+            >
+              Non conosco la zona
+            </button>
+          </div>
+        )}
+
+        {step === "cap" && (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={capInput}
+                onChange={(e) => setCapInput(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitCap();
+                }}
+                inputMode="numeric"
+                autoComplete="postal-code"
+                placeholder="20159"
+                aria-label="CAP"
+                className="w-28 rounded-xl border border-black/10 px-3 py-2 text-sm"
+                data-testid="input-cap"
+              />
+              <button
+                onClick={submitCap}
+                className="btn-primary text-sm"
+                data-testid="btn-cap"
+              >
+                Continua
+              </button>
+              <button
+                onClick={skipLocation}
+                className="text-xs text-slate-500 underline hover:text-bob-indigo"
+                data-testid="chip-cap-skip"
+              >
+                Preferisco non dirlo
+              </button>
+            </div>
+            {capError && (
+              <p className="text-xs text-red-600" role="alert">
+                {capError}
+              </p>
+            )}
+          </div>
+        )}
+
         {step === "urgency" && (
           <div className="grid grid-cols-2 gap-2">
             {URGENCY_OPTIONS.map((u) => (
@@ -1246,6 +1370,9 @@ export function BobChat({
             briefId,
             // (41.1) fuori dalla prosa, dentro request_addresses
             address: collected.address ?? null,
+            // (045/046) posizione grossolana, visibile ai pro prima della scelta
+            zoneSlug: collected.zoneSlug ?? null,
+            postalCode: collected.postalCode ?? null,
           }}
           onClose={() => setQuoteOpen(false)}
         />

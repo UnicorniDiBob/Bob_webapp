@@ -4,6 +4,8 @@ M1,T1,Shared,André,2026-07-19,Roadmap tracker automation: CSV source + generato
 M2,25b,Internal,Lucio,2026-07-18,Privacy: birth date + terms consent moved to private table (mig 027)
 M2,41.1,Client/Pro,André,2026-08-07,"Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance"
 M2,41.2,Client/Pro,André,2026-08-07,Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization)
+M2,41.4,Client/Pro,André,2026-08-07,"Zona al posto dell'indirizzo prima dell'accettazione (mig 045): il cliente sceglie il quartiere in chat, i pro invitati vedono 'Zona Isola'. Niente geocoding, nessun fornitore: il punto non deriva dall'indirizzo"
+M2,41.6,Client/Pro,André,2026-08-07,"Ripiego CAP quando il cliente non riconosce nessun quartiere (mig 046): cinque cifre, grana equivalente alla zona, vincolo di formato in DB. Il pro legge 'CAP 20159'"
 M3,1,Client/Pro,André,2026-06-03,Webapp MVP — Next.js 14 + Supabase marketplace
 M3,1.1,Client/Pro,André,2026-06-03,"Project setup, Vercel deploy pipeline, Supabase schema + RLS"
 M3,1.2,Client/Pro,André,2026-06-03,Real auth + separate client / pro personal areas

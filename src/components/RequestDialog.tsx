@@ -22,6 +22,11 @@ interface RequestContext {
   // Il professionista lo legge solo dopo un appuntamento confermato (mig 044).
   address?: string | null;
   cityName?: string | null;
+  // (045) Quartiere scelto dal cliente: volutamente grossolano, è la sola
+  // informazione di posizione che i pro invitati vedono prima della scelta.
+  zoneSlug?: string | null;
+  // (046) ripiego del quartiere: cinque cifre, stessa grana
+  postalCode?: string | null;
 }
 
 export function RequestDialog({
@@ -105,6 +110,8 @@ export function RequestDialog({
           budget_min: context.budgetMin ?? null,
           budget_max: context.budgetMax ?? null,
           brief_id: context.briefId ?? null,
+          zone_slug: context.zoneSlug ?? null,
+          postal_code: context.postalCode ?? null,
         })
         .select("id")
         .single();

@@ -26,6 +26,11 @@ interface QuoteContext {
   // problem_description: va in request_addresses, che il professionista può
   // leggere solo dopo un appuntamento confermato. Vedi migrazione 044.
   address?: string | null;
+  // (045) Quartiere scelto dal cliente: volutamente grossolano, è la sola
+  // informazione di posizione che i pro invitati vedono prima della scelta.
+  zoneSlug?: string | null;
+  // (046) ripiego del quartiere: cinque cifre, stessa grana
+  postalCode?: string | null;
 }
 
 // Dialog per chiedere un preventivo a PIÙ professionisti selezionati.
@@ -117,6 +122,8 @@ export function QuoteDialog({
           budget_min: null,
           budget_max: null,
           brief_id: context.briefId ?? null,
+          zone_slug: context.zoneSlug ?? null,
+          postal_code: context.postalCode ?? null,
         })
         .select("id")
         .single();
