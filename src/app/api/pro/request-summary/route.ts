@@ -4,6 +4,7 @@
 // Richiede autenticazione come professionista.
 
 import { NextResponse } from "next/server";
+import { stripAddresses } from "@/lib/redact";
 import { createClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -24,7 +25,10 @@ async function buildSummary(
   req: RawRequest,
   apiKey: string | undefined
 ): Promise<{ summary: string; draftReply: string }> {
-  const desc = req.problem_description ?? "(nessuna descrizione)";
+  // (41.2) Minimizzazione prima dell'invio al fornitore LLM: via e civico non
+  // devono uscire dal nostro perimetro. Vedi src/lib/redact.ts.
+  const desc =
+    stripAddresses(req.problem_description ?? "") || "(nessuna descrizione)";
   const urgency = req.urgency ?? "non specificata";
   const budget =
     req.budget_min || req.budget_max

@@ -688,10 +688,11 @@ export function BobChat({
         collected.budgetLabel
           ? ` Il mio budget indicativo è ${collected.budgetLabel}.`
           : ""
-      }${
-        collected.address ? ` L'indirizzo è ${collected.address}.` : ""
       } Sei disponibile?`
     : "";
+  // (41.1) L'indirizzo NON entra nel messaggio: cinque professionisti leggevano
+  // via e civico prima che il cliente ne scegliesse uno. Viaggia separato e la
+  // migrazione 044 lo apre solo a chi ha un appuntamento confermato.
 
   return (
     <div
@@ -1240,15 +1241,11 @@ export function BobChat({
             serviceSlug: collected.serviceSlug ?? undefined,
             serviceName: collected.serviceName,
             serviceNeedPhrase: prefillNeedPhrase,
-            problem:
-              [
-                collected.summary,
-                collected.address ? `Indirizzo: ${collected.address}` : null,
-              ]
-                .filter(Boolean)
-                .join(" — ") || undefined,
+            problem: collected.summary || undefined,
             urgency: collected.urgency,
             briefId,
+            // (41.1) fuori dalla prosa, dentro request_addresses
+            address: collected.address ?? null,
           }}
           onClose={() => setQuoteOpen(false)}
         />

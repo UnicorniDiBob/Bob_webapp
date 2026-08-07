@@ -2,6 +2,8 @@ milestone,id,track,owner,done_on,task
 M1,7b,Shared,Claude,2026-07-16,"Migrations backfill 001-017, CI (build+lint), RLS performance cleanup (018)"
 M1,T1,Shared,André,2026-07-19,Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action
 M2,25b,Internal,Lucio,2026-07-18,Privacy: birth date + terms consent moved to private table (mig 027)
+M2,41.1,Client/Pro,André,2026-08-07,"Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance"
+M2,41.2,Client/Pro,André,2026-08-07,Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization)
 M3,1,Client/Pro,André,2026-06-03,Webapp MVP — Next.js 14 + Supabase marketplace
 M3,1.1,Client/Pro,André,2026-06-03,"Project setup, Vercel deploy pipeline, Supabase schema + RLS"
 M3,1.2,Client/Pro,André,2026-06-03,Real auth + separate client / pro personal areas

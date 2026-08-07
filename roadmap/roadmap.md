@@ -2,15 +2,11 @@
 
 _Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** 53 attività aperte · 3 pronte ma spente · 29 parcheggiate · 74 chiuse (in `ARCHIVE.csv`)
+**Stato:** 52 attività aperte · 3 pronte ma spente · 29 parcheggiate · 76 chiuse (in `ARCHIVE.csv`)
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
 ## Controllo di realtà
-
-**The customer's street address is handed to every pro before anyone is accepted** — _Live now_
-
-Bob appends the address into the free-text problem description, which is stored on the request and readable by every professional invited into the quote batch — and it is also sent verbatim into the LLM prompt that builds the pro-facing summary. This is the one open item that is simultaneously a compliance breach, a trust risk and a competitive-leak risk. It was sitting in a section titled "roadmap candidates — to validate".
 
 **The nightly VAT retry has never run: CRON_SECRET is not set in production** — _Marked Done — not running_
 
@@ -59,7 +55,7 @@ is_admin(), is_admin_or_cs(), my_assigned_request_ids() and my_professional_ids(
 
 ## M2 · We hold only what we can justify
 
-**Finestra:** 2026-08-06 → 2026-08-31 · **5 aperte, 1 chiuse**
+**Finestra:** 2026-08-06 → 2026-08-31 · **4 aperte, 3 chiuse**
 
 **Perché:** The highest-priority milestone on the board, previously the lowest-priority section. A customer's exact address goes to five strangers before any of them is chosen, the AI-labelling obligation is already in force, and pro phone numbers are publicly readable by policy. None of it is expensive to fix; all of it gets far more expensive the day a real customer or the Garante notices.
 
@@ -67,17 +63,18 @@ is_admin(), is_admin_or_cs(), my_assigned_request_ids() and my_professional_ids(
 
 | # | Attività | Track | Owner | Stato | Periodo |
 |---|----------|-------|-------|-------|---------|
-| 41.1 | Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance | Client/Pro | André | ⬜ Aperto | 2026-08-01 → 2026-08-31 |
-| 41.2 | Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization) | Client/Pro | André | ⬜ Aperto | 2026-08-01 → 2026-08-31 |
-| 41.3 | Backfill existing rows + ROPA/notice update; commit DATA_COMPLIANCE.md into the repo (cited in-repo but untracked) | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-09-30 |
+| 41.3 | RoPA row + privacy-notice update for progressive disclosure (the backfill matched 0 real rows: only DEMO seed data contained a street) | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-08-31 |
+| 41.4 | Mappa con raggio approssimato (~1 km) al posto della via, prima dell'accettazione. Le colonne coarse_* esistono gia (mig 044) ma restano NULL: serve prima decidere fra fornitore di geocoding con DPA art.28 UE (roadmap 40.0) oppure zone di Milano da tabella statica, senza vendor. Il centro va calcolato e salvato gia spostato: il browser del pro non deve mai ricevere il punto esatto | Client/Pro | André | ⬜ Aperto | 2026-08-10 → 2026-08-31 |
 | N4 | AI Act Art 50: label the Bob chat as an AI interaction — obligation applicable since 2 Aug 2026, currently overdue | Client/Pro | André | ⬜ Aperto | 2026-08-06 → 2026-08-20 |
 | N5 | Move profiles.phone for professionals into profile_private — publicly readable today through policy 003 (empty for every pro, so a free fix now) | Internal | Lucio | ⬜ Aperto | 2026-08-06 → 2026-08-31 |
 
-<details><summary>1 attività già chiuse</summary>
+<details><summary>3 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
 | 25b | Privacy: birth date + terms consent moved to private table (mig 027) | Lucio | 2026-07-18 |
+| 41.1 | Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance | André | 2026-08-07 |
+| 41.2 | Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization) | André | 2026-08-07 |
 
 </details>
 

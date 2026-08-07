@@ -308,3 +308,19 @@ export interface ChatMessage {
   kind: ChatMessageKind;
   appointmentId: string | null;
 }
+
+// (41.1 / mig 044) Indirizzo della richiesta, fuori dal testo libero.
+// Il cliente legge e scrive la propria riga; il professionista la legge solo
+// dopo un appuntamento confermato. I campi coarse_* restano null finché la
+// roadmap 40.0 non porta un fornitore di geocoding con DPA.
+export interface RequestAddress {
+  request_id: string;
+  address_line: string;
+  city_name?: string | null;
+  notes?: string | null;
+  coarse_lat?: number | null;
+  coarse_lng?: number | null;
+  coarse_radius_m?: number | null;
+  coarse_source?: string | null;
+  created_at?: string;
+}

@@ -18,6 +18,10 @@ interface RequestContext {
   budgetMax?: number | null;
   // brief di Bob da agganciare alla richiesta (022)
   briefId?: string | null;
+  // (41.1) Via e civico: fuori dal testo libero, dentro request_addresses.
+  // Il professionista lo legge solo dopo un appuntamento confermato (mig 044).
+  address?: string | null;
+  cityName?: string | null;
 }
 
 export function RequestDialog({
@@ -106,6 +110,15 @@ export function RequestDialog({
         .single();
 
       if (reqErr || !req) throw reqErr ?? new Error("Richiesta non creata");
+
+      // (41.1) L'indirizzo viaggia a parte, mai nella prosa.
+      if (context.address) {
+        await supabase.from("request_addresses").insert({
+          request_id: req.id,
+          address_line: context.address.slice(0, 200),
+          city_name: context.cityName ?? professional.city.name ?? null,
+        });
+      }
 
       // Collega il professionista e salva il messaggio iniziale.
       await Promise.all([

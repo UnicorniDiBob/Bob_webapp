@@ -22,6 +22,10 @@ interface QuoteContext {
   urgency?: Severity;
   // brief di Bob da agganciare alla richiesta (022)
   briefId?: string | null;
+  // (41.1) Via e civico. NON entra nel testo del messaggio né in
+  // problem_description: va in request_addresses, che il professionista può
+  // leggere solo dopo un appuntamento confermato. Vedi migrazione 044.
+  address?: string | null;
 }
 
 // Dialog per chiedere un preventivo a PIÙ professionisti selezionati.
@@ -118,6 +122,17 @@ export function QuoteDialog({
         .single();
 
       if (reqErr || !req) throw reqErr ?? new Error("Richiesta non creata");
+
+      // (41.1) L'indirizzo viaggia a parte, mai nella prosa. Se l'insert fallisce
+      // non si annulla la richiesta: il cliente ha comunque chiesto il preventivo
+      // e l'indirizzo si può ridare al momento dell'appuntamento.
+      if (context.address) {
+        await supabase.from("request_addresses").insert({
+          request_id: req.id,
+          address_line: context.address.slice(0, 200),
+          city_name: context.cityName ?? null,
+        });
+      }
 
       // Collega tutti i professionisti selezionati + messaggio iniziale per ciascuno.
       const links = professionals.map((p) => ({
