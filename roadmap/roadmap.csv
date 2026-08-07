@@ -1,169 +1,89 @@
-kind,id,track,owner,status,start,end,done_on,task
-section,,,,,,,,WEBSITE — CORE BUILD (DEMO)  ·  Jun–Jul 2026
-project,1,Client/Pro,André,Done,2026-06-01,2026-06-15,2026-06-03,Webapp MVP — Next.js 14 + Supabase marketplace
-task,1.1,Client/Pro,André,Done,2026-06-01,2026-06-05,2026-06-03,"Project setup, Vercel deploy pipeline, Supabase schema + RLS"
-task,1.2,Client/Pro,André,Done,2026-06-01,2026-06-10,2026-06-03,Real auth + separate client / pro personal areas
-task,1.3,Client/Pro,André,Done,2026-06-05,2026-06-15,2026-06-03,"City pages (Milano live; Roma, Torino prepared) + 15 service categories"
-project,2,Client/Pro,André,Done,2026-06-01,2026-06-15,2026-06-03,AI concierge chat (Claude Haiku + rules fallback)
-task,2.1,Client/Pro,André,Done,2026-06-01,2026-06-10,2026-06-03,Problem understanding via LLM with rules fallback
-task,2.2,Client/Pro,André,Done,2026-06-05,2026-06-15,2026-06-03,Optional budget + multi-pro quote requests from chat
-project,3,Client/Pro,André,Done,2026-06-01,2026-06-15,2026-06-03,Messaging + pro dashboard
-task,3.1,Client/Pro,André,Done,2026-06-01,2026-06-10,2026-06-03,Bidirectional client-pro messaging
-task,3.2,Client/Pro,André,Done,2026-06-05,2026-06-15,2026-06-03,"Pro dashboard: calendar, hours, earnings"
-task,3.3,Client/Pro,André,Done,2026-06-10,2026-06-15,2026-06-03,Unread message badges in header (desktop + mobile)
-task,3.4,Client/Pro,André,Done,2026-07-28,2026-07-28,2026-07-28,"Pro calendar v2: hour-axis week/day view, blocks sized by duration, overlap columns, appointment detail panel"
-task,3.5,Client/Pro,André,Done,2026-07-28,2026-07-28,2026-07-28,"Appointment location (mig 031 snapshot) + Giro del giorno itinerary with Maps links; address captured in direct booking"
-project,4,Client/Pro,André,Done,2026-06-05,2026-07-08,2026-07-08,Chat v2 + client memory + job brief
-task,4.1,Client/Pro,André,Done,2026-06-05,2026-06-30,2026-06-09,"F1 agentic chat, F2 customer memory, F3 pro request summary"
-task,4.2,Client/Pro,André,Done,2026-07-01,2026-07-08,2026-07-08,"Job brief v1: tool-use extraction, photo vision, recap card, subtask taxonomy"
-project,5,Internal,André,Done,2026-06-28,2026-07-05,2026-07-04,Admin panel
-task,5.1,Internal,André,Done,2026-06-28,2026-06-30,2026-06-28,"Pro verification, users management, CS accounts + roles"
-task,5.2,Internal,André,Done,2026-07-01,2026-07-05,2026-07-04,Delete users (cascade) + team invitations via email
-project,6,Client/Pro,André,Done,2026-07-01,2026-07-05,2026-07-04,Technical SEO foundation
-task,6.1,Client/Pro,André,Done,2026-07-01,2026-07-05,2026-07-04,"Sitemap, robots.txt, JSON-LD structured data, optimized metadata"
-project,7,Client/Pro,André,Done,2026-07-01,2026-07-11,2026-07-11,Pro portfolio with tier gating + reviews + self-service profile
-task,7.1,Client/Pro,André,Done,2026-07-01,2026-07-04,2026-07-04,Portfolio items + storage bucket + tier limits (Free/Pro/Business)
-task,7.2,Client/Pro,André,Done,2026-07-08,2026-07-11,2026-07-11,Reviews: request close + ReviewDialog with RLS constraints (mig 015)
-task,7.3,Client/Pro,André,Done,2026-07-09,2026-07-11,2026-07-11,Pro self-service profile /dashboard/profilo (mig 016)
-project,7b,Shared,Claude,Done,2026-07-16,2026-07-16,2026-07-16,"Migrations backfill 001-017, CI (build+lint), RLS performance cleanup (018)"
-section,,,,,,,,CLIENT & PRO EXPERIENCE OVERHAUL  ·  Jul 2026  (journey-map audit → build)
-project,8,Client/Pro,Claude,Done,2026-07-17,2026-07-17,2026-07-17,Client & pro journey audit + UX gap analysis
-task,8.0,Client/Pro,Claude,Done,2026-07-17,2026-07-17,2026-07-17,"Full code+live audit, journey maps, prioritized gap list (Word doc)"
-project,8.1,Client/Pro,André,Done,2026-07-17,2026-07-17,2026-07-17,Bob chat: draft persistence + returnTo login + inline city waitlist
-project,8.2,Client/Pro,André,Done,2026-07-17,2026-07-17,2026-07-17,Client journey st.1/3/5/6/7
-task,8.2a,Client/Pro,André,Done,2026-07-17,2026-07-17,2026-07-17,"Header Bob CTA for clients, clickable coming-soon cities"
-task,8.2b,Client/Pro,André,Done,2026-07-17,2026-07-17,2026-07-17,"Why-this-pro line, realtime messages (mig 019), URL sync, quote_request label"
-task,8.2c,Client/Pro,André,Done,2026-07-17,2026-07-17,2026-07-17,"Close-request dialog, customer memory wired, client account page"
-project,8.3,Client/Pro,André,Done,2026-07-17,2026-07-17,2026-07-17,Account v2 + saved addresses
-task,8.3a,Client/Pro,André,Done,2026-07-17,2026-07-17,2026-07-17,Saved addresses (mig 020) + Bob address chips at city step
-task,8.3b,Client/Pro,André,Done,2026-07-17,2026-07-17,2026-07-17,"Old-password check, self-service email change, floating messages bubble"
-project,8.4,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,Role-aware navigation + pro acquisition banner
-task,8.4a,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,Header nav client-only; unified Account button
-task,8.4b,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,"Pre-footer pro banner (guests, public pages)"
-project,8.5,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,Client dashboard v2 + shared appointments
-task,8.5a,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,"Attention strip, job timelines, trusted pros, collapsed history"
-task,8.5b,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,"Shared appointments (mig 021): pro proposes from chat, client confirms"
-project,8.6,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,Per-pro message threads + quote comparison (stage 4)
-task,8.6a,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,"Thread per request-pro pair (mig 022), tightened RLS (no cross-pro leak)"
-task,8.6b,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,Quote comparison in client dashboard; Bob brief + photos attached to request
-project,8.7,Client/Pro,André,Done,2026-07-18,2026-07-19,2026-07-19,Appointment negotiation v2
-task,8.7a,Client/Pro,André,Done,2026-07-18,2026-07-18,2026-07-18,Free-slot engine; pro quick-pick slots + double-booking guard
-task,8.7b,Client/Pro,André,Done,2026-07-18,2026-07-19,2026-07-19,Client counter-proposal within pro free slots (mig 023); Europe/Rome tz fix
-project,8.8,Client/Pro,André,Done,2026-07-19,2026-07-19,2026-07-19,Mobile overflow fix (base grid-cols-1 on responsive grids)
-section,,,,,,,,"ANALYTICS, ADMIN & PRIVACY  ·  Jul 2026"
-project,9,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,Admin overview / Analisi dashboard
-task,9.1,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,KPI dashboard + signup age/terms + city geo hierarchy (mig 024)
-task,9.2,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,"Analisi: unified filters, subscription-tier events (mig 025), 2 new indicators"
-task,9.3,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,"Analisi UI redesign, Excel export, cancellations view"
-task,9.4,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,'Ricerche per categoria' anonymous search events (mig 026); staff redirect
-project,25b,Internal,Lucio,Done,2026-07-18,2026-07-18,2026-07-18,Privacy: birth date + terms consent moved to private table (mig 027)
-project,T1,Shared,André,Done,2026-07-19,2026-07-19,2026-07-19,Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action
-section,,,,,,,,DIRECT BOOKING & PAYMENTS GROUNDWORK  ·  Jul 2026
-project,IB,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,Direct (instant) booking Phase 0 — instant vs preventivo; customer flow gated on Stripe (2027)
-task,IB.1,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,Schema + enablement trigger + RLS (mig 028); 20 eligible subservices seeded (mig 029)
-task,IB.2,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,Pro config UI: per-service rate/unit/min/slot/cancellation + enable toggle (tier-gated)
-task,IB.3,Client/Pro,Claude,Done,2026-07-19,2026-07-19,2026-07-19,Admin catalog curation (/admin/catalogo) + pro weekly availability editor
-project,PG,Shared,Claude,Done,2026-07-19,2026-07-19,2026-07-19,"Payments/subscriptions groundwork — BUILT, DORMANT (activates with Stripe, 2027) [mig 030]"
-section,,,,,,,,WEBSITE — REMAINING TO GO-LIVE  ·  Aug–Dec 2026
-project,8.9,Client/Pro,André,Planned,2026-08-15,2026-09-30,,Empty / error / loading states + server-side validation pass
-project,10,Client/Pro,Lucio,In progress,2026-07-19,2026-10-31,,Automated pro verification + verified badge (levels Iscritto/Pro/Pro+)
-task,10.0,Internal,Lucio,Done,2026-07-19,2026-07-19,2026-07-19,"Research: VIES insufficiente, AdE senza API; provider commerciale + DAC7 (docs/legal)"
-task,10.1a,Internal,Lucio,Done,2026-07-30,2026-07-30,2026-07-30,"Schema verifica (mig 029) + checksum P.IVA lib/vat.ts con test"
-task,10.1b,Shared,Lucio,Planned,2026-09-01,2026-10-15,,"Gradino 3 via Openapi: stato+denominazione 2-5 centesimi a professionista (listino 01/08), PEC impresa 3 cent. Sandbox gratuita; serve DPA art.28"
-task,10.1c,Internal,Lucio,Done,2026-07-31,2026-07-31,2026-07-31,"Client VIES + route /api/pro/verifica-piva: tre gradini, limite 3/24h, mai un rifiuto automatico"
-task,10.1d,Client/Pro,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"UI verifica nel profilo pro + badge pubblico Iscritto/Pro/Pro+ con data e tooltip (profilo, card, chat) [mig 038]"
-task,10.1e,Internal,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"Coda verifiche in admin: concedi / chiedi documenti / rifiuta con motivazione obbligatoria + email di esito"
-task,10.1f,Internal,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"Antifrode: livello automatico solo se l'intestazione combacia col nome; una P.IVA per un solo profilo [mig 039]"
-task,10.1g,Internal,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"Firma delle decisioni (chi, ruolo, quando) + registro consultabile dalla coda admin [mig 040]"
-task,10.1h,Internal,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"Scorciatoie operatore: copia P.IVA e apri il servizio dell'Agenzia, scheda copiabile, modelli di motivazione"
-task,10.4a,Client/Pro,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"Riga in piccolo sul profilo pubblico: quando e' stata fatta la verifica e che vale per quella data (provvisorio)"
-task,10.4,Internal,Lucio,Planned,2026-08-04,2026-08-12,,"Scadenza della verifica (proposta 6 mesi) + ricontrollo periodico con declassamento assistito, mai automatico"
-task,10.5,Internal,Lucio,Done,2026-08-01,2026-08-03,2026-08-03,"Ritentativo notturno (cron Vercel, 22:00 UTC = mezzanotte italiana): esce subito se non c'e' nulla in attesa, max 5 notti per caso, non ripete a meno di 20h [mig 043]"
-task,10.6a,Client/Pro,Lucio,Done,2026-08-02,2026-08-02,2026-08-02,"Campo 'nome completo dell''azienda' nella card di verifica, usato come secondo termine di confronto (mig 041)"
-task,10.6,Internal,Lucio,Done,2026-08-03,2026-08-03,2026-08-03,"Confronto nomi stretto (2 parole + 60% di copertura, o una parola specifica) provato su 12 casi; un solo passaggio contro tutti i nomi noti, con traccia di quale ha deciso [mig 042]"
-task,10.7,Internal,Lucio,Planned,2026-08-08,2026-08-22,,"Telemetria in /admin/analisi: quanti tentano, quanti conferma il VIES, quanti finiscono a mano, tempi di lavorazione"
-task,10.8a,Client/Pro,Lucio,Done,2026-08-01,2026-08-01,2026-08-01,"Avviso discreto nella dashboard pro con i vantaggi + badge del livello al posto del vecchio stato staff; prezzo pronto in una costante"
-task,10.8,Client/Pro,Lucio,Planned,2026-08-11,2026-08-25,,"Richiesta della P.IVA come ultimo passo dell'onboarding professionista"
-task,10.9,Internal,Lucio,Planned,2026-09-01,2026-09-20,,"Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7)"
-task,10.13,Internal,Lucio,Planned,2026-09-08,2026-09-25,,"Registro verifiche: pagina dedicata con filtri (professionista, tipo evento, periodo, operatore), paginazione ed export CSV. Oggi in coda si vedono solo gli ultimi 100 movimenti"
-task,10.14,Shared,Lucio,In progress,2026-08-03,2026-08-04,,"Messa in linea: commit pushati e cron registrato in vercel.json. RESTA: CRON_SECRET tra le variabili Vercel (Production) + un deploy, poi controllo che il ritentativo notturno abbia girato"
-task,10.12,Internal,Lucio,Done,2026-08-03,2026-08-03,2026-08-03,"FATTO: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere"
-task,10.10,Shared,Lucio,Planned,2026-08-04,2026-08-29,,"Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata)"
-task,10.11,Shared,Lucio,Milestone,2026-08-08,2026-08-08,,"DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6)"
-task,10.2,Internal,Lucio,Planned,2026-08-24,2026-09-30,,"Caricamento documenti per il livello Pro+ (upload, storage, retention, RLS). Priorita' salita: 'chiedi documenti' ora e' un'azione vera ma il pro non ha dove caricarli"
-task,10.3,Client/Pro,Lucio,Planned,2026-10-01,2026-10-31,,"Il livello pesa nel ranking (parametri dichiarati, Reg. P2B) + SLA 48h sulla coda"
-project,11,Client/Pro,André,Planned,2026-10-01,2026-11-30,,Transparent ranking + Visibility Boost
-task,11.1,Internal,Lucio,Planned,2026-10-01,2026-10-31,,"Ranking algorithm v1: response rate, closure rate, reviews (data logic)"
-task,11.2,Client/Pro,André,Planned,2026-10-15,2026-11-15,,Ranking explanation UI (seeded by 'why this pro' line)
-task,11.3,Client/Pro,André,Planned,2026-11-01,2026-11-30,,Boost purchase + placement logic; quality floor
-project,12,Client/Pro,André,Planned,2026-10-01,2026-12-31,,"Stripe billing — Pro EUR24/19, Business EUR59/49"
-task,12.1,Client/Pro,André,Planned,2026-10-01,2026-11-30,,Stripe products & prices; checkout + customer portal
-task,12.2,Shared,André,Planned,2026-11-01,2026-11-30,,Webhooks -> subscription_tier sync (replaces manual switch)
-task,12.3,Client/Pro,André,Planned,2026-11-15,2026-12-31,,"Founding-pro coupon; failed payments, invoices, receipts"
-project,13,Client/Pro,André,In progress,2026-08-01,2027-12-31,,SEO content engine (ongoing)
-task,13.1,Client/Pro,André,Done,2026-07-01,2026-07-05,2026-07-05,Keyword plan from Semrush data
-task,13.2,Client/Pro,André,Planned,2026-08-01,2026-10-31,,City x service page template + Milano core categories
-task,13.3,Client/Pro,André,Planned,2026-10-01,2027-03-31,,'Quanto costa' price guides; Roma+Torino pages before activation
-project,14,Shared,,Planned,2026-11-01,2026-12-31,,Google Business Profile + local presence
-project,15,Shared,,Planned,2026-12-01,2026-12-31,,Launch hardening
-task,15.1,Shared,,Planned,2026-12-01,2026-12-15,,"End-to-end QA of all flows (client, pro, admin)"
-task,15.2,Client/Pro,André,Planned,2026-12-01,2026-12-20,,Performance / Core Web Vitals pass
-task,15.3,Shared,,Planned,2026-12-01,2026-12-20,,Freelance security review (pre-launch)
-task,15.4,Client/Pro,André,Planned,2026-12-01,2026-12-20,,"Activate email notifications (Resend): account, DNS/DKIM, env vars, deliverability test"
-task,15.5,Internal,Lucio,Planned,2026-12-10,2026-12-31,,"Error monitoring, uptime alerts, backups; go-live checklist + rollback"
-project,Bx,Client/Pro,André,Done,2026-07-19,2026-07-19,2026-07-19,"Email notifications pipeline — BUILT, DORMANT (activates with RESEND_API_KEY)"
-section,,,,,,,,LAUNCH & YEAR-1 PRODUCT  ·  2027
-project,16,Shared,,Milestone,2027-01-01,2027-01-31,,GO-LIVE — Milano pilot
-task,16.1,Shared,,Planned,2027-01-01,2027-01-31,,Production cutover; activate founding pros (60-80) in 5 core categories
-task,16.2,Shared,,Planned,2027-01-01,2027-01-31,,Bob Pro subscriptions live (Stripe) + Boost on; launch PR wave
-project,17,Client/Pro,André,Planned,2027-03-01,2027-06-30,,Unlimited requests (subscribers) + digital quotes
-task,17.1,Client/Pro,André,Planned,2027-03-01,2027-04-15,,Free-tier request limits + upgrade paywall
-task,17.2,Client/Pro,André,Planned,2027-04-01,2027-06-30,,Quote builder for pros + client quote comparison + accept flow
-project,18,Shared,,Planned,2027-06-01,2027-07-31,,Security audit (gate before payments)
-project,19,Client/Pro,André,Planned,2027-07-01,2027-12-31,,Protected flow — payments + Garanzia Bob
-task,19.1,Client/Pro,André,Planned,2027-07-01,2027-10-31,,"Stripe Connect: deposit/escrow, payouts; dispute + mediation tooling"
-task,19.2,Client/Pro,André,Planned,2027-09-15,2027-11-15,,Verified reviews tied to protected jobs; 8% success fee billing
-project,20,Shared,,Planned,2027-04-01,2027-06-30,,Roma + Torino activation
-project,21,Shared,,Planned,2027-07-01,2027-12-31,,"Bologna, Firenze, Napoli activation"
-project,22,Shared,,Planned,2027-10-01,2027-12-31,,National infrastructural opening (organic only)
-section,,,,,,,,LEGAL & BUREAUCRACY
-project,23,Shared,,Planned,2026-09-01,2026-11-30,,"Site legal docs (ToS, privacy, cookie + consent banner) + lawyer review"
-project,24,Shared,,Planned,2026-09-01,2026-10-31,,"Trademark 'Bob' (UIBM/EUIPO, classes 35, 42)"
-project,25,Shared,,Planned,2026-11-01,2027-01-31,,GDPR full compliance
-task,25.1,Internal,Lucio,Planned,2026-11-01,2027-01-31,,Registro trattamenti + retention policy; consent flows audit; breach procedure
-task,25.2,Shared,,Planned,2026-11-15,2026-12-31,,"DPAs with processors (Supabase, Vercel, Anthropic, Stripe, Resend)"
-project,26,Shared,,Planned,2026-12-01,2027-02-28,,SRL incorporation (Q1 Year 1)
-project,27,Shared,,Planned,2027-04-01,2027-06-30,,Finanza agevolata application (Q2 Year 1)
-project,28,Shared,,Planned,2027-05-01,2027-09-30,,Garanzia Bob legal framework + payments compliance (Stripe Connect KYC)
-section,,,,,,,,GO-TO-MARKET & MARKETING
-project,30,Shared,,Planned,2026-10-01,2027-03-31,,Founder outreach — first 100 Milano pros
-project,31,Shared,,Planned,2027-01-01,2027-03-31,,Launch incentives (3 months free Bob Pro for founding pros)
-project,32,Shared,,Planned,2027-01-01,2027-06-30,,Paid ads ignition — Milano only (CAC < EUR25 Q1)
-project,33,Shared,,Planned,2027-01-01,2027-03-31,,PR launch ('AI concierge che trova il professionista giusto con prezzi chiari')
-project,34,Shared,,Planned,2027-03-01,2027-12-31,,Pro referral program + territorial partnerships
-section,,,,,,,,KPI GATES  (decision checkpoints)
-project,36,Internal,Lucio,Milestone,2027-03-01,2027-03-31,,"End-Q1 2027: 60-80 active pros, 150+ req/mo, match >60%"
-project,37,Internal,Lucio,Milestone,2027-12-01,2027-12-31,,"End-2027: 600 pros, 1,500 req/mo, 25% protected-flow, CAC < EUR15"
-section,,,,,,,,ROADMAP CANDIDATES — POST-LAUNCH EXPANSION  ·  2027  (added 2026-07-26 · to validate)
-project,38,Client/Pro,André,Planned,2026-09-01,2027-04-30,,Business accounts — multi-employee organizations (manage workers + appointments)
-task,38.0,Shared,André,Planned,2026-09-01,2026-10-15,,"Design spike: org data model — DECIDED, see docs/Bob_Business_Accounts_Design_Spike.md (Bundle 2, additive; workers-as-records; company assigns)"
-task,38.1,Client/Pro,André,Planned,2027-02-01,2027-02-28,,organizations + organization_members + roles (owner/admin/worker); RLS pool model via is_org_member(); retention + deletion path
-task,38.2a,Client/Pro,André,Planned,2027-03-01,2027-03-31,,Worker-level scheduling: per-worker availability + assignment + DB overlap constraint (btree_gist exclude); company assigns
-task,38.2b,Client/Pro,André,Planned,2027-03-15,2027-04-15,,Communication step 1 (office-as-hub): company identity + worker attribution (sender_member_id); dispatcher messages/reschedules for worker
-task,38.3,Internal,Lucio,Planned,2027-03-01,2027-03-31,,"Business onboarding + docs: company VAT/visura verification, seat management (extends #10)"
-task,38.4,Client/Pro,André,Planned,2027-04-01,2027-04-30,,Multi-seat Business billing — per-seat via Stripe quantity (extends #12)
-task,38.5,Shared,Lucio,Planned,2027-02-01,2027-02-28,,Compliance: employer-as-controller DPA + RoPA rows; Platform Work Directive / Annex III scope check
-task,38.6,Client/Pro,André,Planned,2027-05-01,2027-06-30,,"Step 2 (PILOT-GATED, form TBD): scoped worker access — per-job magic link or limited login; least-privilege RLS"
-project,39,Client/Pro,André,Planned,2027-06-01,2027-08-31,,"Two-way reviews — business to client reliability signal (PRIVATE, not public consumer scores)"
-task,39.0,Shared,Lucio,Planned,2027-06-01,2027-06-30,,DPIA + LIA + policy: private reliability signal; retaliation guard; Art 22 no auto-exclude; transparency + right to object
-task,39.1,Client/Pro,André,Planned,2027-07-01,2027-07-31,,Schema: customer reliability ratings tied to completed appointment/request; RLS; de-identify on deletion
-task,39.2,Client/Pro,André,Planned,2027-08-01,2027-08-31,,Pro UI to rate reliability; customer transparency + right-to-reply; align with verified reviews #19.2
-project,40,Client/Pro,André,Planned,2027-03-01,2027-05-31,,Parking & vehicle-access metric (can my car reach the address? parking nearby?)
-task,40.0,Client/Pro,André,Planned,2027-03-01,2027-03-31,,Address geocoding enabler (address to coarse zone; maps vendor DPA/EU) — prerequisite
-task,40.1,Client/Pro,André,Planned,2027-04-01,2027-04-30,,"ZTL / Area B & C vehicle-access checker (vehicle emission class + Milan zone rules) — deterministic, high value for out-of-town pros"
-task,40.2,Client/Pro,André,Planned,2027-05-01,2027-05-31,,Parking-difficulty index + nearby paid-garage links (research spike first; real-time free-spot count not feasible)
-task,40.3,Client/Pro,André,Planned,2027-04-01,2027-04-30,,"Map of the day itinerary in the pro calendar (pins in time order) — depends on 40.0 geocoding + vendor DPA"
-project,41,Client/Pro,André,Planned,2026-08-01,2026-09-30,,"Customer address: progressive disclosure fix (today the exact address sits in clear text in requests.problem_description, readable by every pro in the quote batch before acceptance)"
-task,41.1,Client/Pro,André,Planned,2026-08-01,2026-08-31,,"Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance"
-task,41.2,Client/Pro,André,Planned,2026-08-01,2026-08-31,,"Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization)"
-task,41.3,Shared,Lucio,Planned,2026-09-01,2026-09-30,,"Backfill existing rows + ROPA/notice update; commit DATA_COMPLIANCE.md into the repo (cited in-repo but untracked)"
+milestone,id,parent,track,owner,status,start,end,task
+M1,N1,,Shared,Claude,Open,2026-08-06,2026-08-14,"Reconcile the Supabase migration history with the repo: 5 live names without a file (portfolio_pro_limit_1, 034b, 034c, 036, 037), 011_customer_memory unregistered, 3 numbering collisions; then add `supabase db diff` to CI"
+M1,N2,,Internal,Lucio,Open,2026-08-06,2026-08-14,"Advisor pass: revoke EXECUTE on the 4 anon-callable SECURITY DEFINER functions (is_admin, is_admin_or_cs, my_assigned_request_ids, my_professional_ids) or document as accepted; enable leaked-password protection"
+M1,N3,,Shared,Claude,In progress,2026-08-06,2026-08-14,"Migrate the tracker to the milestone schema: milestones.csv + why/done_when, ARCHIVE.csv, generator emits md+html, xlsx retired"
+M2,41.1,41,Client/Pro,André,Open,2026-08-01,2026-08-31,"Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance"
+M2,41.2,41,Client/Pro,André,Open,2026-08-01,2026-08-31,Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization)
+M2,41.3,41,Shared,Lucio,Open,2026-09-01,2026-09-30,Backfill existing rows + ROPA/notice update; commit DATA_COMPLIANCE.md into the repo (cited in-repo but untracked)
+M2,N4,,Client/Pro,André,Open,2026-08-06,2026-08-20,"AI Act Art 50: label the Bob chat as an AI interaction — obligation applicable since 2 Aug 2026, currently overdue"
+M2,N5,,Internal,Lucio,Open,2026-08-06,2026-08-31,"Move profiles.phone for professionals into profile_private — publicly readable today through policy 003 (empty for every pro, so a free fix now)"
+M3,15.4,15,Client/Pro,André,Open,2026-12-01,2026-12-20,"Activate email notifications (Resend): account, DNS/DKIM, env vars, deliverability test"
+M3,8.9,8,Client/Pro,André,Open,2026-08-15,2026-09-30,Empty / error / loading states + server-side validation pass
+M3,Bx,,Client/Pro,André,Dormant,,,Email notifications pipeline — si accende con RESEND_API_KEY + DNS/DKIM (vedi M3/15.4)
+M4,10.10,10,Shared,Lucio,Open,2026-08-04,2026-08-29,"Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata)"
+M4,10.11,10,Shared,Lucio,Gate,2026-08-08,2026-08-08,"DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6)"
+M4,10.13,10,Internal,Lucio,Open,2026-09-08,2026-09-25,"Registro verifiche: pagina dedicata con filtri (professionista, tipo evento, periodo, operatore), paginazione ed export CSV. Oggi in coda si vedono solo gli ultimi 100 movimenti"
+M4,10.14,10,Shared,Lucio,In progress,2026-08-03,2026-08-04,"Messa in linea: commit pushati e cron registrato in vercel.json. RESTA: CRON_SECRET tra le variabili Vercel (Production) + un deploy, poi controllo che il ritentativo notturno abbia girato"
+M4,10.1b,10,Shared,Lucio,Open,2026-09-01,2026-10-15,"Gradino 3 via Openapi: stato+denominazione 2-5 centesimi a professionista (listino 01/08), PEC impresa 3 cent. Sandbox gratuita; serve DPA art.28"
+M4,10.2,10,Internal,Lucio,Open,2026-08-24,2026-09-30,"Caricamento documenti per il livello Pro+ (upload, storage, retention, RLS). Priorita' salita: 'chiedi documenti' ora e' un'azione vera ma il pro non ha dove caricarli"
+M4,10.3,10,Client/Pro,Lucio,Open,2026-10-01,2026-10-31,"Il livello pesa nel ranking (parametri dichiarati, Reg. P2B) + SLA 48h sulla coda"
+M4,10.4,10,Internal,Lucio,Open,2026-08-04,2026-08-12,"Scadenza della verifica (proposta 6 mesi) + ricontrollo periodico con declassamento assistito, mai automatico"
+M4,10.5,,Internal,Lucio,Dormant,,,"Ritentativo notturno (cron Vercel, 22:00 UTC = mezzanotte italiana): esce subito se non c'e' nulla in attesa, max 5 notti per caso, non ripete a meno di 20h [mig 043] — si accende con CRON_SECRET in Vercel Production (vedi M1/10.14)"
+M4,10.7,10,Internal,Lucio,Open,2026-08-08,2026-08-22,"Telemetria in /admin/analisi: quanti tentano, quanti conferma il VIES, quanti finiscono a mano, tempi di lavorazione"
+M4,10.8,10,Client/Pro,Lucio,Open,2026-08-11,2026-08-25,Richiesta della P.IVA come ultimo passo dell'onboarding professionista
+M4,10.9,10,Internal,Lucio,Open,2026-09-01,2026-09-20,"Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7)"
+M5,15.5,15,Internal,Lucio,Open,2026-12-10,2026-12-31,"Error monitoring, uptime alerts, backups; go-live checklist + rollback"
+M5,N6,,Internal,Lucio,Open,2026-09-01,2026-09-20,"Install a consent-exempt EU analytics tool (Plausible or Matomo, Garante 7.2) — no cookie banner, no user-level tracking. Nothing is installed today"
+M5,N7,,Internal,Lucio,Open,2026-09-01,2026-09-30,"Move the /admin/analisi aggregates into DB views (known debt from the 18 Jul note: computed in-page, fine at demo volume)"
+M5,N8,,Internal,Lucio,Open,2026-09-01,2026-09-15,"Decide whether abandoned chats get logged — only completed briefs are counted today, so funnel drop-off is invisible"
+M6,23,,Shared,,Open,2026-09-01,2026-11-30,"Site legal docs (ToS, privacy, cookie + consent banner) + lawyer review"
+M6,25.1,25,Internal,Lucio,Open,2026-11-01,2027-01-31,Registro trattamenti + retention policy; consent flows audit; breach procedure
+M6,25.2,25,Shared,,Open,2026-11-15,2026-12-31,"DPAs with processors (Supabase, Vercel, Anthropic, Stripe, Resend)"
+M6,N10,,Shared,Lucio,Open,2026-09-01,2026-11-30,"DPIA on the matching / job-brief LLM flow, written before launch rather than after"
+M6,N9,,Internal,Lucio,Open,2026-09-01,2026-10-15,Waitlist launch email needs an explicit 'contact me at launch' checkbox before a single send — no soft opt-in for Bob
+M7,11.1,11,Internal,Lucio,Open,2026-10-01,2026-10-31,"Ranking algorithm v1: response rate, closure rate, reviews (data logic)"
+M7,11.2,11,Client/Pro,André,Open,2026-10-15,2026-11-15,Ranking explanation UI (seeded by 'why this pro' line)
+M7,11.3,11,Client/Pro,André,Open,2026-11-01,2026-11-30,Boost purchase + placement logic; quality floor
+M7,12.1,12,Client/Pro,André,Open,2026-10-01,2026-11-30,Stripe products & prices; checkout + customer portal
+M7,12.2,12,Shared,André,Open,2026-11-01,2026-11-30,Webhooks -> subscription_tier sync (replaces manual switch)
+M7,12.3,12,Client/Pro,André,Open,2026-11-15,2026-12-31,"Founding-pro coupon; failed payments, invoices, receipts"
+M7,PG,,Shared,Claude,Dormant,,,Payments/subscriptions groundwork — si accende con Stripe (vedi M7/12.1)
+M8,13.2,13,Client/Pro,André,Open,2026-08-01,2026-10-31,City x service page template + Milano core categories
+M8,14,,Shared,,Open,2026-11-01,2026-12-31,Google Business Profile + local presence
+M8,15.1,15,Shared,,Open,2026-12-01,2026-12-15,"End-to-end QA of all flows (client, pro, admin)"
+M8,15.2,15,Client/Pro,André,Open,2026-12-01,2026-12-20,Performance / Core Web Vitals pass
+M8,15.3,15,Shared,,Open,2026-12-01,2026-12-20,Freelance security review (pre-launch)
+M8,30,,Shared,,Open,2026-10-01,2027-03-31,Founder outreach — first 100 Milano pros
+M8,N11,,Shared,Lucio,Open,2026-12-01,2026-12-31,Go-live checklist + a tested rollback (the written-down half of 15.5)
+M9,16.1,16,Shared,,Open,2027-01-01,2027-01-31,Production cutover; activate founding pros (60-80) in 5 core categories
+M9,16.2,16,Shared,,Open,2027-01-01,2027-01-31,Bob Pro subscriptions live (Stripe) + Boost on; launch PR wave
+M9,31,,Shared,,Open,2027-01-01,2027-03-31,Launch incentives (3 months free Bob Pro for founding pros)
+M9,32,,Shared,,Open,2027-01-01,2027-06-30,Paid ads ignition — Milano only (CAC < EUR25 Q1)
+M9,33,,Shared,,Open,2027-01-01,2027-03-31,PR launch ('AI concierge che trova il professionista giusto con prezzi chiari')
+L1,24,,Shared,,Open,2026-09-01,2026-10-31,"Trademark 'Bob' (UIBM/EUIPO, classes 35, 42)"
+L1,26,,Shared,,Open,2026-12-01,2027-02-28,SRL incorporation (Q1 Year 1)
+L1,27,,Shared,,Open,2027-04-01,2027-06-30,Finanza agevolata application (Q2 Year 1)
+L1,28,,Shared,,Open,2027-05-01,2027-09-30,Garanzia Bob legal framework + payments compliance (Stripe Connect KYC)
+L2,13,,Client/Pro,André,In progress,2026-08-01,2027-12-31,SEO content engine (ongoing)
+L2,13.3,13,Client/Pro,André,Open,2026-10-01,2027-03-31,'Quanto costa' price guides; Roma+Torino pages before activation
+PARK,17,,Client/Pro,André,Parked,,,Unlimited requests (subscribers) + digital quotes
+PARK,17.1,17,Client/Pro,André,Parked,,,Free-tier request limits + upgrade paywall
+PARK,17.2,17,Client/Pro,André,Parked,,,Quote builder for pros + client quote comparison + accept flow
+PARK,18,,Shared,,Parked,,,Security audit (gate before payments)
+PARK,19,,Client/Pro,André,Parked,,,Protected flow — payments + Garanzia Bob
+PARK,19.1,19,Client/Pro,André,Parked,,,"Stripe Connect: deposit/escrow, payouts; dispute + mediation tooling"
+PARK,19.2,19,Client/Pro,André,Parked,,,Verified reviews tied to protected jobs; 8% success fee billing
+PARK,20,,Shared,,Parked,,,Roma + Torino activation
+PARK,21,,Shared,,Parked,,,"Bologna, Firenze, Napoli activation"
+PARK,22,,Shared,,Parked,,,National infrastructural opening (organic only)
+PARK,34,,Shared,,Parked,,,Pro referral program + territorial partnerships
+PARK,36,,Internal,Lucio,Gate,,,"End-Q1 2027: 60-80 active pros, 150+ req/mo, match >60%"
+PARK,37,,Internal,Lucio,Gate,,,"End-2027: 600 pros, 1,500 req/mo, 25% protected-flow, CAC < EUR15"
+PARK,38,,Client/Pro,André,Parked,,,Business accounts — multi-employee organizations (manage workers + appointments)
+PARK,38.0,38,Shared,André,Parked,,,"Design spike: org data model — DECIDED, see docs/Bob_Business_Accounts_Design_Spike.md (Bundle 2, additive; workers-as-records; company assigns)"
+PARK,38.1,38,Client/Pro,André,Parked,,,organizations + organization_members + roles (owner/admin/worker); RLS pool model via is_org_member(); retention + deletion path
+PARK,38.2a,38,Client/Pro,André,Parked,,,Worker-level scheduling: per-worker availability + assignment + DB overlap constraint (btree_gist exclude); company assigns
+PARK,38.2b,38,Client/Pro,André,Parked,,,Communication step 1 (office-as-hub): company identity + worker attribution (sender_member_id); dispatcher messages/reschedules for worker
+PARK,38.3,38,Internal,Lucio,Parked,,,"Business onboarding + docs: company VAT/visura verification, seat management (extends #10)"
+PARK,38.4,38,Client/Pro,André,Parked,,,Multi-seat Business billing — per-seat via Stripe quantity (extends #12)
+PARK,38.5,38,Shared,Lucio,Parked,,,Compliance: employer-as-controller DPA + RoPA rows; Platform Work Directive / Annex III scope check
+PARK,38.6,38,Client/Pro,André,Parked,,,"Step 2 (PILOT-GATED, form TBD): scoped worker access — per-job magic link or limited login; least-privilege RLS"
+PARK,39,,Client/Pro,André,Parked,,,"Two-way reviews — business to client reliability signal (PRIVATE, not public consumer scores)"
+PARK,39.0,39,Shared,Lucio,Parked,,,DPIA + LIA + policy: private reliability signal; retaliation guard; Art 22 no auto-exclude; transparency + right to object
+PARK,39.1,39,Client/Pro,André,Parked,,,Schema: customer reliability ratings tied to completed appointment/request; RLS; de-identify on deletion
+PARK,39.2,39,Client/Pro,André,Parked,,,Pro UI to rate reliability; customer transparency + right-to-reply; align with verified reviews #19.2
+PARK,40,,Client/Pro,André,Parked,,,Parking & vehicle-access metric (can my car reach the address? parking nearby?)
+PARK,40.0,40,Client/Pro,André,Parked,,,Address geocoding enabler (address to coarse zone; maps vendor DPA/EU) — prerequisite
+PARK,40.1,40,Client/Pro,André,Parked,,,"ZTL / Area B & C vehicle-access checker (vehicle emission class + Milan zone rules) — deterministic, high value for out-of-town pros"
+PARK,40.2,40,Client/Pro,André,Parked,,,Parking-difficulty index + nearby paid-garage links (research spike first; real-time free-spot count not feasible)
+PARK,40.3,40,Client/Pro,André,Parked,,,Map of the day itinerary in the pro calendar (pins in time order) — depends on 40.0 geocoding + vendor DPA

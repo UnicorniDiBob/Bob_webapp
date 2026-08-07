@@ -1,14 +1,19 @@
 name: Roadmap — regenerate tracker
 
-# Rigenera il markdown (e l'xlsx) quando cambia la fonte di verità roadmap.csv.
-# Committa SOLO roadmap.md (testo deterministico → nessun churn). L'xlsx non è
-# tracciato in git: viene rigenerato e caricato come artifact scaricabile.
+# Rigenera roadmap.md e roadmap.html quando cambiano le fonti di verità.
+# Entrambi sono testo deterministico, quindi si committano senza churn.
+# Nessuna dipendenza da installare: il generatore usa solo la stdlib.
 on:
   push:
     branches: [main]
     paths:
+      - "roadmap/milestones.csv"
       - "roadmap/roadmap.csv"
+      - "roadmap/ARCHIVE.csv"
+      - "roadmap/findings.csv"
+      - "roadmap/next.csv"
       - "roadmap/build_roadmap.py"
+      - "roadmap/view_template.html"
 
 permissions:
   contents: write
@@ -27,27 +32,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install deps
-        run: pip install openpyxl
+      - name: Check the tracker schema
+        run: python3 roadmap/sync_status.py 1
 
-      - name: Regenerate roadmap (md + xlsx)
+      - name: Regenerate roadmap.md + roadmap.html
         run: python3 roadmap/build_roadmap.py
 
-      - name: Commit roadmap.md if changed
+      - name: Commit the generated views if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [ -n "$(git status --porcelain roadmap/roadmap.md)" ]; then
-            git add roadmap/roadmap.md
-            git commit -m "chore(roadmap): regenerate roadmap.md from roadmap.csv [skip ci]"
+          if [ -n "$(git status --porcelain roadmap/roadmap.md roadmap/roadmap.html)" ]; then
+            git add roadmap/roadmap.md roadmap/roadmap.html
+            git commit -m "chore(roadmap): regenerate views from the CSVs [skip ci]"
             git push
           else
-            echo "roadmap.md unchanged — nothing to commit."
+            echo "roadmap.md and roadmap.html unchanged — nothing to commit."
           fi
-
-      - name: Upload Gantt xlsx as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: roadmap-gantt-xlsx
-          path: roadmap/BOB_Roadmap_Gantt.xlsx
-          if-no-files-found: warn

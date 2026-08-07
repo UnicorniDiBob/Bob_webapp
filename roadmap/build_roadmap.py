@@ -1,191 +1,153 @@
 #!/usr/bin/env python3
-"""Genera BOB_Roadmap_Gantt.xlsx dal file roadmap.csv (source of truth).
-Le barre del Gantt si disegnano da sole (conditional formatting) da
-Status + Start + End; il mese corrente è evidenziato. La colonna Track
-instrada le attività (Client/Pro = André, Internal = Lucio, Shared).
+"""Genera roadmap.md e roadmap.html dalle fonti di verità in questa cartella.
 
-Uso:  python3 build_roadmap.py         # legge roadmap.csv, scrive l'xlsx
+Fonti (le uniche cose da modificare a mano):
+    milestones.csv   i traguardi: titolo, finestra, perché, "è fatto quando"
+    roadmap.csv      il lavoro aperto, una riga per attività, con la colonna milestone
+    findings.csv     il pannello "controllo di realtà" (opzionale)
+    next.csv         le prossime mosse in ordine, con i comandi (opzionale)
+    ARCHIVE.csv      lo storico chiuso — non si modifica, ci si sposta dentro
+
+Output (generati, non modificare a mano):
+    roadmap.md       versione leggibile, sincronizzata nel progetto Claude
+    roadmap.html     la vista per traguardi (timeline, filtri, test di completamento)
+
+Uso:  python3 roadmap/build_roadmap.py
+Nessuna dipendenza esterna: solo la libreria standard.
 """
-import csv, os, sys
-from datetime import datetime
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.formatting.rule import FormulaRule
-from openpyxl.utils import get_column_letter
+import csv, html, json, os, sys
+from datetime import date
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CSV = os.path.join(HERE, "roadmap.csv")
-OUT = os.path.join(HERE, "BOB_Roadmap_Gantt.xlsx")
+def P(n): return os.path.join(HERE, n)
 
-NAVY="1F3864"; SECT="D6E4F0"; ZEBRA="F2F6FB"; WHITE="FFFFFF"; INK="1A1A2E"
-GREEN="2E7D32"; BLUE="1976D2"; GREY="9E9E9E"; AMBER="FFC000"; REDHDR="C00000"
-TRACK_FILL={"Client/Pro":"E6E9F7","Internal":"DCF1EA","Shared":"ECECE8"}
-TRACK_TEXT={"Client/Pro":"3730A3","Internal":"0F6E56","Shared":"5F5E5A"}
+# ---------------------------------------------------------------- lettura
+def read(name, required=True):
+    p = P(name)
+    if not os.path.exists(p):
+        if required: sys.exit(f"manca {name}")
+        return []
+    with open(p, encoding="utf-8") as f:
+        return [r for r in csv.DictReader(f) if any(v.strip() for v in r.values())]
 
-def D(s): return datetime.strptime(s,"%Y-%m-%d") if s else ""
+MS      = read("milestones.csv")
+ITEMS   = read("roadmap.csv")
+ARCHIVE = read("ARCHIVE.csv", required=False)
+FIND    = read("findings.csv", required=False)
+NEXT    = read("next.csv", required=False)
 
+ORDER = [m["id"] for m in MS]
+BY_MS = {m["id"]: m for m in MS}
+for it in ITEMS:
+    if it["milestone"] not in BY_MS:
+        sys.exit(f"riga {it['id']}: milestone sconosciuto {it['milestone']!r}")
 
-MD_OUT = os.path.join(HERE, "roadmap.md")
-STATUS_ICON={"Done":"✅","In progress":"🔵","Planned":"⬜","Milestone":"🔶"}
+# stati ammessi. "Milestone" non è più uno stato: i traguardi sono contenitori.
+STATES = {
+    "Open":        ("open",    "○", "Aperto"),
+    "In progress": ("prog",    "▸", "In corso"),
+    "Gate":        ("gate",    "◆", "Decisione"),
+    "Dormant":     ("dormant", "◑", "Pronto ma spento"),
+    "Parked":      ("park",    "▪", "Parcheggiato"),
+}
+for it in ITEMS:
+    if it["status"] not in STATES:
+        sys.exit(f"riga {it['id']}: stato non ammesso {it['status']!r} "
+                 f"(ammessi: {', '.join(STATES)})")
 
-def write_md(R):
-    done=sum(1 for x in R if x["status"]=="Done")
-    prog=sum(1 for x in R if x["status"]=="In progress")
-    plan=sum(1 for x in R if x["status"]=="Planned")
-    mile=sum(1 for x in R if x["status"]=="Milestone")
-    L=[]
-    L.append("# BOB — Roadmap")
-    L.append("")
-    L.append("_Generato automaticamente da `roadmap.csv` — non modificare a mano. "
-             "Aggiorna il CSV e rilancia `build_roadmap.py` (o lascia fare alla GitHub Action)._")
-    L.append("")
-    L.append(f"**Stato:** ✅ {done} Done · 🔵 {prog} In progress · ⬜ {plan} Planned · 🔶 {mile} Milestone")
-    L.append("")
-    L.append("**Track:** Client/Pro → André · Internal → Lucio · Shared")
-    L.append("")
-    for row in R:
-        if row["kind"]=="section":
+def items_of(mid):  return [i for i in ITEMS   if i["milestone"] == mid]
+def archive_of(mid):return [a for a in ARCHIVE if a["milestone"] == mid]
+
+TODAY = date.today().isoformat()
+
+# ---------------------------------------------------------------- markdown
+ICON = {"Open": "⬜", "In progress": "🔵", "Gate": "🔶", "Dormant": "🌙", "Parked": "▪️"}
+
+def write_md():
+    n_open = sum(1 for i in ITEMS if i["status"] in ("Open", "In progress"))
+    L = ["# BOB — Roadmap per traguardi", "",
+         "_Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. "
+         "Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` "
+         "(o lascia fare alla GitHub Action)._", "",
+         f"**Stato:** {n_open} attività aperte · "
+         f"{sum(1 for i in ITEMS if i['status']=='Dormant')} pronte ma spente · "
+         f"{sum(1 for i in ITEMS if i['status']=='Parked')} parcheggiate · "
+         f"{len(ARCHIVE)} chiuse (in `ARCHIVE.csv`)", "",
+         "**Track:** Client/Pro → André · Internal → Lucio · Shared", ""]
+    if FIND:
+        L += ["## Controllo di realtà", ""]
+        for f in FIND:
+            L += [f"**{f['title']}** — _{f['label']}_", "", f"{f['body']}", ""]
+    for m in MS:
+        its, arc = items_of(m["id"]), archive_of(m["id"])
+        window = f"{m['start']} → {m['end']}" if m["start"] else "continuo"
+        L += ["", f"## {m['id']} · {m['title']}", "",
+              f"**Finestra:** {window} · **{len(its)} aperte, {len(arc)} chiuse**", "",
+              f"**Perché:** {m['why']}", "",
+              f"**È fatto quando:** {m['done_when']}", ""]
+        if its:
+            L += ["| # | Attività | Track | Owner | Stato | Periodo |",
+                  "|---|----------|-------|-------|-------|---------|"]
+            for i in its:
+                per = f"{i['start']} → {i['end']}" if i["start"] else "—"
+                L.append(f"| {i['id']} | {i['task']} | {i['track']} | {i['owner']} | "
+                         f"{ICON[i['status']]} {STATES[i['status']][2]} | {per} |")
             L.append("")
-            L.append(f"## {row['task']}")
-            L.append("")
-            L.append("| # | Task | Track | Owner | Stato | Periodo | Done on |")
-            L.append("|---|------|-------|-------|-------|---------|---------|")
-            continue
-        ic=STATUS_ICON.get(row["status"],"")
-        per=f"{row['start']} → {row['end']}" if row["start"] else ""
-        task=row["task"].replace("|","\\|")
-        idc=f"**{row['id']}**" if row["kind"]=="project" else row["id"]
-        taskc=f"**{task}**" if row["kind"]=="project" else task
-        L.append(f"| {idc} | {taskc} | {row['track']} | {row['owner']} | {ic} {row['status']} | {per} | {row['done_on']} |")
-    with open(MD_OUT,"w",encoding="utf-8") as f:
-        f.write("\n".join(L)+"\n")
-    return done
+        if arc:
+            L += [f"<details><summary>{len(arc)} attività già chiuse</summary>", "",
+                  "| # | Attività | Owner | Chiusa il |", "|---|----------|-------|-----------|"]
+            for a in arc:
+                L.append(f"| {a['id']} | {a['task']} | {a['owner']} | {a['done_on']} |")
+            L += ["", "</details>", ""]
+    L += ["", "---", "",
+          "### Le quattro regole", "",
+          "1. **Un traguardo è uno stato del mondo, mai un contenitore di attività.** "
+          "Se non riesci a scrivere «è fatto quando una persona vera può…», è un tema, e i temi non finiscono mai.",
+          "2. **Due livelli, e niente sotto la giornata prende una riga.** "
+          "Traguardo → attività. Il lavoro da mezz'ora sta nel log dei commit, che già lo traccia.",
+          "3. **Nessuna data senza una dipendenza o un orologio esterno.** Altrimenti va nel parcheggio.",
+          "4. **Quello che è costruito ma spento si scrive `Dormant`, non `Done`,** con la condizione che lo accende. "
+          "«Done» deve continuare a voler dire «funziona per un utente».", ""]
+    open(P("roadmap.md"), "w", encoding="utf-8").write("\n".join(L))
 
+# ---------------------------------------------------------------- html
+def month_index(iso, base=(2026, 8)):
+    y, m = int(iso[:4]), int(iso[5:7])
+    return (y - base[0]) * 12 + (m - base[1])
 
+def build_payload():
+    ms = []
+    for m in MS:
+        its = [{"id": i["id"], "task": i["task"], "owner": i["owner"], "track": i["track"],
+                "status": i["status"], "cls": STATES[i["status"]][0],
+                "glyph": STATES[i["status"]][1], "lab": STATES[i["status"]][2],
+                "start": i["start"], "end": i["end"], "parent": i.get("parent", "")}
+               for i in items_of(m["id"])]
+        arc = [{"id": a["id"], "task": a["task"], "owner": a["owner"], "done_on": a["done_on"]}
+               for a in archive_of(m["id"])]
+        ms.append({"id": m["id"], "kind": m["kind"], "title": m["title"], "state": m["state"],
+                   "start": m["start"], "end": m["end"], "why": m["why"],
+                   "done_when": m["done_when"], "items": its, "archive": arc,
+                   "a": month_index(m["start"]) if m["start"] else 0,
+                   "b": month_index(m["end"]) + 1 if m["end"] else 18})
+    return {"generated": TODAY, "milestones": ms,
+            "findings": [{"sev": f["severity"], "label": f["label"], "title": f["title"],
+                          "body": f["body"], "ev": f["evidence"]} for f in FIND],
+            "next": [{"h": n["title"], "p": n["body"], "code": n["code"]} for n in NEXT],
+            "totals": {"open": sum(1 for i in ITEMS if i["status"] in ("Open", "In progress")),
+                       "dormant": sum(1 for i in ITEMS if i["status"] == "Dormant"),
+                       "parked": sum(1 for i in ITEMS if i["status"] == "Parked"),
+                       "closed": len(ARCHIVE)}}
 
+def write_html():
+    tpl = open(P("view_template.html"), encoding="utf-8").read()
+    payload = json.dumps(build_payload(), ensure_ascii=False, separators=(",", ":"))
+    out = tpl.replace("/*__DATA__*/null", payload)
+    open(P("roadmap.html"), "w", encoding="utf-8").write(out)
 
-def build_dati(wb, R):
-    from openpyxl.styles import Font as _F, PatternFill as _P, Alignment as _A, Border as _B, Side as _S
-    ws2 = wb.create_sheet("Dati")
-    _thin=_S(style="thin",color="D9D9D9"); _bd=_B(_thin,_thin,_thin,_thin)
-    heads=["#","Track","Owner","Status","Start","End","Done on","Sezione","Task"]
-    section=""
-    ws2.append(heads)
-    for c in ws2[1]:
-        c.font=_F(name="Arial",bold=True,size=9,color="FFFFFF"); c.fill=_P("solid",fgColor="1F3864")
-        c.alignment=_A(horizontal="left"); c.border=_bd
-    for row in R:
-        if row["kind"]=="section": section=row["task"]; continue
-        ws2.append([row["id"],row["track"],row["owner"],row["status"],
-                    D(row["start"]),D(row["end"]),D(row["done_on"]),section,row["task"]])
-        r=ws2.max_row
-        for ci in range(1,10):
-            cc=ws2.cell(r,ci); cc.border=_bd; cc.font=_F(name="Arial",size=9)
-            if ci in (5,6,7): cc.number_format="yyyy-mm-dd"
-    ws2.auto_filter.ref=f"A1:I{ws2.max_row}"
-    ws2.freeze_panes="A2"
-    for col,w in zip("ABCDEFGHI",[7,11,9,13,12,12,12,34,60]):
-        ws2.column_dimensions[col].width=w
-    ws2.sheet_view.showGridLines=False
-
-
-def main():
-    with open(CSV,encoding="utf-8") as f:
-        R=list(csv.DictReader(f))
-
-    wb=openpyxl.Workbook(); ws=wb.active; ws.title="Roadmap"
-    months=[]; y,m=2026,6
-    while (y,m)<=(2027,12):
-        months.append(datetime(y,m,1)); m+=1
-        if m>12: m=1;y+=1
-    NMON=len(months); MON0=9; LASTCOL=MON0+NMON-1
-    thin=Side(style="thin",color="D9D9D9"); border=Border(thin,thin,thin,thin)
-
-    ws.merge_cells(start_row=1,start_column=1,end_row=1,end_column=LASTCOL)
-    t=ws.cell(1,1,"BOB — Project Roadmap & Gantt   |   Jun 2026 → Dec 2027   |   Tracker: stato, date, completamento, Track (owner)")
-    t.font=Font(name="Arial",bold=True,size=13,color=WHITE); t.fill=PatternFill("solid",fgColor=NAVY)
-    t.alignment=Alignment(vertical="center",indent=1); ws.row_dimensions[1].height=26
-
-    heads=["#","Track","Owner","Task / Milestone","Status","Start","End","Done on"]
-    for i,h in enumerate(heads,1):
-        c=ws.cell(2,i,h); c.font=Font(name="Arial",bold=True,size=9,color=WHITE)
-        c.fill=PatternFill("solid",fgColor=NAVY)
-        c.alignment=Alignment(vertical="center",horizontal="left" if i==4 else "center",indent=1 if i==4 else 0); c.border=border
-    for j,dt in enumerate(months):
-        c=ws.cell(2,MON0+j,dt); c.number_format="mmm\\ yy"
-        c.font=Font(name="Arial",bold=True,size=8,color=WHITE); c.fill=PatternFill("solid",fgColor=NAVY)
-        c.alignment=Alignment(horizontal="center",vertical="bottom",textRotation=90); c.border=border
-    ws.row_dimensions[2].height=44
-
-    for col,w in zip("ABCDEFGH",[6,11,9,60,13,11,11,11]): ws.column_dimensions[col].width=w
-    for j in range(NMON): ws.column_dimensions[get_column_letter(MON0+j)].width=4.6
-    ws.freeze_panes="I3"
-
-    r=3; data_start=3
-    for row in R:
-        if row["kind"]=="section":
-            ws.merge_cells(start_row=r,start_column=1,end_row=r,end_column=8)
-            c=ws.cell(r,1,row["task"]); c.font=Font(name="Arial",bold=True,size=9,color=NAVY)
-            c.fill=PatternFill("solid",fgColor=SECT); c.alignment=Alignment(vertical="center",indent=1)
-            for ci in range(1,LASTCOL+1):
-                cc=ws.cell(r,ci); cc.border=border
-                if ci>8: cc.fill=PatternFill("solid",fgColor=SECT)
-            ws.row_dimensions[r].height=18; r+=1; continue
-        isproj=row["kind"]=="project"; tr=row["track"]
-        zeb=PatternFill("solid",fgColor=ZEBRA) if not isproj else PatternFill("solid",fgColor=WHITE)
-        vals=[row["id"],tr,row["owner"],row["task"],row["status"],D(row["start"]),D(row["end"]),D(row["done_on"])]
-        for ci,v in enumerate(vals,1):
-            c=ws.cell(r,ci,v); c.border=border
-            c.font=Font(name="Arial",size=9,bold=isproj and ci==4,color=INK)
-            c.fill=zeb if ci not in (2,) else PatternFill("solid",fgColor=TRACK_FILL.get(tr,WHITE))
-            if ci==2 and tr:
-                c.font=Font(name="Arial",size=8,bold=True,color=TRACK_TEXT.get(tr,INK)); c.alignment=Alignment(horizontal="center",vertical="center")
-            elif ci in (6,7,8): c.number_format="dd\\ mmm\\ yy"; c.alignment=Alignment(horizontal="center")
-            elif ci in (1,3,5): c.alignment=Alignment(horizontal="center")
-            else: c.alignment=Alignment(vertical="center",indent=0 if isproj else 1,wrap_text=(ci==4))
-        for j in range(NMON): ws.cell(r,MON0+j).border=border
-        if not isproj: ws.row_dimensions[r].outlineLevel=1
-        r+=1
-    data_end=r-1
-
-    rng=f"{get_column_letter(MON0)}{data_start}:{get_column_letter(LASTCOL)}{data_end}"
-    mcol=get_column_letter(MON0)
-    def rule(status,color):
-        f=f'AND($F{data_start}<>"",{mcol}$2<=$G{data_start},EOMONTH({mcol}$2,0)>=$F{data_start},$E{data_start}="{status}")'
-        return FormulaRule(formula=[f],fill=PatternFill("solid",fgColor=color))
-    for st,col in [("Done",GREEN),("In progress",BLUE),("Planned",GREY),("Milestone",AMBER)]:
-        ws.conditional_formatting.add(rng,rule(st,col))
-    hdr=f"{mcol}2:{get_column_letter(LASTCOL)}2"
-    ws.conditional_formatting.add(hdr,FormulaRule(formula=[f'AND({mcol}$2<=TODAY(),EOMONTH({mcol}$2,0)>=TODAY())'],fill=PatternFill("solid",fgColor=REDHDR)))
-
-    lr=data_end+2
-    ws.cell(lr,2,"LEGENDA").font=Font(name="Arial",bold=True,size=9,color=NAVY)
-    leg=[("Done (verde)",GREEN),("In progress (blu)",BLUE),("Planned (grigio)",GREY),("Milestone / gate (ambra)",AMBER)]
-    for i,(lab,col) in enumerate(leg):
-        ws.cell(lr+1+i,2).fill=PatternFill("solid",fgColor=col); ws.cell(lr+1+i,4,lab).font=Font(name="Arial",size=9,color=INK)
-    trk=[("Track: Client/Pro → André  (esperienza cliente e professionista)","Client/Pro"),
-         ("Track: Internal → Lucio  (dati, dashboard, admin, privacy)","Internal"),
-         ("Track: Shared  (infra, legale, GTM, milestone)","Shared")]
-    for i,(lab,k) in enumerate(trk):
-        ws.cell(lr+1+i,6).fill=PatternFill("solid",fgColor=TRACK_FILL[k]); ws.cell(lr+1+i,7,lab).font=Font(name="Arial",size=9,color=TRACK_TEXT[k])
-        ws.merge_cells(start_row=lr+1+i,start_column=7,end_row=lr+1+i,end_column=13)
-    note=("Fonte dati: roadmap.csv (modificalo e rilancia build_roadmap.py). "
-          "Le barre si disegnano da Status+Start+End; 'Done on' = data di completamento effettiva. "
-          "Mese corrente evidenziato in rosso. Email notifiche: pronte ma DORMIENTI fino al task 15.4.")
-    ws.cell(lr+6,4,note).font=Font(name="Arial",size=8,italic=True,color="555555")
-    ws.cell(lr+6,4).alignment=Alignment(wrap_text=True,vertical="top")
-    ws.merge_cells(start_row=lr+6,start_column=4,end_row=lr+9,end_column=13)
-
-    ws.sheet_view.showGridLines=False
-    build_dati(wb, R)
-    # Props fisse: xlsx riproducibile (niente diff spurie da timestamp).
-    from datetime import datetime as _dt
-    _fixed=_dt(2026,1,1)
-    wb.properties.created=_fixed; wb.properties.modified=_fixed; wb.properties.creator="roadmap-build"
-    wb.save(OUT)
-    write_md(R)
-    done=sum(1 for x in R if x["status"]=="Done")
-    print(f"OK: {OUT}  ({len(R)} rows, {done} done)")
-
-if __name__=="__main__":
-    main()
+if __name__ == "__main__":
+    write_md()
+    write_html()
+    t = build_payload()["totals"]
+    print(f"roadmap.md e roadmap.html rigenerati — {t['open']} aperte, "
+          f"{t['dormant']} spente, {t['parked']} parcheggiate, {t['closed']} chiuse")

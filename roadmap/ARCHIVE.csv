@@ -1,0 +1,75 @@
+milestone,id,track,owner,done_on,task
+M1,7b,Shared,Claude,2026-07-16,"Migrations backfill 001-017, CI (build+lint), RLS performance cleanup (018)"
+M1,T1,Shared,André,2026-07-19,Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action
+M2,25b,Internal,Lucio,2026-07-18,Privacy: birth date + terms consent moved to private table (mig 027)
+M3,1,Client/Pro,André,2026-06-03,Webapp MVP — Next.js 14 + Supabase marketplace
+M3,1.1,Client/Pro,André,2026-06-03,"Project setup, Vercel deploy pipeline, Supabase schema + RLS"
+M3,1.2,Client/Pro,André,2026-06-03,Real auth + separate client / pro personal areas
+M3,1.3,Client/Pro,André,2026-06-03,"City pages (Milano live; Roma, Torino prepared) + 15 service categories"
+M3,2,Client/Pro,André,2026-06-03,AI concierge chat (Claude Haiku + rules fallback)
+M3,2.1,Client/Pro,André,2026-06-03,Problem understanding via LLM with rules fallback
+M3,2.2,Client/Pro,André,2026-06-03,Optional budget + multi-pro quote requests from chat
+M3,3,Client/Pro,André,2026-06-03,Messaging + pro dashboard
+M3,3.1,Client/Pro,André,2026-06-03,Bidirectional client-pro messaging
+M3,3.2,Client/Pro,André,2026-06-03,"Pro dashboard: calendar, hours, earnings"
+M3,3.3,Client/Pro,André,2026-06-03,Unread message badges in header (desktop + mobile)
+M3,4.1,Client/Pro,André,2026-06-09,"F1 agentic chat, F2 customer memory, F3 pro request summary"
+M3,4,Client/Pro,André,2026-07-08,Chat v2 + client memory + job brief
+M3,4.2,Client/Pro,André,2026-07-08,"Job brief v1: tool-use extraction, photo vision, recap card, subtask taxonomy"
+M3,8,Client/Pro,Claude,2026-07-17,Client & pro journey audit + UX gap analysis
+M3,8.0,Client/Pro,Claude,2026-07-17,"Full code+live audit, journey maps, prioritized gap list (Word doc)"
+M3,8.1,Client/Pro,André,2026-07-17,Bob chat: draft persistence + returnTo login + inline city waitlist
+M3,8.2,Client/Pro,André,2026-07-17,Client journey st.1/3/5/6/7
+M3,8.2a,Client/Pro,André,2026-07-17,"Header Bob CTA for clients, clickable coming-soon cities"
+M3,8.2b,Client/Pro,André,2026-07-17,"Why-this-pro line, realtime messages (mig 019), URL sync, quote_request label"
+M3,8.2c,Client/Pro,André,2026-07-17,"Close-request dialog, customer memory wired, client account page"
+M3,8.3,Client/Pro,André,2026-07-17,Account v2 + saved addresses
+M3,8.3a,Client/Pro,André,2026-07-17,Saved addresses (mig 020) + Bob address chips at city step
+M3,8.3b,Client/Pro,André,2026-07-17,"Old-password check, self-service email change, floating messages bubble"
+M3,8.4,Client/Pro,André,2026-07-18,Role-aware navigation + pro acquisition banner
+M3,8.4a,Client/Pro,André,2026-07-18,Header nav client-only; unified Account button
+M3,8.4b,Client/Pro,André,2026-07-18,"Pre-footer pro banner (guests, public pages)"
+M3,8.5,Client/Pro,André,2026-07-18,Client dashboard v2 + shared appointments
+M3,8.5a,Client/Pro,André,2026-07-18,"Attention strip, job timelines, trusted pros, collapsed history"
+M3,8.5b,Client/Pro,André,2026-07-18,"Shared appointments (mig 021): pro proposes from chat, client confirms"
+M3,8.6,Client/Pro,André,2026-07-18,Per-pro message threads + quote comparison (stage 4)
+M3,8.6a,Client/Pro,André,2026-07-18,"Thread per request-pro pair (mig 022), tightened RLS (no cross-pro leak)"
+M3,8.6b,Client/Pro,André,2026-07-18,Quote comparison in client dashboard; Bob brief + photos attached to request
+M3,8.7a,Client/Pro,André,2026-07-18,Free-slot engine; pro quick-pick slots + double-booking guard
+M3,8.7,Client/Pro,André,2026-07-19,Appointment negotiation v2
+M3,8.7b,Client/Pro,André,2026-07-19,Client counter-proposal within pro free slots (mig 023); Europe/Rome tz fix
+M3,8.8,Client/Pro,André,2026-07-19,Mobile overflow fix (base grid-cols-1 on responsive grids)
+M3,3.4,Client/Pro,André,2026-07-28,"Pro calendar v2: hour-axis week/day view, blocks sized by duration, overlap columns, appointment detail panel"
+M3,3.5,Client/Pro,André,2026-07-28,Appointment location (mig 031 snapshot) + Giro del giorno itinerary with Maps links; address captured in direct booking
+M4,5.1,Internal,André,2026-06-28,"Pro verification, users management, CS accounts + roles"
+M4,5,Internal,André,2026-07-04,Admin panel
+M4,5.2,Internal,André,2026-07-04,Delete users (cascade) + team invitations via email
+M4,7.1,Client/Pro,André,2026-07-04,Portfolio items + storage bucket + tier limits (Free/Pro/Business)
+M4,7,Client/Pro,André,2026-07-11,Pro portfolio with tier gating + reviews + self-service profile
+M4,7.2,Client/Pro,André,2026-07-11,Reviews: request close + ReviewDialog with RLS constraints (mig 015)
+M4,7.3,Client/Pro,André,2026-07-11,Pro self-service profile /dashboard/profilo (mig 016)
+M4,10.0,Internal,Lucio,2026-07-19,"Research: VIES insufficiente, AdE senza API; provider commerciale + DAC7 (docs/legal)"
+M4,10.1a,Internal,Lucio,2026-07-30,Schema verifica (mig 029) + checksum P.IVA lib/vat.ts con test
+M4,10.1c,Internal,Lucio,2026-07-31,"Client VIES + route /api/pro/verifica-piva: tre gradini, limite 3/24h, mai un rifiuto automatico"
+M4,10.1d,Client/Pro,Lucio,2026-08-01,"UI verifica nel profilo pro + badge pubblico Iscritto/Pro/Pro+ con data e tooltip (profilo, card, chat) [mig 038]"
+M4,10.1e,Internal,Lucio,2026-08-01,Coda verifiche in admin: concedi / chiedi documenti / rifiuta con motivazione obbligatoria + email di esito
+M4,10.1f,Internal,Lucio,2026-08-01,Antifrode: livello automatico solo se l'intestazione combacia col nome; una P.IVA per un solo profilo [mig 039]
+M4,10.1g,Internal,Lucio,2026-08-01,"Firma delle decisioni (chi, ruolo, quando) + registro consultabile dalla coda admin [mig 040]"
+M4,10.1h,Internal,Lucio,2026-08-01,"Scorciatoie operatore: copia P.IVA e apri il servizio dell'Agenzia, scheda copiabile, modelli di motivazione"
+M4,10.4a,Client/Pro,Lucio,2026-08-01,Riga in piccolo sul profilo pubblico: quando e' stata fatta la verifica e che vale per quella data (provvisorio)
+M4,10.8a,Client/Pro,Lucio,2026-08-01,Avviso discreto nella dashboard pro con i vantaggi + badge del livello al posto del vecchio stato staff; prezzo pronto in una costante
+M4,10.6a,Client/Pro,Lucio,2026-08-02,"Campo 'nome completo dell''azienda' nella card di verifica, usato come secondo termine di confronto (mig 041)"
+M4,10.12,Internal,Lucio,2026-08-03,"FATTO: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere"
+M4,10.6,Internal,Lucio,2026-08-03,"Confronto nomi stretto (2 parole + 60% di copertura, o una parola specifica) provato su 12 casi; un solo passaggio contro tutti i nomi noti, con traccia di quale ha deciso [mig 042]"
+M5,9,Internal,Lucio,2026-07-18,Admin overview / Analisi dashboard
+M5,9.1,Internal,Lucio,2026-07-18,KPI dashboard + signup age/terms + city geo hierarchy (mig 024)
+M5,9.2,Internal,Lucio,2026-07-18,"Analisi: unified filters, subscription-tier events (mig 025), 2 new indicators"
+M5,9.3,Internal,Lucio,2026-07-18,"Analisi UI redesign, Excel export, cancellations view"
+M5,9.4,Internal,Lucio,2026-07-18,'Ricerche per categoria' anonymous search events (mig 026); staff redirect
+M7,IB,Client/Pro,Claude,2026-07-19,Direct (instant) booking Phase 0 — instant vs preventivo; customer flow gated on Stripe (2027)
+M7,IB.1,Client/Pro,Claude,2026-07-19,Schema + enablement trigger + RLS (mig 028); 20 eligible subservices seeded (mig 029)
+M7,IB.2,Client/Pro,Claude,2026-07-19,Pro config UI: per-service rate/unit/min/slot/cancellation + enable toggle (tier-gated)
+M7,IB.3,Client/Pro,Claude,2026-07-19,Admin catalog curation (/admin/catalogo) + pro weekly availability editor
+M8,6,Client/Pro,André,2026-07-04,Technical SEO foundation
+M8,6.1,Client/Pro,André,2026-07-04,"Sitemap, robots.txt, JSON-LD structured data, optimized metadata"
+L2,13.1,Client/Pro,André,2026-07-05,Keyword plan from Semrush data

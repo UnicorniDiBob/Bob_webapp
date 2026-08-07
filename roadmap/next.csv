@@ -1,0 +1,21 @@
+title,body,code
+Set CRON_SECRET in Vercel Production and redeploy,"One environment variable turns a dead endpoint into the feature you already built and marked Done. Add it under Project → Settings → Environment Variables (Production), then trigger a deploy — Vercel only picks up new env vars on a fresh build. Check the next morning that the run actually happened.","# after adding CRON_SECRET in the Vercel dashboard (Production):
+git pull origin main
+git commit --allow-empty -m ""chore: redeploy to pick up CRON_SECRET""
+git push origin main
+
+# next morning, confirm the run happened:
+#   select * from verification_events where created_at > now() - interval '1 day';"
+Fix the address disclosure (41.1 + 41.2 + backfill) before anything else gets built,"The only item on the board that is a live compliance breach. Stop appending the address to the problem text, add a structured column revealed on acceptance, strip it from the summary prompt. Per the standing rule the migration ships in the same commit as the code, plus a RoPA row and a notice line.","# the change touches, at minimum:
+#   src/components/BobChat.tsx                 (~692 and ~1246 — stop appending the address)
+#   src/components/QuoteDialog.tsx             (problem_description)
+#   src/components/RequestDialog.tsx           (problem_description)
+#   src/app/api/pro/request-summary/route.ts   (strip the address from the prompt)
+#   supabase/migrations/044_address_progressive_disclosure.sql   (idempotent)
+
+npm run build && npm run lint"
+Label the AI in Bob chat — the obligation started on 2 August,"AI Act Art 50 has been applicable since 2 August 2026 and the project rule already commits to labelling. A persistent line in the chat header (""Bob è un assistente AI"") plus a note on the privacy page closes it. Cheapest overdue item on the board.",
+Pull Resend activation forward from December to August,"The pipeline is built and dark. Until it is on, every improvement to the customer journey is invisible to anyone who closes the tab — which is most people. It is a DNS record, a key and a deliverability test, currently scheduled four months after the flows it serves.",
+Run the tracker from the new files and delete the old habits,"milestones.csv and roadmap.csv are the only things you edit now. The generator writes roadmap.md and roadmap.html; the GitHub Action does it for you on every push that touches them. The xlsx Gantt is retired — the timeline in roadmap.html replaces it at milestone level.","python3 roadmap/build_roadmap.py     # regenerate md + html
+python3 roadmap/sync_status.py       # check the CSV against recent commits
+open roadmap/roadmap.html            # the view"

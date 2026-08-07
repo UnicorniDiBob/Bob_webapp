@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BOB — Roadmap per traguardi</title>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f6f6f9; --surface:#fbfbfd; --surface-2:#ffffff; --line:#e4e4ee;
+    --ink:#1e1b4b; --text:#14132e; --text-2:#55536e; --text-3:#82809b;
+    --accent:#3730a3; --accent-2:#4338ca; --accent-soft:#eef2ff; --accent-line:#c7d2fe;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --good-bg:#e8f7e8; --warning-bg:#fdf3dd; --serious-bg:#fdeee7; --critical-bg:#fbe7e7;
+    --shadow:0 1px 2px rgba(30,27,75,.04), 0 8px 24px rgba(30,27,75,.06);
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#131320; --surface:#1a1a19; --surface-2:#20202e; --line:#33334a;
+    --ink:#e8e8f5; --text:#f2f2f8; --text-2:#b9b8cd; --text-3:#8e8da6;
+    --accent:#9085e9; --accent-2:#a79ef0; --accent-soft:#252442; --accent-line:#3d3a6b;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --good-bg:#16321a; --warning-bg:#3a2f12; --serious-bg:#3a251b; --critical-bg:#3a1d1d;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:28px 20px 80px}
+  a{color:var(--accent)}
+
+  /* ---------- header ---------- */
+  header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;font-weight:800;font-size:17px;letter-spacing:-.5px}
+  h1{font-size:22px;margin:0;letter-spacing:-.4px;color:var(--ink)}
+  .sub{font-size:13px;color:var(--text-2);margin-top:2px}
+  .tbtn{border:1px solid var(--line);background:var(--surface-2);color:var(--text-2);
+    border-radius:999px;padding:7px 14px;font-size:12.5px;cursor:pointer;font-weight:600}
+  .tbtn:hover{border-color:var(--accent-line);color:var(--accent)}
+
+  /* ---------- hero ---------- */
+  .hero{background:var(--surface-2);border:1px solid var(--line);border-radius:18px;padding:22px 24px;box-shadow:var(--shadow);margin-bottom:14px}
+  .hero .kicker{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .hero p{margin:0;font-size:15.5px;color:var(--text);max-width:78ch}
+  .hero p+p{margin-top:10px;color:var(--text-2);font-size:14px}
+
+  /* ---------- stat tiles ---------- */
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0 26px}
+  .tile{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
+  .tile .lab{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+  .tile .val{font-size:26px;font-weight:800;letter-spacing:-1px;color:var(--ink);margin-top:5px;line-height:1.1}
+  .tile .val.sm{font-size:17px;letter-spacing:-.3px}
+  .tile .note{font-size:12px;color:var(--text-2);margin-top:4px}
+
+  /* ---------- section ---------- */
+  section{margin-bottom:34px}
+  h2{font-size:16px;letter-spacing:-.2px;color:var(--ink);margin:0 0 4px;display:flex;align-items:center;gap:9px}
+  h2 .n{width:22px;height:22px;border-radius:7px;background:var(--accent-soft);color:var(--accent);
+    display:grid;place-items:center;font-size:11.5px;font-weight:800;border:1px solid var(--accent-line)}
+  .lede{font-size:13.5px;color:var(--text-2);margin:0 0 14px;max-width:88ch}
+
+  /* ---------- chips ---------- */
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;
+    padding:3px 9px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+  .chip .g{font-size:10px;line-height:1}
+  .c-good{background:var(--good-bg);color:var(--good);border-color:color-mix(in srgb,var(--good) 30%,transparent)}
+  .c-warn{background:var(--warning-bg);color:#8a6100;border-color:color-mix(in srgb,var(--warning) 45%,transparent)}
+  :root[data-theme="dark"] .c-warn{color:var(--warning)}
+  .c-serious{background:var(--serious-bg);color:#a34b1e;border-color:color-mix(in srgb,var(--serious) 45%,transparent)}
+  :root[data-theme="dark"] .c-serious{color:var(--serious)}
+  .c-crit{background:var(--critical-bg);color:var(--critical);border-color:color-mix(in srgb,var(--critical) 35%,transparent)}
+  .c-idle{background:var(--surface);color:var(--text-3);border-color:var(--line)}
+  .c-acc{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
+
+  /* ---------- reality check ---------- */
+  .findings{display:grid;gap:10px}
+  .f{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--line);
+    border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+  .f.crit{border-left-color:var(--critical)}
+  .f.warn{border-left-color:var(--warning)}
+  .f.ser{border-left-color:var(--serious)}
+  .f.ok{border-left-color:var(--good)}
+  .f h3{margin:0 0 6px;font-size:14px;display:flex;gap:9px;align-items:center;flex-wrap:wrap;color:var(--ink)}
+  .f p{margin:0;font-size:13px;color:var(--text-2)}
+  .f .ev{margin-top:7px;font-family:var(--mono);font-size:11.5px;color:var(--text-3);
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;overflow-x:auto}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;
+    padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px}
+  .controls .lb{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-right:2px}
+  .fb{border:1px solid var(--line);background:var(--surface);color:var(--text-2);border-radius:999px;
+    padding:5px 12px;font-size:12.5px;cursor:pointer;font-weight:600}
+  .fb[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .spacer{flex:1}
+
+  /* ---------- milestone cards ---------- */
+  .ms{background:var(--surface-2);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;scroll-margin-top:16px}
+  .ms.active{border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft),var(--shadow)}
+  .ms.parked{opacity:.9;background:var(--surface)}
+  .ms-h{display:flex;gap:14px;align-items:flex-start;padding:16px 18px;cursor:pointer;user-select:none}
+  .ms-h:hover{background:var(--accent-soft)}
+  :root[data-theme="dark"] .ms-h:hover{background:#242340}
+  .badge{flex:0 0 auto;width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
+    font-weight:800;font-size:14px;background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent-line);letter-spacing:-.5px}
+  .ms.done-all .badge{background:var(--good-bg);color:var(--good);border-color:color-mix(in srgb,var(--good) 30%,transparent)}
+  .ms-t{flex:1;min-width:0}
+  .ms-t .title{font-size:15.5px;font-weight:750;color:var(--ink);letter-spacing:-.2px}
+  .ms-t .win{font-size:12px;color:var(--text-3);margin-top:1px}
+  .ms-t .why{font-size:13px;color:var(--text-2);margin-top:7px;max-width:76ch}
+  .ms-meta{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:7px;min-width:132px}
+  .meter{width:126px;height:6px;background:var(--line);border-radius:999px;overflow:hidden}
+  .meter i{display:block;height:100%;border-radius:999px;background:var(--accent)}
+  .ms.done-all .meter i{background:var(--good)}
+  .mnum{font-size:11.5px;color:var(--text-3);font-variant-numeric:tabular-nums}
+  .caret{font-size:11px;color:var(--text-3)}
+
+  .ms-b{display:none;padding:0 18px 18px;border-top:1px solid var(--line)}
+  .ms.open .ms-b{display:block}
+  .test{margin:14px 0 12px;padding:12px 14px;background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:11px}
+  .test .lb{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+  .test p{margin:0;font-size:13.5px;color:var(--text)}
+  table.items{width:100%;border-collapse:collapse;font-size:13px}
+  table.items th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--text-3);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--line)}
+  table.items td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--text-2)}
+  table.items tr:last-child td{border-bottom:none}
+  table.items tr.hid{display:none}
+  td.id{font-family:var(--mono);font-size:11.5px;color:var(--text-3);white-space:nowrap;width:56px}
+  td.txt{color:var(--text)}
+  td.txt.dn{color:var(--text-3)}
+  td.st{width:126px}
+  td.ow{width:74px;font-size:12px;color:var(--text-3);white-space:nowrap}
+  .newtag{display:inline-block;font-size:9.5px;font-weight:800;letter-spacing:.06em;color:var(--accent);
+    background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:5px;padding:1px 4px;margin-left:6px;vertical-align:1px}
+
+  /* ---------- timeline ---------- */
+  .tl-wrap{background:var(--surface-2);border:1px solid var(--line);border-radius:16px;padding:16px 18px 10px;box-shadow:var(--shadow);overflow-x:auto}
+  .tl{min-width:820px}
+  .tl-row{display:grid;grid-template-columns:250px 1fr;align-items:center;gap:10px;height:30px}
+  .tl-row.head{height:26px;margin-bottom:6px}
+  .tl-lab{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  .tl-lab.lane{color:var(--text-3);font-weight:500;font-style:italic}
+  .tl-grid{position:relative;height:100%;display:grid;grid-template-columns:repeat(18,1fr)}
+  .tl-grid .cell{border-left:1px solid var(--line)}
+  .tl-grid .cell:last-child{border-right:1px solid var(--line)}
+  .tl-grid .cell.q{background:color-mix(in srgb,var(--accent) 4%,transparent)}
+  .tl-grid .cell.now{background:color-mix(in srgb,var(--critical) 9%,transparent)}
+  .tl-head .cell{font-size:9.5px;color:var(--text-3);text-align:center;padding-top:5px;font-weight:700;letter-spacing:.02em}
+  .tl-head .cell.now{color:var(--critical)}
+  .bar{position:absolute;top:7px;height:15px;border-radius:4px;background:var(--accent);
+    display:flex;align-items:center;padding:0 6px;cursor:pointer;box-shadow:0 0 0 2px var(--surface-2)}
+  .bar span{font-size:9.5px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden}
+  .bar.done{background:var(--good)}
+  .bar.gate{background:var(--warning);border-radius:3px}
+  .bar.gate span{color:#5a4100}
+  .bar.lane{background:color-mix(in srgb,var(--accent) 35%,transparent);border:1px dashed var(--accent-line)}
+  .bar.lane span{color:var(--accent)}
+  .bar.park{background:var(--line);border:1px dashed var(--text-3)}
+  .bar.park span{color:var(--text-3)}
+  .bar:hover{filter:brightness(1.08)}
+  .tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;
+    padding:7px 10px;border-radius:8px;max-width:290px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none;line-height:1.4}
+  :root[data-theme="dark"] .tip{background:#000;border:1px solid var(--line)}
+  .tl-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+  .tl-legend div{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-2)}
+  .sw{width:12px;height:8px;border-radius:3px}
+
+  /* ---------- next ---------- */
+  .next{display:grid;gap:10px;counter-reset:n}
+  .na{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow);
+    display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start}
+  .na .num{width:26px;height:26px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}
+  .na h3{margin:0 0 4px;font-size:14px;color:var(--ink)}
+  .na p{margin:0;font-size:13px;color:var(--text-2)}
+  pre{margin:9px 0 0;background:var(--ink);color:#e8e8f5;border-radius:9px;padding:11px 13px;
+    font-family:var(--mono);font-size:11.5px;overflow-x:auto;line-height:1.6}
+  :root[data-theme="dark"] pre{background:#0d0d16;border:1px solid var(--line)}
+  code.inl{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--accent)}
+
+  /* ---------- rules ---------- */
+  .rules{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rule{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+  .rule h3{margin:0 0 5px;font-size:13.5px;color:var(--ink)}
+  .rule p{margin:0;font-size:12.5px;color:var(--text-2)}
+  footer{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--text-3)}
+
+  @media (max-width:820px){
+    .tiles{grid-template-columns:1fr 1fr}
+    .rules{grid-template-columns:1fr}
+    .ms-h{flex-wrap:wrap}
+    .ms-meta{align-items:flex-start;min-width:0;flex-direction:row;width:100%}
+    .badge{width:38px;height:38px;font-size:13px}
+  }
+</style><style>
+  /* generated-view additions */
+  .arcbtn{margin-top:12px;border:1px solid var(--line);background:var(--surface);color:var(--text-2);
+    border-radius:9px;padding:6px 11px;font-size:12px;cursor:pointer;font-weight:600}
+  .arcbtn:hover{border-color:var(--accent-line);color:var(--accent)}
+  .arc{display:none;margin-top:10px}
+  .arc.on{display:block}
+  .stamp{font-size:11.5px;color:var(--text-3);font-family:var(--mono)}
+  td.sub .txt-in{padding-left:14px;border-left:2px solid var(--line);display:block}
+  .c-dormant{background:var(--warning-bg);color:#8a6100;border-color:color-mix(in srgb,var(--warning) 45%,transparent)}
+  :root[data-theme="dark"] .c-dormant{color:var(--warning)}
+  .c-park{background:var(--surface);color:var(--text-3);border-color:var(--line)}
+  .c-open{background:var(--surface);color:var(--text-3);border-color:var(--line)}
+  .c-prog{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-line)}
+  .c-gate{background:var(--warning-bg);color:#8a6100;border-color:color-mix(in srgb,var(--warning) 45%,transparent)}
+  :root[data-theme="dark"] .c-gate{color:var(--warning)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">B</div>
+      <div>
+        <h1>BOB — Roadmap per traguardi</h1>
+        <div class="sub" id="sub"></div>
+      </div>
+    </div>
+    <button class="tbtn" id="theme">Light / dark</button>
+  </header>
+
+  <div class="hero">
+    <div class="kicker">Come si legge</div>
+    <p>Due livelli soli: <strong>un traguardo</strong> &egrave; uno stato del mondo con un test che passa o non passa, <strong>sotto</strong> ci stanno le attivit&agrave;. Due corsie parallele non bloccano il prodotto, e tutto quello che non si &egrave; ancora guadagnato una data sta in un parcheggio dichiarato invece di fingere un calendario.</p>
+    <p>Fonte di verit&agrave;: <code class="inl">roadmap/milestones.csv</code> e <code class="inl">roadmap/roadmap.csv</code>. Questa pagina &egrave; generata &mdash; non si modifica a mano.</p>
+  </div>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section id="sec-find">
+    <h2><span class="n">1</span> Controllo di realt&agrave;</h2>
+    <p class="lede">Dove la board e la produzione non erano d&rsquo;accordo. Si aggiorna in <code class="inl">roadmap/findings.csv</code>; quando una riga &egrave; risolta, si cancella.</p>
+    <div class="findings" id="findings"></div>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span> I traguardi</h2>
+    <p class="lede">Clicca una scheda per aprire le attivit&agrave;. Gli id della vecchia roadmap sono conservati: niente &egrave; andato perso nel passaggio.</p>
+    <div class="controls">
+      <span class="lb">Owner</span>
+      <button class="fb" data-own="all" aria-pressed="true">Tutti</button>
+      <button class="fb" data-own="Andr&eacute;" aria-pressed="false">Andr&eacute;</button>
+      <button class="fb" data-own="Lucio" aria-pressed="false">Lucio</button>
+      <button class="fb" data-own="Shared" aria-pressed="false">Shared</button>
+      <span class="spacer"></span>
+      <button class="fb" id="hidePark" aria-pressed="true">Nascondi parcheggiate</button>
+      <button class="fb" id="expandAll" aria-pressed="false">Apri tutto</button>
+    </div>
+    <div id="milestones"></div>
+  </section>
+
+  <section>
+    <h2><span class="n">3</span> La timeline &mdash; solo a livello di traguardo</h2>
+    <p class="lede">Sostituisce il Gantt. Una barra per traguardo, mai per attivit&agrave;: le barre per attivit&agrave; sono quello che rendeva illeggibile il vecchio grafico, e le date erano inventate. Passa sopra per il test, clicca per saltare alla scheda.</p>
+    <div class="tl-wrap"><div class="tl" id="tl"></div>
+      <div class="tl-legend">
+        <div><span class="sw" style="background:var(--accent)"></span> Traguardo</div>
+        <div><span class="sw" style="background:var(--warning)"></span> Gate / decisione</div>
+        <div><span class="sw" style="background:color-mix(in srgb,var(--accent) 35%,transparent);border:1px dashed var(--accent-line)"></span> Corsia parallela</div>
+        <div><span class="sw" style="background:var(--line);border:1px dashed var(--text-3)"></span> Parcheggio</div>
+        <div><span class="sw" style="background:color-mix(in srgb,var(--critical) 25%,transparent)"></span> Mese corrente</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sec-next">
+    <h2><span class="n">4</span> Le prossime mosse, in ordine</h2>
+    <p class="lede">Si aggiorna in <code class="inl">roadmap/next.csv</code>.</p>
+    <div class="next" id="next"></div>
+  </section>
+
+  <section>
+    <h2><span class="n">5</span> Le quattro regole</h2>
+    <p class="lede">Il vecchio schema non &egrave; fallito per trascuratezza: mancavano queste.</p>
+    <div class="rules">
+      <div class="rule"><h3>Un traguardo &egrave; uno stato del mondo, mai un contenitore</h3><p>Se non riesci a scrivere &laquo;&egrave; fatto quando una persona vera pu&ograve;&hellip;&raquo;, non &egrave; un traguardo: &egrave; un tema. Il vecchio schema ne aveva dieci, e i temi non finiscono mai.</p></div>
+      <div class="rule"><h3>Due livelli, e niente sotto la giornata prende una riga</h3><p>Traguardo &rarr; attivit&agrave;, punto. &laquo;Riga in piccolo sul profilo con la data della verifica&raquo; &egrave; un messaggio di commit, non una riga di roadmap: il log dei commit gi&agrave; lo traccia, e a 158 righe una board smette di essere letta.</p></div>
+      <div class="rule"><h3>Nessuna data senza una dipendenza o un orologio esterno</h3><p>Quasi tutte le date del vecchio schema servivano a far comparire le barre, ed &egrave; per questo che risultava in ritardo un solo item: le date venivano riscritte in silenzio. O qualcosa la blocca, o la decide qualcuno fuori, o va nel parcheggio.</p></div>
+      <div class="rule"><h3>Costruito ma spento si scrive <code class="inl">Dormant</code>, non <code class="inl">Done</code></h3><p>Tre funzioni sono state chiuse mentre erano spente in produzione: il ritentativo notturno, la pipeline email, il substrato pagamenti. Con la condizione che le accende accanto, &laquo;Done&raquo; continua a voler dire &laquo;funziona per un utente&raquo;.</p></div>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const MONTHS=['A','S','O','N','D','G','F','M','A','M','G','L','A','S','O','N','D','G'];
+const MLAB=['ago 26','set 26','ott 26','nov 26','dic 26','gen 27','feb 27','mar 27','apr 27','mag 27','giu 27','lug 27','ago 27','set 27','ott 27','nov 27','dic 27','gen 28'];
+const SEV={critical:['crit','c-crit','&#10006;'],serious:['ser','c-serious','&#9650;'],warning:['warn','c-warn','&#9650;'],good:['ok','c-good','&#10004;']};
+const MSTATE={blocked:['c-crit','&#10006;','Bloccato'],urgent:['c-crit','&#10006;','Urgente'],active:['c-warn','&#9654;','In corso'],
+  open:['c-idle','&#9675;','Non iniziato'],gate:['c-warn','&#9670;','Gate'],parallel:['c-acc','&#9642;','Parallelo'],parked:['c-idle','&#9642;','Parcheggiato']};
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* header + tiles */
+document.getElementById('sub').textContent =
+  'Generato il '+DATA.generated+' da milestones.csv + roadmap.csv \u00b7 non modificare a mano';
+const T=DATA.totals;
+document.getElementById('tiles').innerHTML=[
+  ['Da fare adesso',T.open,'attivit\u00e0 aperte o in corso'],
+  ['Pronte ma spente',T.dormant,'costruite e non accese in produzione'],
+  ['Parcheggiate',T.parked,'in attesa di una prova dal vivo'],
+  ['Gi\u00e0 chiuse',T.closed,'in ARCHIVE.csv, niente perso']
+].map(t=>`<div class="tile"><div class="lab">${t[0]}</div><div class="val">${t[1]}</div><div class="note">${t[2]}</div></div>`).join('');
+
+/* findings */
+const fEl=document.getElementById('findings');
+if(!DATA.findings.length){document.getElementById('sec-find').style.display='none';}
+else fEl.innerHTML=DATA.findings.map(f=>{const s=SEV[f.sev]||SEV.warning;
+  return `<div class="f ${s[0]}"><h3>${esc(f.title)} <span class="chip ${s[1]}"><span class="g">${s[2]}</span>${esc(f.label)}</span></h3>
+  <p>${esc(f.body)}</p><div class="ev">${esc(f.ev)}</div></div>`;}).join('');
+
+/* milestone cards */
+function card(m){
+  const st=MSTATE[m.state]||MSTATE.open;
+  const tot=m.items.length+m.archive.length;
+  const pct=tot?Math.round(m.archive.length/tot*100):0;
+  const win=m.start?`${m.start} \u2192 ${m.end}`:'continuo';
+  const rows=m.items.map(i=>`<tr data-own="${esc(i.owner)}" data-park="${i.status==='Parked'?1:0}">
+     <td class="id">${esc(i.id)}</td>
+     <td class="txt ${i.parent?'sub':''}"><span class="${i.parent?'txt-in':''}">${esc(i.task)}</span></td>
+     <td class="st"><span class="chip c-${i.cls}"><span class="g">${i.glyph}</span>${esc(i.lab)}</span></td>
+     <td class="ow">${esc(i.owner)}</td></tr>`).join('');
+  const arc=m.archive.length?`<button class="arcbtn" data-arc="${m.id}">${m.archive.length} attivit\u00e0 gi\u00e0 chiuse &#9662;</button>
+    <div class="arc" id="arc-${m.id}"><table class="items"><tbody>${m.archive.map(a=>
+      `<tr><td class="id">${esc(a.id)}</td><td class="txt dn">${esc(a.task)}</td>
+       <td class="st"><span class="chip c-good"><span class="g">&#10004;</span>Fatto</span></td>
+       <td class="ow stamp">${esc(a.done_on)}</td></tr>`).join('')}</tbody></table></div>`:'';
+  return `<article class="ms ${m.kind!=='milestone'?'parked':''}" id="card-${m.id}">
+    <div class="ms-h" role="button" tabindex="0" aria-expanded="false">
+      <div class="badge">${m.id}</div>
+      <div class="ms-t"><div class="title">${esc(m.title)}</div><div class="win">${win}</div>
+        <div class="why">${esc(m.why)}</div></div>
+      <div class="ms-meta"><span class="chip ${st[0]}"><span class="g">${st[1]}</span>${st[2]}</span>
+        <div class="meter"><i style="width:${pct}%"></i></div>
+        <div class="mnum">${m.archive.length}/${tot} chiuse <span class="caret">&#9662;</span></div></div>
+    </div>
+    <div class="ms-b">
+      <div class="test"><div class="lb">\u00c8 fatto quando</div><p>${esc(m.done_when)}</p></div>
+      ${m.items.length?`<table class="items"><thead><tr><th>id</th><th>attivit\u00e0</th><th>stato</th><th>owner</th></tr></thead><tbody>${rows}</tbody></table>`:''}
+      ${arc}
+    </div></article>`;
+}
+document.getElementById('milestones').innerHTML=DATA.milestones.map(card).join('');
+
+/* timeline */
+(function(){
+  const NOW=0;
+  let h=`<div class="tl-row head"><div class="tl-lab"></div><div class="tl-grid tl-head">`+
+    MONTHS.map((mo,i)=>`<div class="cell ${i===NOW?'now':''} ${i>=5?'q':''}" title="${MLAB[i]}">${mo}</div>`).join('')+`</div></div>`;
+  h+=DATA.milestones.map(m=>{
+    const a=Math.max(0,Math.min(m.a,18)), b=Math.max(a+1,Math.min(m.b,18));
+    const kind=m.kind==='lane'?'lane':(m.kind==='park'?'park':(m.state==='gate'?'gate':''));
+    const left=a/18*100, w=Math.max((b-a)/18*100,3.3);
+    return `<div class="tl-row"><div class="tl-lab ${kind==='lane'?'lane':''}">${m.id} \u00b7 ${esc(m.title)}</div>
+      <div class="tl-grid">${MONTHS.map((mo,i)=>`<div class="cell ${i===NOW?'now':''} ${i>=5?'q':''}"></div>`).join('')}
+      <div class="bar ${kind}" style="left:${left}%;width:${w}%" data-go="${m.id}"
+        data-tip="${esc(m.title)} \u2014 ${esc(m.done_when).slice(0,160)}\u2026"><span>${m.id}</span></div></div></div>`;
+  }).join('');
+  document.getElementById('tl').innerHTML=h;
+})();
+
+/* next */
+if(!DATA.next.length){document.getElementById('sec-next').style.display='none';}
+else document.getElementById('next').innerHTML=DATA.next.map((n,i)=>
+  `<div class="na"><div class="num">${i+1}</div><div><h3>${esc(n.h)}</h3><p>${esc(n.p)}</p>
+   ${n.code?`<pre>${esc(n.code)}</pre>`:''}</div></div>`).join('');
+
+document.getElementById('foot').innerHTML =
+  'Fonti: <code class="inl">roadmap/milestones.csv</code> \u00b7 <code class="inl">roadmap/roadmap.csv</code> \u00b7 '+
+  '<code class="inl">roadmap/findings.csv</code> \u00b7 <code class="inl">roadmap/next.csv</code> \u00b7 '+
+  'storico in <code class="inl">roadmap/ARCHIVE.csv</code>.<br>Rigenera con <code class="inl">python3 roadmap/build_roadmap.py</code> \u2014 la GitHub Action lo fa a ogni push che tocca questi file.';
+
+/* ---- interaction ---- */
+let owner='all', hidePark=true;
+function applyFilters(){
+  document.querySelectorAll('table.items tbody tr[data-own]').forEach(tr=>{
+    const okOwn = owner==='all' || tr.dataset.own===owner ||
+      (owner==='Shared' && (tr.dataset.own==='Shared'||tr.dataset.own==='Claude'));
+    const okPark = !hidePark || tr.dataset.park!=='1';
+    tr.classList.toggle('hid', !(okOwn && okPark));
+  });
+}
+document.querySelectorAll('.fb[data-own]').forEach(b=>b.addEventListener('click',()=>{
+  owner=b.dataset.own;
+  document.querySelectorAll('.fb[data-own]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+  applyFilters();
+}));
+const hp=document.getElementById('hidePark');
+hp.addEventListener('click',()=>{hidePark=!hidePark;hp.setAttribute('aria-pressed',String(hidePark));
+  hp.textContent=hidePark?'Nascondi parcheggiate':'Mostra parcheggiate';applyFilters();});
+function toggleCard(c){const on=!c.classList.contains('open');c.classList.toggle('open',on);
+  c.querySelector('.ms-h').setAttribute('aria-expanded',String(on));}
+document.querySelectorAll('.ms-h').forEach(h=>{
+  h.addEventListener('click',()=>toggleCard(h.closest('.ms')));
+  h.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCard(h.closest('.ms'));}});
+});
+const ea=document.getElementById('expandAll');
+ea.addEventListener('click',()=>{const on=ea.getAttribute('aria-pressed')!=='true';
+  ea.setAttribute('aria-pressed',String(on));ea.textContent=on?'Chiudi tutto':'Apri tutto';
+  document.querySelectorAll('.ms').forEach(c=>{c.classList.toggle('open',on);
+    c.querySelector('.ms-h').setAttribute('aria-expanded',String(on));});});
+document.querySelectorAll('.arcbtn').forEach(b=>b.addEventListener('click',e=>{
+  e.stopPropagation();document.getElementById('arc-'+b.dataset.arc).classList.toggle('on');}));
+/* open every milestone that still has open work, capped at the first three */
+DATA.milestones.filter(m=>m.kind==='milestone'&&m.items.some(i=>i.status!=='Parked')).slice(0,3)
+  .forEach(m=>{const c=document.getElementById('card-'+m.id);
+    if(c){c.classList.add('open','active');c.querySelector('.ms-h').setAttribute('aria-expanded','true');}});
+applyFilters();
+
+const tip=document.getElementById('tip');
+document.querySelectorAll('.bar').forEach(b=>{
+  b.addEventListener('mousemove',e=>{tip.textContent=b.dataset.tip;tip.style.display='block';
+    let x=e.clientX+14,y=e.clientY+14;if(x+300>window.innerWidth)x=e.clientX-300;
+    tip.style.left=x+'px';tip.style.top=y+'px';});
+  b.addEventListener('mouseleave',()=>tip.style.display='none');
+  b.addEventListener('click',()=>{const c=document.getElementById('card-'+b.dataset.go);
+    if(c){if(!c.classList.contains('open'))toggleCard(c);c.scrollIntoView({behavior:'smooth',block:'center'});}});
+});
+document.getElementById('theme').addEventListener('click',()=>{const r=document.documentElement;
+  r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';});
+if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)
+  document.documentElement.dataset.theme='dark';
+</script>
+</body>
+</html>
