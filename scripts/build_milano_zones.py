@@ -37,7 +37,7 @@ ZONES = [
     ("centro",         "Centro / Duomo",              ["DUOMO"]),
     ("brera",          "Brera",                       ["BRERA"]),
     ("isola",          "Isola",                       ["ISOLA"]),
-    ("porta-nuova",    "Porta Nuova / Garibaldi",     ["GARIBALDI REPUBBLICA"]),
+    ("porta-nuova",    "Porta Nuova / Garibaldi",     ["PORTA GARIBALDI", "PORTA NUOVA"]),
     ("porta-venezia",  "Porta Venezia",               ["BUENOS AIRES", "PORTA VENEZIA"]),
     ("porta-romana",   "Porta Romana",                ["PORTA ROMANA", "GUASTALLA"]),
     ("navigli",        "Navigli",                     ["NAVIGLI"]),
@@ -82,13 +82,27 @@ def fetch_rows():
     rows = list(csv.DictReader(io.StringIO(raw), delimiter=";"))
     if len(rows) < 2 or len(rows[0]) < 2:
         rows = list(csv.DictReader(io.StringIO(raw), delimiter=","))
-    print(f"  {len(rows)} righe, colonne: {', '.join(list(rows[0])[:8])}")
+    print(f"  {len(rows)} righe, colonne: {', '.join(list(rows[0]))}")
     return rows
 
 
 def pick(row, *candidates):
+    """Prima l'uguaglianza esatta, poi la sottostringa.
+
+    Serve perche' il CSV del Comune non chiama le colonne "LAT"/"LONG" ma
+    LAT_Y_4326_CENTROID e LONG_X_4326_CENTROID. Cercando solo l'uguaglianza
+    esatta le coordinate non si trovavano mai, e ogni zona finiva nell'elenco
+    dei "nomi non corrispondenti" — un messaggio che indicava il posto
+    sbagliato in cui cercare il problema.
+    """
+    cands = [norm(c).strip() for c in candidates]
     for k in row:
-        if norm(k).strip() in [norm(c).strip() for c in candidates]:
+        if norm(k).strip() in cands:
+            return row[k]
+    for k in row:
+        nk = norm(k).strip()
+        if any(re.search(r"(^| )" + re.escape(c) + r"($| |_)", nk) or
+               nk.startswith(c + " ") or c in nk.split() for c in cands):
             return row[k]
     return None
 
@@ -99,8 +113,8 @@ def centroid_of(rows, needles):
         name = pick(row, "NIL", "nil", "Nome NIL", "nome_nil", "NILDESCR") or ""
         n = norm(name)
         if any(norm(x) in n for x in needles):
-            lat = pick(row, "LAT", "lat", "Y", "latitude", "coord_y")
-            lng = pick(row, "LONG", "LON", "lng", "X", "longitude", "coord_x")
+            lat = pick(row, "LAT_Y_4326_CENTROID", "LAT", "lat", "Y", "latitude", "coord_y")
+            lng = pick(row, "LONG_X_4326_CENTROID", "LONG", "LON", "lng", "X", "longitude", "coord_x")
             try:
                 pts.append((float(str(lat).replace(",", ".")),
                             float(str(lng).replace(",", "."))))
@@ -143,8 +157,11 @@ def main():
     src = open(TARGET, encoding="utf-8").read()
     new = re.sub(r"export const MILANO_ZONES: Zone\[\] = \[.*?\n\];",
                  block.replace("\\", "\\\\"), src, flags=re.S)
-    if new == src:
+    if not re.search(r"export const MILANO_ZONES: Zone\[\] = \[.*?\n\];", src, flags=re.S):
         sys.exit("non ho trovato il blocco MILANO_ZONES in src/lib/zones.ts")
+    if new == src:
+        print("\nsrc/lib/zones.ts era gia' identico: nessuna coordinata nuova da scrivere.")
+        return 0
     open(TARGET, "w", encoding="utf-8").write(new)
     done = len(ZONES) - len(missing)
     print(f"\nsrc/lib/zones.ts aggiornato — {done}/{len(ZONES)} zone con coordinate.")

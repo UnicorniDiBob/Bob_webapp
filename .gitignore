@@ -34,3 +34,4 @@ next-env.d.ts
 # per traguardo in roadmap/roadmap.html. La riga resta per non ricommittare
 # un xlsx rimasto sul disco di chi lo aveva generato prima.
 roadmap/BOB_Roadmap_Gantt.xlsx
+scripts/.nil_cache.csv
