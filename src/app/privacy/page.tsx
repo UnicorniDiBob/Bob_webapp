@@ -44,6 +44,12 @@ export default function PrivacyPage() {
           scambiati con i professionisti e le recensioni che pubblichi.
         </p>
         <p>
+          <strong>Dove serve l&apos;intervento:</strong> la zona o il CAP che
+          indichi quando descrivi il problema, e l&apos;indirizzo completo
+          (via e civico, più eventuali note per entrare) quando fissi un
+          appuntamento.
+        </p>
+        <p>
           <strong>Dati dei professionisti:</strong> nome dell&apos;attività,
           categoria, città, tariffe e stato di verifica.
         </p>
@@ -77,6 +83,27 @@ export default function PrivacyPage() {
           <strong>Consenso</strong> (art. 6.1.a GDPR): liste d&apos;attesa per
           le nuove città e future comunicazioni promozionali. Puoi revocare il
           consenso in ogni momento scrivendoci.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Chi vede il tuo indirizzo, e quando">
+        <p>
+          I professionisti che invitiamo a farti un preventivo{" "}
+          <strong>non vedono il tuo indirizzo</strong>. Vedono soltanto la zona
+          o il CAP che hai indicato — quanto basta per capire se la trasferta è
+          fattibile e a che distanza sei — oppure la sola città, se preferisci
+          non dire altro: la zona è facoltativa.
+        </p>
+        <p>
+          Via, civico e note di accesso arrivano a{" "}
+          <strong>un solo professionista</strong>, e solo dopo che hai
+          confermato l&apos;appuntamento con lui. Chi non viene scelto non li
+          riceve mai.
+        </p>
+        <p>
+          Il professionista che riceve i tuoi dati diventa titolare autonomo
+          del trattamento per l&apos;uso che ne fa, e i nostri termini gli
+          vietano di riutilizzare i tuoi contatti per farsi pubblicità.
         </p>
       </LegalSection>
 
