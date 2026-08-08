@@ -41,9 +41,9 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 **Finestra:** 2026-08-06 → 2026-08-14 · **3 aperte, 2 chiuse**
 
-**Perché:** Every plan below assumes the board, the repo and production agree. Right now three items marked Done are not running, and the migration history and the repo disagree on five names — so no schema check can be trusted. This milestone costs a few hours and makes everything after it verifiable instead of assumed.
+**Perché:** Ogni piano piu' sotto assume che board, repo e produzione dicano la stessa cosa. CORRETTO L'8 AGOSTO, dopo aver provato a eseguire il controllo invece di descriverlo: il problema non era che la storia delle migrazioni e il repo litigassero su cinque nomi. Quei cinque nomi erano gia' coperti (013 e 038) - davvero cosmetici. Il problema vero era che il repo NON RICOSTRUIVA AFFATTO un database: public.rls_auto_enable() esisteva in produzione e in nessun file, la 032 ne revoca l'EXECUTE, quindi un clone nuovo si fermava alla 032 e perdeva tutto fino alla 046. Nessun controllo lo diceva perche' nessuno aveva mai provato a ricostruire. Piu' tre item marcati Done che non girano. Questa milestone costa poche ore e rende verificabile, invece che assunto, tutto quello che viene dopo.
 
-**È fatto quando:** A fresh clone plus the live DB pass a diff with no surprises; the nightly retry has demonstrably run once; every advisor finding is either fixed or written down as accepted; DATA_COMPLIANCE.md is actually in the repo.
+**È fatto quando:** Lo script di ricostruzione (scripts/schema_check.sh) applica 001->NNN su un Postgres vuoto con 0 errori e le otto impronte di schema coincidono con la produzione - NON "supabase db diff pulito": con la numerazione NNN_nome.sql la CLI non riesce ad appaiare i file e quel diff non e' utilizzabile qui; il ritentativo notturno ha dimostrabilmente girato almeno una volta (una riga in system_job_runs); ogni finding dell'advisor e' risolto oppure accettato per iscritto CON una condizione di scadenza; DATA_COMPLIANCE.md e' davvero nel repo.
 
 | # | Attività | Track | Owner | Stato | Periodo |
 |---|----------|-------|-------|-------|---------|
