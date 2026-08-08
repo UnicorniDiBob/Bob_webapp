@@ -2,7 +2,7 @@
 
 _Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** 50 attività aperte · 3 pronte ma spente · 29 parcheggiate · 80 chiuse (in `ARCHIVE.csv`)
+**Stato:** 48 attività aperte · 3 pronte ma spente · 29 parcheggiate · 83 chiuse (in `ARCHIVE.csv`)
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -39,7 +39,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M1 · The build tells the truth
 
-**Finestra:** 2026-08-06 → 2026-08-14 · **3 aperte, 2 chiuse**
+**Finestra:** 2026-08-06 → 2026-08-14 · **1 aperte, 4 chiuse**
 
 **Perché:** Ogni piano piu' sotto assume che board, repo e produzione dicano la stessa cosa. CORRETTO L'8 AGOSTO, dopo aver provato a eseguire il controllo invece di descriverlo: il problema non era che la storia delle migrazioni e il repo litigassero su cinque nomi. Quei cinque nomi erano gia' coperti (013 e 038) - davvero cosmetici. Il problema vero era che il repo NON RICOSTRUIVA AFFATTO un database: public.rls_auto_enable() esisteva in produzione e in nessun file, la 032 ne revoca l'EXECUTE, quindi un clone nuovo si fermava alla 032 e perdeva tutto fino alla 046. Nessun controllo lo diceva perche' nessuno aveva mai provato a ricostruire. Piu' tre item marcati Done che non girano. Questa milestone costa poche ore e rende verificabile, invece che assunto, tutto quello che viene dopo.
 
@@ -47,34 +47,34 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 | # | Attività | Track | Owner | Stato | Periodo |
 |---|----------|-------|-------|-------|---------|
-| N1 | Reconcile the Supabase migration history with the repo: 5 live names without a file (portfolio_pro_limit_1, 034b, 034c, 036, 037), 011_customer_memory unregistered, 3 numbering collisions; then add `supabase db diff` to CI | Shared | Claude | ⬜ Aperto | 2026-08-06 → 2026-08-14 |
-| N2 | Advisor pass: revoke EXECUTE on the 4 anon-callable SECURITY DEFINER functions (is_admin, is_admin_or_cs, my_assigned_request_ids, my_professional_ids) or document as accepted; enable leaked-password protection | Internal | Lucio | ⬜ Aperto | 2026-08-06 → 2026-08-14 |
 | N3 | Migrate the tracker to the milestone schema: milestones.csv + why/done_when, ARCHIVE.csv, generator emits md+html, xlsx retired | Shared | Claude | 🔵 In corso | 2026-08-06 → 2026-08-14 |
 
-<details><summary>2 attività già chiuse</summary>
+<details><summary>4 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
 | 7b | Migrations backfill 001-017, CI (build+lint), RLS performance cleanup (018) | Claude | 2026-07-16 |
 | T1 | Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action | André | 2026-07-19 |
+| N1 | Ricostruzione del database dai soli file del repo: RISOLTA con la 047 (dichiara public.rls_auto_enable() e l'event trigger ensure_rls, che esistevano in produzione e in nessun file) + revoke condizionale nella 032. Prima di questo un clone nuovo si fermava alla 032 e perdeva tutto fino alla 046: il repo non ricostruiva niente. I 5 nomi orfani nella storia live erano invece gia' coperti da 013 e 038 - quella parte era davvero cosmetica, la mappa e' nel README delle migrazioni. NIENTE `supabase db diff` in CI: con la numerazione NNN_nome.sql la CLI non appaia i file e quel diff non e' utilizzabile qui. Il controllo giusto e' scripts/schema_check.sh: rigioca 001->NNN su un Postgres vuoto e confronta otto impronte con la produzione. Verificato l'8 agosto: 0 errori, otto impronte identiche. | Claude | 2026-08-08 |
+| N2 | Advisor pass: da 10 WARN a 1, con 0 ERROR. ATTENZIONE, la prescrizione originale di questa riga era distruttiva: revocare EXECUTE avrebbe rotto l'accesso a tutta l'applicazione, perche' 21 policy su 11 tabelle chiamano quelle funzioni e una policy e' valutata coi privilegi di chi interroga. Fatto invece con la 048: le cinque funzioni (non quattro: c'e' anche can_see_request_address, dalla 044) spostate in uno schema `private` non esposto e le 21 policy riscritte col nome qualificato. Verificato: 0 funzioni SECURITY DEFINER in public eseguibili da anon o authenticated, policy 83 prima e 83 dopo, login pro reale e admin funzionanti. Leaked password protection NON attivabile: richiede il piano Pro, salvataggio rifiutato dal dashboard. Accettata per iscritto in findings.csv con condizione di scadenza (prima dei pro reali). Mitigazioni al suo posto: lunghezza minima password da 6 a 8 e requisiti di composizione. | Claude | 2026-08-08 |
 
 </details>
 
 
 ## M2 · We hold only what we can justify
 
-**Finestra:** 2026-08-06 → 2026-08-31 · **2 aperte, 7 chiuse**
+**Finestra:** 2026-08-06 → 2026-08-31 · **2 aperte, 8 chiuse**
 
-**Perché:** The highest-priority milestone on the board, previously the lowest-priority section. A customer's exact address goes to five strangers before any of them is chosen, the AI-labelling obligation is already in force, and pro phone numbers are publicly readable by policy. None of it is expensive to fix; all of it gets far more expensive the day a real customer or the Garante notices.
+**Perché:** AGGIORNATO L'8 AGOSTO — 4 delle 6 condizioni sono chiuse e verificate. L'indirizzo esatto non va piu' a cinque estranei (mig 044-046, consegna progressiva, verificata anche nel browser con un login pro reale) e la chat dichiara di essere un assistente AI (in produzione dall'8 agosto, obbligo art. 50 in vigore dal 2). RESTA URGENT per una ragione precisa e ancora vera: il telefono di un professionista e' leggibile da un visitatore anonimo. profiles ha lettura pubblica dalla 003 - giusto, e' cosi' che funzionano i profili pubblici - ma profiles.phone sta nella stessa tabella, e la RLS agisce sulle righe, non sulle colonne. Provato l'8 agosto come ruolo anon: 5 righe viste, 1 telefono leggibile. Restano anche 3 richieste pre-044 con via e civico dentro la prosa libera (problem_description): la bonifica non li aveva estratti perche' erano in mezzo a una frase, come documenta l'intestazione di src/lib/redact.ts. Il confine LLM e' coperto da stripAddresses(), ma il dato grezzo e' ancora li'.
 
-**È fatto quando:** The address exists in one structured column, is disclosed only after the customer accepts a pro, and appears in no LLM prompt; historic rows are backfilled; the chat says plainly that Bob is an AI; no personal field is readable by anon that shouldn't be.
+**È fatto quando:** L'indirizzo esiste in una sola colonna strutturata, e' rivelato solo dopo che il cliente accetta un pro, e non compare in nessun prompt LLM [FATTO]; le righe storiche sono bonificate - restano 3 richieste con via e civico nella prosa [APERTO]; la chat dice chiaramente che Bob e' un'AI [FATTO]; nessun campo personale e' leggibile da anon quando non dovrebbe - profiles.phone lo e' ancora, rimedio: grant a livello di colonna (revoke select (phone) on public.profiles from anon), non serve una vista ne' una seconda tabella [APERTO].
 
 | # | Attività | Track | Owner | Stato | Periodo |
 |---|----------|-------|-------|-------|---------|
-| N4 | AI Act Art 50: label the Bob chat as an AI interaction — obligation applicable since 2 Aug 2026, currently overdue | Client/Pro | André | ⬜ Aperto | 2026-08-06 → 2026-08-20 |
-| N5 | Move profiles.phone for professionals into profile_private — publicly readable today through policy 003 (empty for every pro, so a free fix now) | Internal | Lucio | ⬜ Aperto | 2026-08-06 → 2026-08-31 |
+| N5 | profiles.phone e' leggibile da un visitatore anonimo: profiles ha lettura pubblica dalla 003 (corretto, e' cosi' che funzionano i profili pubblici) ma la RLS agisce sulle righe, non sulle colonne. CORREZIONE alla nota precedente: NON e' vuoto per tutti i pro - provato l'8 agosto come ruolo anon, 5 righe viste e 1 telefono leggibile. Rimedio piu' semplice di una seconda tabella: grant a livello di colonna, `revoke select (phone) on public.profiles from anon`, che lascia pubblico il resto del profilo senza toccare nessuna policy ne' creare viste. | Internal | Lucio | ⬜ Aperto | 2026-08-06 → 2026-08-31 |
+| N6 | Bonificare le 3 richieste pre-044 che hanno ancora via e civico dentro requests.problem_description (Via Solferino, Via Tortona, Viale Monza). La bonifica della 044 non le aveva prese perche' l'indirizzo era in mezzo a una frase, come documenta l'intestazione di src/lib/redact.ts. Il confine LLM e' coperto da stripAddresses() a tempo di lettura, ma il dato grezzo resta nel database e il done_when di M2 dice 'righe storiche bonificate'. Tre righe: intervento una tantum, con le descrizioni riviste prima di scrivere. | Internal | Claude | ⬜ Aperto | 2026-08-08 → 2026-08-31 |
 
-<details><summary>7 attività già chiuse</summary>
+<details><summary>8 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
@@ -85,6 +85,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 41.4 | Zona al posto dell'indirizzo prima dell'accettazione (mig 045): il cliente sceglie il quartiere in chat, i pro invitati vedono 'Zona Isola'. Niente geocoding, nessun fornitore: il punto non deriva dall'indirizzo | André | 2026-08-07 |
 | 41.5 | Distanza in km nella card del pro — acceso: 28/28 zone con coordinate reali dal dataset NIL del Comune (CC-BY). La causa del blocco era pick() che confrontava i nomi di colonna per uguaglianza esatta e non vedeva LAT_Y_4326_CENTROID | André | 2026-08-07 |
 | 41.6 | Ripiego CAP quando il cliente non riconosce nessun quartiere (mig 046): cinque cifre, grana equivalente alla zona, vincolo di formato in DB. Il pro legge 'CAP 20159' | André | 2026-08-07 |
+| N4 | AI Act art. 50: la chat dichiara di essere un assistente AI. In produzione dall'8 agosto, sei giorni dopo l'entrata in vigore. Pillola 'AI' accanto a 'Bob' e sottotitolo 'Assistente AI · Il tuo concierge dei servizi' nell'intestazione, quindi visibile prima del primo messaggio e non scorre via con la conversazione. Verificato su www.meetonda.com desktop e a 390px. | André | 2026-08-08 |
 
 </details>
 
