@@ -37,7 +37,22 @@ revoke execute on function public.log_subscription_tier_change() from public, an
 revoke execute on function public.protect_professional_columns() from public, anon, authenticated;
 
 -- 2. Event trigger.
-revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
+-- Condizionale: rls_auto_enable() nasce fuori dal repo (creata a mano in
+-- produzione) e viene dichiarata solo dalla 047. Su un clone nuovo qui non
+-- esiste ancora, e una revoke secca fermava la ricostruzione a questo punto,
+-- portandosi dietro tutte le migrazioni dalla 032 alla 046. La 047 rifà la
+-- revoke subito dopo aver creato la funzione, quindi lo stato finale è lo
+-- stesso in entrambi i percorsi.
+do $$
+begin
+  if exists (
+    select 1 from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'rls_auto_enable'
+  ) then
+    revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
+  end if;
+end $$;
 
 -- 3. search_path fisso (lint 0011): senza di esso una funzione SECURITY
 -- DEFINER può risolvere nomi non qualificati in schemi controllati dal

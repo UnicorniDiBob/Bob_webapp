@@ -24,7 +24,10 @@
 // uscire subito quando in Italia non è mezzanotte.
 
 import { NextResponse } from "next/server";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import {
+  createClient as createServiceClient,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 import { checkVatOnVies } from "@/lib/vies";
 import { matchRegistryName, procedureFlagInName } from "@/lib/vat";
 
@@ -45,7 +48,47 @@ const PAUSA_TRA_TENTATIVI_ORE = 20;
 
 const attendi = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Registra il passaggio in system_job_runs (migrazione 049).
+ *
+ * Perche' serve: da quando la 043 fa uscire subito il giro a vuoto, dal
+ * database non si distingue "ha girato e non aveva niente da fare" da "non ha
+ * girato". E' esattamente il buco in cui e' rimasto nascosto per settimane un
+ * CRON_SECRET mancante. Con questa riga "ha girato almeno una volta" e' una
+ * query, non una deduzione.
+ *
+ * Nessun dato personale: nome del lavoro, orari, contatori aggregati.
+ * Non deve mai far fallire il giro: se il registro non scrive, pazienza.
+ */
+async function registraGiro(
+  // SupabaseClient, non ReturnType<typeof createServiceClient>: senza
+  // argomenti di tipo il generico collassa e from() finisce a never[],
+  // quindi l'insert non compilava. Il resto del progetto passa il client
+  // inline e non incontra il problema.
+  admin: SupabaseClient,
+  dati: {
+    started_at: string;
+    ok: boolean;
+    outcome?: Record<string, number>;
+    error?: string | null;
+  }
+) {
+  try {
+    await admin.from("system_job_runs").insert({
+      job: "verifica-piva",
+      started_at: dati.started_at,
+      finished_at: new Date().toISOString(),
+      ok: dati.ok,
+      outcome: dati.outcome ?? {},
+      error: dati.error ?? null,
+    });
+  } catch {
+    // volutamente silenzioso
+  }
+}
+
 export async function GET(request: Request) {
+  const inizioGiro = new Date().toISOString();
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json(
@@ -106,6 +149,13 @@ export async function GET(request: Request) {
   // Niente in attesa: si esce subito, senza contattare nessuno. È il caso
   // normale nella maggior parte delle notti.
   if (casi.length === 0) {
+    // Il giro a vuoto e' il caso normale, ed e' proprio quello che prima non
+    // lasciava traccia: la riga si scrive comunque.
+    await registraGiro(admin, {
+      started_at: inizioGiro,
+      ok: true,
+      outcome: { esaminati: 0 },
+    });
     return NextResponse.json({
       ok: true,
       esaminati: 0,

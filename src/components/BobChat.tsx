@@ -766,8 +766,20 @@ export function BobChat({
           B
         </div>
         <div>
-          <p className="text-sm font-semibold leading-tight">Bob</p>
-          <p className="text-xs text-white/70">Il tuo concierge dei servizi</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-semibold leading-tight">Bob</p>
+            {/* Art. 50 Reg. UE 2024/1689 (AI Act), applicabile dal 2 ago 2026:
+                chi scrive deve sapere di parlare con un sistema di IA. */}
+            <span
+              className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-white"
+              title="Bob e' un assistente basato su intelligenza artificiale"
+            >
+              AI
+            </span>
+          </div>
+          <p className="text-xs text-white/70">
+            Assistente AI &middot; Il tuo concierge dei servizi
+          </p>
         </div>
         {step !== "intent" && (
           <button
