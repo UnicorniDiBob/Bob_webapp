@@ -2,7 +2,7 @@
 
 _Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** 51 attività aperte · 4 pronte ma spente · 29 parcheggiate · 78 chiuse (in `ARCHIVE.csv`)
+**Stato:** 50 attività aperte · 3 pronte ma spente · 29 parcheggiate · 80 chiuse (in `ARCHIVE.csv`)
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -55,7 +55,7 @@ is_admin, is_admin_or_cs, my_assigned_request_ids, my_professional_ids and now c
 
 ## M2 · We hold only what we can justify
 
-**Finestra:** 2026-08-06 → 2026-08-31 · **4 aperte, 5 chiuse**
+**Finestra:** 2026-08-06 → 2026-08-31 · **2 aperte, 7 chiuse**
 
 **Perché:** The highest-priority milestone on the board, previously the lowest-priority section. A customer's exact address goes to five strangers before any of them is chosen, the AI-labelling obligation is already in force, and pro phone numbers are publicly readable by policy. None of it is expensive to fix; all of it gets far more expensive the day a real customer or the Garante notices.
 
@@ -63,19 +63,19 @@ is_admin, is_admin_or_cs, my_assigned_request_ids, my_professional_ids and now c
 
 | # | Attività | Track | Owner | Stato | Periodo |
 |---|----------|-------|-------|-------|---------|
-| 41.3 | RoPA row + privacy-notice update for progressive disclosure (the backfill matched 0 real rows: only DEMO seed data contained a street) | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-08-31 |
-| 41.5 | Distanza in km nella card del pro — si accende con `python3 scripts/build_milano_zones.py` (coordinate dei quartieri dal dataset NIL del Comune, CC-BY). Senza, zona e CAP si vedono lo stesso: si spegne solo il '~4 km da te'. Per la distanza anche dal CAP servirebbe un elenco di centroidi per CAP, oggi assente | Client/Pro | André | 🌙 Pronto ma spento | — |
 | N4 | AI Act Art 50: label the Bob chat as an AI interaction — obligation applicable since 2 Aug 2026, currently overdue | Client/Pro | André | ⬜ Aperto | 2026-08-06 → 2026-08-20 |
 | N5 | Move profiles.phone for professionals into profile_private — publicly readable today through policy 003 (empty for every pro, so a free fix now) | Internal | Lucio | ⬜ Aperto | 2026-08-06 → 2026-08-31 |
 
-<details><summary>5 attività già chiuse</summary>
+<details><summary>7 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
 | 25b | Privacy: birth date + terms consent moved to private table (mig 027) | Lucio | 2026-07-18 |
 | 41.1 | Stop concatenating the address into requests.problem_description / request_messages (QuoteDialog, RequestDialog); structured column gated on acceptance | André | 2026-08-07 |
 | 41.2 | Strip addresses from the /api/pro/request-summary LLM prompt (DATA_COMPLIANCE §2 minimization) | André | 2026-08-07 |
+| 41.3 | ROPA (docs/legal/ROPA.md, art. 30: 14 trattamenti reali letti da schema e codice, non a memoria) + informativa aggiornata con l'indirizzo e una sezione su chi lo vede e quando. Le lacune che restano sono marcate DA CONFERMARE, non inventate: DPA Resend e Anthropic, LIA scritte, etichetta AI Act art. 50 | Lucio | 2026-08-07 |
 | 41.4 | Zona al posto dell'indirizzo prima dell'accettazione (mig 045): il cliente sceglie il quartiere in chat, i pro invitati vedono 'Zona Isola'. Niente geocoding, nessun fornitore: il punto non deriva dall'indirizzo | André | 2026-08-07 |
+| 41.5 | Distanza in km nella card del pro — acceso: 28/28 zone con coordinate reali dal dataset NIL del Comune (CC-BY). La causa del blocco era pick() che confrontava i nomi di colonna per uguaglianza esatta e non vedeva LAT_Y_4326_CENTROID | André | 2026-08-07 |
 | 41.6 | Ripiego CAP quando il cliente non riconosce nessun quartiere (mig 046): cinque cifre, grana equivalente alla zona, vincolo di formato in DB. Il pro legge 'CAP 20159' | André | 2026-08-07 |
 
 </details>
