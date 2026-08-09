@@ -1,9 +1,8 @@
 title,body,code
-Verificare che le due impostazioni password si siano salvate davvero,"M1 e' chiusa: la riga in system_job_runs e' arrivata la notte del 9 agosto. Resta un conto aperto di integrita', non di prodotto: il dashboard Supabase salva l'intero form in un'unica operazione, e il rifiuto del toggle Pro (leaked password, non disponibile sul piano free) puo' aver annullato anche lunghezza minima e requisiti. Sono registrati come applicati in findings.csv e nella nota di compliance: se non lo sono, quelle due righe dicono il falso, ed e' peggio di non averle scritte.","-- Supabase > Authentication > Sign In / Providers > Email
---   'Minimum password length' deve leggere 8, non 6
---   'Password requirements' deve avere un'opzione selezionata
--- se sono tornati a 6 / vuoto: rimettili col toggle leaked password SPENTO, salva,
--- e poi correggi la riga 'accepted' in findings.csv (le mitigazioni non ci sono)"
+Rileggere il campo 'Password requirements' quando si passa da quella schermata,"Chiuso il pezzo che contava: la lunghezza minima e' 8, riletta il 9 agosto, quindi il rifiuto del toggle Pro non aveva annullato il salvataggio come si temeva. Resta da rileggere l'altro campo dello stesso form, i requisiti di composizione: impostato nello stesso momento, mai riletto. Non urgente e non un gate - ma finche' non e' riletto, findings.csv lo dice sulla fiducia, e oggi si e' visto quanto costa una riga che rassicura senza essere stata controllata.","-- Supabase > Authentication > Sign In / Providers > Email
+--   'Password requirements' deve avere un'opzione selezionata, non 'Select an option'
+-- se e' vuoto: reimpostalo col toggle leaked password SPENTO (il form salva tutto
+-- insieme, e quel toggle richiede il piano Pro), poi aggiorna findings.csv"
 Pull Resend activation forward from December to August,"The pipeline is built and dark. Until it is on, every improvement to the customer journey is invisible to anyone who closes the tab — which is most people. It is a DNS record, a key and a deliverability test, currently scheduled four months after the flows it serves.",
 Run the tracker from the new files and delete the old habits,milestones.csv and roadmap.csv are the only things you edit now. The generator writes roadmap.md and roadmap.html; the GitHub Action does it for you on every push that touches them. The xlsx Gantt is retired — the timeline in roadmap.html replaces it at milestone level.,"python3 roadmap/build_roadmap.py     # regenerate md + html
 python3 roadmap/sync_status.py       # check the CSV against recent commits
