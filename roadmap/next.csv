@@ -1,14 +1,9 @@
 title,body,code
-"Chiudere M1: verificare le due impostazioni password, poi la riga del logbook","Tre dei quattro requisiti di M1 sono chiusi e verificati l'8 agosto. Resta solo la prova che il ritentativo notturno gira: una riga in system_job_runs dopo la mezzanotte. Prima di chiudere, verifica anche che il salvataggio delle impostazioni password sia andato a buon fine: il dashboard Supabase salva l'intero form in un'unica operazione, e il rifiuto del toggle Pro (leaked password, non disponibile sul piano free) puo' aver annullato anche lunghezza minima e requisiti. Sono registrati come applicati nella nota di compliance: se non lo sono, la nota e' falsa.","-- la mattina dopo, la prova che chiude il cancello 1:
-select job, started_at, finished_at, ok, outcome, error
-  from system_job_runs
- where job = 'verifica-piva'
- order by started_at desc limit 5;
-
--- attesa: una riga, ok = true, outcome = {""esaminati"": 0}
--- Supabase > Authentication > Sign In / Providers > Email:
---   minimum password length deve leggere 8, non 6
--- poi milestones.csv: M1 state -> done"
+Verificare che le due impostazioni password si siano salvate davvero,"M1 e' chiusa: la riga in system_job_runs e' arrivata la notte del 9 agosto. Resta un conto aperto di integrita', non di prodotto: il dashboard Supabase salva l'intero form in un'unica operazione, e il rifiuto del toggle Pro (leaked password, non disponibile sul piano free) puo' aver annullato anche lunghezza minima e requisiti. Sono registrati come applicati in findings.csv e nella nota di compliance: se non lo sono, quelle due righe dicono il falso, ed e' peggio di non averle scritte.","-- Supabase > Authentication > Sign In / Providers > Email
+--   'Minimum password length' deve leggere 8, non 6
+--   'Password requirements' deve avere un'opzione selezionata
+-- se sono tornati a 6 / vuoto: rimettili col toggle leaked password SPENTO, salva,
+-- e poi correggi la riga 'accepted' in findings.csv (le mitigazioni non ci sono)"
 Pull Resend activation forward from December to August,"The pipeline is built and dark. Until it is on, every improvement to the customer journey is invisible to anyone who closes the tab — which is most people. It is a DNS record, a key and a deliverability test, currently scheduled four months after the flows it serves.",
 Run the tracker from the new files and delete the old habits,milestones.csv and roadmap.csv are the only things you edit now. The generator writes roadmap.md and roadmap.html; the GitHub Action does it for you on every push that touches them. The xlsx Gantt is retired — the timeline in roadmap.html replaces it at milestone level.,"python3 roadmap/build_roadmap.py     # regenerate md + html
 python3 roadmap/sync_status.py       # check the CSV against recent commits

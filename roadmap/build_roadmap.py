@@ -55,6 +55,19 @@ for it in ITEMS:
         sys.exit(f"riga {it['id']}: stato non ammesso {it['status']!r} "
                  f"(ammessi: {', '.join(STATES)})")
 
+# Stati ammessi per i TRAGUARDI. Devono restare allineati alla mappa MSTATE in
+# view_template.html: se qui passa uno stato che la vista non conosce, la vista
+# non si lamenta - ripiega su MSTATE.open e disegna "Non iniziato". Il 9 agosto
+# M1 e' stata chiusa e per un attimo la pagina l'ha mostrata come non iniziata,
+# che e' esattamente il tipo di bugia silenziosa che questa roadmap esiste per
+# non raccontare. Quindi qui si muore, invece di ripiegare.
+MSTATES = ("done", "blocked", "urgent", "active", "open", "gate", "parallel", "parked")
+for m in MS:
+    if m["state"] not in MSTATES:
+        sys.exit(f"traguardo {m['id']}: stato non ammesso {m['state']!r} "
+                 f"(ammessi: {', '.join(MSTATES)}). "
+                 f"Se ne aggiungi uno, aggiungilo anche a MSTATE in view_template.html.")
+
 def items_of(mid):  return [i for i in ITEMS   if i["milestone"] == mid]
 def archive_of(mid):return [a for a in ARCHIVE if a["milestone"] == mid]
 
