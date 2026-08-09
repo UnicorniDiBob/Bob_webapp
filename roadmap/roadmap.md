@@ -2,7 +2,7 @@
 
 _Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** 48 attività aperte · 3 pronte ma spente · 29 parcheggiate · 83 chiuse (in `ARCHIVE.csv`)
+**Stato:** 47 attività aperte · 3 pronte ma spente · 29 parcheggiate · 84 chiuse (in `ARCHIVE.csv`)
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -39,17 +39,13 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M1 · The build tells the truth
 
-**Finestra:** 2026-08-06 → 2026-08-14 · **1 aperte, 4 chiuse**
+**Finestra:** 2026-08-06 → 2026-08-14 · **0 aperte, 5 chiuse**
 
 **Perché:** CHIUSA IL 9 AGOSTO 2026, cinque giorni dentro la finestra. Ogni piano piu' sotto assume che board, repo e produzione dicano la stessa cosa. CORRETTO L'8 AGOSTO, dopo aver provato a eseguire il controllo invece di descriverlo: il problema non era che la storia delle migrazioni e il repo litigassero su cinque nomi. Quei cinque nomi erano gia' coperti (013 e 038) - davvero cosmetici. Il problema vero era che il repo NON RICOSTRUIVA AFFATTO un database: public.rls_auto_enable() esisteva in produzione e in nessun file, la 032 ne revoca l'EXECUTE, quindi un clone nuovo si fermava alla 032 e perdeva tutto fino alla 046. Nessun controllo lo diceva perche' nessuno aveva mai provato a ricostruire. Piu' tre item marcati Done che non girano. Questa milestone costa poche ore e rende verificabile, invece che assunto, tutto quello che viene dopo. CHIUSURA: il ritentativo notturno ha girato per la prima volta nella notte fra l'8 e il 9 agosto - una riga in system_job_runs, ok = true, outcome {"esaminati": 0}, durata un secondo. Partito alle 22:31 UTC contro le 22:00 chieste da vercel.json: i cron di Vercel non garantiscono il minuto esatto, irrilevante per un lavoro che deve solo girare a giornata finita.
 
 **È fatto quando:** Lo script di ricostruzione (scripts/schema_check.sh) applica 001->NNN su un Postgres vuoto con 0 errori e le otto impronte di schema coincidono con la produzione - NON "supabase db diff pulito": con la numerazione NNN_nome.sql la CLI non riesce ad appaiare i file e quel diff non e' utilizzabile qui; il ritentativo notturno ha dimostrabilmente girato almeno una volta (una riga in system_job_runs); ogni finding dell'advisor e' risolto oppure accettato per iscritto CON una condizione di scadenza; DATA_COMPLIANCE.md e' davvero nel repo.
 
-| # | Attività | Track | Owner | Stato | Periodo |
-|---|----------|-------|-------|-------|---------|
-| N3 | Migrate the tracker to the milestone schema: milestones.csv + why/done_when, ARCHIVE.csv, generator emits md+html, xlsx retired | Shared | Claude | 🔵 In corso | 2026-08-06 → 2026-08-14 |
-
-<details><summary>4 attività già chiuse</summary>
+<details><summary>5 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
@@ -57,6 +53,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | T1 | Roadmap tracker automation: CSV source + generator + Markdown + GitHub Action | André | 2026-07-19 |
 | N1 | Ricostruzione del database dai soli file del repo: RISOLTA con la 047 (dichiara public.rls_auto_enable() e l'event trigger ensure_rls, che esistevano in produzione e in nessun file) + revoke condizionale nella 032. Prima di questo un clone nuovo si fermava alla 032 e perdeva tutto fino alla 046: il repo non ricostruiva niente. I 5 nomi orfani nella storia live erano invece gia' coperti da 013 e 038 - quella parte era davvero cosmetica, la mappa e' nel README delle migrazioni. NIENTE `supabase db diff` in CI: con la numerazione NNN_nome.sql la CLI non appaia i file e quel diff non e' utilizzabile qui. Il controllo giusto e' scripts/schema_check.sh: rigioca 001->NNN su un Postgres vuoto e confronta otto impronte con la produzione. Verificato l'8 agosto: 0 errori, otto impronte identiche. | Claude | 2026-08-08 |
 | N2 | Advisor pass: da 10 WARN a 1, con 0 ERROR. ATTENZIONE, la prescrizione originale di questa riga era distruttiva: revocare EXECUTE avrebbe rotto l'accesso a tutta l'applicazione, perche' 21 policy su 11 tabelle chiamano quelle funzioni e una policy e' valutata coi privilegi di chi interroga. Fatto invece con la 048: le cinque funzioni (non quattro: c'e' anche can_see_request_address, dalla 044) spostate in uno schema `private` non esposto e le 21 policy riscritte col nome qualificato. Verificato: 0 funzioni SECURITY DEFINER in public eseguibili da anon o authenticated, policy 83 prima e 83 dopo, login pro reale e admin funzionanti. Leaked password protection NON attivabile: richiede il piano Pro, salvataggio rifiutato dal dashboard. Accettata per iscritto in findings.csv con condizione di scadenza (prima dei pro reali). Mitigazioni al suo posto: lunghezza minima password da 6 a 8 e requisiti di composizione. | Claude | 2026-08-08 |
+| N3 | Tracker sullo schema per traguardi: milestones.csv con why/done_when, ARCHIVE.csv, il generatore produce roadmap.md + roadmap.html, GitHub Action al push. L'xlsx e' ritirato per davvero: BOB_Roadmap_Gantt.xlsx non e' piu' tracciato da git (rimosso a luglio) e roadmap/README.md scrive perche' - le barre per singola attivita' rendevano il grafico illeggibile e quasi tutte le date erano inventate per farle comparire. Resta solo una copia non tracciata sul disco locale, innocua. Verificato il 9 agosto: il generatore valida gli stati di attivita' E di traguardo, e avvisa se un traguardo e' chiuso con attivita' ancora aperte. | Claude | 2026-08-09 |
 
 </details>
 

@@ -68,6 +68,21 @@ for m in MS:
                  f"(ammessi: {', '.join(MSTATES)}). "
                  f"Se ne aggiungi uno, aggiungilo anche a MSTATE in view_template.html.")
 
+# Il badge di un traguardo lo scrive una persona (milestones.csv), la barra di
+# avanzamento la conta il generatore dalle attivita'. Possono divergere: il 9
+# agosto M1 mostrava "Chiuso" accanto a "4/5 chiuse", perche' i cancelli erano
+# passati ma una riga era rimasta aperta. Non e' sempre un errore - un traguardo
+# puo' chiudersi sui suoi test e lasciare una coda - ma va detto, non scoperto
+# guardando la pagina.
+def _avvisa_traguardi_incoerenti():
+    for m in MS:
+        if m["state"] != "done":
+            continue
+        aperte = [i["id"] for i in ITEMS if i["milestone"] == m["id"]]
+        if aperte:
+            print(f"  avviso: {m['id']} e' 'done' ma ha ancora attivita' aperte: "
+                  f"{', '.join(aperte)} - chiudile o spiega perche' restano")
+
 def items_of(mid):  return [i for i in ITEMS   if i["milestone"] == mid]
 def archive_of(mid):return [a for a in ARCHIVE if a["milestone"] == mid]
 
@@ -164,3 +179,5 @@ if __name__ == "__main__":
     t = build_payload()["totals"]
     print(f"roadmap.md e roadmap.html rigenerati — {t['open']} aperte, "
           f"{t['dormant']} spente, {t['parked']} parcheggiate, {t['closed']} chiuse")
+
+_avvisa_traguardi_incoerenti()
