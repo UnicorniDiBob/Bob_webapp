@@ -164,13 +164,19 @@ export default function PerIProfessionistiPage() {
             </Link>
             {/* Prima puntava a /come-funziona, che è la spiegazione per il
                 CLIENTE ("Parla con Bob", "gratis per te"): mandava il
-                professionista nel funnel sbagliato. Ora resta su questa pagina. */}
-            <Link
+                professionista nel funnel sbagliato. Ora resta su questa pagina.
+                <a> e non <Link>: con next/link l'ancora sulla stessa pagina non
+                scrolla (il router intercetta il click e la navigazione hash-only
+                resta un no-op — verificato in produzione il 10/08, l'hash
+                cambiava senza muovere la pagina e al secondo tentativo non
+                cambiava nemmeno). L'ancora nativa scrolla, con scroll-mt-24
+                sulla sezione che compensa l'header fisso. */}
+            <a
               href="#come-funziona"
               className="rounded-xl border border-white/30 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
             >
               Come funziona per te
-            </Link>
+            </a>
           </div>
         </div>
       </section>
