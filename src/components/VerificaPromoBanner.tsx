@@ -87,7 +87,7 @@ export default function VerificaPromoBanner({
                 "it-IT",
                 { style: "currency", currency: "EUR" }
               )} — ${PREZZO_VERIFICA.nota}`
-            : "Nel periodo pilota è inclusa. Bastano il numero e pochi secondi; il numero non è mai visibile ai clienti.",
+            : "La verifica è inclusa, senza costi. Bastano il numero e pochi secondi; il numero non è mai visibile ai clienti.",
           azione: "Verifica ora →",
         };
     }

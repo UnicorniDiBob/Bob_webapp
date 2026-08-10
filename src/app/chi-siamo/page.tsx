@@ -35,11 +35,13 @@ export default function ChiSiamoPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="Siamo all'inizio, e lo diciamo">
+      <LegalSection title="Selezioniamo, non aggreghiamo">
         <p>
-          Il pilota è attivo a Milano con i primi professionisti selezionati e
-          verificati uno a uno. Mostriamo numeri reali, non promesse gonfiate.
-          Roma e Torino arrivano appena avremo professionisti all&apos;altezza.
+          Ogni professionista su BOB è verificato uno a uno: identità e attività
+          controllate prima di comparire nei risultati. Preferiamo un elenco
+          corto di cui rispondiamo a uno lungo di cui non sappiamo nulla. Le
+          città si aggiungono quando abbiamo professionisti all&apos;altezza,
+          non prima.
         </p>
       </LegalSection>
 

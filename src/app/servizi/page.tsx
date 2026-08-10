@@ -45,11 +45,13 @@ export default async function ServicesPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="font-semibold text-bob-ink">{s.name}</h2>
-                <p className="text-xs text-bob-ink/55">
-                  {n > 0
-                    ? `${n} professionist${n === 1 ? "a" : "i"}`
-                    : "Presto disponibile"}
-                </p>
+                {/* Nessun "presto disponibile": una card senza professionisti
+                    non annuncia il proprio vuoto, la riga sparisce. */}
+                {n > 0 && (
+                  <p className="text-xs text-bob-ink/55">
+                    {n} professionist{n === 1 ? "a" : "i"}
+                  </p>
+                )}
               </div>
               <svg className="h-4 w-4 shrink-0 text-bob-ink/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />

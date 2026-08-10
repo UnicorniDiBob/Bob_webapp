@@ -57,8 +57,8 @@ export default async function CityPage({
             BOB sta arrivando a {city.name}
           </h1>
           <p className="mt-2 text-sm text-bob-ink/60">
-            Stiamo selezionando i primi professionisti verificati. Lascia il
-            tuo interesse: ti avvisiamo appena siamo operativi.
+            Stiamo verificando i professionisti della zona uno a uno. Lascia la
+            tua email: ti avvisiamo appena apriamo.
           </p>
 
           {/* L'homepage promette "lascia il tuo interesse": qui la promessa

@@ -278,7 +278,7 @@ export default function ProProfiloPage() {
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
-                  {c.status !== "active" ? " (in arrivo)" : ""}
+                  {c.status !== "active" ? " (lista d'attesa)" : ""}
                 </option>
               ))}
             </select>

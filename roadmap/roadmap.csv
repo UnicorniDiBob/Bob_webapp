@@ -25,6 +25,7 @@ M6,25.1,25,Internal,Lucio,Open,2026-11-01,2027-01-31,Registro trattamenti + rete
 M6,25.2,25,Shared,,Open,2026-11-15,2026-12-31,"DPAs with processors (Supabase, Vercel, Anthropic, Stripe, Resend)"
 M6,N10,,Shared,Lucio,Open,2026-09-01,2026-11-30,"DPIA on the matching / job-brief LLM flow, written before launch rather than after"
 M6,N9,,Internal,Lucio,Open,2026-09-01,2026-10-15,Waitlist launch email needs an explicit 'contact me at launch' checkbox before a single send — no soft opt-in for Bob
+M6,23.1,23,Shared,Lucio,Open,2026-09-01,2026-11-30,"Controllo consumeristico sul listino pro pubblicato l'08/08: la tabella elenca le funzioni del Business Plan §6.2, fra cui fatturazione elettronica integrata, pagamenti inclusi e analytics avanzate, che non esistono ancora in prodotto. Oggi il rischio e' contenuto perche' non c'e' checkout (il tier lo assegna l'admin), ma quando si accende Stripe (12.1) elencare funzioni non disponibili e' pratica commerciale ingannevole (Codice del Consumo art. 21-22). Decidere per ogni riga: costruirla, riscriverla o rimuoverla."
 M7,11.1,11,Internal,Lucio,Open,2026-10-01,2026-10-31,"Ranking algorithm v1: response rate, closure rate, reviews (data logic)"
 M7,11.2,11,Client/Pro,André,Open,2026-10-15,2026-11-15,Ranking explanation UI (seeded by 'why this pro' line)
 M7,11.3,11,Client/Pro,André,Open,2026-11-01,2026-11-30,Boost purchase + placement logic; quality floor
@@ -32,6 +33,7 @@ M7,12.1,12,Client/Pro,André,Open,2026-10-01,2026-11-30,Stripe products & prices
 M7,12.2,12,Shared,André,Open,2026-11-01,2026-11-30,Webhooks -> subscription_tier sync (replaces manual switch)
 M7,12.3,12,Client/Pro,André,Open,2026-11-15,2026-12-31,"Founding-pro coupon; failed payments, invoices, receipts"
 M7,PG,,Shared,Claude,Dormant,,,Payments/subscriptions groundwork — si accende con Stripe (vedi M7/12.1)
+M7,12.4,12,Client/Pro,André,Open,2026-10-01,2026-12-31,"Allineare il gating in codice al listino pubblicato su /per-i-professionisti (08/08): la tabella piani annuncia ranking privilegiato, richieste illimitate, preventivi digitali e assistente AI, ma oggi il tier gates SOLO le foto portfolio (PORTFOLIO_LIMITS 0/1/illimitato) e la prenotazione diretta (InstantBookingConfig, pro+). Finche' il gating non c'e', il Free ha di fatto quasi tutto il Pro: nessuno ha motivo di pagare. Va chiuso PRIMA del checkout (12.1)."
 M8,13.2,13,Client/Pro,André,Open,2026-08-01,2026-10-31,City x service page template + Milano core categories
 M8,14,,Shared,,Open,2026-11-01,2026-12-31,Google Business Profile + local presence
 M8,15.1,15,Shared,,Open,2026-12-01,2026-12-15,"End-to-end QA of all flows (client, pro, admin)"
@@ -39,6 +41,7 @@ M8,15.2,15,Client/Pro,André,Open,2026-12-01,2026-12-20,Performance / Core Web V
 M8,15.3,15,Shared,,Open,2026-12-01,2026-12-20,Freelance security review (pre-launch)
 M8,30,,Shared,,Open,2026-10-01,2027-03-31,Founder outreach — first 100 Milano pros
 M8,N11,,Shared,Lucio,Open,2026-12-01,2026-12-31,Go-live checklist + a tested rollback (the written-down half of 15.5)
+M8,15.6,15,Client/Pro,André,Open,2026-11-01,2026-12-31,"Estendere BobDot/BobBullet (src/components/ui.tsx, introdotti l'08/08) agli elenchi decorativi rimasti: empty state della dashboard, FAQ, pagine legali, ProWorkspace. Il pallino giallo e' l'unico segno di marca riconoscibile a colpo d'occhio; oggi vive su homepage e pagina pro. NON toccare i middot fra dati ('10:00 - Mario Rossi'): li' il separatore serve a leggere."
 M9,16.1,16,Shared,,Open,2027-01-01,2027-01-31,Production cutover; activate founding pros (60-80) in 5 core categories
 M9,16.2,16,Shared,,Open,2027-01-01,2027-01-31,Bob Pro subscriptions live (Stripe) + Boost on; launch PR wave
 M9,31,,Shared,,Open,2027-01-01,2027-03-31,Launch incentives (3 months free Bob Pro for founding pros)

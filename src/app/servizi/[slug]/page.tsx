@@ -156,8 +156,8 @@ export default async function ServicePage({
         </h2>
         {pros.length === 0 ? (
           <EmptyState
-            title="Ancora nessun professionista per questo servizio"
-            description="Stiamo selezionando i primi professionisti. Parla con Bob: ti avvisa appena ne arriva uno adatto."
+            title="Nessun professionista disponibile per questo servizio"
+            description="Parla con Bob: ti aiuta a capire chi contattare e ti avvisa appena c'è un profilo adatto."
           />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

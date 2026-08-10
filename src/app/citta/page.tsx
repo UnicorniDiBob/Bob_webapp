@@ -48,7 +48,7 @@ export default async function CitiesPage() {
                   </span>
                 ) : (
                   <span className="chip border-black/10 bg-black/[0.03] text-bob-ink/60">
-                    In arrivo
+                    Lista d&apos;attesa
                   </span>
                 )}
               </div>
@@ -58,7 +58,7 @@ export default async function CitiesPage() {
                   ? `${n} professionist${n === 1 ? "a" : "i"} disponibil${
                       n === 1 ? "e" : "i"
                     }`
-                  : "Stiamo selezionando i primi professionisti."}
+                  : "Iscriviti alla lista: ti avvisiamo appena apriamo."}
               </p>
               {/* Anche le città in arrivo hanno una destinazione: la waitlist
                   su /citta/[slug]. Prima erano card mute e l'interesse andava perso. */}

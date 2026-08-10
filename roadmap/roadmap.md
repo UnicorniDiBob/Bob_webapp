@@ -2,7 +2,7 @@
 
 _Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** 47 attività aperte · 3 pronte ma spente · 29 parcheggiate · 84 chiuse (in `ARCHIVE.csv`)
+**Stato:** 50 attività aperte · 3 pronte ma spente · 29 parcheggiate · 84 chiuse (in `ARCHIVE.csv`)
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -229,7 +229,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M6 · A lawyer could sign the site off
 
-**Finestra:** 2026-09-01 → 2026-11-30 · **5 aperte, 0 chiuse**
+**Finestra:** 2026-09-01 → 2026-11-30 · **6 aperte, 0 chiuse**
 
 **Perché:** The terms of service are drafts in docs/legal and the compliance guideline makes a legal basis, a RoPA row and a retention rule part of "done" for every feature that touches personal data. Nine months of features shipped ahead of that paperwork, so it is owed retroactively — and it is a hard gate on inviting real professionals.
 
@@ -242,11 +242,12 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 25.2 | DPAs with processors (Supabase, Vercel, Anthropic, Stripe, Resend) | Shared |  | ⬜ Aperto | 2026-11-15 → 2026-12-31 |
 | N10 | DPIA on the matching / job-brief LLM flow, written before launch rather than after | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
 | N9 | Waitlist launch email needs an explicit 'contact me at launch' checkbox before a single send — no soft opt-in for Bob | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-10-15 |
+| 23.1 | Controllo consumeristico sul listino pro pubblicato l'08/08: la tabella elenca le funzioni del Business Plan §6.2, fra cui fatturazione elettronica integrata, pagamenti inclusi e analytics avanzate, che non esistono ancora in prodotto. Oggi il rischio e' contenuto perche' non c'e' checkout (il tier lo assegna l'admin), ma quando si accende Stripe (12.1) elencare funzioni non disponibili e' pratica commerciale ingannevole (Codice del Consumo art. 21-22). Decidere per ogni riga: costruirla, riscriverla o rimuoverla. | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
 
 
 ## M7 · Bob can charge money
 
-**Finestra:** 2026-10-01 → 2026-12-31 · **7 aperte, 4 chiuse**
+**Finestra:** 2026-10-01 → 2026-12-31 · **8 aperte, 4 chiuse**
 
 **Perché:** Subscriptions and Boost are the entire revenue model before the protected flow arrives in late 2027. The database groundwork is built and dormant, and a tier is switched by hand in admin today — which is fine for 5 pros and impossible for 80. Ranking ships with it, because a paid Boost with no explainable ranking is a P2B problem.
 
@@ -261,6 +262,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 12.2 | Webhooks -> subscription_tier sync (replaces manual switch) | Shared | André | ⬜ Aperto | 2026-11-01 → 2026-11-30 |
 | 12.3 | Founding-pro coupon; failed payments, invoices, receipts | Client/Pro | André | ⬜ Aperto | 2026-11-15 → 2026-12-31 |
 | PG | Payments/subscriptions groundwork — si accende con Stripe (vedi M7/12.1) | Shared | Claude | 🌙 Pronto ma spento | — |
+| 12.4 | Allineare il gating in codice al listino pubblicato su /per-i-professionisti (08/08): la tabella piani annuncia ranking privilegiato, richieste illimitate, preventivi digitali e assistente AI, ma oggi il tier gates SOLO le foto portfolio (PORTFOLIO_LIMITS 0/1/illimitato) e la prenotazione diretta (InstantBookingConfig, pro+). Finche' il gating non c'e', il Free ha di fatto quasi tutto il Pro: nessuno ha motivo di pagare. Va chiuso PRIMA del checkout (12.1). | Client/Pro | André | ⬜ Aperto | 2026-10-01 → 2026-12-31 |
 
 <details><summary>4 attività già chiuse</summary>
 
@@ -276,7 +278,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M8 · Milano is ready for real people
 
-**Finestra:** 2026-11-01 → 2026-12-31 · **7 aperte, 2 chiuse**
+**Finestra:** 2026-11-01 → 2026-12-31 · **8 aperte, 2 chiuse**
 
 **Perché:** Launch readiness is three things at once: enough supply that a request finds someone, enough discoverability that a stranger arrives without paid ads, and no embarrassing failure under first real load. Founder outreach starts in October because 60–80 verified pros is a two-month recruiting job, not a launch-week task.
 
@@ -291,6 +293,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 15.3 | Freelance security review (pre-launch) | Shared |  | ⬜ Aperto | 2026-12-01 → 2026-12-20 |
 | 30 | Founder outreach — first 100 Milano pros | Shared |  | ⬜ Aperto | 2026-10-01 → 2027-03-31 |
 | N11 | Go-live checklist + a tested rollback (the written-down half of 15.5) | Shared | Lucio | ⬜ Aperto | 2026-12-01 → 2026-12-31 |
+| 15.6 | Estendere BobDot/BobBullet (src/components/ui.tsx, introdotti l'08/08) agli elenchi decorativi rimasti: empty state della dashboard, FAQ, pagine legali, ProWorkspace. Il pallino giallo e' l'unico segno di marca riconoscibile a colpo d'occhio; oggi vive su homepage e pagina pro. NON toccare i middot fra dati ('10:00 - Mario Rossi'): li' il separatore serve a leggere. | Client/Pro | André | ⬜ Aperto | 2026-11-01 → 2026-12-31 |
 
 <details><summary>2 attività già chiuse</summary>
 

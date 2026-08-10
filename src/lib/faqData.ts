@@ -20,7 +20,7 @@ export const HOME_FAQ: FaqItem[] = [
   },
   {
     q: "In quali città è attivo Bob?",
-    a: "Il pilota è attivo a Milano, dove trovi i primi professionisti. Roma e Torino sono in arrivo: puoi comunque lasciare il tuo interesse.",
+    a: "Bob è operativo a Milano. Roma e Torino stanno aprendo: lascia la tua email sulla pagina della città e ti avvisiamo appena siamo attivi.",
   },
   {
     q: "Cosa significa professionista verificato?",

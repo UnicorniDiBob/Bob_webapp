@@ -8,6 +8,36 @@ import {
   type VerificationLevel,
 } from "@/lib/vat";
 
+// ---------- Punto giallo BOB ----------
+// Il bullet della casa: sostituisce il pallino generico e il disc di lista
+// dovunque un elenco sia decorativo (benefici, feature, claim). NON va usato
+// come separatore fra dati ("10:00 · Mario Rossi"): lì il middot serve a
+// leggere, il giallo lo trasformerebbe in rumore.
+export function BobDot({ className = "" }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-bob-yellow ${className}`}
+    />
+  );
+}
+
+// Voce di elenco con il punto giallo, allineata alla prima riga di testo.
+export function BobBullet({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <li className={`flex items-start gap-2.5 ${className}`}>
+      <BobDot className="mt-[0.45rem]" />
+      <span>{children}</span>
+    </li>
+  );
+}
+
 // ---------- Rating a stelle ----------
 export function Stars({
   value,

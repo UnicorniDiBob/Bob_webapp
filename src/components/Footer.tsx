@@ -65,7 +65,7 @@ export function Footer() {
             © {new Date().getFullYear()} BOB — {COMPANY.legalName} · P.IVA{" "}
             {COMPANY.vat}
           </span>
-          <span>Pilota a Milano · Roma e Torino in arrivo</span>
+          <span>Servizi locali a Milano, Roma e Torino</span>
         </div>
       </div>
     </footer>
