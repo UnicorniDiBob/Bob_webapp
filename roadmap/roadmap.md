@@ -286,7 +286,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 | # | Attività | Track | Owner | Stato | Periodo |
 |---|----------|-------|-------|-------|---------|
-| 13.2 | City x service page template + Milano core categories | Client/Pro | André | ⬜ Aperto | 2026-08-01 → 2026-10-31 |
+| 13.2 | Pagine servizio x citta'. FATTO il 10/08: rotta /servizi/{servizio}/{citta} per le sole citta' attive (le non attive restano sulla waitlist di /citta/[slug] per non fare doorway page), fascia di prezzo reale dalle tariffe dichiarate, JSON-LD Service+AggregateOffer+BreadcrumbList, parametri di ranking dichiarati in pagina (P2B art. 5), sitemap con le sole combinazioni che hanno almeno un professionista, link interni da /servizi/[slug] e /citta/[slug]. RESTA: ottimizzazione keyword sui title, contenuto locale unico per citta' (SEO.md §5.6) e le categorie core di Milano - oggi le combinazioni reali sono 5 e tutte a Milano (pulizie 4 pro, elettricista/idraulico/imbianchino/tuttofare 1 ciascuno), quindi la leva vera e' l'acquisizione (M8/30), non altro codice. | Client/Pro | André | 🔵 In corso | 2026-08-01 → 2026-10-31 |
 | 14 | Google Business Profile + local presence | Shared |  | ⬜ Aperto | 2026-11-01 → 2026-12-31 |
 | 15.1 | End-to-end QA of all flows (client, pro, admin) | Shared |  | ⬜ Aperto | 2026-12-01 → 2026-12-15 |
 | 15.2 | Performance / Core Web Vitals pass | Client/Pro | André | ⬜ Aperto | 2026-12-01 → 2026-12-20 |

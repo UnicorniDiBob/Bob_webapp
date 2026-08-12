@@ -140,10 +140,12 @@ export default async function CityPage({
             Servizi disponibili
           </h2>
           <div className="flex flex-wrap gap-2">
+            {/* Punta alla pagina servizio × città, non a quella nazionale:
+                chi è già su Milano non deve tornare a scegliere la città. */}
             {coveredServices.map((s) => (
               <Link
                 key={s.id}
-                href={`/servizi/${s.slug}`}
+                href={`/servizi/${s.slug}/${city.slug}`}
                 className="chip border-black/10 bg-white hover:border-bob-indigo/30 hover:bg-bob-indigo-50"
                 data-testid={`chip-service-${s.slug}`}
               >

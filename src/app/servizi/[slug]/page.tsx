@@ -5,6 +5,7 @@ import {
   getServiceBySlug,
   getSubservicesByServiceSlug,
   getProfessionals,
+  getCities,
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
 import { ServiceIcon } from "@/lib/serviceIcons";
@@ -43,10 +44,19 @@ export default async function ServicePage({
   const service = await getServiceBySlug(params.slug);
   if (!service) notFound();
 
-  const [subservices, pros] = await Promise.all([
+  const [subservices, pros, cities] = await Promise.all([
     getSubservicesByServiceSlug(service.slug),
     getProfessionals({ serviceSlug: service.slug }),
+    getCities(),
   ]);
+
+  // Città dove questo servizio ha davvero qualcuno, e che sono attive: sono le
+  // pagine servizio × città che esistono. Il link da qui è quello che le fa
+  // scoprire a Google e all'utente che arriva sulla pagina nazionale.
+  const citiesWithPros = new Set(pros.map((p) => p.city.slug));
+  const localCities = cities.filter(
+    (c) => c.status === "active" && citiesWithPros.has(c.slug)
+  );
 
   return (
     <div className="container-bob py-10">
@@ -106,6 +116,26 @@ export default async function ServicePage({
           )}
         </div>
       </header>
+
+      {localCities.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+            Scegli la città
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {localCities.map((c) => (
+              <Link
+                key={c.id}
+                href={`/servizi/${service.slug}/${c.slug}`}
+                className="chip border-black/10 bg-white hover:border-bob-indigo/30 hover:bg-bob-indigo-50"
+                data-testid={`chip-city-${c.slug}`}
+              >
+                {service.name} a {c.name}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {subservices.length > 0 && (
         <section className="mb-8">
