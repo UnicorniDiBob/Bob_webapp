@@ -186,10 +186,13 @@ export default async function ServiceCityPage({
               all&apos;ora
             </span>
           </p>
+          {/* Il singolare non si ottiene cambiando la desinenza del nome:
+              cambiano articolo e verbo. In produzione si leggeva "sulle tariffe
+              che i 1 professionista di questa pagina dichiarano". Due frasi. */}
           <p className="mt-1 text-xs leading-relaxed text-bob-ink/55">
-            Fascia calcolata sulle tariffe che i {pros.length} professionist
-            {pros.length === 1 ? "a" : "i"} di questa pagina dichiarano sul
-            proprio profilo. Non è una stima: sono i loro numeri.
+            {pros.length === 1
+              ? "Fascia calcolata sulla tariffa che l'unico professionista di questa pagina dichiara sul proprio profilo. Non è una stima: sono i suoi numeri."
+              : `Fascia calcolata sulle tariffe che i ${pros.length} professionisti di questa pagina dichiarano sul proprio profilo. Non è una stima: sono i loro numeri.`}
           </p>
         </section>
       )}
