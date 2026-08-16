@@ -176,8 +176,13 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Invito alla verifica: solo a chi non ce l'ha ancora. */}
-            {proProfile && statoVerifica && statoVerifica.level === "none" && (
+            {/* Invito alla verifica: solo a chi non ce l'ha ancora E ha un
+                piano che la include — dal 14/08 la verifica è esclusiva di
+                Pro/Business, spingerla a un Free sarebbe un vicolo cieco. */}
+            {proProfile &&
+              proProfile.subscription_tier !== "free" &&
+              statoVerifica &&
+              statoVerifica.level === "none" && (
               <VerificaPromoBanner
                 reviewState={statoVerifica.reviewState}
                 reviewNote={statoVerifica.reviewNote}

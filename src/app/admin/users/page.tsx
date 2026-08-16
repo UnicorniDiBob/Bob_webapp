@@ -17,7 +17,6 @@ interface UserRow {
 interface ProfileRow {
   user_id: string;
   full_name: string | null;
-  phone: string | null;
   about: string | null;
 }
 
@@ -43,11 +42,23 @@ export default async function AdminUsersPage() {
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("user_id, full_name, phone, about")
+    .select("user_id, full_name, about")
+    .in("user_id", ids);
+
+  // Il telefono vive in profile_phone dalla 051 (mig 050 aveva provato a
+  // bloccarlo con un revoke a livello di colonna: inefficace, perche' anon/
+  // authenticated hanno comunque il grant SELECT sull'intera tabella
+  // profiles). RLS qui lo concede solo al proprietario e allo staff.
+  const { data: phones } = await supabase
+    .from("profile_phone")
+    .select("user_id, phone")
     .in("user_id", ids);
 
   const profileMap = Object.fromEntries(
     ((profiles ?? []) as ProfileRow[]).map((p) => [p.user_id, p])
+  );
+  const phoneMap = Object.fromEntries(
+    ((phones ?? []) as { user_id: string; phone: string | null }[]).map((p) => [p.user_id, p.phone])
   );
 
   const items: UserListItem[] = rows.map((u) => {
@@ -57,7 +68,7 @@ export default async function AdminUsersPage() {
       role: u.role,
       created_at: u.created_at,
       full_name: p?.full_name ?? null,
-      phone: p?.phone ?? null,
+      phone: phoneMap[u.id] ?? null,
       about: p?.about ?? null,
     };
   });

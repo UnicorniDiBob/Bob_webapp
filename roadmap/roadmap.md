@@ -2,7 +2,7 @@
 
 _Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** 50 attività aperte · 3 pronte ma spente · 29 parcheggiate · 84 chiuse (in `ARCHIVE.csv`)
+**Stato:** 48 attività aperte · 3 pronte ma spente · 29 parcheggiate · 89 chiuse (in `ARCHIVE.csv`)
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -60,18 +60,13 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M2 · We hold only what we can justify
 
-**Finestra:** 2026-08-06 → 2026-08-31 · **2 aperte, 8 chiuse**
+**Finestra:** 2026-08-06 → 2026-08-31 · **0 aperte, 10 chiuse**
 
-**Perché:** AGGIORNATO L'8 AGOSTO — 4 delle 6 condizioni sono chiuse e verificate. L'indirizzo esatto non va piu' a cinque estranei (mig 044-046, consegna progressiva, verificata anche nel browser con un login pro reale) e la chat dichiara di essere un assistente AI (in produzione dall'8 agosto, obbligo art. 50 in vigore dal 2). RESTA URGENT per una ragione precisa e ancora vera: il telefono di un professionista e' leggibile da un visitatore anonimo. profiles ha lettura pubblica dalla 003 - giusto, e' cosi' che funzionano i profili pubblici - ma profiles.phone sta nella stessa tabella, e la RLS agisce sulle righe, non sulle colonne. Provato l'8 agosto come ruolo anon: 5 righe viste, 1 telefono leggibile. Restano anche 3 richieste pre-044 con via e civico dentro la prosa libera (problem_description): la bonifica non li aveva estratti perche' erano in mezzo a una frase, come documenta l'intestazione di src/lib/redact.ts. Il confine LLM e' coperto da stripAddresses(), ma il dato grezzo e' ancora li'.
+**Perché:** AGGIORNATO L'8 AGOSTO — 4 delle 6 condizioni sono chiuse e verificate. L'indirizzo esatto non va piu' a cinque estranei (mig 044-046, consegna progressiva, verificata anche nel browser con un login pro reale) e la chat dichiara di essere un assistente AI (in produzione dall'8 agosto, obbligo art. 50 in vigore dal 2). RESTA URGENT per una ragione precisa e ancora vera: il telefono di un professionista e' leggibile da un visitatore anonimo. profiles ha lettura pubblica dalla 003 - giusto, e' cosi' che funzionano i profili pubblici - ma profiles.phone sta nella stessa tabella, e la RLS agisce sulle righe, non sulle colonne. Provato l'8 agosto come ruolo anon: 5 righe viste, 1 telefono leggibile. Restano anche 3 richieste pre-044 con via e civico dentro la prosa libera (problem_description): la bonifica non li aveva estratti perche' erano in mezzo a una frase, come documenta l'intestazione di src/lib/redact.ts. Il confine LLM e' coperto da stripAddresses(), ma il dato grezzo e' ancora li'. CHIUSA IL 14 AGOSTO: il telefono del pro spostato in tabella propria con RLS (mig 051, dopo che il tentativo a una riga della mig 050 e' risultato inefficace — vedi ARCHIVE.csv/N5); le 3 richieste storiche con via e civico bonificate in produzione lo stesso giorno (ARCHIVE.csv/N6). 6/6 condizioni chiuse.
 
-**È fatto quando:** L'indirizzo esiste in una sola colonna strutturata, e' rivelato solo dopo che il cliente accetta un pro, e non compare in nessun prompt LLM [FATTO]; le righe storiche sono bonificate - restano 3 richieste con via e civico nella prosa [APERTO]; la chat dice chiaramente che Bob e' un'AI [FATTO]; nessun campo personale e' leggibile da anon quando non dovrebbe - profiles.phone lo e' ancora, rimedio: grant a livello di colonna (revoke select (phone) on public.profiles from anon), non serve una vista ne' una seconda tabella [APERTO].
+**È fatto quando:** L'indirizzo esiste in una sola colonna strutturata, e' rivelato solo dopo che il cliente accetta un pro, e non compare in nessun prompt LLM [FATTO]; le righe storiche sono bonificate - restano 3 richieste con via e civico nella prosa [FATTO]; la chat dice chiaramente che Bob e' un'AI [FATTO]; nessun campo personale e' leggibile da anon quando non dovrebbe - profiles.phone lo e' ancora, rimedio: grant a livello di colonna (revoke select (phone) on public.profiles from anon), non serve una vista ne' una seconda tabella [FATTO].
 
-| # | Attività | Track | Owner | Stato | Periodo |
-|---|----------|-------|-------|-------|---------|
-| N5 | profiles.phone e' leggibile da un visitatore anonimo: profiles ha lettura pubblica dalla 003 (corretto, e' cosi' che funzionano i profili pubblici) ma la RLS agisce sulle righe, non sulle colonne. CORREZIONE alla nota precedente: NON e' vuoto per tutti i pro - provato l'8 agosto come ruolo anon, 5 righe viste e 1 telefono leggibile. Rimedio piu' semplice di una seconda tabella: grant a livello di colonna, `revoke select (phone) on public.profiles from anon`, che lascia pubblico il resto del profilo senza toccare nessuna policy ne' creare viste. | Internal | Lucio | ⬜ Aperto | 2026-08-06 → 2026-08-31 |
-| N6 | Bonificare le 3 richieste pre-044 che hanno ancora via e civico dentro requests.problem_description (Via Solferino, Via Tortona, Viale Monza). La bonifica della 044 non le aveva prese perche' l'indirizzo era in mezzo a una frase, come documenta l'intestazione di src/lib/redact.ts. Il confine LLM e' coperto da stripAddresses() a tempo di lettura, ma il dato grezzo resta nel database e il done_when di M2 dice 'righe storiche bonificate'. Tre righe: intervento una tantum, con le descrizioni riviste prima di scrivere. | Internal | Claude | ⬜ Aperto | 2026-08-08 → 2026-08-31 |
-
-<details><summary>8 attività già chiuse</summary>
+<details><summary>10 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
@@ -83,13 +78,15 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 41.5 | Distanza in km nella card del pro — acceso: 28/28 zone con coordinate reali dal dataset NIL del Comune (CC-BY). La causa del blocco era pick() che confrontava i nomi di colonna per uguaglianza esatta e non vedeva LAT_Y_4326_CENTROID | André | 2026-08-07 |
 | 41.6 | Ripiego CAP quando il cliente non riconosce nessun quartiere (mig 046): cinque cifre, grana equivalente alla zona, vincolo di formato in DB. Il pro legge 'CAP 20159' | André | 2026-08-07 |
 | N4 | AI Act art. 50: la chat dichiara di essere un assistente AI. In produzione dall'8 agosto, sei giorni dopo l'entrata in vigore. Pillola 'AI' accanto a 'Bob' e sottotitolo 'Assistente AI · Il tuo concierge dei servizi' nell'intestazione, quindi visibile prima del primo messaggio e non scorre via con la conversazione. Verificato su www.meetonda.com desktop e a 390px. | André | 2026-08-08 |
+| N6 | Bonificate le 3 richieste pre-044 con via e civico in problem_description (Via Solferino 28, Via Tortona 15, Viale Monza 55): applicata la stessa bonifica di stripAddresses() (tolto il civico, lasciato il nome della via) direttamente sul dato in chiaro via UPDATE su requests. Verificato in produzione il 14/08. | Claude | 2026-08-14 |
+| N5 | profiles.phone leggibile da chiunque (anon E authenticated, non solo anonimi: correzione trovata il 14/08). Il rimedio a una riga proposto qui (revoke select a livello di colonna, mig 050) e' stato applicato e poi verificato INEFFICACE: anon/authenticated hanno comunque il GRANT SELECT sull'intera tabella profiles, e Postgres controlla il privilegio di tabella prima di quello di colonna. Rimedio vero (mig 051): telefono spostato in una tabella propria profile_phone con RLS (solo proprietario e staff admin/cs), stesso pattern gia' usato nella 027 per date_of_birth/terms_accepted_at. Codice aggiornato in admin/users, admin/professionals, api/admin/users/[id] e api/pro/instant-book. Colonna profiles.phone rimossa. Build verificata pulita (npm run build, 0 errori) prima del push. | Lucio | 2026-08-14 |
 
 </details>
 
 
 ## M3 · Nobody is left waiting in the dark
 
-**Finestra:** 2026-08-15 → 2026-09-30 · **3 aperte, 39 chiuse**
+**Finestra:** 2026-08-15 → 2026-09-30 · **3 aperte, 40 chiuse**
 
 **Perché:** Today a pro can reply and the customer learns nothing until they happen to come back and look — the email pipeline is fully built and switched off for want of an API key. Below a founder watching the database by hand, the funnel dies silently. This is the cheapest growth work available: it makes the product work when nobody is watching it.
 
@@ -101,7 +98,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 8.9 | Empty / error / loading states + server-side validation pass | Client/Pro | André | ⬜ Aperto | 2026-08-15 → 2026-09-30 |
 | Bx | Email notifications pipeline — si accende con RESEND_API_KEY + DNS/DKIM (vedi M3/15.4) | Client/Pro | André | 🌙 Pronto ma spento | — |
 
-<details><summary>39 attività già chiuse</summary>
+<details><summary>40 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
@@ -144,13 +141,14 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 8.8 | Mobile overflow fix (base grid-cols-1 on responsive grids) | André | 2026-07-19 |
 | 3.4 | Pro calendar v2: hour-axis week/day view, blocks sized by duration, overlap columns, appointment detail panel | André | 2026-07-28 |
 | 3.5 | Appointment location (mig 031 snapshot) + Giro del giorno itinerary with Maps links; address captured in direct booking | André | 2026-07-28 |
+| N13 | 'La mail di verifica non arriva' — indagato sui log auth del 14/08: NON e' un bug di invio. Caso 1: dominio email inventato, rifiutato da Supabase (email_address_invalid) prima dell'invio. Caso 2: email gia' registrata dal 3/06 — Supabase risponde ok senza inviare (anti-enumerazione) ma il form diceva 'ti ho inviato una mail'. Fix: rilevazione ri-registrazione (identities vuote) con messaggio 'email gia' registrata', traduzione errori email invalida/non confermata, schermata di attesa. Il mailer built-in resta rate-limited: l'attivazione Resend (15.4) resta il fix di produzione. | Claude | 2026-08-14 |
 
 </details>
 
 
 ## M4 · A pro becomes credible without a human
 
-**Finestra:** 2026-08-08 → 2026-10-31 · **12 aperte, 20 chiuse**
+**Finestra:** 2026-08-08 → 2026-10-31 · **10 aperte, 22 chiuse**
 
 **Perché:** The badge is the only thing that lets a stranger choose between five names on a list. If granting it costs staff time it cannot scale past Milano, and if what a level unlocks isn't decided, the block has no acceptance test at all. The decision (10.11) gates ranking, so it comes first, not last.
 
@@ -159,19 +157,17 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | # | Attività | Track | Owner | Stato | Periodo |
 |---|----------|-------|-------|-------|---------|
 | 10.10 | Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata) | Shared | Lucio | ⬜ Aperto | 2026-08-04 → 2026-08-29 |
-| 10.11 | DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6) | Shared | Lucio | 🔶 Decisione | 2026-08-08 → 2026-08-08 |
 | 10.13 | Registro verifiche: pagina dedicata con filtri (professionista, tipo evento, periodo, operatore), paginazione ed export CSV. Oggi in coda si vedono solo gli ultimi 100 movimenti | Internal | Lucio | ⬜ Aperto | 2026-09-08 → 2026-09-25 |
 | 10.14 | Messa in linea: commit pushati e cron registrato in vercel.json. RESTA: CRON_SECRET tra le variabili Vercel (Production) + un deploy, poi controllo che il ritentativo notturno abbia girato | Shared | Lucio | 🔵 In corso | 2026-08-03 → 2026-08-04 |
 | 10.1b | Gradino 3 via Openapi: stato+denominazione 2-5 centesimi a professionista (listino 01/08), PEC impresa 3 cent. Sandbox gratuita; serve DPA art.28 | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-10-15 |
-| 10.2 | Caricamento documenti per il livello Pro+ (upload, storage, retention, RLS). Priorita' salita: 'chiedi documenti' ora e' un'azione vera ma il pro non ha dove caricarli | Internal | Lucio | ⬜ Aperto | 2026-08-24 → 2026-09-30 |
 | 10.3 | Il livello pesa nel ranking (parametri dichiarati, Reg. P2B) + SLA 48h sulla coda | Client/Pro | Lucio | ⬜ Aperto | 2026-10-01 → 2026-10-31 |
 | 10.4 | Scadenza della verifica (proposta 6 mesi) + ricontrollo periodico con declassamento assistito, mai automatico | Internal | Lucio | ⬜ Aperto | 2026-08-04 → 2026-08-12 |
 | 10.5 | Ritentativo notturno (cron Vercel, 22:00 UTC = mezzanotte italiana): esce subito se non c'e' nulla in attesa, max 5 notti per caso, non ripete a meno di 20h [mig 043] — si accende con CRON_SECRET in Vercel Production (vedi M1/10.14) | Internal | Lucio | 🌙 Pronto ma spento | — |
 | 10.7 | Telemetria in /admin/analisi: quanti tentano, quanti conferma il VIES, quanti finiscono a mano, tempi di lavorazione | Internal | Lucio | ⬜ Aperto | 2026-08-08 → 2026-08-22 |
-| 10.8 | Richiesta della P.IVA come ultimo passo dell'onboarding professionista | Client/Pro | Lucio | ⬜ Aperto | 2026-08-11 → 2026-08-25 |
+| 10.8 | Richiesta della P.IVA come ultimo passo dell'onboarding professionista AGGIORNAMENTO 14/08: l'onboarding pro ora esiste (piano → questionario → profilo) e la verifica e' gated sui tier a pagamento; decidere se la P.IVA diventa l'ultimo passo dell'onboarding per chi sceglie Pro/Business. | Client/Pro | Lucio | ⬜ Aperto | 2026-08-11 → 2026-08-25 |
 | 10.9 | Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7) | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-09-20 |
 
-<details><summary>20 attività già chiuse</summary>
+<details><summary>22 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
@@ -195,6 +191,8 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 10.6a | Campo 'nome completo dell''azienda' nella card di verifica, usato come secondo termine di confronto (mig 041) | Lucio | 2026-08-02 |
 | 10.12 | FATTO: societa' in liquidazione/A.S./LCA hanno P.IVA ATTIVA e il VIES le conferma (provato su Alitalia, BPVi, Veneto Banca). Intercettare la dicitura nella denominazione e mandare in coda invece di concedere | Lucio | 2026-08-03 |
 | 10.6 | Confronto nomi stretto (2 parole + 60% di copertura, o una parola specifica) provato su 12 casi; un solo passaggio contro tutti i nomi noti, con traccia di quale ha deciso [mig 042] | Lucio | 2026-08-03 |
+| 10.2 | Caricamento documenti per la verifica (mig 052): bucket PRIVATO verifica-documenti con RLS per-utente, tabella verification_documents (stati in_esame/accettato/rifiutato), upload dal profilo pro (solo tier a pagamento), coda admin con link firmati a scadenza 1h. Retention e RoPA riga A16. Resta il percorso di cancellazione dei FILE alla cancellazione account: N12 (M6). | Claude | 2026-08-14 |
+| OB1 | Onboarding professionista end-to-end (mig 052): iscrizione con nome/cognome separati (colonne first_name/last_name, full_name mantenuto) e data di nascita a tre tendine; schermata di attesa conferma email con avanzamento automatico; scelta piano (verifica P.IVA esclusiva di Pro/Business per decisione 14/08); pagamenti 'temporaneamente non attivi' con codici promo server-side (BOB-FOUNDER-2026 seed, revocabile da admin, tabelle promo_codes/promo_redemptions); questionario (mestiere, citta', zona, esperienza, canale — onboarding_answers, RoPA A15/A17) che crea la riga professionals, prima creata a mano dallo staff. | Claude | 2026-08-14 |
 
 </details>
 
@@ -229,7 +227,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M6 · A lawyer could sign the site off
 
-**Finestra:** 2026-09-01 → 2026-11-30 · **6 aperte, 0 chiuse**
+**Finestra:** 2026-09-01 → 2026-11-30 · **7 aperte, 0 chiuse**
 
 **Perché:** The terms of service are drafts in docs/legal and the compliance guideline makes a legal basis, a RoPA row and a retention rule part of "done" for every feature that touches personal data. Nine months of features shipped ahead of that paperwork, so it is owed retroactively — and it is a hard gate on inviting real professionals.
 
@@ -243,6 +241,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | N10 | DPIA on the matching / job-brief LLM flow, written before launch rather than after | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
 | N9 | Waitlist launch email needs an explicit 'contact me at launch' checkbox before a single send — no soft opt-in for Bob | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-10-15 |
 | 23.1 | Controllo consumeristico sul listino pro pubblicato l'08/08: la tabella elenca le funzioni del Business Plan §6.2, fra cui fatturazione elettronica integrata, pagamenti inclusi e analytics avanzate, che non esistono ancora in prodotto. Oggi il rischio e' contenuto perche' non c'e' checkout (il tier lo assegna l'admin), ma quando si accende Stripe (12.1) elencare funzioni non disponibili e' pratica commerciale ingannevole (Codice del Consumo art. 21-22). Decidere per ogni riga: costruirla, riscriverla o rimuoverla. | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
+| N12 | La cancellazione account deve svuotare anche la cartella <user_id>/ del bucket verifica-documenti: le righe di verification_documents cadono a cascata (FK), i FILE nello storage no. Registrato come punto 8 delle lacune ROPA. Regola di progetto: ogni tabella nuova ha un percorso di cancellazione — per lo storage va costruito. | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
 
 
 ## M7 · Bob can charge money
@@ -362,7 +361,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## PARK · Parking lot — earns a date after go-live
 
-**Finestra:** 2027-01-01 → 2027-12-31 · **31 aperte, 0 chiuse**
+**Finestra:** 2027-01-01 → 2027-12-31 · **32 aperte, 0 chiuse**
 
 **Perché:** These are good ideas with invented dates. Putting 2027 spans on them is precisely what made the Gantt look chaotic: 60-odd rows of speculation rendered at the same weight as work in flight. Each needs one piece of live evidence before it earns a slot — and after go-live you will have that evidence cheaply.
 
@@ -401,6 +400,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 40.1 | ZTL / Area B & C vehicle-access checker (vehicle emission class + Milan zone rules) — deterministic, high value for out-of-town pros | Client/Pro | André | ▪️ Parcheggiato | — |
 | 40.2 | Parking-difficulty index + nearby paid-garage links (research spike first; real-time free-spot count not feasible) | Client/Pro | André | ▪️ Parcheggiato | — |
 | 40.3 | Map of the day itinerary in the pro calendar (pins in time order) — depends on 40.0 geocoding + vendor DPA | Client/Pro | André | ▪️ Parcheggiato | — |
+| 10.11 | DECISIONE: cosa sblocca il livello — categorie con gate al contatto, durata, peso nel ranking, cosa puo' fare un Iscritto (doc §6). Parcheggiata il 14/08 (da decidere con André, data da destinarsi). NOTA 14/08 sera: una parte e' stata di fatto decisa da Lucio col nuovo onboarding — la verifica P.IVA e' ora ESCLUSIVA dei piani a pagamento (Pro/Business), il Free non la vede. Da ratificare con André insieme al resto della decisione. | Shared | Lucio | 🔶 Decisione | — |
 
 
 ---

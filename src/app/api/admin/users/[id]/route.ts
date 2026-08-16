@@ -33,10 +33,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Body non valido" }, { status: 400 });
   }
 
-  // Aggiorna il profilo (nome, telefono, bio)
+  // Aggiorna il profilo (nome, bio). Il telefono vive altrove dalla 051.
   const profilePatch: Record<string, string> = {};
   if (body.fullName !== undefined) profilePatch.full_name = body.fullName;
-  if (body.phone !== undefined) profilePatch.phone = body.phone;
   if (body.about !== undefined) profilePatch.about = body.about;
 
   if (Object.keys(profilePatch).length > 0) {
@@ -44,6 +43,15 @@ export async function PATCH(
       .from("profiles")
       .update(profilePatch)
       .eq("user_id", params.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Telefono: profile_phone (mig 051), RLS "Staff updates phones" per
+  // admin/cs. Upsert perche' un utente senza telefono non ha ancora riga.
+  if (body.phone !== undefined) {
+    const { error } = await supabase
+      .from("profile_phone")
+      .upsert({ user_id: params.id, phone: body.phone, updated_at: new Date().toISOString() });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

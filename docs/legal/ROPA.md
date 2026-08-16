@@ -213,6 +213,51 @@ DATA_COMPLIANCE.md §8.
 | **Destinatari previsti** | Stripe: responsabile per il pagamento, **titolare autonomo** per antifrode e antiriciclaggio |
 | **Note** | Riga da completare **prima** di incassare il primo euro, non dopo. Il DPA di Stripe promette la notifica di violazione a Bob entro 48 ore: va collegata allo stesso playbook degli artt. 33/34 |
 
+## A15 — Questionario di onboarding dei professionisti
+
+| | |
+|---|---|
+| **Finalità** | Raccogliere all'iscrizione mestiere, città e zona di lavoro, anzianità e canale di provenienza, per proporre il professionista alle richieste pertinenti |
+| **Base giuridica** | Contratto — art. 6(1)(b) per mestiere/città/zona/esperienza (senza, il matching non funziona); legittimo interesse — art. 6(1)(f) per il canale di provenienza (facoltativo, metrica di marketing) — **LIA da scrivere** |
+| **Interessati** | Professionisti |
+| **Dati** | Mestiere/categoria, città, zona (testo libero), anni di esperienza, come ci ha conosciuto, piano scelto |
+| **Tabelle** | `onboarding_answers` (mig 052) |
+| **Destinatari** | Supabase, Vercel (come A1) |
+| **Trasferimenti** | Come A1 |
+| **Conservazione** | Finché l'account esiste; cancellazione a cascata con l'utente (FK on delete cascade) |
+| **Sicurezza** | RLS: legge solo l'interessato e lo staff admin/cs |
+| **Note** | Introdotto il 14/08/2026 col flusso di onboarding. Il campo "come ci hai conosciuto" è dichiarato facoltativo nel form |
+
+## A16 — Documenti di verifica dei professionisti
+
+| | |
+|---|---|
+| **Finalità** | Permettere al professionista di fornire i documenti richiesti dallo staff per la verifica (visura, attestati, documento d'identità) — completa A7 |
+| **Base giuridica** | Come A7 (misura precontrattuale/contratto per il badge richiesto dal professionista) |
+| **Interessati** | Professionisti |
+| **Dati** | File caricati (possono contenere documento d'identità), nome file, esito dell'esame, note dello staff |
+| **Tabelle** | `verification_documents` + bucket storage **privato** `verifica-documenti` (mig 052) |
+| **Destinatari** | Supabase, Vercel (come A1) |
+| **Trasferimenti** | Come A1 |
+| **Conservazione** | Con la pratica di verifica, finché il profilo esiste (allineata ad A7); righe cancellate a cascata con l'account. **ATTENZIONE**: i file nel bucket NON si cancellano a cascata — vanno rimossi nel processo di cancellazione account (vedi punto 8 sotto) |
+| **Sicurezza** | Bucket privato, path per-utente, lettura solo proprietario+staff (RLS storage), accesso staff via link firmati a scadenza 1h, mai URL pubblici |
+| **Note** | Chiude il buco del 10.2: prima i documenti giravano via email, fuori piattaforma |
+
+## A17 — Codici promozionali (beta)
+
+| | |
+|---|---|
+| **Finalità** | Attivare piani a pagamento in betatesting, in assenza del checkout (M7); tracciare chi ha riscattato cosa per revocare al lancio |
+| **Base giuridica** | Contratto — art. 6(1)(b) |
+| **Interessati** | Professionisti |
+| **Dati** | Codice riscattato, utente, data del riscatto |
+| **Tabelle** | `promo_codes`, `promo_redemptions` (mig 052) |
+| **Destinatari** | Supabase, Vercel (come A1) |
+| **Trasferimenti** | Come A1 |
+| **Conservazione** | Finché l'account esiste (cascata); i codici in sé non sono dati personali |
+| **Sicurezza** | Codici non leggibili né enumerabili dal client (nessuna policy per anon/authenticated); convalida solo server-side |
+| **Note** | Da ritirare quando Stripe (12.1) va live: la riga A14 prende il suo posto |
+
 ---
 
 ## Cosa manca ancora (non inventato, da chiudere da una persona)
@@ -224,3 +269,4 @@ DATA_COMPLIANCE.md §8.
 5. **Fonte di verità unica per la posizione** (A3): oggi `requests.zone_slug`, `request_addresses.coarse_*` e `job_briefs.zone` coesistono.
 6. **Identità del titolare** in `src/lib/company.ts`: i `[PLACEHOLDER]` sono differiti a gennaio 2027 per scelta, ma l'informativa e questo registro hanno bisogno di un titolare reale prima di trattare dati di utenti veri su scala.
 7. **Memo DPO** (DATA_COMPLIANCE §7.4): non obbligatorio a questa scala, ma la valutazione va messa per iscritto.
+8. **Cancellazione dei file di verifica** (A16): l'eliminazione dell'account cancella le righe ma non i file nel bucket `verifica-documenti` — il processo di cancellazione account deve svuotare anche la cartella `<user_id>/` dello storage.

@@ -221,12 +221,19 @@ export async function POST(request: Request) {
   if (proRow?.user_id) {
     const { data: proProfile } = await admin
       .from("profiles")
-      .select("full_name, phone")
+      .select("full_name")
+      .eq("user_id", proRow.user_id)
+      .maybeSingle();
+    // Telefono in profile_phone dalla 051; il client "admin" e' service-role
+    // e bypassa comunque la RLS, come gia' faceva su profiles.
+    const { data: proPhone } = await admin
+      .from("profile_phone")
+      .select("phone")
       .eq("user_id", proRow.user_id)
       .maybeSingle();
     contact = {
       name: (proProfile?.full_name as string | null) ?? null,
-      phone: (proProfile?.phone as string | null) ?? null,
+      phone: (proPhone?.phone as string | null) ?? null,
     };
   }
 

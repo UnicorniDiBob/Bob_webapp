@@ -91,7 +91,6 @@ export interface Profile {
   user_id: string;
   full_name: string | null;
   avatar_url: string | null;
-  phone: string | null;
   about: string | null;
   created_at: string | null;
 }
@@ -104,6 +103,15 @@ export interface ProfilePrivate {
   date_of_birth: string | null;
   terms_accepted_at: string | null;
   created_at: string | null;
+}
+
+// Telefono del pro (migration 051): tabella propria con RLS — solo il
+// proprietario e lo staff admin/cs possono leggerlo o scriverlo. Prima
+// viveva in profiles, esposto per intero dalla policy pubblica (N5).
+export interface ProfilePhone {
+  user_id: string;
+  phone: string | null;
+  updated_at: string | null;
 }
 
 export interface Professional {

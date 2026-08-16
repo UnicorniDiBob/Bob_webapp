@@ -21,6 +21,14 @@ export const revalidate = 0; // sempre aggiornato
 type VerificationStatus = "unverified" | "pending" | "verified";
 type SubscriptionTier = "free" | "pro" | "business";
 
+// Documento di verifica come lo consuma la coda: link firmato già risolto.
+interface AdminDoc {
+  file_name: string;
+  status: string;
+  uploaded_at: string;
+  url: string | null;
+}
+
 interface VerificationRow {
   professional_id: string;
   level: VerificationLevel;
@@ -174,11 +182,22 @@ export default async function AdminProfessionalsPage() {
   const userIds = pros.map((p) => p.user_id);
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("user_id, full_name, phone")
+    .select("user_id, full_name")
     .in("user_id", userIds);
 
+  // Telefono in profile_phone dalla 051 — non piu' in profiles (vedi nota
+  // in admin/users/page.tsx per il perche'). Unito qui in profileMap cosi'
+  // tutti gli usi sotto (profileMap[x]?.phone) restano invariati.
+  const { data: phones } = await supabase
+    .from("profile_phone")
+    .select("user_id, phone")
+    .in("user_id", userIds);
+  const phoneMap = Object.fromEntries(
+    ((phones ?? []) as { user_id: string; phone: string | null }[]).map((p) => [p.user_id, p.phone])
+  );
+
   const profileMap = Object.fromEntries(
-    (profiles ?? []).map((p) => [p.user_id, p])
+    (profiles ?? []).map((p) => [p.user_id, { ...p, phone: phoneMap[p.user_id] ?? null }])
   );
 
   // Coda delle verifiche P.IVA: i casi con un esame umano aperto o appena
@@ -221,6 +240,37 @@ export default async function AdminProfessionalsPage() {
     const list = eventsByPro.get(e.professional_id) ?? [];
     list.push(e);
     eventsByPro.set(e.professional_id, list);
+  }
+
+  // Documenti caricati dai professionisti in coda (10.2, mig 052): il pro
+  // carica dal suo profilo nel bucket privato, qui si aprono con link firmati
+  // a scadenza (1h) — mai URL permanenti su documenti d'identità.
+  const { data: docsData } = idsInPagina.length
+    ? await supabase
+        .from("verification_documents")
+        .select("professional_id, file_name, storage_path, status, uploaded_at")
+        .in("professional_id", idsInPagina)
+        .order("uploaded_at", { ascending: false })
+    : { data: [] };
+  const docsByPro = new Map<string, AdminDoc[]>();
+  for (const d of (docsData ?? []) as unknown as {
+    professional_id: string;
+    file_name: string;
+    storage_path: string;
+    status: string;
+    uploaded_at: string;
+  }[]) {
+    const { data: signed } = await supabase.storage
+      .from("verifica-documenti")
+      .createSignedUrl(d.storage_path, 3600);
+    const list = docsByPro.get(d.professional_id) ?? [];
+    list.push({
+      file_name: d.file_name,
+      status: d.status,
+      uploaded_at: d.uploaded_at,
+      url: signed?.signedUrl ?? null,
+    });
+    docsByPro.set(d.professional_id, list);
   }
 
   // 2) La vista d'insieme "cosa è successo di recente", che serve a controllare
@@ -315,6 +365,7 @@ export default async function AdminProfessionalsPage() {
                     : undefined
                 }
                 storico={eventsByPro.get(row.professional_id) ?? []}
+                documenti={docsByPro.get(row.professional_id) ?? []}
               />
             ))}
           </div>
@@ -338,6 +389,7 @@ export default async function AdminProfessionalsPage() {
                       : undefined
                   }
                   storico={eventsByPro.get(row.professional_id) ?? []}
+                documenti={docsByPro.get(row.professional_id) ?? []}
                 />
               ))}
             </div>
@@ -361,6 +413,7 @@ export default async function AdminProfessionalsPage() {
                       : undefined
                   }
                   storico={eventsByPro.get(row.professional_id) ?? []}
+                documenti={docsByPro.get(row.professional_id) ?? []}
                 />
               ))}
             </div>
@@ -557,12 +610,15 @@ function VatCaseCard({
   pro,
   profile,
   storico = [],
+  documenti = [],
 }: {
   row: VerificationRow;
   pro: ProRow | undefined;
   profile: { full_name: string | null; phone: string | null } | undefined;
   /** Registro degli eventi di questo professionista, dal più recente. */
   storico?: VerificationEvent[];
+  /** Documenti caricati dal pro (10.2), con link firmato a scadenza. */
+  documenti?: AdminDoc[];
 }) {
   const name = profile?.full_name ?? "Professionista";
   const state = row.vat_review_state;
@@ -696,6 +752,37 @@ function VatCaseCard({
             </span>
           )}
         </p>
+      )}
+
+      {documenti.length > 0 && (
+        <div className="mt-2 rounded-xl bg-bob-indigo-50/60 px-3 py-2">
+          <p className="text-xs font-semibold text-bob-ink/70">
+            Documenti caricati dal professionista ({documenti.length})
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {documenti.map((d) => (
+              <li key={d.file_name + d.uploaded_at} className="text-xs text-bob-ink/65">
+                {d.url ? (
+                  <a
+                    href={d.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-bob-indigo hover:underline"
+                  >
+                    {d.file_name}
+                  </a>
+                ) : (
+                  <span>{d.file_name}</span>
+                )}{" "}
+                · {fmtDateTime(d.uploaded_at)}
+                {d.status !== "in_esame" && ` · ${d.status}`}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[10px] text-bob-ink/40">
+            I link scadono dopo un&apos;ora: sono firmati, non pubblici.
+          </p>
+        </div>
       )}
 
       {storico.length > 0 && (

@@ -12,6 +12,7 @@ import { useAuth } from "@/components/AuthProvider";
 import InstantBookingConfig from "@/components/InstantBookingConfig";
 import AvailabilityEditor from "@/components/AvailabilityEditor";
 import VatVerification from "@/components/VatVerification";
+import VerificationDocuments from "@/components/VerificationDocuments";
 import type { SubscriptionTier } from "@/lib/supabase/types";
 
 interface City {
@@ -425,10 +426,32 @@ export default function ProProfiloPage() {
           </div>
         )}
 
-        {!isOnboarding && profileId && (
+        {/* La verifica è esclusiva dei piani a pagamento (decisione 14/08,
+            anticipa parte della 10.11): al piano Free si mostra cosa si
+            sbloccherebbe, non il percorso. */}
+        {!isOnboarding && profileId && tier !== "free" && (
           <div id="verifica-piva" className="scroll-mt-24 border-t border-black/5 pt-5">
             <span className="label-bob">Verifica della partita IVA</span>
             <VatVerification professionalId={profileId} />
+            <div className="mt-4">
+              <span className="label-bob">Documenti per la verifica</span>
+              <VerificationDocuments professionalId={profileId} />
+            </div>
+          </div>
+        )}
+        {!isOnboarding && profileId && tier === "free" && (
+          <div id="verifica-piva" className="scroll-mt-24 border-t border-black/5 pt-5">
+            <span className="label-bob">Verifica della partita IVA</span>
+            <p className="mt-1 text-sm text-bob-ink/55">
+              La verifica della partita IVA e il badge sul profilo sono inclusi
+              nei piani Bob Pro e Bob Business.{" "}
+              <Link
+                href="/onboarding/piano"
+                className="font-medium text-bob-indigo hover:underline"
+              >
+                Scopri i piani
+              </Link>
+            </p>
           </div>
         )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -51,10 +51,21 @@ function LoginInner() {
   const [role, setRole] = useState<Extract<UserRole, "customer" | "professional">>(
     params.get("role") === "professional" ? "professional" : "customer"
   );
-  const [fullName, setFullName] = useState("");
+  // Nome e cognome separati (052): dati puliti da subito, full_name resta
+  // per compatibilità e viene composto dal trigger handle_new_user.
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
+  // Data di nascita a tre tendine (gg/mm/aaaa): su mobile il type="date"
+  // apre un calendario che parte da oggi e costringe a sfogliare decenni.
+  const [dobDay, setDobDay] = useState("");
+  const [dobMonth, setDobMonth] = useState("");
+  const [dobYear, setDobYear] = useState("");
+  // Attesa della conferma email: quando è valorizzato, il form lascia il
+  // posto alla schermata "controlla la posta" che riprova il login da sola.
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   // Il consenso si sblocca solo dopo che i termini sono stati aperti: non si
   // può accettare qualcosa che non si è nemmeno visto.
@@ -72,6 +83,66 @@ function LoginInner() {
     setTermsOpened(false);
     setTermsAccepted(false);
   }
+
+  // Compone la data ISO dalle tre tendine; null se incompleta o inesistente
+  // (es. 31 febbraio: il Date la "corregge" e noi la rifiutiamo).
+  function composeDob(): string | null {
+    if (!dobDay || !dobMonth || !dobYear) return null;
+    const iso = `${dobYear}-${dobMonth.padStart(2, "0")}-${dobDay.padStart(2, "0")}`;
+    const d = new Date(iso + "T00:00:00");
+    if (
+      d.getFullYear() !== Number(dobYear) ||
+      d.getMonth() + 1 !== Number(dobMonth) ||
+      d.getDate() !== Number(dobDay)
+    ) {
+      return null;
+    }
+    return iso;
+  }
+
+  // Dopo la conferma email l'utente va instradato dove serve: il pro inizia
+  // l'onboarding (piano → questionario), il cliente torna dov'era.
+  async function routeAfterConfirm() {
+    await refresh();
+    const { data: authData } = await supabase.auth.getUser();
+    let dest = role === "professional" ? "/onboarding/piano" : returnTo;
+    if (authData.user) {
+      const { data: roleRow } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", authData.user.id)
+        .maybeSingle();
+      if (roleRow?.role === "professional") dest = "/onboarding/piano";
+    }
+    router.push(dest);
+    router.refresh();
+  }
+
+  // Polling della conferma: riprova il login in silenzio. Con l'email non
+  // ancora confermata Supabase risponde "Email not confirmed" e si riprova;
+  // appena il link è stato cliccato il login riesce e si va avanti. Ogni 15s
+  // per non urtare il rate limit del token endpoint; c'è anche il bottone
+  // manuale per chi ha appena confermato e non vuole aspettare.
+  useEffect(() => {
+    if (!awaitingConfirm) return;
+    let cancelled = false;
+    async function attempt() {
+      const { data, error: err } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (!cancelled && !err && data.session) {
+        if (pollTimer.current) clearInterval(pollTimer.current);
+        await routeAfterConfirm();
+      }
+    }
+    pollTimer.current = setInterval(attempt, 15000);
+    return () => {
+      cancelled = true;
+      if (pollTimer.current) clearInterval(pollTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingConfirm]);
 
   // Calcola l'età da una data 'YYYY-MM-DD' senza dipendenze esterne.
   function calcAge(isoDate: string): number {
@@ -133,13 +204,19 @@ function LoginInner() {
 
     try {
       if (mode === "signup") {
-        if (fullName.trim().length < 2) {
+        if (firstName.trim().length < 2) {
           setError("Inserisci il tuo nome.");
           setSubmitting(false);
           return;
         }
+        if (lastName.trim().length < 2) {
+          setError("Inserisci il tuo cognome.");
+          setSubmitting(false);
+          return;
+        }
+        const dateOfBirth = composeDob();
         if (!dateOfBirth) {
-          setError("Inserisci la tua data di nascita.");
+          setError("Completa la data di nascita: giorno, mese e anno.");
           setSubmitting(false);
           return;
         }
@@ -163,15 +240,17 @@ function LoginInner() {
           setSubmitting(false);
           return;
         }
-        // Il trigger handle_new_user legge role, full_name, date_of_birth e
-        // terms_accepted_at da raw_user_meta_data.
+        // Il trigger handle_new_user legge role, first/last name (052),
+        // date_of_birth e terms_accepted_at da raw_user_meta_data.
         const { data, error: signErr } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               role,
-              full_name: fullName.trim(),
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              full_name: `${firstName.trim()} ${lastName.trim()}`,
               date_of_birth: dateOfBirth,
               terms_accepted_at: new Date().toISOString(),
               // Registriamo QUALE versione dei termini è stata accettata
@@ -182,13 +261,30 @@ function LoginInner() {
         });
         if (signErr) throw signErr;
 
-        // Se la conferma email è richiesta, non c'è ancora sessione.
-        if (!data.session) {
-          setInfo(
-            "Ti ho inviato una mail per confermare l'indirizzo. Confermala e poi accedi."
+        // Email già registrata: Supabase per non rivelare gli iscritti
+        // risponde "ok" con un utente fittizio senza identità e NON invia
+        // nessuna mail. Se non lo intercettiamo qui, l'utente resta ad
+        // aspettare una mail che non arriverà mai (successo il 14/08).
+        if (data.user && (data.user.identities?.length ?? 0) === 0) {
+          setError(
+            "Questa email è già registrata. Prova ad accedere, o usa «Password dimenticata?» se non la ricordi."
           );
           setMode("login");
           setSubmitting(false);
+          return;
+        }
+
+        // Conferma email richiesta: schermata di attesa che riprova da sola.
+        if (!data.session) {
+          setAwaitingConfirm(true);
+          setSubmitting(false);
+          return;
+        }
+        // Conferma non richiesta (config dev): avanti subito.
+        if (role === "professional") {
+          await refresh();
+          router.push("/onboarding/piano");
+          router.refresh();
           return;
         }
       } else {
@@ -227,14 +323,85 @@ function LoginInner() {
         setError("Email o password non corretti.");
       } else if (/already registered/i.test(msg)) {
         setError("Questa email è già registrata. Prova ad accedere.");
+      } else if (/email address .* is invalid/i.test(msg)) {
+        // Supabase valida il dominio alla registrazione: un indirizzo su un
+        // dominio inesistente viene rifiutato prima ancora dell'invio.
+        setError(
+          "Questo indirizzo email non sembra valido: controlla di averlo scritto giusto (anche il dominio dopo la @)."
+        );
+      } else if (/email not confirmed/i.test(msg)) {
+        setError(
+          "Devi prima confermare l'email: cerca la mail di BOB nella posta (anche nello spam)."
+        );
       } else if (/password should be at least/i.test(msg)) {
-        setError("La password deve avere almeno 6 caratteri.");
+        setError("La password deve avere almeno 8 caratteri.");
       } else {
         setError(msg);
       }
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Schermata di attesa post-iscrizione: si aggiorna da sola appena l'email
+  // risulta confermata (polling silenzioso), senza chiedere di ri-loggarsi.
+  if (awaitingConfirm) {
+    return (
+      <div className="container-bob flex min-h-[calc(100vh-8rem)] items-center justify-center py-10">
+        <div className="w-full max-w-md">
+          <div className="card p-7 text-center">
+            <LogoMark className="mx-auto mb-3" />
+            <h1 className="text-xl font-bold text-bob-ink">
+              Controlla la posta
+            </h1>
+            <p className="mt-2 text-sm text-bob-ink/65">
+              Ti abbiamo inviato una mail a{" "}
+              <span className="font-medium text-bob-ink">{email}</span> per
+              confermare l&apos;indirizzo. Apri il link, poi torna qui: questa
+              pagina si aggiorna da sola.
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-bob-ink/50">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-bob-indigo" />
+              In attesa della conferma…
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                const { data } = await supabase.auth.signInWithPassword({
+                  email,
+                  password,
+                });
+                if (data.session) {
+                  await routeAfterConfirm();
+                } else {
+                  setInfo(
+                    "Non risulta ancora confermata: controlla anche lo spam."
+                  );
+                }
+              }}
+              className="btn-primary mt-5 w-full"
+              data-testid="button-ho-confermato"
+            >
+              Ho confermato
+            </button>
+            {info && (
+              <p className="mt-3 text-xs text-bob-ink/55">{info}</p>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setAwaitingConfirm(false);
+                setInfo(null);
+                setMode("login");
+              }}
+              className="mt-3 text-xs font-medium text-bob-indigo hover:underline"
+            >
+              Torna all&apos;accesso
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -317,40 +484,101 @@ function LoginInner() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             {mode === "signup" && (
-              <div>
-                <label className="label-bob" htmlFor="fullName">
-                  Nome e cognome
-                </label>
-                <input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="input-bob"
-                  placeholder="Mario Rossi"
-                  autoComplete="name"
-                  data-testid="input-fullname"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label-bob" htmlFor="firstName">
+                    Nome
+                  </label>
+                  <input
+                    id="firstName"
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="input-bob"
+                    placeholder="Mario"
+                    autoComplete="given-name"
+                    data-testid="input-firstname"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label-bob" htmlFor="lastName">
+                    Cognome
+                  </label>
+                  <input
+                    id="lastName"
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="input-bob"
+                    placeholder="Rossi"
+                    autoComplete="family-name"
+                    data-testid="input-lastname"
+                    required
+                  />
+                </div>
               </div>
             )}
 
             {mode === "signup" && (
               <div>
-                <label className="label-bob" htmlFor="dateOfBirth">
-                  Data di nascita
-                </label>
-                <input
-                  id="dateOfBirth"
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  className="input-bob"
-                  autoComplete="bday"
-                  max={new Date().toISOString().slice(0, 10)}
-                  data-testid="input-date-of-birth"
-                  required
-                />
+                <span className="label-bob">Data di nascita</span>
+                {/* Tre tendine (gg/mm/aaaa): più dirette del calendario del
+                    type="date", che parte da oggi e fa sfogliare decenni. */}
+                <div className="grid grid-cols-3 gap-2">
+                  <select
+                    aria-label="Giorno di nascita"
+                    value={dobDay}
+                    onChange={(e) => setDobDay(e.target.value)}
+                    className="input-bob"
+                    data-testid="input-dob-day"
+                    required
+                  >
+                    <option value="">Giorno</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={String(d)}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Mese di nascita"
+                    value={dobMonth}
+                    onChange={(e) => setDobMonth(e.target.value)}
+                    className="input-bob"
+                    data-testid="input-dob-month"
+                    required
+                  >
+                    <option value="">Mese</option>
+                    {[
+                      "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio",
+                      "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre",
+                      "Novembre", "Dicembre",
+                    ].map((m, i) => (
+                      <option key={m} value={String(i + 1)}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Anno di nascita"
+                    value={dobYear}
+                    onChange={(e) => setDobYear(e.target.value)}
+                    className="input-bob"
+                    data-testid="input-dob-year"
+                    required
+                  >
+                    <option value="">Anno</option>
+                    {Array.from(
+                      { length: 83 },
+                      (_, i) => new Date().getFullYear() - 18 - i
+                    ).map((y) => (
+                      <option key={y} value={String(y)}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <p className="mt-1 text-xs text-bob-ink/50">
                   Devi avere almeno 18 anni per usare BOB.
                 </p>
