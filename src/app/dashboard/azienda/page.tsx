@@ -1,19 +1,26 @@
 "use client";
 
-// Profilo professionista self-service: onboarding (prima creazione) e modifica.
-// Le colonne sensibili (verifica, tier) sono protette lato DB (migration 016):
-// qui il pro gestisce solo presentazione, servizi e prezzi.
+// Sezione "La tua azienda": tutto e solo cio' che un cliente vede di te.
+//
+// Viene dalla vecchia /dashboard/profilo, che teneva insieme questo, la
+// verifica della partita IVA, l'upload dei documenti, la prenotazione diretta
+// e gli orari di disponibilita' in una pagina sola. Qui resta il profilo
+// pubblico: le altre tre sono diventate /dashboard/verifica e /dashboard/orari.
+//
+// Le colonne sensibili (verifica, tier) restano protette lato database dal
+// trigger protect_professional_columns: questa pagina non le tocca.
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import InstantBookingConfig from "@/components/InstantBookingConfig";
-import AvailabilityEditor from "@/components/AvailabilityEditor";
-import VatVerification from "@/components/VatVerification";
-import VerificationDocuments from "@/components/VerificationDocuments";
-import type { SubscriptionTier } from "@/lib/supabase/types";
+import { SectionHeader } from "@/components/DashboardShell";
+import {
+  SectionSkeleton,
+  SectionError,
+  NoProProfile,
+} from "@/components/SectionStates";
 
 interface City {
   id: string;
@@ -32,8 +39,8 @@ interface Subservice {
   slug: string;
 }
 
-// Scala standard dei tempi di risposta: un'unica tassonomia
-// al posto del testo libero (coerenza sulle card).
+// Scala standard dei tempi di risposta: un'unica tassonomia al posto del
+// testo libero, cosi' le card dei professionisti restano confrontabili.
 const RESPONSE_OPTIONS = [
   "Risponde in poche ore",
   "Risponde in giornata",
@@ -41,30 +48,28 @@ const RESPONSE_OPTIONS = [
   "Risponde in 48h",
 ];
 
-export default function ProProfiloPage() {
+export default function AziendaPage() {
   const supabase = createClient();
   const router = useRouter();
   const { user, role, loading } = useAuth();
 
   const [booted, setBooted] = useState(false);
-  const [profileId, setProfileId] = useState<string | null>(null); // null = onboarding
+  const [failed, setFailed] = useState(false);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [serviceRowId, setServiceRowId] = useState<string | null>(null);
-  const [tier, setTier] = useState<SubscriptionTier>("free");
 
-  // dati di supporto
   const [cities, setCities] = useState<City[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [subservices, setSubservices] = useState<Subservice[]>([]);
 
-  // campi del form
   const [cityId, setCityId] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
-  const [years, setYears] = useState<string>("");
+  const [years, setYears] = useState("");
   const [responseLabel, setResponseLabel] = useState(RESPONSE_OPTIONS[2]);
-  const [minPrice, setMinPrice] = useState<string>("");
-  const [maxPrice, setMaxPrice] = useState<string>("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
   const [priceNote, setPriceNote] = useState("");
   const [subSlugs, setSubSlugs] = useState<string[]>([]);
 
@@ -73,17 +78,16 @@ export default function ProProfiloPage() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) router.replace("/login");
-    if (!loading && user && role && role !== "professional")
-      router.replace("/dashboard");
+    if (loading) return;
+    if (!user) router.replace("/login?returnTo=/dashboard/azienda");
+    else if (role && role !== "professional") router.replace("/dashboard");
   }, [loading, user, role, router]);
 
-  // Carico dati di supporto + eventuale profilo esistente.
   useEffect(() => {
-    if (!user || role !== "professional") return;
+    if (loading || !user || role !== "professional") return;
     let active = true;
     (async () => {
-      const [{ data: cs }, { data: svcs }, { data: subs }, { data: prof }] =
+      const [{ data: cs }, { data: svcs }, { data: subs }, { data: prof, error: pErr }] =
         await Promise.all([
           supabase.from("cities").select("id, name, status").order("name"),
           supabase.from("services").select("id, name, slug").order("name"),
@@ -94,12 +98,18 @@ export default function ProProfiloPage() {
           supabase
             .from("professionals")
             .select(
-              "id, city_id, headline, bio, years_experience, response_time_label, subservice_slugs, subscription_tier"
+              "id, city_id, headline, bio, years_experience, response_time_label, subservice_slugs"
             )
             .eq("user_id", user.id)
             .maybeSingle(),
         ]);
       if (!active) return;
+
+      if (pErr) {
+        setFailed(true);
+        setBooted(true);
+        return;
+      }
 
       setCities((cs ?? []) as City[]);
       setServices((svcs ?? []) as Service[]);
@@ -111,15 +121,11 @@ export default function ProProfiloPage() {
         setCityId((p.city_id as string) ?? "");
         setHeadline((p.headline as string) ?? "");
         setBio((p.bio as string) ?? "");
-        setYears(
-          p.years_experience != null ? String(p.years_experience) : ""
-        );
+        setYears(p.years_experience != null ? String(p.years_experience) : "");
         if (p.response_time_label)
           setResponseLabel(p.response_time_label as string);
         setSubSlugs((p.subservice_slugs as string[]) ?? []);
-        setTier((p.subscription_tier as SubscriptionTier) ?? "free");
 
-        // servizio principale + prezzi
         const { data: ps } = await supabase
           .from("professional_services")
           .select("id, service_id, min_price, max_price, price_note")
@@ -141,7 +147,7 @@ export default function ProProfiloPage() {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, role]);
+  }, [loading, user, role]);
 
   const serviceSubs = useMemo(
     () => subservices.filter((s) => s.service_id === serviceId),
@@ -155,13 +161,14 @@ export default function ProProfiloPage() {
   }
 
   async function handleSave() {
-    if (!user || saving) return;
+    if (!user || !profileId || saving) return;
     setError(null);
+    setSavedAt(null);
 
     if (!cityId) return setError("Scegli la tua città.");
     if (!serviceId) return setError("Scegli il servizio che offri.");
     if (headline.trim().length < 5)
-      return setError("Scrivi un titolo breve per il tuo profilo (min 5 caratteri).");
+      return setError("Scrivi un titolo di almeno 5 caratteri.");
     const minP = minPrice ? Number(minPrice) : null;
     const maxP = maxPrice ? Number(maxPrice) : null;
     if (minP != null && maxP != null && minP > maxP)
@@ -169,41 +176,21 @@ export default function ProProfiloPage() {
 
     setSaving(true);
     try {
-      const profileFields = {
-        city_id: cityId,
-        headline: headline.trim(),
-        bio: bio.trim() || null,
-        years_experience: years ? Number(years) : null,
-        response_time_label: responseLabel,
-        subservice_slugs: subSlugs,
-      };
-
-      let pid = profileId;
-      if (pid) {
-        const { error: upErr } = await supabase
-          .from("professionals")
-          .update(profileFields)
-          .eq("id", pid);
-        if (upErr) throw upErr;
-      } else {
-        // Onboarding: la policy impone unverified + free.
-        const { data: ins, error: insErr } = await supabase
-          .from("professionals")
-          .insert({
-            user_id: user.id,
-            verification_status: "unverified",
-            subscription_tier: "free",
-            ...profileFields,
-          })
-          .select("id")
-          .single();
-        if (insErr) throw insErr;
-        pid = (ins as { id: string }).id;
-        setProfileId(pid);
-      }
+      const { error: upErr } = await supabase
+        .from("professionals")
+        .update({
+          city_id: cityId,
+          headline: headline.trim(),
+          bio: bio.trim() || null,
+          years_experience: years ? Number(years) : null,
+          response_time_label: responseLabel,
+          subservice_slugs: subSlugs,
+        })
+        .eq("id", profileId);
+      if (upErr) throw upErr;
 
       const serviceFields = {
-        professional_id: pid,
+        professional_id: profileId,
         service_id: serviceId,
         city_id: cityId,
         min_price: minP,
@@ -228,48 +215,31 @@ export default function ProProfiloPage() {
 
       setSavedAt(Date.now());
     } catch {
-      setError(
-        "Non sono riuscito a salvare. Controlla i campi e riprova tra poco."
-      );
+      setError("Non sono riuscito a salvare. Controlla i campi e riprova.");
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading || !booted) {
-    return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
-        Carico il tuo profilo…
-      </div>
-    );
-  }
-
-  const isOnboarding = !profileId;
+  if (loading || !booted) return <SectionSkeleton rows={4} />;
+  if (failed) return <SectionError onRetry={() => router.refresh()} />;
+  if (!profileId) return <NoProProfile />;
 
   return (
-    <div className="container-bob max-w-3xl py-10">
-      <header className="mb-6">
-        <span className="section-eyebrow">
-          {isOnboarding ? "Benvenuto su BOB" : "Il tuo profilo"}
-        </span>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
-          {isOnboarding
-            ? "Raccontaci cosa offri"
-            : "Modifica il tuo profilo"}
-        </h1>
-        <p className="mt-2 text-sm text-bob-ink/60">
-          {isOnboarding
-            ? "Bastano due minuti: queste informazioni compaiono sul tuo profilo pubblico. Dopo il salvataggio il team verifica il profilo e attiva il badge."
-            : "Le modifiche sono visibili subito sul tuo profilo pubblico. Il badge di verifica e il piano si gestiscono con il team BOB."}
-        </p>
-      </header>
+    <div>
+      <SectionHeader title="La tua azienda">
+        Queste informazioni sono quelle che un cliente legge prima di
+        scriverti. Le modifiche sono online appena salvi.
+      </SectionHeader>
 
-      <div className="card space-y-5 p-6">
+      <div className="card space-y-5 p-5 sm:p-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="label-bob" htmlFor="pf-city">Città</label>
+            <label className="label-bob" htmlFor="az-city">
+              Città
+            </label>
             <select
-              id="pf-city"
+              id="az-city"
               value={cityId}
               onChange={(e) => setCityId(e.target.value)}
               className="input-bob"
@@ -285,9 +255,11 @@ export default function ProProfiloPage() {
             </select>
           </div>
           <div>
-            <label className="label-bob" htmlFor="pf-service">Servizio principale</label>
+            <label className="label-bob" htmlFor="az-service">
+              Servizio principale
+            </label>
             <select
-              id="pf-service"
+              id="az-service"
               value={serviceId}
               onChange={(e) => {
                 setServiceId(e.target.value);
@@ -298,18 +270,44 @@ export default function ProProfiloPage() {
             >
               <option value="">Scegli…</option>
               {services.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
+        {serviceSubs.length > 0 && (
+          <div>
+            <span className="label-bob">Di cosa ti occupi</span>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {serviceSubs.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => toggleSub(s.slug)}
+                  className={`chip ${
+                    subSlugs.includes(s.slug)
+                      ? "bg-bob-indigo text-white"
+                      : "hover:bg-bob-indigo-100"
+                  }`}
+                  aria-pressed={subSlugs.includes(s.slug)}
+                  data-testid={`profile-sub-${s.slug}`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
-          <label className="label-bob" htmlFor="pf-headline">
+          <label className="label-bob" htmlFor="az-headline">
             Titolo del profilo
           </label>
           <input
-            id="pf-headline"
+            id="az-headline"
             value={headline}
             onChange={(e) => setHeadline(e.target.value)}
             maxLength={80}
@@ -320,9 +318,11 @@ export default function ProProfiloPage() {
         </div>
 
         <div>
-          <label className="label-bob" htmlFor="pf-bio">Chi sei (bio)</label>
+          <label className="label-bob" htmlFor="az-bio">
+            Chi sei
+          </label>
           <textarea
-            id="pf-bio"
+            id="az-bio"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             maxLength={600}
@@ -335,9 +335,11 @@ export default function ProProfiloPage() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="label-bob" htmlFor="pf-years">Anni di esperienza</label>
+            <label className="label-bob" htmlFor="az-years">
+              Anni di esperienza
+            </label>
             <input
-              id="pf-years"
+              id="az-years"
               type="number"
               min={0}
               max={60}
@@ -348,16 +350,20 @@ export default function ProProfiloPage() {
             />
           </div>
           <div>
-            <label className="label-bob" htmlFor="pf-response">Tempo di risposta</label>
+            <label className="label-bob" htmlFor="az-response">
+              Tempo di risposta
+            </label>
             <select
-              id="pf-response"
+              id="az-response"
               value={responseLabel}
               onChange={(e) => setResponseLabel(e.target.value)}
               className="input-bob"
               data-testid="profile-response"
             >
               {RESPONSE_OPTIONS.map((o) => (
-                <option key={o} value={o}>{o}</option>
+                <option key={o} value={o}>
+                  {o}
+                </option>
               ))}
             </select>
           </div>
@@ -397,97 +403,20 @@ export default function ProProfiloPage() {
             aria-label="Nota sul prezzo"
             data-testid="profile-price-note"
           />
-          <p className="mt-1 text-xs text-bob-ink/45">
+          <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/45">
             I clienti su BOB scelgono chi è trasparente: una forbice onesta
             porta richieste più in linea con le tue tariffe.
           </p>
         </div>
 
-        {serviceSubs.length > 0 && (
-          <div>
-            <span className="label-bob">Di cosa ti occupi (seleziona)</span>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {serviceSubs.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => toggleSub(s.slug)}
-                  className={`chip ${
-                    subSlugs.includes(s.slug)
-                      ? "bg-bob-indigo text-white"
-                      : "hover:bg-bob-indigo-100"
-                  }`}
-                  data-testid={`profile-sub-${s.slug}`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          </div>
+        {error && (
+          <p className="text-sm text-red-600" data-testid="profile-error">
+            {error}
+          </p>
         )}
-
-        {/* La verifica è esclusiva dei piani a pagamento (decisione 14/08,
-            anticipa parte della 10.11): al piano Free si mostra cosa si
-            sbloccherebbe, non il percorso. */}
-        {!isOnboarding && profileId && tier !== "free" && (
-          <div id="verifica-piva" className="scroll-mt-24 border-t border-black/5 pt-5">
-            <span className="label-bob">Verifica della partita IVA</span>
-            <VatVerification professionalId={profileId} />
-            <div className="mt-4">
-              <span className="label-bob">Documenti per la verifica</span>
-              <VerificationDocuments professionalId={profileId} />
-            </div>
-          </div>
-        )}
-        {!isOnboarding && profileId && tier === "free" && (
-          <div id="verifica-piva" className="scroll-mt-24 border-t border-black/5 pt-5">
-            <span className="label-bob">Verifica della partita IVA</span>
-            <p className="mt-1 text-sm text-bob-ink/55">
-              La verifica della partita IVA e il badge sul profilo sono inclusi
-              nei piani Bob Pro e Bob Business.{" "}
-              <Link
-                href="/onboarding/piano"
-                className="font-medium text-bob-indigo hover:underline"
-              >
-                Scopri i piani
-              </Link>
-            </p>
-          </div>
-        )}
-
-        <div className="border-t border-black/5 pt-5">
-          <span className="label-bob">Prenotazione diretta</span>
-          {isOnboarding || !serviceId ? (
-            <p className="mt-1 text-sm text-bob-ink/55">
-              Salva prima il profilo e i servizi: poi potrai attivare la
-              prenotazione diretta sui lavori a tariffa fissa.
-            </p>
-          ) : (
-            <div className="mt-2">
-              <InstantBookingConfig
-                professionalId={profileId as string}
-                serviceId={serviceId}
-                cityId={cityId}
-                subSlugs={subSlugs}
-                tier={tier}
-              />
-            </div>
-          )}
-        </div>
-
-        {!isOnboarding && profileId && (
-          <div className="border-t border-black/5 pt-5">
-            <span className="label-bob">Orari di disponibilità</span>
-            <div className="mt-2">
-              <AvailabilityEditor professionalId={profileId} />
-            </div>
-          </div>
-        )}
-
-        {error && <p className="text-sm text-red-600" data-testid="profile-error">{error}</p>}
         {savedAt && !error && (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-            ✓ Profilo salvato. {isOnboarding ? "" : "Le modifiche sono già online."}
+            ✓ Salvato. Le modifiche sono già online.
           </p>
         )}
 
@@ -498,14 +427,13 @@ export default function ProProfiloPage() {
             className="btn-primary flex-1 py-3"
             data-testid="profile-save"
           >
-            {saving
-              ? "Salvo…"
-              : isOnboarding
-              ? "Crea il mio profilo"
-              : "Salva le modifiche"}
+            {saving ? "Salvo…" : "Salva le modifiche"}
           </button>
-          <Link href="/dashboard" className="btn-secondary flex-1 py-3 text-center">
-            Torna alla dashboard
+          <Link
+            href={`/professionisti/${profileId}`}
+            className="btn-secondary flex-1 py-3 text-center"
+          >
+            Vedi come ti vedono
           </Link>
         </div>
       </div>

@@ -23,7 +23,7 @@ import type { VatReviewState } from "@/lib/vat";
 const PREZZO_VERIFICA: { importo: number; nota: string } | null = null;
 
 /** Dove si fa: il link porta direttamente al campo, non in cima alla pagina. */
-const LINK_VERIFICA = "/dashboard/profilo#verifica-piva";
+const LINK_VERIFICA = "/dashboard/verifica";
 
 export default function VerificaPromoBanner({
   reviewState = null,

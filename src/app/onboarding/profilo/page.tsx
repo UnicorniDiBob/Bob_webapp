@@ -162,7 +162,7 @@ function ProfiloInner() {
         body: JSON.stringify({ action: "sync" }),
       });
 
-      router.push("/dashboard/profilo");
+      router.push("/dashboard/azienda");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");

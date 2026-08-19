@@ -17,7 +17,7 @@ export default function PrivacyPage() {
     <LegalPage
       eyebrow="Legale"
       title="Informativa sulla privacy"
-      updated="Luglio 2026"
+      updated="Agosto 2026"
     >
       <LegalSection title="Titolare del trattamento">
         <p>
@@ -64,7 +64,15 @@ export default function PrivacyPage() {
         <p>
           <strong>Liste d&apos;attesa:</strong> l&apos;email che lasci
           volontariamente per essere avvisato quando BOB arriva nella tua
-          città.
+          città, insieme alla data della tua conferma e al testo che hai
+          accettato.
+        </p>
+        <p>
+          <strong>Le tue scelte sulle comunicazioni:</strong> se attivi o
+          disattivi le comunicazioni promozionali, registriamo la scelta, la
+          data e il testo che avevi davanti. Conserviamo anche le scelte
+          precedenti: è il modo in cui possiamo dimostrare che il tuo consenso
+          c&apos;era quando lo abbiamo usato, e tu sapere cosa hai accettato.
         </p>
       </LegalSection>
 
@@ -80,9 +88,39 @@ export default function PrivacyPage() {
           aggregata.
         </p>
         <p>
-          <strong>Consenso</strong> (art. 6.1.a GDPR): liste d&apos;attesa per
-          le nuove città e future comunicazioni promozionali. Puoi revocare il
-          consenso in ogni momento scrivendoci.
+          <strong>Consenso</strong> (art. 6.1.a GDPR): le liste d&apos;attesa
+          per le nuove città e le comunicazioni promozionali — le novità di BOB
+          e le offerte dei servizi in partnership, ciascuna con il suo consenso
+          separato. Sono spente se non le attivi tu, e puoi revocarle in
+          qualsiasi momento dalla tua area personale, alla voce Comunicazioni:
+          non serve scriverci e non cambia nulla del servizio.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Le email che ti mandiamo">
+        <p>
+          <strong>Comunicazioni di servizio.</strong> Sono il modo in cui sai
+          che è successo qualcosa: una nuova richiesta che ti riguarda, un
+          messaggio ricevuto, un appuntamento proposto o spostato, l&apos;esito
+          della verifica del tuo profilo, la reimpostazione della password. Non
+          si basano sul consenso ma sull&apos;esecuzione del servizio che ci hai
+          chiesto, quindi le riceverai finché il tuo account è attivo e non sono
+          disattivabili. In compenso non contengono pubblicità: se vuoi smettere
+          di riceverle, la strada è chiudere l&apos;account.
+        </p>
+        <p>
+          <strong>Comunicazioni promozionali.</strong> Queste sì, e solo se le
+          chiedi. Non le attiviamo perché ti sei registrato, non le attiviamo
+          perché hai chiesto un preventivo, e non le leghiamo a nessun altro
+          servizio: iscriversi a BOB non è un acquisto e non ci autorizza a
+          scriverti per vendere. Ogni finalità ha il suo interruttore, spento
+          per impostazione predefinita.
+        </p>
+        <p>
+          <strong>I partner non ricevono il tuo indirizzo.</strong> Se un giorno
+          ci sarà un&apos;offerta di un servizio in partnership e tu avrai
+          scelto di riceverla, sarà BOB a scriverti: la tua email non passa a
+          nessuno.
         </p>
       </LegalSection>
 
@@ -120,7 +158,9 @@ export default function PrivacyPage() {
           Dati di account: finché l&apos;account è attivo e fino a 12 mesi
           dalla cancellazione. Messaggi e recensioni: per la durata del
           servizio. Email nelle liste d&apos;attesa: fino al lancio nella città
-          interessata o alla revoca del consenso.
+          interessata o alla revoca del consenso, e in ogni caso non oltre
+          dodici mesi. Le tue scelte sulle comunicazioni: finché esiste
+          l&apos;account, e vengono cancellate con esso.
         </p>
       </LegalSection>
 

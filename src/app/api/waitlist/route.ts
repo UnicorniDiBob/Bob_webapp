@@ -12,7 +12,14 @@ export const runtime = "nodejs";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export async function POST(request: Request) {
-  let body: { email?: string; citySlug?: string; website?: string };
+  let body: {
+    email?: string;
+    citySlug?: string;
+    website?: string;
+    consent?: boolean;
+    consentText?: string;
+    marketing?: boolean;
+  };
   try {
     body = await request.json();
   } catch {
@@ -36,6 +43,18 @@ export async function POST(request: Request) {
   }
   if (!citySlug) {
     return NextResponse.json({ error: "Città mancante." }, { status: 400 });
+  }
+
+  // Il consenso si controlla QUI, non solo nel form. La spunta nel browser e'
+  // ergonomia; il vincolo e' che nessuna riga entri in city_waitlist senza un
+  // atto affermativo, e l'unico posto dove questo si puo' garantire e' il
+  // server (la 053 toglie il default a consent_at proprio per questo: se
+  // dimenticassimo di passarlo, l'insert fallisce invece di inventarlo).
+  if (body.consent !== true) {
+    return NextResponse.json(
+      { error: "Serve la tua conferma per poterti scrivere." },
+      { status: 400 }
+    );
   }
 
   // Accettiamo solo città reali e non ancora attive.
@@ -63,9 +82,19 @@ export async function POST(request: Request) {
     auth: { persistSession: false },
   });
 
-  const { error } = await admin
-    .from("city_waitlist")
-    .insert({ email, city_slug: citySlug });
+  const adesso = new Date().toISOString();
+  const { error } = await admin.from("city_waitlist").insert({
+    email,
+    city_slug: citySlug,
+    consent_at: adesso,
+    // Il testo accettato, troncato per prudenza: e' una prova, non un campo
+    // libero. Se il client non lo manda, resta null e si vede subito che quella
+    // riga arriva da un percorso che va sistemato.
+    consent_text: (body.consentText ?? "").trim().slice(0, 500) || null,
+    // Separato e facoltativo: null quando non e' stato prestato, che e' il
+    // default corretto. Nessun soft opt-in.
+    marketing_consent_at: body.marketing === true ? adesso : null,
+  });
 
   // Email già iscritta per questa città: per l'utente è comunque un successo.
   if (error && error.code !== "23505") {

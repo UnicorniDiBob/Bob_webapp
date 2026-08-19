@@ -21,51 +21,10 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Check, Lock } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
+import { PIANI } from "@/lib/piani";
 
 type Piano = "free" | "pro" | "business";
 
-const PIANI: {
-  id: Piano;
-  nome: string;
-  prezzo: string;
-  nota: string | null;
-  punti: string[];
-}[] = [
-  {
-    id: "free",
-    nome: "Free",
-    prezzo: "€0",
-    nota: "per sempre",
-    punti: [
-      "Profilo pubblico su BOB",
-      "Ricevi richieste e messaggi dai clienti",
-      "Calendario e appuntamenti",
-    ],
-  },
-  {
-    id: "pro",
-    nome: "Bob Pro",
-    prezzo: "€24",
-    nota: "al mese — €19 con fatturazione annuale",
-    punti: [
-      "Tutto di Free",
-      "Verifica della partita IVA e badge sul profilo",
-      "Caricamento documenti per il livello Pro+",
-      "1 foto portfolio sul profilo",
-      "Prenotazione diretta sui lavori a tariffa fissa",
-    ],
-  },
-  {
-    id: "business",
-    nome: "Bob Business",
-    prezzo: "€59",
-    nota: "al mese — €49 con fatturazione annuale",
-    punti: [
-      "Tutto di Bob Pro",
-      "Foto portfolio illimitate",
-    ],
-  },
-];
 
 export default function PianoPage() {
   const supabase = createClient();

@@ -6,10 +6,10 @@
 //   professionisti di fiducia, storico) — vive in components/CustomerHome.tsx
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { SectionHeader } from "@/components/DashboardShell";
 import { ProWorkspace } from "@/components/ProWorkspace";
 import VerificaPromoBanner from "@/components/VerificaPromoBanner";
 import { CustomerHome } from "@/components/CustomerHome";
@@ -136,36 +136,22 @@ export default function DashboardPage() {
 
   if (loading || (!user && !loading) || role === "admin" || role === "cs") {
     return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+      <div className="py-10 text-center text-sm text-bob-ink/50" aria-busy="true">
         Carico la tua area personale…
       </div>
     );
   }
 
-  const firstName = fullName?.split(" ")[0] ?? "ciao";
-
   return (
-    <div className="container-bob py-10">
-      <header className="mb-7">
-        <span className="section-eyebrow">Area personale</span>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
-          Ciao {firstName}
-        </h1>
-        <p className="mt-2 text-sm text-bob-ink/60">
-          {role === "professional"
-            ? "Qui trovi il tuo profilo e le tue valutazioni."
-            : "Il punto della situazione sui tuoi lavori."}
-        </p>
-        {role !== "professional" && (
-          <Link
-            href="/dashboard/account"
-            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-bob-indigo hover:underline"
-            data-testid="link-account"
-          >
-            Gestisci il tuo account →
-          </Link>
-        )}
-      </header>
+    <div>
+      {/* Il saluto e la navigazione stanno nel guscio (DashboardShell): qui
+          resta solo il titolo della sezione. "Oggi" e' operativo di proposito —
+          profilo, verifica, piano e portfolio hanno ognuno la propria pagina. */}
+      <SectionHeader title="Oggi">
+        {role === "professional"
+          ? "Le richieste che ti riguardano e la tua giornata."
+          : "Il punto della situazione sui tuoi lavori."}
+      </SectionHeader>
 
       {role === "professional" ? (
         loadingPro ? (

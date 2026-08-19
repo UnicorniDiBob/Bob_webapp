@@ -11,7 +11,6 @@ import { AppointmentDetail } from "@/components/AppointmentDetail";
 import { ProCalendar } from "@/components/ProCalendar";
 import { DayItinerary } from "@/components/DayItinerary";
 import { ProRequestSummary } from "@/components/ProRequestSummary";
-import { ProPortfolio } from "@/components/ProPortfolio";
 import { fmtDay, fmtDuration, fmtRange } from "@/lib/calendar";
 import {
   getAppointments,
@@ -147,19 +146,19 @@ export function ProWorkspace({
           <Wrench className="h-6 w-6" aria-hidden="true" />
         </div>
         <h3 className="font-semibold text-bob-ink">
-          Completa il tuo profilo per iniziare
+          Completa l&apos;iscrizione per iniziare
         </h3>
         <p className="max-w-sm text-sm text-bob-ink/60">
-          Racconta cosa offri, in che città lavori e le tue tariffe: bastano due
-          minuti. Dopo il salvataggio il team verifica il profilo e attiva il
-          badge.
+          Scegli il piano e racconta cosa offri, in che città lavori e le tue
+          tariffe: bastano due minuti. La verifica della partita IVA, se il tuo
+          piano la include, la fai da solo subito dopo.
         </p>
         <Link
-          href="/dashboard/profilo"
+          href="/onboarding/piano"
           className="btn-primary mt-1 px-5 py-2.5"
           data-testid="link-create-profile"
         >
-          Completa il profilo →
+          Completa l&apos;iscrizione →
         </Link>
       </div>
     );
@@ -352,7 +351,7 @@ export function ProWorkspace({
             </div>
             <div className="mt-3 flex flex-col gap-2">
               <Link
-                href="/dashboard/profilo"
+                href="/dashboard/azienda"
                 className="btn-secondary py-2 text-center text-sm"
                 data-testid="link-edit-profile"
               >
@@ -375,12 +374,9 @@ export function ProWorkspace({
         </div>
       </div>
 
-      {/* Portfolio lavori (gating per tier: Free upsell, Pro 5 foto, Business illimitato) */}
-      <ProPortfolio
-        professionalId={profile.id}
-        userId={profile.user_id}
-        tier={profile.subscription_tier}
-      />
+      {/* Il portfolio e' uscito da qui: e' un blocco che si aggiorna una volta
+          al mese e stava sotto il calendario, che si guarda ogni mattina.
+          Adesso vive in /dashboard/lavori. */}
 
       {/* Dettaglio: si apre al click su un blocco del calendario */}
       {detail && !dialogOpen && (

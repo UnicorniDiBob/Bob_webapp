@@ -319,7 +319,7 @@ export async function POST(
               serviceName: null,
               cityName: null,
               preview: note || null,
-              link: "/dashboard/profilo",
+              link: "/dashboard/verifica",
             })
           );
         }

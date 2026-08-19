@@ -129,12 +129,13 @@ DATA_COMPLIANCE.md §8.
 | **Finalità** | Avvisare chi lo ha chiesto quando Bob apre nella sua città |
 | **Base giuridica** | **Consenso** — art. 6(1)(a) |
 | **Interessati** | Potenziali clienti |
-| **Dati** | Email, città, momento del consenso (`consent_at`) |
+| **Dati** | Email, città, momento del consenso (`consent_at`), **testo accettato (`consent_text`)**, **consenso promozionale separato e facoltativo (`marketing_consent_at`, NULL se non prestato)** |
 | **Tabelle** | `city_waitlist` (solo service role) |
 | **Destinatari** | Fornitore email (vedi A9), Supabase, Vercel |
 | **Conservazione** | Fino al lancio nella città o alla revoca; comunque **non oltre 12 mesi** (DATA_COMPLIANCE §5, dati di prospect) |
 | **Sicurezza** | Nessun accesso da ruolo anonimo o autenticato: solo service role |
 | **Note** | **Per Bob non esiste il soft opt-in.** L'iscrizione a una lista d'attesa non è una vendita, quindi non abilita nulla di promozionale: l'email di lancio richiede una casella esplicita "contattami al lancio". È esattamente il punto su cui Verisure ha preso 400k € |
+| **Corretto il 19/08/2026** | Questa riga dichiarava il consenso come base giuridica, ma il consenso non veniva raccolto: il form chiedeva solo l'email e la migrazione 015 dava a `consent_at` un `default now()`, quindi ogni iscrizione nasceva con la prova di un atto affermativo mai avvenuto — la forma peggiore, perché il registro sembrava in ordine. Rimedio: spunta obbligatoria nel form, controllo anche server-side nella route, salvataggio del testo accettato, e rimozione del default (migrazioni 053 e 054). Verificato prima di intervenire che `city_waitlist` avesse 0 righe: nessuna bonifica di consensi finti da fare. **La spunta può essere obbligatoria senza violare l'art. 7(4)**: l'avviso al lancio non è un extra agganciato a un altro servizio, è l'unico servizio che quel form offre. Il consenso promozionale, che sarebbe un extra, è una spunta separata e spenta |
 
 ## A9 — Email transazionali
 
@@ -258,13 +259,32 @@ DATA_COMPLIANCE.md §8.
 | **Sicurezza** | Codici non leggibili né enumerabili dal client (nessuna policy per anon/authenticated); convalida solo server-side |
 | **Note** | Da ritirare quando Stripe (12.1) va live: la riga A14 prende il suo posto |
 
+## A18 — Comunicazioni commerciali (novità e offerte dei partner)
+
+*Aggiunta il 19 agosto 2026, con la migrazione 053.*
+
+| | |
+|---|---|
+| **Finalità** | Inviare comunicazioni promozionali a chi le ha chieste: novità di Bob (`bob_news`) e offerte di servizi in partnership per chi lavora in proprio (`partner_offers`) |
+| **Base giuridica** | **Consenso** — art. 6(1)(a), uno per finalità |
+| **Interessati** | Clienti, professionisti |
+| **Dati** | Utente, finalità, stato (prestato/revocato), testo accettato, origine della scelta, momento |
+| **Tabelle** | `communication_consents` (mig 053) |
+| **Codice** | `src/components/ComunicazioniForm.tsx`, `src/app/dashboard/comunicazioni/page.tsx` |
+| **Destinatari** | Fornitore email (vedi A9), Supabase, Vercel. **Ai partner non viene comunicato nessun indirizzo**: se ci sarà un'offerta, la manda Bob |
+| **Trasferimenti** | Come A1 e A9 |
+| **Conservazione** | Finché l'account esiste; cancellazione a cascata con l'utente (`on delete cascade` su `users`). Non c'è interesse a conservare la prova del consenso di una persona che non esiste più |
+| **Sicurezza** | RLS: un utente legge e scrive solo le proprie righe, lo staff legge in sola lettura. **Nessuna policy di update o delete, per nessun ruolo**: il registro è in sola aggiunta, e una revoca è una riga nuova con `granted = false`. Verificato con una prova riga per riga il 19/08/2026 (insert altrui rifiutato, finalità fuori elenco rifiutata, delete e update a zero righe) |
+| **Note** | **Cosa NON sta qui, ed è il punto della riga.** Le comunicazioni di servizio (nuova richiesta, nuovo messaggio, appuntamenti, esito della verifica, sicurezza) stanno in A9 con base contrattuale e non sono disattivabili finché l'account è attivo. Rappresentarle come una preferenza revocabile sarebbe sbagliato in due direzioni insieme: darebbe per facoltativo ciò che è dovuto, e legherebbe il consenso commerciale al servizio, che è la costruzione vietata dall'art. 7(4). Per la stessa ragione **il consenso non è e non deve diventare un requisito della verifica del profilo**: al suo posto si chiede un'email confermata, che è raggiungibilità e non consenso |
+| **DPIA** | Non innesca: nessun trattamento su larga scala, nessuna categoria particolare, nessuna profilazione — le comunicazioni non sono personalizzate sul comportamento. Se in futuro venissero segmentate sul comportamento di navigazione, la valutazione va rifatta e serve anche l'art. 122 del Codice Privacy (banner) |
+
 ---
 
 ## Cosa manca ancora (non inventato, da chiudere da una persona)
 
 1. **DPA e meccanismi di trasferimento** per Resend (A9) e Anthropic (A10). Sono le due lacune che un controllo troverebbe per prime, perché sono documenti che esistono o non esistono.
 2. **LIA scritte** per ogni riga con base "legittimo interesse": A6 recensioni, A7 verifica, A12 statistiche, e la moderazione in A13.
-3. **Etichetta AI Act art. 50** (A10) — già applicabile dal 2 agosto 2026.
+3. **Etichetta AI Act art. 50** (A10) — già applicabile dal 2 agosto 2026. **Metà fatta, verificata il 19/08/2026:** nella chat cliente l'etichetta c'è dall'8 agosto (`src/components/BobChat.tsx`, righe 775 e 781). Resta scoperta l'area professionista: la sintesi delle richieste generata dall'LLM (`ProRequestSummary`) non è etichettata come contenuto AI.
 4. **Tracciamento delle letture** dei dati personali da parte dello staff (A13).
 5. **Fonte di verità unica per la posizione** (A3): oggi `requests.zone_slug`, `request_addresses.coarse_*` e `job_briefs.zone` coesistono.
 6. **Identità del titolare** in `src/lib/company.ts`: i `[PLACEHOLDER]` sono differiti a gennaio 2027 per scelta, ma l'informativa e questo registro hanno bisogno di un titolare reale prima di trattare dati di utenti veri su scala.

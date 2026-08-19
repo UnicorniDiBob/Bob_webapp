@@ -2,19 +2,19 @@
 
 _Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** 48 attività aperte · 3 pronte ma spente · 29 parcheggiate · 89 chiuse (in `ARCHIVE.csv`)
+**Stato:** 52 attività aperte · 3 pronte ma spente · 29 parcheggiate · 91 chiuse (in `ARCHIVE.csv`)
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
 ## Controllo di realtà
 
-**The nightly VAT retry has never run: CRON_SECRET is not set in production** — _Marked Done — not running_
+**Il ritentativo notturno gira dall'8 agosto: il finding era vecchio di undici giorni** — _Chiusa 19 ago 2026 — era gia' falsa_
 
-Task 10.5 is closed and 10.14 is "in progress", but the endpoint is live and refusing to work. Vercel calls it every night at 22:00 UTC and gets a 503 back, so any verification the VIES failed to answer sits in the queue forever and eats staff time — the exact cost the retry was built to remove.
+SUPERATA. Questa riga diceva 'non ha mai girato, CRON_SECRET non e' impostato in produzione' e citava un 503. Era vero quando e' stata scritta, cioe' prima dell'8 agosto. Verificato il 19/08 leggendo system_job_runs: 11 giri consecutivi dall'8 al 18 agosto, tutti ok=true, l'ultimo il 18 alle 22:50 UTC, ognuno di durata un secondo. La riga 10.14 ('resta: CRON_SECRET + un deploy') era ancora 'In progress' per la stessa ragione: nessuno era tornato a guardare. Spostata in ARCHIVE. LA LEZIONE, che vale piu' del finding: un pannello di controllo di realta' non riletto diventa esso stesso una fonte di dati sbagliati - due delle quattro righe aperte qui erano superate. Da qui in poi va rigenerato a ogni traguardo chiuso, come dice la regola 5.
 
-**AI Act Art 50 transparency has been applicable since 2 August 2026** — _Obligation already in force_
+**L'etichettatura AI Act art. 50 nella chat c'e', dall'8 agosto** — _Chiusa 19 ago 2026 — era gia' falsa_
 
-Bob's chat is an LLM interaction with a consumer and the project's own compliance rule requires labelling it. The date has passed, so this moved from "future work" to "overdue". It is a line of copy plus a persistent marker in the chat UI, not a project.
+SUPERATA. Questa riga diceva 'no labelling found in src/components/BobChat.tsx'. Verificato il 19/08: l'etichetta e' alle righe 775 e 781 dello stesso file - un title esplicito "Bob e' un assistente basato su intelligenza artificiale" e la dicitura visibile "Assistente AI". La nota di chiusura di M2 lo diceva gia' ('in produzione dall'8 agosto, obbligo art. 50 in vigore dal 2') ma questo pannello non era stato aggiornato. RESTA APERTO IL PEZZO GEMELLO, e non e' la stessa cosa: nell'area professionista i contenuti generati da AI non sono etichettati (il riassunto delle richieste in ProRequestSummary). Sta nel piano del 18/08 come P2.8.
 
 **There is no analytics tool at all — every 2027 KPI gate is currently unfalsifiable** — _Never installed_
 
@@ -35,6 +35,10 @@ L'advisor di sicurezza chiede di attivare il controllo delle password compromess
 **Il registro dei giri cron scrive solo sul giro a vuoto** — _Parziale — basta per il gate, non per il quadro completo_
 
 La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma la chiamata e' solo sul ramo 'niente in attesa'. Un giro che elabora davvero dei casi non lascia ancora una riga. Basta per il cancello 1 di M1 (dimostrare che il cron gira), non per sapere cosa ha fatto. Rimedio: una registraGiro() al return finale della route, con i contatori confermati/daEsaminare/ancoraGiu gia' calcolati nel corpo.
+
+**Il codice fondatori non ha ne' scadenza ne' tetto di utilizzi** — _Trovata 19 ago 2026_
+
+BOB-FOUNDER-2026 concede Bob Business e la descrizione dice 'revocabile'. Nel database, pero', max_uses e' NULL e expires_at e' NULL: chiunque abbia il codice ottiene Business gratis, per un numero illimitato di account, senza data di fine. 'Revocabile' oggi significa soltanto 'finche' non lo disattiva qualcuno a mano da admin'. Il piano del 18/08 assume che i promo dei primi sessanta scadano a febbraio (P2.16, procedura di decadenza) e costruisce sopra quell'assunzione: nel database non c'e' niente che scada. Con 3 professionisti a piano pagante non e' un problema; da ottobre, con il codice che gira nell'outreach, e' un problema di ricavi e anche di P2B (un declassamento a sorpresa richiede preavviso e motivazione, art. 4). SEGNALATA ANCHE UNA DERIVA MINORE, sulla stessa tabella: promo_codes.used_count dice 1 mentre le righe in promo_redemptions sono 0. Il contatore viene incrementato al riscatto e non decrementato quando il riscatto sparisce - e' emerso cancellando l'account di test sig.mozzato@gmail.com il 19/08. Va deciso se used_count conta i riscatti vivi (allora serve un trigger, e va riportato a 0) o quelli di sempre (allora e' corretto, ma un account cancellato consuma per sempre uno slot quando max_uses esistera').
 
 
 ## M1 · The build tells the truth
@@ -60,13 +64,13 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M2 · We hold only what we can justify
 
-**Finestra:** 2026-08-06 → 2026-08-31 · **0 aperte, 10 chiuse**
+**Finestra:** 2026-08-06 → 2026-08-31 · **0 aperte, 11 chiuse**
 
 **Perché:** AGGIORNATO L'8 AGOSTO — 4 delle 6 condizioni sono chiuse e verificate. L'indirizzo esatto non va piu' a cinque estranei (mig 044-046, consegna progressiva, verificata anche nel browser con un login pro reale) e la chat dichiara di essere un assistente AI (in produzione dall'8 agosto, obbligo art. 50 in vigore dal 2). RESTA URGENT per una ragione precisa e ancora vera: il telefono di un professionista e' leggibile da un visitatore anonimo. profiles ha lettura pubblica dalla 003 - giusto, e' cosi' che funzionano i profili pubblici - ma profiles.phone sta nella stessa tabella, e la RLS agisce sulle righe, non sulle colonne. Provato l'8 agosto come ruolo anon: 5 righe viste, 1 telefono leggibile. Restano anche 3 richieste pre-044 con via e civico dentro la prosa libera (problem_description): la bonifica non li aveva estratti perche' erano in mezzo a una frase, come documenta l'intestazione di src/lib/redact.ts. Il confine LLM e' coperto da stripAddresses(), ma il dato grezzo e' ancora li'. CHIUSA IL 14 AGOSTO: il telefono del pro spostato in tabella propria con RLS (mig 051, dopo che il tentativo a una riga della mig 050 e' risultato inefficace — vedi ARCHIVE.csv/N5); le 3 richieste storiche con via e civico bonificate in produzione lo stesso giorno (ARCHIVE.csv/N6). 6/6 condizioni chiuse.
 
 **È fatto quando:** L'indirizzo esiste in una sola colonna strutturata, e' rivelato solo dopo che il cliente accetta un pro, e non compare in nessun prompt LLM [FATTO]; le righe storiche sono bonificate - restano 3 richieste con via e civico nella prosa [FATTO]; la chat dice chiaramente che Bob e' un'AI [FATTO]; nessun campo personale e' leggibile da anon quando non dovrebbe - profiles.phone lo e' ancora, rimedio: grant a livello di colonna (revoke select (phone) on public.profiles from anon), non serve una vista ne' una seconda tabella [FATTO].
 
-<details><summary>10 attività già chiuse</summary>
+<details><summary>11 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
@@ -80,6 +84,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | N4 | AI Act art. 50: la chat dichiara di essere un assistente AI. In produzione dall'8 agosto, sei giorni dopo l'entrata in vigore. Pillola 'AI' accanto a 'Bob' e sottotitolo 'Assistente AI · Il tuo concierge dei servizi' nell'intestazione, quindi visibile prima del primo messaggio e non scorre via con la conversazione. Verificato su www.meetonda.com desktop e a 390px. | André | 2026-08-08 |
 | N6 | Bonificate le 3 richieste pre-044 con via e civico in problem_description (Via Solferino 28, Via Tortona 15, Viale Monza 55): applicata la stessa bonifica di stripAddresses() (tolto il civico, lasciato il nome della via) direttamente sul dato in chiaro via UPDATE su requests. Verificato in produzione il 14/08. | Claude | 2026-08-14 |
 | N5 | profiles.phone leggibile da chiunque (anon E authenticated, non solo anonimi: correzione trovata il 14/08). Il rimedio a una riga proposto qui (revoke select a livello di colonna, mig 050) e' stato applicato e poi verificato INEFFICACE: anon/authenticated hanno comunque il GRANT SELECT sull'intera tabella profiles, e Postgres controlla il privilegio di tabella prima di quello di colonna. Rimedio vero (mig 051): telefono spostato in una tabella propria profile_phone con RLS (solo proprietario e staff admin/cs), stesso pattern gia' usato nella 027 per date_of_birth/terms_accepted_at. Codice aggiornato in admin/users, admin/professionals, api/admin/users/[id] e api/pro/instant-book. Colonna profiles.phone rimossa. Build verificata pulita (npm run build, 0 errori) prima del push. | Lucio | 2026-08-14 |
+| AI50 | Etichettatura AI Act art. 50 nella chat cliente: verificata nel codice il 19/08, src/components/BobChat.tsx righe 775 e 781 - title="Bob e' un assistente basato su intelligenza artificiale" e l'etichetta visibile "Assistente AI". Live dall'8 agosto, come diceva la nota di M2. Il finding 'serious' che affermava 'no labelling found in BobChat.tsx' era stato scritto prima di quella modifica e non era piu' vero. | Claude | 2026-08-19 |
 
 </details>
 
@@ -148,7 +153,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M4 · A pro becomes credible without a human
 
-**Finestra:** 2026-08-08 → 2026-10-31 · **10 aperte, 22 chiuse**
+**Finestra:** 2026-08-08 → 2026-10-31 · **11 aperte, 23 chiuse**
 
 **Perché:** The badge is the only thing that lets a stranger choose between five names on a list. If granting it costs staff time it cannot scale past Milano, and if what a level unlocks isn't decided, the block has no acceptance test at all. The decision (10.11) gates ranking, so it comes first, not last.
 
@@ -158,7 +163,6 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 |---|----------|-------|-------|-------|---------|
 | 10.10 | Adempimenti: riga nel registro trattamenti, informativa privacy, retention di vat_check_payload, ToS (una P.IVA per profilo, durata) | Shared | Lucio | ⬜ Aperto | 2026-08-04 → 2026-08-29 |
 | 10.13 | Registro verifiche: pagina dedicata con filtri (professionista, tipo evento, periodo, operatore), paginazione ed export CSV. Oggi in coda si vedono solo gli ultimi 100 movimenti | Internal | Lucio | ⬜ Aperto | 2026-09-08 → 2026-09-25 |
-| 10.14 | Messa in linea: commit pushati e cron registrato in vercel.json. RESTA: CRON_SECRET tra le variabili Vercel (Production) + un deploy, poi controllo che il ritentativo notturno abbia girato | Shared | Lucio | 🔵 In corso | 2026-08-03 → 2026-08-04 |
 | 10.1b | Gradino 3 via Openapi: stato+denominazione 2-5 centesimi a professionista (listino 01/08), PEC impresa 3 cent. Sandbox gratuita; serve DPA art.28 | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-10-15 |
 | 10.3 | Il livello pesa nel ranking (parametri dichiarati, Reg. P2B) + SLA 48h sulla coda | Client/Pro | Lucio | ⬜ Aperto | 2026-10-01 → 2026-10-31 |
 | 10.4 | Scadenza della verifica (proposta 6 mesi) + ricontrollo periodico con declassamento assistito, mai automatico | Internal | Lucio | ⬜ Aperto | 2026-08-04 → 2026-08-12 |
@@ -166,8 +170,10 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 10.7 | Telemetria in /admin/analisi: quanti tentano, quanti conferma il VIES, quanti finiscono a mano, tempi di lavorazione | Internal | Lucio | ⬜ Aperto | 2026-08-08 → 2026-08-22 |
 | 10.8 | Richiesta della P.IVA come ultimo passo dell'onboarding professionista AGGIORNAMENTO 14/08: l'onboarding pro ora esiste (piano → questionario → profilo) e la verifica e' gated sui tier a pagamento; decidere se la P.IVA diventa l'ultimo passo dell'onboarding per chi sceglie Pro/Business. | Client/Pro | Lucio | ⬜ Aperto | 2026-08-11 → 2026-08-25 |
 | 10.9 | Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7) | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-09-20 |
+| AREA1 | Area personale divisa in sezioni (richiesta di Lucio del 19/08: "ogni cosa deve avere il suo posto"). Guscio con navigazione (DashboardShell) + 9 sezioni: Oggi, I tuoi dati, La tua azienda, Verifica, Orari, Lavori, Piano e pagamenti, Comunicazioni, Accesso e sicurezza; per il cliente Oggi, I tuoi dati, Indirizzi, Comunicazioni, Accesso. Prima erano due pagine da 514 e 562 righe e /dashboard/profilo e /dashboard/account restano come redirect. TRE GAP CHIUSI DI PASSAGGIO: il pro puo' cambiare la propria password (la pagina account lo rimandava via alla riga 69), puo' inserire il proprio telefono (le policy della 051 glielo permettevano dal 14/08, mancava lo schermo), e il minimo password nel form e' passato da 6 a 8 come su Supabase dal 9 agosto. CONDIZIONE PER CHIUDERLA: push su main, deploy, e controllo dal vivo su desktop e a 390px. | Client/Pro | Claude | 🔵 In corso | 2026-08-19 → 2026-08-26 |
+| 10.15 | registraGiro() anche al return finale di api/cron/verifica-piva, con i contatori confermati/daEsaminare/ancoraGiu gia' calcolati nel corpo. Oggi la chiamata sta solo sul ramo casi.length === 0, e si vede: 11 giri su 11 scrivono esaminati 0. Un semaforo verde che dimostra solo che il processo parte. Con l'outreach di ottobre serve sapere cosa ha fatto. | Internal | Lucio | ⬜ Aperto | 2026-08-19 → 2026-09-05 |
 
-<details><summary>22 attività già chiuse</summary>
+<details><summary>23 attività già chiuse</summary>
 
 | # | Attività | Owner | Chiusa il |
 |---|----------|-------|-----------|
@@ -193,6 +199,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 10.6 | Confronto nomi stretto (2 parole + 60% di copertura, o una parola specifica) provato su 12 casi; un solo passaggio contro tutti i nomi noti, con traccia di quale ha deciso [mig 042] | Lucio | 2026-08-03 |
 | 10.2 | Caricamento documenti per la verifica (mig 052): bucket PRIVATO verifica-documenti con RLS per-utente, tabella verification_documents (stati in_esame/accettato/rifiutato), upload dal profilo pro (solo tier a pagamento), coda admin con link firmati a scadenza 1h. Retention e RoPA riga A16. Resta il percorso di cancellazione dei FILE alla cancellazione account: N12 (M6). | Claude | 2026-08-14 |
 | OB1 | Onboarding professionista end-to-end (mig 052): iscrizione con nome/cognome separati (colonne first_name/last_name, full_name mantenuto) e data di nascita a tre tendine; schermata di attesa conferma email con avanzamento automatico; scelta piano (verifica P.IVA esclusiva di Pro/Business per decisione 14/08); pagamenti 'temporaneamente non attivi' con codici promo server-side (BOB-FOUNDER-2026 seed, revocabile da admin, tabelle promo_codes/promo_redemptions); questionario (mestiere, citta', zona, esperienza, canale — onboarding_answers, RoPA A15/A17) che crea la riga professionals, prima creata a mano dallo staff. | Claude | 2026-08-14 |
+| 10.14 | Messa in linea del ritentativo notturno: CRON_SECRET era GIA' in produzione, dall'8 agosto. Verificato il 19/08 leggendo system_job_runs: 11 giri consecutivi dall'8 al 18 agosto, tutti ok=true, l'ultimo il 18 alle 22:50 UTC. La riga era 'In progress' e il finding critico diceva 'non ha mai girato, CRON_SECRET non e' impostato': erano stati scritti prima dell'8 e nessuno li aveva piu' riletti. ATTENZIONE al seguito, che resta aperto: tutti e 11 i giri scrivono outcome {"esaminati": 0}, perche' registraGiro() e' chiamato solo sul ramo 'niente in attesa' (finding basso, ancora valido). Il cron e' dimostrato GIRARE, non e' dimostrato FUNZIONARE. | Claude | 2026-08-19 |
 
 </details>
 
@@ -208,7 +215,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | # | Attività | Track | Owner | Stato | Periodo |
 |---|----------|-------|-------|-------|---------|
 | 15.5 | Error monitoring, uptime alerts, backups; go-live checklist + rollback | Internal | Lucio | ⬜ Aperto | 2026-12-10 → 2026-12-31 |
-| N6 | Install a consent-exempt EU analytics tool (Plausible or Matomo, Garante 7.2) — no cookie banner, no user-level tracking. Nothing is installed today | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-09-20 |
+| N14 | Install a consent-exempt EU analytics tool (Plausible or Matomo, Garante 7.2) — no cookie banner, no user-level tracking. Nothing is installed today | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-09-20 |
 | N7 | Move the /admin/analisi aggregates into DB views (known debt from the 18 Jul note: computed in-page, fine at demo volume) | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-09-30 |
 | N8 | Decide whether abandoned chats get logged — only completed briefs are counted today, so funnel drop-off is invisible | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-09-15 |
 
@@ -227,7 +234,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 ## M6 · A lawyer could sign the site off
 
-**Finestra:** 2026-09-01 → 2026-11-30 · **7 aperte, 0 chiuse**
+**Finestra:** 2026-09-01 → 2026-11-30 · **9 aperte, 0 chiuse**
 
 **Perché:** The terms of service are drafts in docs/legal and the compliance guideline makes a legal basis, a RoPA row and a retention rule part of "done" for every feature that touches personal data. Nine months of features shipped ahead of that paperwork, so it is owed retroactively — and it is a hard gate on inviting real professionals.
 
@@ -242,11 +249,13 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | N9 | Waitlist launch email needs an explicit 'contact me at launch' checkbox before a single send — no soft opt-in for Bob | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-10-15 |
 | 23.1 | Controllo consumeristico sul listino pro pubblicato l'08/08: la tabella elenca le funzioni del Business Plan §6.2, fra cui fatturazione elettronica integrata, pagamenti inclusi e analytics avanzate, che non esistono ancora in prodotto. Oggi il rischio e' contenuto perche' non c'e' checkout (il tier lo assegna l'admin), ma quando si accende Stripe (12.1) elencare funzioni non disponibili e' pratica commerciale ingannevole (Codice del Consumo art. 21-22). Decidere per ogni riga: costruirla, riscriverla o rimuoverla. | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
 | N12 | La cancellazione account deve svuotare anche la cartella <user_id>/ del bucket verifica-documenti: le righe di verification_documents cadono a cascata (FK), i FILE nello storage no. Registrato come punto 8 delle lacune ROPA. Regola di progetto: ogni tabella nuova ha un percorso di cancellazione — per lo storage va costruito. | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
+| G14 | Consenso waitlist e registro consensi (mig 053 + 054). Il form non aveva nessuna spunta e la 015 dichiarava consent_at default now(): ogni iscrizione nasceva con la prova di un atto affermativo mai avvenuto - la forma peggiore, perche' il registro sembrava in ordine. Adesso: spunta obbligatoria (legittimo, l'avviso al lancio E' l'unico servizio del form), spunta promozionale separata e spenta, consent_text salvato, controllo anche server-side. Piu' communication_consents, registro in sola aggiunta per finalita': RLS provata riga per riga il 19/08 (insert solo per se', nessun update, nessun delete, finalita' vincolate). 053 e' applicata in produzione. CONDIZIONE PER CHIUDERLA: la 054 (drop del default) va applicata DOPO il deploy, altrimenti la route vecchia inserisce senza consent_at e fallisce. | Shared | Claude | 🔵 In corso | 2026-08-19 → 2026-08-26 |
+| G08 | Cancellazione account self-service. NON fatta oggi di proposito, e la ragione va scritta: ratings.customer_id e' NOT NULL con ON DELETE CASCADE (mig 012), quindi cancellare un cliente cancella le sue 14 recensioni invece di de-identificarle - il contrario di quello che chiede la regola sulle recensioni (G16). Un bottone di cancellazione costruito prima di quel cambio distrugge dati che devono restare. Ordine: prima customer_id nullable + SET NULL + "Utente eliminato" nella UI, poi il bottone. Intanto /dashboard/accesso dichiara il diritto e la strada manuale invece di tacerlo. | Internal | Lucio | ⬜ Aperto | 2026-11-01 → 2026-11-25 |
 
 
 ## M7 · Bob can charge money
 
-**Finestra:** 2026-10-01 → 2026-12-31 · **8 aperte, 4 chiuse**
+**Finestra:** 2026-10-01 → 2026-12-31 · **9 aperte, 4 chiuse**
 
 **Perché:** Subscriptions and Boost are the entire revenue model before the protected flow arrives in late 2027. The database groundwork is built and dormant, and a tier is switched by hand in admin today — which is fine for 5 pros and impossible for 80. Ranking ships with it, because a paid Boost with no explainable ranking is a P2B problem.
 
@@ -262,6 +271,7 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 | 12.3 | Founding-pro coupon; failed payments, invoices, receipts | Client/Pro | André | ⬜ Aperto | 2026-11-15 → 2026-12-31 |
 | PG | Payments/subscriptions groundwork — si accende con Stripe (vedi M7/12.1) | Shared | Claude | 🌙 Pronto ma spento | — |
 | 12.4 | Allineare il gating in codice al listino pubblicato su /per-i-professionisti (08/08): la tabella piani annuncia ranking privilegiato, richieste illimitate, preventivi digitali e assistente AI, ma oggi il tier gates SOLO le foto portfolio (PORTFOLIO_LIMITS 0/1/illimitato) e la prenotazione diretta (InstantBookingConfig, pro+). Finche' il gating non c'e', il Free ha di fatto quasi tutto il Pro: nessuno ha motivo di pagare. Va chiuso PRIMA del checkout (12.1). | Client/Pro | André | ⬜ Aperto | 2026-10-01 → 2026-12-31 |
+| P2.16 | Scadenza e decadenza del codice fondatori. Verificato il 19/08: BOB-FOUNDER-2026 ha max_uses NULL e expires_at NULL, cioe' Bob Business gratis, illimitato e senza scadenza per chiunque abbia il codice. Il piano del 18/08 da' per scontato che i promo dei primi sessanta scadano a febbraio: nel database non c'e' niente che scada. Con 3 pro non e' un problema, da ottobre con il codice in giro per l'outreach lo diventa. Serve: un tetto, una scadenza, e un declassamento mai automatico (preavviso + motivazione, art. 4 P2B). /dashboard/piano oggi dice la verita' al pro - "non ha una data di scadenza" - il che rende il problema visibile invece che implicito. | Shared | Lucio | ⬜ Aperto | 2026-08-19 → 2026-09-30 |
 
 <details><summary>4 attività già chiuse</summary>
 
