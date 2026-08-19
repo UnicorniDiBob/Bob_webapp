@@ -26,7 +26,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useProfessional } from "@/lib/useProfessional";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 import {
   SectionSkeleton,
   SectionError,
@@ -59,7 +59,7 @@ export default function PianoDashboardPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) router.replace("/login?returnTo=/dashboard/piano");
+    if (!user) router.replace("/login?returnTo=/impostazioni/piano");
     else if (role && role !== "professional") router.replace("/dashboard");
   }, [authLoading, user, role, router]);
 

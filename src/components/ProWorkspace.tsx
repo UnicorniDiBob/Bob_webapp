@@ -351,7 +351,7 @@ export function ProWorkspace({
             </div>
             <div className="mt-3 flex flex-col gap-2">
               <Link
-                href="/dashboard/azienda"
+                href="/impostazioni/azienda"
                 className="btn-secondary py-2 text-center text-sm"
                 data-testid="link-edit-profile"
               >
@@ -376,7 +376,7 @@ export function ProWorkspace({
 
       {/* Il portfolio e' uscito da qui: e' un blocco che si aggiorna una volta
           al mese e stava sotto il calendario, che si guarda ogni mattina.
-          Adesso vive in /dashboard/lavori. */}
+          Adesso vive in /impostazioni/lavori. */}
 
       {/* Dettaglio: si apre al click su un blocco del calendario */}
       {detail && !dialogOpen && (

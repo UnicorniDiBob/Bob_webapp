@@ -27,7 +27,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useProfessional } from "@/lib/useProfessional";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 import {
   SectionSkeleton,
   SectionError,
@@ -51,7 +51,7 @@ export default function VerificaPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) router.replace("/login?returnTo=/dashboard/verifica");
+    if (!user) router.replace("/login?returnTo=/impostazioni/verifica");
     else if (role && role !== "professional") router.replace("/dashboard");
   }, [authLoading, user, role, router]);
 
@@ -153,7 +153,7 @@ export default function VerificaPage() {
                 Non è un consenso a ricevere comunicazioni commerciali: quello è
                 separato, facoltativo, e lo gestisci in{" "}
                 <Link
-                  href="/dashboard/comunicazioni"
+                  href="/impostazioni/comunicazioni"
                   className="font-medium underline"
                 >
                   Comunicazioni
@@ -161,7 +161,7 @@ export default function VerificaPage() {
                 .
               </p>
               <Link
-                href="/dashboard/accesso"
+                href="/impostazioni/accesso"
                 className="btn-secondary mt-3.5 py-2.5"
               >
                 Vai a Accesso e sicurezza

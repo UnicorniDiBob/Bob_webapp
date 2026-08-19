@@ -2,7 +2,7 @@
 //
 // PERCHE' QUI E NON NELLA PAGINA
 // L'elenco viveva dentro /onboarding/piano. Da quando esiste anche
-// /dashboard/piano, che deve dire a un professionista cosa ha comprato, due
+// /impostazioni/piano, che deve dire a un professionista cosa ha comprato, due
 // copie della stessa lista sono due liste che divergono: la prima volta che si
 // aggiunge una funzione a Bob Pro, una delle due resta indietro e il pro legge
 // due verita' diverse sullo stesso abbonamento.

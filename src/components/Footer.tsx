@@ -32,6 +32,7 @@ export function Footer() {
             <li><Link href="/professionisti" className="hover:text-bob-indigo">Professionisti</Link></li>
             <li><Link href="/come-funziona" className="hover:text-bob-indigo">Come funziona</Link></li>
             <li><Link href="/faq" className="hover:text-bob-indigo">FAQ</Link></li>
+            <li><Link href="/supporto" className="hover:text-bob-indigo">Assistenza</Link></li>
           </ul>
         </div>
 

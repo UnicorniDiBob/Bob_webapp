@@ -19,7 +19,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 import { SectionSkeleton, SectionError } from "@/components/SectionStates";
 
 export default function DatiPage() {
@@ -40,7 +40,7 @@ export default function DatiPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) router.replace("/login?returnTo=/dashboard/dati");
+    if (!user) router.replace("/login?returnTo=/impostazioni/dati");
   }, [authLoading, user, router]);
 
   const load = useCallback(async () => {

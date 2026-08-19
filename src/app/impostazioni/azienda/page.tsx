@@ -5,7 +5,7 @@
 // Viene dalla vecchia /dashboard/profilo, che teneva insieme questo, la
 // verifica della partita IVA, l'upload dei documenti, la prenotazione diretta
 // e gli orari di disponibilita' in una pagina sola. Qui resta il profilo
-// pubblico: le altre tre sono diventate /dashboard/verifica e /dashboard/orari.
+// pubblico: le altre tre sono diventate /impostazioni/verifica e /impostazioni/orari.
 //
 // Le colonne sensibili (verifica, tier) restano protette lato database dal
 // trigger protect_professional_columns: questa pagina non le tocca.
@@ -15,7 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 import {
   SectionSkeleton,
   SectionError,
@@ -79,7 +79,7 @@ export default function AziendaPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) router.replace("/login?returnTo=/dashboard/azienda");
+    if (!user) router.replace("/login?returnTo=/impostazioni/azienda");
     else if (role && role !== "professional") router.replace("/dashboard");
   }, [loading, user, role, router]);
 

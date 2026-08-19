@@ -13,7 +13,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useProfessional } from "@/lib/useProfessional";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 import {
   SectionSkeleton,
   SectionError,
@@ -29,7 +29,7 @@ export default function OrariPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) router.replace("/login?returnTo=/dashboard/orari");
+    if (!user) router.replace("/login?returnTo=/impostazioni/orari");
     else if (role && role !== "professional") router.replace("/dashboard");
   }, [authLoading, user, role, router]);
 
@@ -80,7 +80,7 @@ export default function OrariPage() {
             <p className="text-sm text-bob-ink/55">
               Prima scegli il servizio principale in{" "}
               <Link
-                href="/dashboard/azienda"
+                href="/impostazioni/azienda"
                 className="font-medium text-bob-indigo hover:underline"
               >
                 La tua azienda

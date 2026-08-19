@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 import { SectionSkeleton, SectionError } from "@/components/SectionStates";
 
 interface CityOption {
@@ -50,8 +50,8 @@ export default function IndirizziPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) router.replace("/login?returnTo=/dashboard/indirizzi");
-    else if (role === "professional") router.replace("/dashboard/azienda");
+    if (!user) router.replace("/login?returnTo=/impostazioni/indirizzi");
+    else if (role === "professional") router.replace("/impostazioni/azienda");
   }, [authLoading, user, role, router]);
 
   const load = useCallback(async () => {

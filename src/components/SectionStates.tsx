@@ -96,7 +96,7 @@ export function UpgradeNeeded({
           {children}
         </p>
       )}
-      <Link href="/dashboard/piano" className="btn-secondary mt-4 py-2.5">
+      <Link href="/impostazioni/piano" className="btn-secondary mt-4 py-2.5">
         Vedi il tuo piano
       </Link>
     </div>

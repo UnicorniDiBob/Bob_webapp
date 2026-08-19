@@ -10,7 +10,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { useProfessional } from "@/lib/useProfessional";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 import {
   SectionSkeleton,
   SectionError,
@@ -25,7 +25,7 @@ export default function LavoriPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) router.replace("/login?returnTo=/dashboard/lavori");
+    if (!user) router.replace("/login?returnTo=/impostazioni/lavori");
     else if (role && role !== "professional") router.replace("/dashboard");
   }, [authLoading, user, role, router]);
 

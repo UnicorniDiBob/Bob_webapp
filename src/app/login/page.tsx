@@ -13,6 +13,12 @@ import type { UserRole } from "@/lib/supabase/types";
 
 type Mode = "login" | "signup";
 
+// Deve restare allineata a Supabase > Authentication > Providers > Email:
+// alzata a 8 il 9 agosto come mitigazione al posto della leaked password
+// protection, che sul piano Free non e' attivabile. Il form validava ancora a
+// 6, quindi accettava password che il server rifiutava.
+const PASSWORD_MIN = 8;
+
 export default function LoginPage() {
   return (
     <Suspense
@@ -57,6 +63,8 @@ function LoginInner() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Conferma della password: compare solo in iscrizione (vedi il campo nel form).
+  const [password2, setPassword2] = useState("");
   // Data di nascita a tre tendine (gg/mm/aaaa): su mobile il type="date"
   // apre un calendario che parte da oggi e costringe a sfogliare decenni.
   const [dobDay, setDobDay] = useState("");
@@ -211,6 +219,21 @@ function LoginInner() {
         }
         if (lastName.trim().length < 2) {
           setError("Inserisci il tuo cognome.");
+          setSubmitting(false);
+          return;
+        }
+        // La soglia deve restare allineata a Supabase > Authentication >
+        // Providers > Email, alzata a 8 il 9 agosto. Controllarla qui serve a
+        // dare un messaggio che spiega, invece dell'errore generico del server.
+        if (password.length < PASSWORD_MIN) {
+          setError(`La password deve avere almeno ${PASSWORD_MIN} caratteri.`);
+          setSubmitting(false);
+          return;
+        }
+        if (password !== password2) {
+          setError(
+            "Le due password non coincidono: ricontrolla, così non rischi di registrarti con una password che non conosci."
+          );
           setSubmitting(false);
           return;
         }
@@ -612,11 +635,15 @@ function LoginInner() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input-bob"
-                placeholder="Almeno 6 caratteri"
+                placeholder={
+                  mode === "signup"
+                    ? `Almeno ${PASSWORD_MIN} caratteri`
+                    : undefined
+                }
                 autoComplete={mode === "login" ? "current-password" : "new-password"}
                 data-testid="input-password"
                 required
-                minLength={6}
+                minLength={mode === "signup" ? PASSWORD_MIN : undefined}
               />
               {mode === "login" && (
                 <div className="mt-1.5 text-right">
@@ -632,6 +659,40 @@ function LoginInner() {
                 </div>
               )}
             </div>
+
+            {/* SECONDO CAMPO PASSWORD, SOLO ALL'ISCRIZIONE (19/08).
+                Prima ce n'era uno solo e nessun controllo di lunghezza lato
+                client: chi sbagliava a digitare si registrava con una password
+                che non conosceva, e l'unica uscita era "password dimenticata".
+                Funziona — quella mail la manda Supabase, non Resend — ma e' un
+                giro che non deve servire, e a ottobre lo farebbe un
+                professionista appena reclutato al telefono. */}
+            {mode === "signup" && (
+              <div>
+                <label className="label-bob" htmlFor="password2">
+                  Ripeti la password
+                </label>
+                <input
+                  id="password2"
+                  type="password"
+                  value={password2}
+                  onChange={(e) => setPassword2(e.target.value)}
+                  className="input-bob"
+                  autoComplete="new-password"
+                  data-testid="input-password-2"
+                  required
+                  minLength={PASSWORD_MIN}
+                />
+                {password2.length > 0 && password !== password2 && (
+                  <p
+                    className="mt-1.5 text-xs text-red-600"
+                    data-testid="password-mismatch"
+                  >
+                    Le due password non coincidono.
+                  </p>
+                )}
+              </div>
+            )}
 
             {mode === "signup" && (
               <div

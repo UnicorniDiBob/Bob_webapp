@@ -21,7 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 
 // Deve restare allineata a Supabase > Authentication > Providers > Email.
 const PASSWORD_MIN = 8;
@@ -46,7 +46,7 @@ export default function AccessoPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user) router.replace("/login?returnTo=/dashboard/accesso");
+    if (!user) router.replace("/login?returnTo=/impostazioni/accesso");
   }, [loading, user, router]);
 
   async function salvaEmail(e: React.FormEvent) {

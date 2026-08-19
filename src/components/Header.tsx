@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings } from "lucide-react";
+import { Settings, UserCog } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "./AuthProvider";
 import { VERIFICATION_LABEL } from "@/lib/vat";
@@ -91,12 +91,31 @@ export function Header() {
                     {VERIFICATION_LABEL[verificationLevel]}
                   </span>
                 )}
+              {/* IL BOTTONE VISIBILE E' IL LAVORO, NON L'ACCOUNT (19/08).
+                  Prima c'era una sola voce, «Account», identica per cliente e
+                  professionista: non diceva ne' cosa ci fosse dentro ne' per
+                  chi. Adesso il bottone porta a cio' che serve ogni giorno e
+                  l'etichetta dipende dal ruolo; la configurazione sta
+                  nell'icona accanto. */}
               <Link
                 href="/dashboard"
                 className="btn-secondary py-2"
                 data-testid="link-dashboard"
               >
-                Account
+                {role === "professional" ? "Il mio lavoro" : "I miei lavori"}
+              </Link>
+              {/* Icona e non parola: si apre raramente e non deve competere col
+                  bottone del lavoro. UserCog e non Settings perche' quella
+                  chiave e' gia' usata sopra per il pannello Admin, e due
+                  ingranaggi diversi nello stesso header si confondono. */}
+              <Link
+                href="/impostazioni/dati"
+                className="rounded-xl p-2.5 text-bob-ink/55 transition hover:bg-bob-indigo-50 hover:text-bob-indigo"
+                aria-label="Impostazioni del tuo account"
+                title="Impostazioni"
+                data-testid="link-impostazioni"
+              >
+                <UserCog className="h-5 w-5" aria-hidden="true" />
               </Link>
               <button
                 onClick={handleSignOut}
@@ -170,11 +189,22 @@ export function Header() {
                     </Link>
                   )}
                   <Link href="/dashboard" onClick={() => setOpen(false)} className="btn-secondary flex-1 py-2">
-                    Account
+                    {role === "professional" ? "Il mio lavoro" : "I miei lavori"}
                     {role === "professional" &&
                       verificationLevel &&
                       verificationLevel !== "none" &&
                       ` · ${VERIFICATION_LABEL[verificationLevel]}`}
+                  </Link>
+                  {/* Su mobile l'icona da sola sarebbe un bersaglio ambiguo in
+                      mezzo al menu: qui la voce e' scritta. */}
+                  <Link
+                    href="/impostazioni/dati"
+                    onClick={() => setOpen(false)}
+                    className="btn-ghost inline-flex items-center gap-1.5"
+                    data-testid="link-impostazioni-mobile"
+                  >
+                    <UserCog className="h-4 w-4" aria-hidden="true" />
+                    Impostazioni
                   </Link>
                   <button onClick={handleSignOut} className="btn-ghost">
                     Esci

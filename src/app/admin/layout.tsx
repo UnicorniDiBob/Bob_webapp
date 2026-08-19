@@ -11,6 +11,7 @@ import {
   TrendingUp,
   Zap,
   Headphones,
+  LifeBuoy,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,6 +50,7 @@ export default async function AdminLayout({
             <SidebarLink href="/admin" label="Dashboard" icon={LayoutDashboard} exact />
             <SidebarLink href="/admin/professionals" label="Verifiche" icon={BadgeCheck} />
             <SidebarLink href="/admin/users" label="Utenti" icon={Users} />
+            <SidebarLink href="/admin/assistenza" label="Assistenza" icon={LifeBuoy} />
             {isAdmin && (
               <SidebarLink href="/admin/analisi" label="Analisi" icon={TrendingUp} />
             )}
@@ -78,6 +80,7 @@ export default async function AdminLayout({
           <MobileLink href="/admin" label="Dashboard" />
           <MobileLink href="/admin/professionals" label="Verifiche" />
           <MobileLink href="/admin/users" label="Utenti" />
+          <MobileLink href="/admin/assistenza" label="Assistenza" />
           {isAdmin && <MobileLink href="/admin/analisi" label="Analisi" />}
           {isAdmin && <MobileLink href="/admin/catalogo" label="Prenotazione" />}
           {isAdmin && <MobileLink href="/admin/cs" label="CS" />}

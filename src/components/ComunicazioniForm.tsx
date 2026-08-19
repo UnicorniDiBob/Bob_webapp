@@ -24,14 +24,14 @@
 // il risultato sarebbe restare senza base giuridica per quelle email, cioe'
 // peggio di non averle chieste. Cio' che serve davvero — un professionista
 // raggiungibile — si ottiene chiedendo un'email confermata, che e' un
-// requisito tecnico legittimo. Vedi /dashboard/verifica.
+// requisito tecnico legittimo. Vedi /impostazioni/verifica.
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { SectionHeader } from "@/components/DashboardShell";
+import { SectionHeader } from "@/components/ImpostazioniShell";
 import { SectionSkeleton, SectionError } from "@/components/SectionStates";
 
 type Finalita = "bob_news" | "partner_offers";
@@ -143,7 +143,7 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.replace("/login?returnTo=/dashboard/comunicazioni");
+      router.replace("/login?returnTo=/impostazioni/comunicazioni");
       return;
     }
     load();
@@ -216,7 +216,7 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
           Se non vuoi più riceverle, la strada è chiudere l&apos;account: le
           trovi in{" "}
           <Link
-            href="/dashboard/accesso"
+            href="/impostazioni/accesso"
             className="font-medium text-bob-indigo hover:underline"
           >
             Accesso e sicurezza

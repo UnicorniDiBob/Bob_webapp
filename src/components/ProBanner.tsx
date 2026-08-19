@@ -15,6 +15,7 @@ const HIDDEN_PREFIXES = [
   "/auth",
   "/admin",
   "/dashboard",
+  "/impostazioni",
   "/messaggi",
 ];
 

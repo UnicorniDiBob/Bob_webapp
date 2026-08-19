@@ -17,6 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/professionisti`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${siteUrl}/come-funziona`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${siteUrl}/faq`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${siteUrl}/supporto`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
     { url: `${siteUrl}/per-i-professionisti`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${siteUrl}/chi-siamo`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
     { url: `${siteUrl}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },

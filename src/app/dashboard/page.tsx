@@ -1,15 +1,20 @@
 "use client";
 
-// Area personale: smista per ruolo.
-// - Professionista → ProWorkspace (profilo, calendario, richieste, portfolio)
+// AREA DI LAVORO. Smista per ruolo:
+// - Professionista → ProWorkspace (richieste, calendario, giornata)
 // - Cliente → CustomerHome (Da fare ora, lavori in corso, appuntamenti,
 //   professionisti di fiducia, storico) — vive in components/CustomerHome.tsx
+//
+// Le impostazioni NON stanno qui: dal 19/08 vivono sotto /impostazioni, con un
+// guscio proprio. Prima erano nella stessa navigazione, e il risultato era
+// "Oggi" accanto a "Accesso e sicurezza" — il lavoro di ogni giorno sulla
+// stessa fila di cose che si aprono due volte l'anno.
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { SectionHeader } from "@/components/DashboardShell";
 import { ProWorkspace } from "@/components/ProWorkspace";
 import VerificaPromoBanner from "@/components/VerificaPromoBanner";
 import { CustomerHome } from "@/components/CustomerHome";
@@ -136,22 +141,51 @@ export default function DashboardPage() {
 
   if (loading || (!user && !loading) || role === "admin" || role === "cs") {
     return (
-      <div className="py-10 text-center text-sm text-bob-ink/50" aria-busy="true">
+      <div className="container-bob py-16 text-center text-sm text-bob-ink/50" aria-busy="true">
         Carico la tua area personale…
       </div>
     );
   }
 
+  const isPro = role === "professional";
+  const nome = fullName?.trim().split(" ")[0];
+
   return (
-    <div>
-      {/* Il saluto e la navigazione stanno nel guscio (DashboardShell): qui
-          resta solo il titolo della sezione. "Oggi" e' operativo di proposito —
-          profilo, verifica, piano e portfolio hanno ognuno la propria pagina. */}
-      <SectionHeader title="Oggi">
-        {role === "professional"
-          ? "Le richieste che ti riguardano e la tua giornata."
-          : "Il punto della situazione sui tuoi lavori."}
-      </SectionHeader>
+    <div className="container-bob py-8 sm:py-10">
+      {/* AREA DI LAVORO, non impostazioni (separazione decisa il 19/08).
+          Qui sta solo cio' che serve oggi: al professionista le richieste e il
+          calendario, al cliente i lavori in corso e la ricerca. La
+          configurazione dell'account vive sotto /impostazioni e si raggiunge
+          dall'icona nel header — e da qui sotto, per chi non la nota. */}
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <span className="section-eyebrow">
+            {isPro ? "Il mio lavoro" : "I miei lavori"}
+          </span>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
+            {nome ? `Ciao ${nome}` : "Ciao"}
+          </h1>
+          <p className="mt-1.5 text-sm text-bob-ink/60">
+            {isPro
+              ? "Le richieste che ti riguardano e la tua giornata."
+              : "Il punto della situazione sui tuoi lavori."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {!isPro && (
+            <Link href="/#bob" className="btn-primary py-2.5" data-testid="link-cerca-pro">
+              Cerca un professionista
+            </Link>
+          )}
+          <Link
+            href="/impostazioni/dati"
+            className="btn-ghost text-sm"
+            data-testid="link-impostazioni"
+          >
+            Impostazioni
+          </Link>
+        </div>
+      </header>
 
       {role === "professional" ? (
         loadingPro ? (

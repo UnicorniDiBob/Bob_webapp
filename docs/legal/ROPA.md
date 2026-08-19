@@ -278,6 +278,25 @@ DATA_COMPLIANCE.md §8.
 | **Note** | **Cosa NON sta qui, ed è il punto della riga.** Le comunicazioni di servizio (nuova richiesta, nuovo messaggio, appuntamenti, esito della verifica, sicurezza) stanno in A9 con base contrattuale e non sono disattivabili finché l'account è attivo. Rappresentarle come una preferenza revocabile sarebbe sbagliato in due direzioni insieme: darebbe per facoltativo ciò che è dovuto, e legherebbe il consenso commerciale al servizio, che è la costruzione vietata dall'art. 7(4). Per la stessa ragione **il consenso non è e non deve diventare un requisito della verifica del profilo**: al suo posto si chiede un'email confermata, che è raggiungibilità e non consenso |
 | **DPIA** | Non innesca: nessun trattamento su larga scala, nessuna categoria particolare, nessuna profilazione — le comunicazioni non sono personalizzate sul comportamento. Se in futuro venissero segmentate sul comportamento di navigazione, la valutazione va rifatta e serve anche l'art. 122 del Codice Privacy (banner) |
 
+## A19 — Assistenza clienti (ticket)
+
+*Aggiunta il 19 agosto 2026, con la migrazione 055.*
+
+| | |
+|---|---|
+| **Finalità** | Ricevere una richiesta di aiuto e rispondere |
+| **Base giuridica** | Contratto — art. 6(1)(b) per gli utenti registrati (l'assistenza è parte del servizio). **Legittimo interesse** — art. 6(1)(f) per chi scrive senza account: rispondere a una richiesta che ci ha rivolto lui. Nessun consenso: non è marketing ed è l'interessato a iniziare — **LIA da scrivere**, come per le altre righe a legittimo interesse |
+| **Interessati** | Clienti, professionisti, e chiunque scriva senza account (tipicamente chi non riesce ad accedere) |
+| **Dati** | Email, categoria, titolo, racconto del problema in testo libero, e la nostra risposta. Il testo libero può contenere qualunque cosa la persona scelga di scriverci: è il rischio strutturale di ogni casella di assistenza, e si governa con la minimizzazione in risposta, non a monte |
+| **Tabelle** | `support_tickets` (mig 055) |
+| **Codice** | `src/app/supporto/`, `src/components/SupportoForm.tsx`, `src/app/api/supporto/route.ts`, `src/app/impostazioni/assistenza/`, `src/app/admin/assistenza/` |
+| **Destinatari** | Supabase, Vercel (come A1). Staff admin e CS. **Nessun fornitore email**: la risposta vive dentro Bob |
+| **Trasferimenti** | Come A1 |
+| **Conservazione** | Utenti registrati: quanto l'account, poi **cancellazione a cascata**. Ticket **anonimi** (`user_id` null): non hanno un account che li porti via, quindi hanno una regola propria — **12 mesi**, come i dati di prospect (DATA_COMPLIANCE §5). La cancellazione periodica è lavoro di P3.9: qui la regola è dichiarata, il job la applicherà — **finché quel job non esiste, questa riga è incompleta** |
+| **Sicurezza** | RLS provata riga per riga il 19/08 con un utente non-staff: vede solo i propri ticket, non può inserirne dal client (si passa dalla route con service role, dove stanno honeypot, validazione e tetto di 5 aperti), non può scrivere la risposta dello staff, non può cambiare lo stato né cancellare. Nessuna policy di delete per nessuno: un ticket si chiude, non si cancella |
+| **Note** | **Cascata e non SET NULL, di proposito.** La tentazione è conservare il ticket slegandolo dalla persona per tenere lo storico: ma il ticket contiene un'email e il racconto del problema, quindi slegarlo lascerebbe dati personali orfani e non cancellabili — esattamente ciò che la regola di progetto vieta. Se servirà la statistica, si terrà un aggregato senza persone dentro, non il ticket svuotato |
+| **DPIA** | Non innesca da sola: nessuna larga scala, nessuna profilazione, nessuna decisione automatizzata. Ma il testo libero può far arrivare categorie particolari (art. 9) non richieste — es. un problema di salute raccontato per spiegare un appuntamento mancato. Non si può impedire; si governa non chiedendole, non usandole per altro, e non ripetendole nella risposta |
+
 ---
 
 ## Cosa manca ancora (non inventato, da chiudere da una persona)
