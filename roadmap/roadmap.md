@@ -2,7 +2,7 @@
 
 _Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
 
-**Stato:** 52 attività aperte · 3 pronte ma spente · 29 parcheggiate · 91 chiuse (in `ARCHIVE.csv`)
+**Stato:** 51 attività aperte · 3 pronte ma spente · 29 parcheggiate · 92 chiuse (in `ARCHIVE.csv`)
 
 **Track:** Client/Pro → André · Internal → Lucio · Shared
 
@@ -170,7 +170,7 @@ BOB-FOUNDER-2026 concede Bob Business e la descrizione dice 'revocabile'. Nel da
 | 10.7 | Telemetria in /admin/analisi: quanti tentano, quanti conferma il VIES, quanti finiscono a mano, tempi di lavorazione | Internal | Lucio | ⬜ Aperto | 2026-08-08 → 2026-08-22 |
 | 10.8 | Richiesta della P.IVA come ultimo passo dell'onboarding professionista AGGIORNAMENTO 14/08: l'onboarding pro ora esiste (piano → questionario → profilo) e la verifica e' gated sui tier a pagamento; decidere se la P.IVA diventa l'ultimo passo dell'onboarding per chi sceglie Pro/Business. | Client/Pro | Lucio | ⬜ Aperto | 2026-08-11 → 2026-08-25 |
 | 10.9 | Casi limite: P.IVA sospesa per affitto d'azienda, Gruppo IVA, cessata + raccolta codice fiscale (base per DAC7) | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-09-20 |
-| AREA1 | Area personale divisa in sezioni (richiesta di Lucio del 19/08: "ogni cosa deve avere il suo posto"). Guscio con navigazione (DashboardShell) + 9 sezioni: Oggi, I tuoi dati, La tua azienda, Verifica, Orari, Lavori, Piano e pagamenti, Comunicazioni, Accesso e sicurezza; per il cliente Oggi, I tuoi dati, Indirizzi, Comunicazioni, Accesso. Prima erano due pagine da 514 e 562 righe e /dashboard/profilo e /dashboard/account restano come redirect. TRE GAP CHIUSI DI PASSAGGIO: il pro puo' cambiare la propria password (la pagina account lo rimandava via alla riga 69), puo' inserire il proprio telefono (le policy della 051 glielo permettevano dal 14/08, mancava lo schermo), e il minimo password nel form e' passato da 6 a 8 come su Supabase dal 9 agosto. CONDIZIONE PER CHIUDERLA: push su main, deploy, e controllo dal vivo su desktop e a 390px. | Client/Pro | Claude | 🔵 In corso | 2026-08-19 → 2026-08-26 |
+| AREA1 | Area personale divisa in sezioni (richiesta di Lucio del 19/08: "ogni cosa deve avere il suo posto"). Guscio con navigazione (DashboardShell) + 9 sezioni per il professionista e 5 per il cliente; prima erano due pagine da 514 e 562 righe. /dashboard/profilo e /dashboard/account sono redirect 307 in next.config.mjs. TRE GAP CHIUSI DI PASSAGGIO: il pro puo' cambiare la password (la pagina account lo rimandava via alla riga 69), puo' inserire il telefono (policy della 051 dal 14/08, mancava lo schermo), minimo password da 6 a 8 come su Supabase dal 9 agosto. IN PRODUZIONE dal 19/08 (b6109ca). VERIFICATO DAL VIVO: i due redirect scattano (il returnTo diceva /dashboard/azienda, quindi il 307 arriva prima della guardia), le sezioni caricano da loggato senza rimbalzi, /dashboard/comunicazioni non da' 404. CORRETTO NELLO STESSO GIRO: /dashboard/comunicazioni era l'unica sezione senza guardia di autenticazione - costruita come pagina server + form client, la guardia era rimasta fuori, e un visitatore senza sessione vedeva la pagina con due interruttori che non facevano niente in silenzio. RESTA PER CHIUDERLA: il controllo a 390px e la lettura delle sezioni da loggato. Non fatti perche' il Chrome locale risponde a list_tabs ma non a execute_javascript ne' a get_page_content: su macOS serve View > Developer > Allow JavaScript from Apple Events. | Client/Pro | Claude | 🔵 In corso | 2026-08-19 → 2026-08-26 |
 | 10.15 | registraGiro() anche al return finale di api/cron/verifica-piva, con i contatori confermati/daEsaminare/ancoraGiu gia' calcolati nel corpo. Oggi la chiamata sta solo sul ramo casi.length === 0, e si vede: 11 giri su 11 scrivono esaminati 0. Un semaforo verde che dimostra solo che il processo parte. Con l'outreach di ottobre serve sapere cosa ha fatto. | Internal | Lucio | ⬜ Aperto | 2026-08-19 → 2026-09-05 |
 
 <details><summary>23 attività già chiuse</summary>
@@ -234,7 +234,7 @@ BOB-FOUNDER-2026 concede Bob Business e la descrizione dice 'revocabile'. Nel da
 
 ## M6 · A lawyer could sign the site off
 
-**Finestra:** 2026-09-01 → 2026-11-30 · **9 aperte, 0 chiuse**
+**Finestra:** 2026-09-01 → 2026-11-30 · **8 aperte, 1 chiuse**
 
 **Perché:** The terms of service are drafts in docs/legal and the compliance guideline makes a legal basis, a RoPA row and a retention rule part of "done" for every feature that touches personal data. Nine months of features shipped ahead of that paperwork, so it is owed retroactively — and it is a hard gate on inviting real professionals.
 
@@ -249,8 +249,15 @@ BOB-FOUNDER-2026 concede Bob Business e la descrizione dice 'revocabile'. Nel da
 | N9 | Waitlist launch email needs an explicit 'contact me at launch' checkbox before a single send — no soft opt-in for Bob | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-10-15 |
 | 23.1 | Controllo consumeristico sul listino pro pubblicato l'08/08: la tabella elenca le funzioni del Business Plan §6.2, fra cui fatturazione elettronica integrata, pagamenti inclusi e analytics avanzate, che non esistono ancora in prodotto. Oggi il rischio e' contenuto perche' non c'e' checkout (il tier lo assegna l'admin), ma quando si accende Stripe (12.1) elencare funzioni non disponibili e' pratica commerciale ingannevole (Codice del Consumo art. 21-22). Decidere per ogni riga: costruirla, riscriverla o rimuoverla. | Shared | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
 | N12 | La cancellazione account deve svuotare anche la cartella <user_id>/ del bucket verifica-documenti: le righe di verification_documents cadono a cascata (FK), i FILE nello storage no. Registrato come punto 8 delle lacune ROPA. Regola di progetto: ogni tabella nuova ha un percorso di cancellazione — per lo storage va costruito. | Internal | Lucio | ⬜ Aperto | 2026-09-01 → 2026-11-30 |
-| G14 | Consenso waitlist e registro consensi (mig 053 + 054). Il form non aveva nessuna spunta e la 015 dichiarava consent_at default now(): ogni iscrizione nasceva con la prova di un atto affermativo mai avvenuto - la forma peggiore, perche' il registro sembrava in ordine. Adesso: spunta obbligatoria (legittimo, l'avviso al lancio E' l'unico servizio del form), spunta promozionale separata e spenta, consent_text salvato, controllo anche server-side. Piu' communication_consents, registro in sola aggiunta per finalita': RLS provata riga per riga il 19/08 (insert solo per se', nessun update, nessun delete, finalita' vincolate). 053 e' applicata in produzione. CONDIZIONE PER CHIUDERLA: la 054 (drop del default) va applicata DOPO il deploy, altrimenti la route vecchia inserisce senza consent_at e fallisce. | Shared | Claude | 🔵 In corso | 2026-08-19 → 2026-08-26 |
 | G08 | Cancellazione account self-service. NON fatta oggi di proposito, e la ragione va scritta: ratings.customer_id e' NOT NULL con ON DELETE CASCADE (mig 012), quindi cancellare un cliente cancella le sue 14 recensioni invece di de-identificarle - il contrario di quello che chiede la regola sulle recensioni (G16). Un bottone di cancellazione costruito prima di quel cambio distrugge dati che devono restare. Ordine: prima customer_id nullable + SET NULL + "Utente eliminato" nella UI, poi il bottone. Intanto /dashboard/accesso dichiara il diritto e la strada manuale invece di tacerlo. | Internal | Lucio | ⬜ Aperto | 2026-11-01 → 2026-11-25 |
+
+<details><summary>1 attività già chiuse</summary>
+
+| # | Attività | Owner | Chiusa il |
+|---|----------|-------|-----------|
+| G14 | Consenso waitlist e registro consensi, CHIUSA e verificata in produzione. Il form non aveva nessuna spunta e la 015 dava a consent_at un default now(): ogni iscrizione nasceva con la prova di un atto affermativo mai avvenuto. Ora: spunta obbligatoria (legittima, l'avviso al lancio E' l'unico servizio del form), spunta promozionale separata e spenta, consent_text salvato, controllo anche server-side nella route. Piu' communication_consents, registro in sola aggiunta per finalita'. VERIFICATO IL 19/08 DOPO IL DEPLOY b6109ca: 053 e 054 applicate nell'ordine giusto (054 dopo il deploy, altrimenti la route vecchia inseriva senza consent_at e falliva); il default e' rimosso, un insert senza consenso viene RIFIUTATO, uno completo passa; su www.meetonda.com/citta/roma sono live l'etichetta del consenso, la casella facoltativa separata e la nota sui dodici mesi; l'informativa privacy ha la sezione nuova e la data Agosto 2026. La RLS del registro provata riga per riga: insert altrui rifiutato, finalita' fuori elenco rifiutata, delete e update a zero righe. | Claude | 2026-08-19 |
+
+</details>
 
 
 ## M7 · Bob can charge money

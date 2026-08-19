@@ -28,6 +28,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { SectionHeader } from "@/components/DashboardShell";
@@ -88,6 +89,7 @@ const SERVIZIO: { titolo: string; quando: string }[] = [
 
 export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
   const supabase = createClient();
+  const router = useRouter();
   const { user, role, loading: authLoading } = useAuth();
 
   const [stato, setStato] = useState<
@@ -131,14 +133,21 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Guardia di autenticazione, aggiunta il 19/08 dopo il controllo dal vivo.
+  // Era l'unica sezione senza: le altre otto hanno questo redirect nella
+  // pagina, questa e' l'unica costruita come pagina server + form client e la
+  // guardia era rimasta fuori. Chi arrivava qui senza sessione vedeva la
+  // pagina intera con i due interruttori spenti, e cliccandoli non succedeva
+  // niente in silenzio — nessun dato esposto (cambia() esce subito senza
+  // utente, e la RLS regge comunque), ma uno schermo che finisce nel vuoto.
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      setBooted(true);
+      router.replace("/login?returnTo=/dashboard/comunicazioni");
       return;
     }
     load();
-  }, [authLoading, user, load]);
+  }, [authLoading, user, load, router]);
 
   async function cambia(voce: VoceConsenso, nuovo: boolean) {
     if (!user || busy) return;
