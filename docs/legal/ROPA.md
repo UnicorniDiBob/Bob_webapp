@@ -103,7 +103,7 @@ DATA_COMPLIANCE.md §8.
 | **Dati** | Punteggio, testo, autore, richiesta collegata |
 | **Tabelle** | `ratings` |
 | **Destinatari** | Pubblico (le recensioni sono visibili sul sito) |
-| **Conservazione** | Finché il profilo del professionista è attivo |
+| **Conservazione** | Finché il profilo del professionista è attivo. **Sopravvive alla cancellazione dell'autore**, de-identificata: dalla migrazione 056 `ratings.customer_id` va a NULL invece di portarsi via la riga (chiude G16). Prima era ON DELETE CASCADE, quindi cancellare un cliente toglieva al professionista una valutazione che aveva guadagnato |
 | **Sicurezza** | RLS in scrittura |
 | **Note** | Solo le recensioni legate a una transazione realmente conclusa possono essere etichettate "verificate". Alla cancellazione dell'account l'autore va de-identificato ("Utente eliminato") e la recensione sopravvive: `ON DELETE SET NULL` più segnaposto. Il calcolo del punteggio aggregato deve restare spiegabile |
 
@@ -297,6 +297,25 @@ DATA_COMPLIANCE.md §8.
 | **Note** | **Cascata e non SET NULL, di proposito.** La tentazione è conservare il ticket slegandolo dalla persona per tenere lo storico: ma il ticket contiene un'email e il racconto del problema, quindi slegarlo lascerebbe dati personali orfani e non cancellabili — esattamente ciò che la regola di progetto vieta. Se servirà la statistica, si terrà un aggregato senza persone dentro, non il ticket svuotato |
 | **DPIA** | Non innesca da sola: nessuna larga scala, nessuna profilazione, nessuna decisione automatizzata. Ma il testo libero può far arrivare categorie particolari (art. 9) non richieste — es. un problema di salute raccontato per spiegare un appuntamento mancato. Non si può impedire; si governa non chiedendole, non usandole per altro, e non ripetendole nella risposta |
 
+## A20 — Chiusura e cancellazione dell'account
+
+*Aggiunta il 19 agosto 2026, con la migrazione 056.*
+
+| | |
+|---|---|
+| **Finalità** | Eseguire la richiesta di cancellazione, e nel frattempo impedire che l'account continui a operare |
+| **Base giuridica** | Obbligo legale / esercizio di un diritto dell'interessato — artt. 17 e 12(3) GDPR. Per il codice del motivo conservato in forma anonima: **legittimo interesse** (capire perché le persone se ne vanno) su un dato che non è più personale — **LIA da scrivere**, come per le altre righe |
+| **Interessati** | Clienti e professionisti. **Non lo staff**: un admin non si autocancella da qui (si porterebbe via l'accesso al pannello), la route lo rifiuta esplicitamente |
+| **Dati** | Utente, momento della richiesta, scadenza, codice del motivo e nota libera — gli ultimi due **facoltativi** |
+| **Tabelle** | `account_deletion_requests` (vive quanto la richiesta), `account_deletion_reasons` (**senza utente**), `professionals.deactivated_at` |
+| **Codice** | `src/app/api/account/cancellazione/route.ts`, `src/app/api/cron/cancella-account/route.ts`, `src/components/CancellazioneAccount.tsx`, `src/components/CancellazioneBanner.tsx`, `src/lib/cancellazione.ts` |
+| **Conservazione** | La richiesta e la nota libera muoiono con l'account (cascata). Il **codice** del motivo resta a tempo indeterminato, ma non è più un dato personale: nessun utente, nessun testo, solo codice + ruolo + data |
+| **Sicurezza** | La richiesta richiede la **password** — non è attrito sul diritto, è la prova che chi lo esercita è la persona giusta: senza, chi trova un telefono sbloccato cancella l'account di un altro. L'annullamento è una delete della propria riga via RLS: è un diritto, non deve passare da noi. Nessuna insert dal client: la route con service role è l'unico posto dove creare la richiesta, spegnere il profilo e registrare il motivo anonimo possono avvenire insieme |
+| **Le tre scelte che vengono dalla legge** | **(1)** Il motivo è facoltativo: l'art. 12(2) obbliga ad *agevolare* l'esercizio dei diritti, e una motivazione obbligatoria è un ostacolo. **(2)** I sette giorni stanno dentro l'art. 12(3) e non sono un ritardo ingiustificato ex art. 17(1) *perché sono dichiarati* — in `/impostazioni/accesso`, nell'avviso in cima a ogni pagina e in questa informativa. **(3)** Il profilo si **spegne subito**: se restasse visibile e continuasse a ricevere richieste, i sette giorni sarebbero un ritardo vero, non una cortesia |
+| **Cosa la cascata NON porta via, e il cron sì** | I file in `verifica-documenti/<user_id>/` non sono righe: li rimuove il cron prima di cancellare l'account (era il punto 8 di questa lista). Se il bucket non risponde, l'account va via comunque e il contatore lo segnala: un file orfano non giustifica una cancellazione non eseguita |
+| **Cosa resta di proposito** | Le recensioni scritte dalla persona, de-identificate (`customer_id` a NULL): appartengono anche al professionista che le ha ricevute. Il profilo pubblico non ha mai mostrato il nome dell'autore, quindi non cambia niente per chi legge |
+| **DPIA** | Non innesca. Nessuna decisione automatizzata con effetti sulla persona: il processo *esegue* una scelta che la persona ha fatto, ed è reversibile per sette giorni |
+
 ---
 
 ## Cosa manca ancora (non inventato, da chiudere da una persona)
@@ -308,4 +327,4 @@ DATA_COMPLIANCE.md §8.
 5. **Fonte di verità unica per la posizione** (A3): oggi `requests.zone_slug`, `request_addresses.coarse_*` e `job_briefs.zone` coesistono.
 6. **Identità del titolare** in `src/lib/company.ts`: i `[PLACEHOLDER]` sono differiti a gennaio 2027 per scelta, ma l'informativa e questo registro hanno bisogno di un titolare reale prima di trattare dati di utenti veri su scala.
 7. **Memo DPO** (DATA_COMPLIANCE §7.4): non obbligatorio a questa scala, ma la valutazione va messa per iscritto.
-8. **Cancellazione dei file di verifica** (A16): l'eliminazione dell'account cancella le righe ma non i file nel bucket `verifica-documenti` — il processo di cancellazione account deve svuotare anche la cartella `<user_id>/` dello storage.
+8. ~~**Cancellazione dei file di verifica** (A16)~~ — **chiuso il 19/08/2026 con la migrazione 056**: il cron `/api/cron/cancella-account` svuota `verifica-documenti/<user_id>/` prima di cancellare l'account. Vedi A20.

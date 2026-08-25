@@ -226,7 +226,12 @@ export async function getProfessionals(
   const supabase = createClient();
   const { data } = await supabase
     .from("professionals")
-    .select(PROFESSIONAL_SELECT);
+    .select(PROFESSIONAL_SELECT)
+    // Un profilo spento esce dagli elenchi. Lo spegne la richiesta di
+    // cancellazione (mig 056): i sette giorni di ripensamento sono legittimi
+    // solo se in quei giorni l'account NON continua a lavorare, altrimenti
+    // stiamo rimandando una cancellazione mentre trattiamo ancora i dati.
+    .is("deactivated_at", null);
 
   const rows = (data ?? []) as unknown as RawProfessionalRow[];
   const names = await namesByUserId(rows.map((r) => r.user_id));
@@ -271,6 +276,10 @@ export async function getProfessionalById(
     .from("professionals")
     .select(PROFESSIONAL_SELECT)
     .eq("id", id)
+    // Anche il profilo pubblico: spento vuol dire non raggiungibile, non
+    // "raggiungibile se hai il link". Chi ci arriva trova una pagina non
+    // trovata, che e' la verita'.
+    .is("deactivated_at", null)
     .maybeSingle();
   if (!data) return null;
   const row = data as unknown as RawProfessionalRow;

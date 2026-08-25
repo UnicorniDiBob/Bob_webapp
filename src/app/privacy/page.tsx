@@ -167,8 +167,24 @@ export default function PrivacyPage() {
       <LegalSection title="I tuoi diritti">
         <p>
           Hai diritto di accesso, rettifica, cancellazione, limitazione,
-          portabilità e opposizione (artt. 15–22 GDPR). Per esercitarli scrivi
-          a{" "}
+          portabilità e opposizione (artt. 15–22 GDPR).
+        </p>
+        <p>
+          <strong>Per cancellare il tuo account non devi chiedere il permesso a
+          nessuno e non devi spiegare perché:</strong> lo chiudi da solo, in Impostazioni
+          → Accesso e sicurezza. Il tuo profilo si spegne subito; i dati vengono
+          cancellati dopo <strong>sette giorni</strong>, una finestra che serve a
+          te per poter tornare indietro e che puoi chiudere in ogni momento
+          annullando la richiesta. Ti chiediamo la password, ma solo per essere
+          sicuri che sia tu: è quello che impedisce a chi trovasse il tuo
+          telefono sbloccato di cancellare il tuo account.
+        </p>
+        <p>
+          Restano visibili le recensioni che hai scritto, senza più alcun legame
+          con te, perché appartengono anche al professionista che le ha ricevute.
+        </p>
+        <p>
+          Per gli altri diritti scrivi a{" "}
           <a
             href={`mailto:${COMPANY.privacyEmail}`}
             className="text-bob-indigo underline"

@@ -22,9 +22,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { SectionHeader } from "@/components/ImpostazioniShell";
+import { CancellazioneAccount } from "@/components/CancellazioneAccount";
+import { GIORNI_RIPENSAMENTO } from "@/lib/cancellazione";
 
 // Deve restare allineata a Supabase > Authentication > Providers > Email.
 const PASSWORD_MIN = 8;
+
 
 export default function AccessoPage() {
   const supabase = createClient();
@@ -44,10 +47,34 @@ export default function AccessoPage() {
   const [pwdMsg, setPwdMsg] = useState<string | null>(null);
   const [pwdErr, setPwdErr] = useState<string | null>(null);
 
+  // Cancellazione gia' richiesta: la sezione deve dirlo, non offrire di nuovo
+  // di chiudere un account che si sta gia' chiudendo.
+  const [scadenzaCancellazione, setScadenzaCancellazione] = useState<string | null>(null);
+
   useEffect(() => {
     if (loading) return;
     if (!user) router.replace("/login?returnTo=/impostazioni/accesso");
   }, [loading, user, router]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from("account_deletion_requests")
+        .select("scheduled_for")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (active)
+        setScadenzaCancellazione(
+          (data as { scheduled_for: string } | null)?.scheduled_for ?? null
+        );
+    })();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user]);
 
   async function salvaEmail(e: React.FormEvent) {
     e.preventDefault();
@@ -290,33 +317,41 @@ export default function AccessoPage() {
       </form>
 
       {/* ---- Chiusura dell'account ----
-          Dichiarata, non nascosta. Il diritto alla cancellazione esiste
-          indipendentemente dal fatto che il bottone ci sia (art. 17 GDPR), e
-          una pagina "sicurezza" che non lo menziona lascia credere il
-          contrario. Oggi la strada e' manuale e va detto: il percorso
-          self-service ha una dipendenza aperta (le recensioni vanno
-          de-identificate, non cancellate) e finche' non c'e' quella, un
-          bottone qui distruggerebbe dati che devono restare. */}
+          Costruita il 19/08 partendo dalle fonti e non dal buon senso: il
+          motivo e' facoltativo perche' l'art. 12(2) GDPR obbliga ad AGEVOLARE
+          l'esercizio dei diritti e una motivazione obbligatoria sarebbe un
+          ostacolo; i sette giorni stanno dentro l'art. 12(3) e non sono un
+          ritardo ingiustificato ex art. 17(1) perche' sono dichiarati e li
+          controlla la persona; il profilo si spegne subito, perche' un'attesa
+          in cui l'account continua a funzionare sarebbe davvero un ritardo.
+          La nota lunga, con le fonti, sta nella migrazione 056. */}
       <section className="card p-5 sm:p-6">
         <h3 className="text-sm font-semibold text-bob-ink">
           Chiudere l&apos;account
         </h3>
         <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
-          Puoi chiedere in qualsiasi momento la cancellazione del tuo account e
-          dei dati collegati. Non è ancora un bottone: ci stiamo lavorando, e
-          preferiamo dirtelo invece di far finta che la voce non esista. Nel
-          frattempo la richiesta si fa scrivendoci dall&apos;indirizzo di questo
-          account, e la eseguiamo entro trenta giorni.
+          Puoi chiudere il tuo account quando vuoi, senza spiegare perché. Il
+          profilo si spegne subito; i dati vengono cancellati dopo{" "}
+          {GIORNI_RIPENSAMENTO} giorni, così hai il tempo di ripensarci.
         </p>
         <p className="mt-2.5 text-sm leading-relaxed text-bob-ink/60">
-          Cosa succede: spariscono profilo, richieste, messaggi e appuntamenti.
-          Le fatture, se ce ne sono, restano per il tempo che ci impone la legge.
-          Le recensioni che hai scritto restano visibili senza il tuo nome,
-          perché appartengono anche al professionista che le ha ricevute.
+          Cosa succede: spariscono profilo, richieste, messaggi, appuntamenti e
+          i documenti che hai caricato. Le fatture, se ce ne sono, restano per il
+          tempo che ci impone la legge. Le recensioni che hai scritto restano
+          visibili al professionista che le ha ricevute, senza più alcun legame
+          con te.
         </p>
+
+        <div className="mt-4">
+          <CancellazioneAccount
+            giorni={GIORNI_RIPENSAMENTO}
+            scadenzaIniziale={scadenzaCancellazione}
+          />
+        </div>
+
         <Link
           href="/privacy"
-          className="btn-secondary mt-4 py-2.5 text-sm"
+          className="btn-ghost mt-4 text-sm"
         >
           Come esercitare i tuoi diritti
         </Link>

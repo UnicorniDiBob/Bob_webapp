@@ -30,12 +30,22 @@ export async function GET(request: Request) {
   const { data: ps } = await admin
     .from("professional_services")
     .select(
-      "id, professional_id, instant_book_enabled, rate_unit, min_units, slot_duration_min"
+      "id, professional_id, instant_book_enabled, rate_unit, min_units, slot_duration_min, professionals!inner ( deactivated_at )"
     )
     .eq("id", psid)
     .maybeSingle();
 
   if (!ps || !ps.instant_book_enabled || !ps.slot_duration_min) {
+    return NextResponse.json({ slots: [] });
+  }
+
+  // Profilo spento da una richiesta di cancellazione (mig 056): nessuno slot.
+  // Il controllo va QUI e non solo nella pagina, perche' questa route gira col
+  // service role e risponderebbe anche a chi la chiama direttamente.
+  const proSpento =
+    (ps as unknown as { professionals?: { deactivated_at: string | null } | null })
+      .professionals?.deactivated_at != null;
+  if (proSpento) {
     return NextResponse.json({ slots: [] });
   }
 

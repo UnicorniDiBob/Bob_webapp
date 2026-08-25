@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { UnreadProvider } from "@/components/UnreadProvider";
 import { Header } from "@/components/Header";
+import { CancellazioneBanner } from "@/components/CancellazioneBanner";
 import { Footer } from "@/components/Footer";
 import { MessagesBubble } from "@/components/MessagesBubble";
 import { ProBanner } from "@/components/ProBanner";
@@ -84,6 +85,7 @@ export default function RootLayout({
         <AuthProvider>
           <UnreadProvider>
             <Header />
+            <CancellazioneBanner />
             <main className="flex-1">{children}</main>
             <ProBanner />
             <MessagesBubble />

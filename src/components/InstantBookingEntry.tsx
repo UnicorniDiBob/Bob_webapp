@@ -36,6 +36,8 @@ export default function InstantBookingEntry({
             .from("professionals")
             .select("subscription_tier")
             .eq("id", professionalId)
+            // Spento = niente prenotazione diretta (mig 056).
+            .is("deactivated_at", null)
             .maybeSingle(),
           supabase
             .from("professional_services")

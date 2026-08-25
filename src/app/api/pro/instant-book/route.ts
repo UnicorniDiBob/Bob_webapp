@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   const { data: ps } = await admin
     .from("professional_services")
     .select(
-      "id, professional_id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours"
+      "id, professional_id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, professionals!inner ( deactivated_at )"
     )
     .eq("id", psid)
     .maybeSingle();
@@ -94,6 +94,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Servizio non prenotabile" },
       { status: 400 }
+    );
+  }
+
+  // Profilo spento da una richiesta di cancellazione (mig 056). Il controllo sta
+  // QUI, prima di scrivere: e' la route che crea davvero la prenotazione, e una
+  // prenotazione fissata con chi sta chiudendo l'account lascerebbe un cliente
+  // con un appuntamento che sparisce fra qualche giorno.
+  if (
+    (ps as unknown as { professionals?: { deactivated_at: string | null } | null })
+      .professionals?.deactivated_at != null
+  ) {
+    return NextResponse.json(
+      { error: "Questo professionista non è più disponibile" },
+      { status: 409 }
     );
   }
 

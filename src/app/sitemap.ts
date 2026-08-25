@@ -69,7 +69,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     try {
       const { data: offerte } = await supabase
         .from("professional_services")
-        .select("services ( slug ), professionals ( cities ( slug ) )");
+        .select("services ( slug ), professionals ( cities ( slug ) )")
+        // Un pro spento non deve tenere in vita una pagina servizio x citta'
+        // nella sitemap: se e' l'unico di quella combinazione, la pagina
+        // resterebbe indicizzata e vuota.
+        .is("professionals.deactivated_at", null);
 
       const combos = new Set<string>();
       for (const row of (offerte ?? []) as unknown as {
