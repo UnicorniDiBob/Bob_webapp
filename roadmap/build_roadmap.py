@@ -95,8 +95,8 @@ def write_md():
     n_open = sum(1 for i in ITEMS if i["status"] in ("Open", "In progress"))
     L = ["# BOB — Roadmap per traguardi", "",
          "_Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. "
-         "Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` "
-         "(o lascia fare alla GitHub Action)._", "",
+         "Aggiorna i CSV, rilancia `python3 roadmap/build_roadmap.py` e committa "
+         "il risultato: la CI verifica che corrisponda ai CSV, non lo rigenera._", "",
          f"**Stato:** {n_open} attività aperte · "
          f"{sum(1 for i in ITEMS if i['status']=='Dormant')} pronte ma spente · "
          f"{sum(1 for i in ITEMS if i['status']=='Parked')} parcheggiate · "

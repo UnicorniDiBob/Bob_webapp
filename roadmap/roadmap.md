@@ -1,6 +1,6 @@
 # BOB — Roadmap per traguardi
 
-_Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV e rilancia `python3 roadmap/build_roadmap.py` (o lascia fare alla GitHub Action)._
+_Generato da `milestones.csv` + `roadmap.csv` — non modificare a mano. Aggiorna i CSV, rilancia `python3 roadmap/build_roadmap.py` e committa il risultato: la CI verifica che corrisponda ai CSV, non lo rigenera._
 
 **Stato:** 53 attività aperte · 3 pronte ma spente · 29 parcheggiate · 93 chiuse (in `ARCHIVE.csv`)
 
