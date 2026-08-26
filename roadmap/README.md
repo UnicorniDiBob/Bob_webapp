@@ -77,8 +77,10 @@ Internal · Shared) · `owner` · `status` · `start` · `end` · `task`
    python3 roadmap/build_roadmap.py     # scrive roadmap.md + roadmap.html
    python3 roadmap/sync_status.py       # controlla commit e schema
    ```
-5. Commit dei CSV. La GitHub Action rigenera e ricommitta `roadmap.md` e
-   `roadmap.html` da sola (`[skip ci]`, nessun loop).
+5. Commit dei CSV **insieme** a `roadmap.md` e `roadmap.html` rigenerati al
+   passo 4 — nessuno li rigenera al posto tuo. La CI fallisce (job `build` di
+   `ci.yml`) se li dimentichi o dimentichi di rilanciare lo script prima di
+   committare: rigenera i file allo stesso modo e confronta il risultato.
 
 ## Le quattro regole
 
