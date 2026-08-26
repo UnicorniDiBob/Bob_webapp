@@ -117,6 +117,8 @@ aperta nel CSV, o se l'id non esiste ancora nel tracker.
 
 ## Automazione
 
-`.github/workflows/roadmap.yml` rigenera `roadmap.md` e `roadmap.html` a ogni
-push che tocca i CSV, il generatore o il template, e li ricommitta. In pratica:
-modifichi solo i CSV, il resto si aggiorna da solo.
+Non c'è più un bot che rigenera e ricommitta: un push fatto con `GITHUB_TOKEN`
+non fa ripartire la CI sul nuovo commit, quindi lascerebbe la PR con la HEAD
+priva del check richiesto. Il job `build` di `ci.yml` rigenera `roadmap.md` e
+`roadmap.html` in CI e fallisce se non corrispondono ai file committati — la
+rigenerazione (passo 4 sopra) e il commit restano un passo manuale.
