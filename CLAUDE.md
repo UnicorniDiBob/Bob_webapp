@@ -91,11 +91,15 @@ Progetta le verifiche perché possano FALLIRE.
 - Spiega sempre il perché prima di fare una modifica, e dai i comandi esatti per
   pull, build, commit e push. Nessun commento in linea sui comandi eseguibili: un
   `# nota` finale finisce come argomento del comando e lo rompe.
-- Rito del lunedì, 20 minuti: (1) generare da git e Supabase cosa è uscito la
-  settimana scorsa — commit, file, migrazioni applicate, advisor, giri del cron;
-  (2) spuntare il Piano solo da quell'elenco; (3) scegliere le attività della
-  settimana entrante, ognuna con proprietario e settimana; (4) quello che slitta
-  cambia settimana con una riga sul perché; (5) chi ha lavorato aggiorna HANDOFF.md.
+- La settimana di lavoro va da giovedì a mercoledì. "Settimana scorsa" significa
+  sempre quell'intervallo, non lunedì-domenica.
+- Rito del giovedì, 20 minuti — sta sul confine fra la settimana che si chiude e
+  quella che comincia: (1) generare da git e Supabase cosa è uscito nella
+  settimana chiusa il giorno prima — commit, file, migrazioni applicate, advisor,
+  giri del cron; (2) spuntare il Piano solo da quell'elenco; (3) scegliere le
+  attività della settimana entrante, ognuna con proprietario e settimana; (4)
+  quello che slitta cambia settimana con una riga sul perché; (5) chi ha lavorato
+  aggiorna HANDOFF.md.
 
 ## Account
 
