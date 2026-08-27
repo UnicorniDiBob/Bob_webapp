@@ -35,6 +35,7 @@ interface VoceNav {
 const NAV_PRO: VoceNav[] = [
   { href: "/impostazioni/dati", label: "I tuoi dati", hint: "Nome e telefono" },
   { href: "/impostazioni/azienda", label: "La tua azienda", hint: "Profilo pubblico, servizi, tariffe" },
+  { href: "/impostazioni/zone", label: "Dove lavori", hint: "Zone, raggio, quanto ti allontani" },
   { href: "/impostazioni/verifica", label: "Verifica", hint: "Partita IVA, documenti, badge" },
   { href: "/impostazioni/orari", label: "Orari", hint: "Disponibilità e prenotazione diretta" },
   { href: "/impostazioni/lavori", label: "Lavori", hint: "Le foto dei tuoi interventi" },
