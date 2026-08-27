@@ -47,10 +47,19 @@ zero riscatti; ora è 0 e non può più divergere.
 richiesta da lì ti trova, usando gli stessi gettoni pubblicati che usa la
 ricerca — non una simulazione scritta a parte.
 
-## Cosa è a metà
+**L'iscrizione finisce nell'area di lavoro, non su un form.** Fino a oggi
+`/onboarding/profilo` mandava su `/impostazioni/azienda`: la prima cosa che un
+professionista vedeva di Bob era una pagina di campi. Ora si arriva su
+`/dashboard`, che apre da sola la **guida del primo accesso** — cinque tappe che
+mostrano dove arrivano le richieste, dove si dice l'area di lavoro, il
+calendario, i messaggi, e chiudono con una checklist interrogata al database
+(servizi, area, telefono, orari), non con delle spunte decise da noi. Vista una
+volta si segna su `professionals.onboarding_completed_at` e non torna; resta il
+link «Rivedi la guida» in fondo all'area di lavoro.
 
-- Il percorso guidato a sette tappe del primo ingresso non è iniziato: esiste
-  solo la tappa «dove lavori», raggiungibile dalle impostazioni.
+## Cosa è a metà
+- La guida dice «le email di avviso non partono ancora»: è vero e va detto,
+  ma è una frase da togliere il giorno che l'SMTP c'è.
 - **La chat non passa ancora la zona** a `/api/match`: il parametro c'è e
   funziona, ma `BobChat.tsx` è area di André e va cambiato in un suo PR.
   Finché non lo fa, il filtro lavora a livello di città.
