@@ -112,8 +112,16 @@ function ProfiloInner() {
     setSubmitting(true);
     setError(null);
     try {
+      // Il select porta l'id del servizio (serve per professional_services);
+      // il questionario conserva il nome, che è ciò che il pro ha letto.
+      const servizioScelto =
+        profession === "__altro__"
+          ? null
+          : services.find((s) => s.id === profession) ?? null;
       const professionValue =
-        profession === "__altro__" ? professionAltro.trim() : profession;
+        profession === "__altro__"
+          ? professionAltro.trim()
+          : servizioScelto?.name ?? "";
       if (!professionValue) {
         setError("Dicci che lavoro fai: serve per proporti alle persone giuste.");
         setSubmitting(false);
@@ -144,18 +152,49 @@ function ProfiloInner() {
         .select("id")
         .eq("user_id", userId)
         .maybeSingle();
-      if (!existing) {
-        const { error: insErr } = await supabase.from("professionals").insert({
-          user_id: userId,
-          city_id: cityId,
-          years_experience: years ? Number(years) : null,
-          verification_status: "unverified",
-          subscription_tier: "free",
-        });
+      let professionalId: string | null = existing?.id ?? null;
+      if (!professionalId) {
+        const { data: creato, error: insErr } = await supabase
+          .from("professionals")
+          .insert({
+            user_id: userId,
+            city_id: cityId,
+            years_experience: years ? Number(years) : null,
+            verification_status: "unverified",
+            subscription_tier: "free",
+          })
+          .select("id")
+          .single();
         if (insErr) throw insErr;
+        professionalId = creato?.id ?? null;
       }
 
-      // 3. Applica l'eventuale codice promo riscattato al passo del piano.
+      // 3. IL SERVIZIO. Senza una riga in professional_services il profilo
+      //    non compare in nessuna ricerca: getProfessionals() costruisce la
+      //    card dal primo servizio dichiarato e filtra su quello
+      //    (src/lib/data.ts). Fino al 27/08 il mestiere finiva solo in
+      //    onboarding_answers, come testo: si completava l'iscrizione e si
+      //    restava invisibili. Verificato in produzione con un account vero.
+      //    Chi scrive un mestiere fuori catalogo non ha un service_id da
+      //    collegare: la riga non si crea, e glielo diciamo nel form.
+      if (professionalId && servizioScelto) {
+        const { count } = await supabase
+          .from("professional_services")
+          .select("id", { count: "exact", head: true })
+          .eq("professional_id", professionalId);
+        if (!count) {
+          const { error: svcErr } = await supabase
+            .from("professional_services")
+            .insert({
+              professional_id: professionalId,
+              service_id: servizioScelto.id,
+              city_id: cityId,
+            });
+          if (svcErr) throw svcErr;
+        }
+      }
+
+      // 4. Applica l'eventuale codice promo riscattato al passo del piano.
       await fetch("/api/onboarding/promo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -207,7 +246,7 @@ function ProfiloInner() {
               >
                 <option value="">Scegli la categoria…</option>
                 {services.map((s) => (
-                  <option key={s.id} value={s.name}>
+                  <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
                 ))}
@@ -222,6 +261,13 @@ function ProfiloInner() {
                   placeholder="Scrivi il tuo mestiere"
                   data-testid="input-profession-altro"
                 />
+              )}
+              {profession === "__altro__" && (
+                <p className="mt-1 text-xs text-bob-ink/50">
+                  Le categorie fuori elenco le colleghiamo a mano: per
+                  comparire subito nelle ricerche scegli quella più vicina al
+                  tuo lavoro.
+                </p>
               )}
             </div>
 

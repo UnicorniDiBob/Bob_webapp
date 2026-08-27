@@ -269,6 +269,12 @@ function LoginInner() {
           email,
           password,
           options: {
+            // Dove atterra il link della mail di conferma. Senza questo si va
+            // sulla Site URL, cioè sulla home, e chi si è appena iscritto non
+            // sa se la conferma è andata a buon fine (l'URL va anche
+            // aggiunto ai Redirect URLs del progetto Supabase, altrimenti
+            // viene ignorato).
+            emailRedirectTo: `${window.location.origin}/auth/conferma`,
             data: {
               role,
               first_name: firstName.trim(),
