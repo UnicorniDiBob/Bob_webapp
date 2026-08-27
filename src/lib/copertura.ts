@@ -163,3 +163,76 @@ export function descriviCopertura(c: Copertura, citta?: CittaRow | null): string
   if (n === 0) return "Nessuna zona scelta";
   return n === 1 ? "1 zona" : `${n} zone`;
 }
+
+// ---------- Il confronto: chi trova chi ----------
+//
+// Queste due funzioni sono la regola del match, e stanno qui — non dentro
+// data.ts — perché devono essere provabili senza database: sono pure.
+
+/** Quanto è preciso un gettone: più alto, più vicino al cliente. */
+export const RANGO_GETTONE: Record<string, number> = {
+  zone: 5,
+  city: 4,
+  prov: 3,
+  reg: 2,
+  macro: 1,
+  it: 0,
+};
+
+export interface CoperturaPro {
+  /** I gettoni pubblicati. Vuoto = nessuna area dichiarata. */
+  keys: string[];
+  /** La città della riga professionals: serve alla regola di compatibilità. */
+  citySlug: string;
+}
+
+/**
+ * REGOLA DI COMPATIBILITÀ, non un dettaglio: un professionista che non ha
+ * ancora dichiarato niente vale come «tutta la città in cui è iscritto».
+ * Senza, i professionisti già in produzione — che non hanno nessuna copertura —
+ * spariscono da ogni elenco il giorno del deploy.
+ */
+export function trovaPerRichiesta(
+  pro: CoperturaPro,
+  gettoniRichiesta: string[],
+  cittaRichiesta: string
+): boolean {
+  if (pro.keys.length === 0) return pro.citySlug === cittaRichiesta;
+  if (pro.keys.some((k) => gettoniRichiesta.includes(k))) return true;
+
+  // SE IL CLIENTE NON HA DETTO LA ZONA, chi ha dichiarato dei quartieri di
+  // QUESTA città rientra comunque. Senza questa riga la precisione si
+  // punirebbe: un idraulico che dichiara «Navigli e Ticinese» sparirebbe da
+  // ogni ricerca in cui il cliente non ha detto il quartiere — cioè, oggi, da
+  // tutte: requests.zone_slug è NULL su tutte le richieste in produzione.
+  // Trovato con la prova sulle regole, non leggendo il codice.
+  const richiestaSenzaZona = !gettoniRichiesta.some((k) => k.startsWith("zone:"));
+  if (richiestaSenzaZona) {
+    const prefisso = `zone:${cittaRichiesta}/`;
+    return pro.keys.some((k) => k.startsWith(prefisso));
+  }
+  return false;
+}
+
+/** Il rango del gettone più preciso che ha fatto match; -1 se nessuno. */
+export function rangoCopertura(
+  pro: CoperturaPro,
+  gettoniRichiesta: string[]
+): number {
+  if (pro.keys.length === 0) return RANGO_GETTONE.city;
+  let migliore = -1;
+  for (const k of pro.keys) {
+    if (!gettoniRichiesta.includes(k)) continue;
+    const r = RANGO_GETTONE[k.split(":")[0]] ?? 0;
+    if (r > migliore) migliore = r;
+  }
+  if (migliore >= 0) return migliore;
+
+  // Richiesta senza zona e professionista a quartieri: vale come chi ha
+  // dichiarato la città, non meno (vedi trovaPerRichiesta).
+  const richiestaSenzaZona = !gettoniRichiesta.some((k) => k.startsWith("zone:"));
+  if (richiestaSenzaZona && pro.keys.some((k) => k.startsWith("zone:"))) {
+    return RANGO_GETTONE.city;
+  }
+  return migliore;
+}

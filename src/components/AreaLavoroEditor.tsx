@@ -29,6 +29,7 @@ import {
   RAGGIO_MIN,
   SCOPE_LABEL,
   SCOPE_ORDINE,
+  gettoniRichiesta,
   zoneNelCerchio,
   type CittaRow,
   type Scope,
@@ -63,6 +64,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
   const [raggioM, setRaggioM] = useState(RAGGIO_DEFAULT);
   const [aDistanza, setADistanza] = useState(false);
   const [gettoni, setGettoni] = useState<string[]>([]);
+  const [zonaProva, setZonaProva] = useState("");
 
   const cittaScelta = useMemo(
     () => citta.find((c) => c.id === cityId) ?? null,
@@ -434,6 +436,54 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
         </span>
       </label>
 
+      {gettoni.length > 0 && cittaScelta && (
+        <div className="card p-4">
+          <h4 className="text-sm font-semibold text-bob-ink">Provalo</h4>
+          <p className="mt-1 text-xs text-bob-ink/50">
+            Il confronto è lo stesso che fa la ricerca: i gettoni della tua area
+            pubblicata contro quelli della richiesta. Non è una simulazione
+            scritta a parte.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className="text-sm text-bob-ink/70" htmlFor="cop-prova">
+              Una richiesta da
+            </label>
+            <select
+              id="cop-prova"
+              value={zonaProva}
+              onChange={(e) => setZonaProva(e.target.value)}
+              className="input-bob w-auto"
+              data-testid="select-prova-zona"
+            >
+              <option value="">
+                {zone.length > 0 ? "tutta la città" : "questa città"}
+              </option>
+              {zone.map((z) => (
+                <option key={z.slug} value={z.slug}>
+                  {z.label}
+                </option>
+              ))}
+            </select>
+            {(() => {
+              const attesi = gettoniRichiesta(cittaScelta, zonaProva || null);
+              const trovato = attesi.some((k) => gettoni.includes(k));
+              return (
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                    trovato
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-amber-50 text-amber-700"
+                  }`}
+                  data-testid="esito-prova"
+                >
+                  {trovato ? "ti trova" : "non ti trova"}
+                </span>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {errore && <p className="text-sm text-red-600">{errore}</p>}
 
       <div className="flex flex-wrap items-center gap-3">
@@ -455,9 +505,9 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
 
       {gettoni.length > 0 && (
         <p className="text-xs text-bob-ink/40">
-          Come ti vede il motore di ricerca: {gettoni.length}{" "}
-          {gettoni.length === 1 ? "area" : "aree"} pubblicate. Il centro e il
-          raggio non escono da qui.
+          Come ti vede la ricerca: {gettoni.length}{" "}
+          {gettoni.length === 1 ? "area pubblicata" : "aree pubblicate"}. Il
+          centro del cerchio e il raggio non escono da qui.
         </p>
       )}
     </div>

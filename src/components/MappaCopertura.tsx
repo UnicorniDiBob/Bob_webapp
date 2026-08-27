@@ -152,14 +152,26 @@ export default function MappaCopertura({
       }
       const bottone = mk.getElement().firstElementChild as HTMLButtonElement;
       const attiva = dentro.has(z.slug);
-      bottone.className = [
-        "whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium shadow-sm transition",
-        attiva
-          ? "border-bob-indigo bg-bob-indigo text-white"
-          : "border-black/10 bg-white/90 text-bob-ink/70 hover:border-black/30",
-      ].join(" ");
+      // Le etichette di 28 quartieri si sovrappongono al centro della citta',
+      // dove i quartieri sono piccoli e vicini. Fuori area resta un pallino
+      // (con il nome nel title e nell'aria per gli screen reader), dentro
+      // l'area compare il nome: si legge cosa hai scelto, non l'atlante.
+      bottone.className = attiva
+        ? "whitespace-nowrap rounded-full border border-bob-indigo bg-bob-indigo px-2 py-0.5 text-[11px] font-medium text-white shadow-sm transition"
+        : "h-3 w-3 rounded-full border border-black/25 bg-white/90 shadow-sm transition hover:h-auto hover:w-auto hover:whitespace-nowrap hover:border-black/40 hover:px-2 hover:py-0.5 hover:text-[11px] hover:font-medium hover:text-bob-ink/70";
+      // Sulla mappa sta il nome corto: «Sempione / Arco della Pace» diventa
+      // «Sempione». Il nome intero resta nel title, nell'aria e nelle pastiglie
+      // sotto la mappa, dove c'e' spazio.
+      const corto = z.label.split(" / ")[0];
       bottone.title = attiva ? `${z.label}: dentro la tua area` : z.label;
-      bottone.textContent = z.label;
+      bottone.setAttribute("aria-label", z.label);
+      bottone.textContent = attiva ? corto : "";
+      bottone.onmouseenter = () => {
+        if (!dentro.has(z.slug)) bottone.textContent = corto;
+      };
+      bottone.onmouseleave = () => {
+        if (!dentro.has(z.slug)) bottone.textContent = "";
+      };
     });
   }, [zone, selezionate]);
 
