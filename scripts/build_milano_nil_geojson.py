@@ -82,7 +82,10 @@ def norm(s):
     # versione ci chiamava .upper() sopra. Meglio non fidarsi del tipo.
     s = unicodedata.normalize("NFD", str(s or "").upper())
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    return re.sub(r"[^A-Z0-9 ]+", " ", s).strip()
+    # Gli spazi vanno compattati: l'apostrofo di "CITTA' STUDI" diventa uno
+    # spazio e ne restano due, quindi "CITTA STUDI" non ci si ritrovava dentro.
+    # Era l'unica delle 28 zone rimasta senza poligono.
+    return re.sub(r"\s+", " ", re.sub(r"[^A-Z0-9 ]+", " ", s)).strip()
 
 
 def zona_per(nome_nil):
