@@ -21,6 +21,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { SectionHeader } from "@/components/ImpostazioniShell";
 import { SectionSkeleton, SectionError } from "@/components/SectionStates";
+import { EsportaDati } from "@/components/EsportaDati";
 
 export default function DatiPage() {
   const supabase = createClient();
@@ -222,6 +223,10 @@ export default function DatiPage() {
           {saving ? "Salvo…" : "Salva"}
         </button>
       </form>
+
+      {/* Artt. 15 e 20 GDPR. Solo cliente: per il professionista mancano ancora
+          le tabelle del profilo di lavoro, e mezzo export non si consegna. */}
+      {!isPro && <EsportaDati />}
     </div>
   );
 }

@@ -170,6 +170,16 @@ export default function PrivacyPage() {
           portabilità e opposizione (artt. 15–22 GDPR).
         </p>
         <p>
+          <strong>Per avere una copia dei tuoi dati non devi chiederla a
+          nessuno:</strong> la scarichi da solo in Impostazioni → I tuoi dati.
+          Ottieni un archivio con profilo, richieste, conversazioni,
+          appuntamenti, recensioni che hai scritto, scelte sulle comunicazioni e
+          le foto che avevi caricato parlando con Bob, in un formato che puoi
+          rileggere e portare altrove (artt. 15 e 20 GDPR). Il download è
+          disponibile una volta ogni ventiquattro ore. Se hai un account
+          professionista, per ora la copia te la mandiamo noi su richiesta.
+        </p>
+        <p>
           <strong>Per cancellare il tuo account non devi chiedere il permesso a
           nessuno e non devi spiegare perché:</strong> lo chiudi da solo, in Impostazioni
           → Accesso e sicurezza. Il tuo profilo si spegne subito; i dati vengono

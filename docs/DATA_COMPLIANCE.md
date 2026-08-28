@@ -158,13 +158,20 @@ Double opt-in: not legally required in Italy, but cheap and makes the consent pr
 | Prospect/waitlist data | Until launch contact + short tail (~12 months max) | Consent | Erase (Verisure: 12-month prospect retention already contested) |
 | Reviews | Platform life | 6(1)(f) | De-identify author on account deletion |
 | Breach log (internal) | Indefinite | Legal obligation | — |
+| Data-export archive | Not stored | Legal obligation (Art 6(1)(c), answering Arts 15/20) | Built in memory, streamed to the user, never written to a bucket |
+| Data-export timestamp (`profile_private.last_export_at`) | Account life, overwritten each time | 6(1)(f) — rate limit only | Dies with the account row |
 
 ---
 
 ## 6. User rights — implementation targets
 
 - **Deadline: 1 month** from request (extendable +2 for complex cases, must tell user within month 1). Verify identity via logged-in session; don't demand ID documents for logged-in users.
-- **Access/portability (Arts 15, 20):** one "download my data" job producing JSON (profile, requests, chats, reviews authored, consents). JSON satisfies "structured, machine-readable" (WP242).
+- **Access/portability (Arts 15, 20): SHIPPED for customer accounts** (migration 061, `GET /api/account/esporta`, button in Impostazioni → I tuoi dati). Synchronous ZIP: `dati.json` + `LEGGIMI.txt` + the brief photos as real files. JSON satisfies "structured, machine-readable" (WP242).
+  - **Covered:** the auth record (email, confirmation, last sign-in — `public.users` holds only id/role/created_at, the email is in `auth.users`), profiles, profile_private, profile_phone, customer_addresses, communication_consents, customer_memory, requests, request_addresses, job_briefs, request_messages (both sides, pro named, internal `sender_id` stripped), appointments, ratings, support_tickets, promo_redemptions, account_deletion_requests, city_waitlist (matched **by email** — it has no `user_id`, so a `user_id`-only sweep silently misses it).
+  - **Deliberately excluded:** `search_events` — no user column by design (mig 026), so searches are genuinely anonymous. The export says so in writing rather than staying silent.
+  - **Still open:** the professional block (~20 tables: verification, documents, subscriptions, payments, payouts, availability, portfolio, coverage). Owner: Internal track. Until it lands the route returns 409 to non-customers instead of handing over a half-empty archive.
+  - **Rate limit:** one per 24 h, enforced by `profile_private.last_export_at` (Art 12(5), repetitive requests). No history kept — the column is overwritten, not appended.
+  - **Maintenance rule:** every new table with a `user_id` (or an email key) must be added to `raccogliDatiCliente` in the same PR that creates it. An export that misses a table is a wrong answer to an access request, not a partial one.
 - **Erasure (Art 17):** hard-delete or irreversibly anonymize personal fields; KEEP what §5 requires (invoices, dispute archives, consent proofs) — Art 17(3) covers this, tell the user what's retained and why. Pseudonymization ≠ anonymization: if a key can re-link it, it's still personal data.
 - **Backups:** erase from production immediately; documented policy that backups expire on rotation (Supabase PITR window) and any restore re-applies deletions. Keep a `deleted_users(user_id_hash, deleted_at)` tombstone to re-delete on restore.
 - **Schema practice (Supabase):** design deletes now, not later — FK `ON DELETE CASCADE` where full removal is right; `ON DELETE SET NULL` + de-identified placeholder where content must survive (reviews, job records); RLS on every table; service-role key server-side only; MFA on Supabase/Vercel dashboards (Art 32 — missing MFA is a recurring factor in Garante breach fines).
