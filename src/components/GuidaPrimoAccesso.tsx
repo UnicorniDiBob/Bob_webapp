@@ -27,7 +27,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, X, ArrowRight, Loader2 } from "lucide-react";
+import { Check, X, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Props {
@@ -45,30 +45,125 @@ interface Stato {
   orari: number;
 }
 
+// Un riquadro per tappa: mostra la cosa di cui si parla, invece di
+// descriverla. Sono div e bordi, nessuna immagine da caricare.
+function RiquadroRichieste() {
+  return (
+    <div className="space-y-2 rounded-lg border border-black/10 bg-white p-3">
+      <div className="flex items-center justify-between">
+        <div className="h-2 w-24 rounded bg-bob-ink/20" />
+        <span className="rounded-full bg-bob-indigo/10 px-2 py-0.5 text-[10px] font-semibold text-bob-indigo">
+          nuova
+        </span>
+      </div>
+      <div className="h-2 w-full rounded bg-bob-ink/10" />
+      <div className="h-2 w-3/5 rounded bg-bob-ink/10" />
+      <div className="flex gap-2 pt-1">
+        <div className="h-5 w-20 rounded-md bg-bob-indigo/80" />
+        <div className="h-5 w-16 rounded-md border border-black/10" />
+      </div>
+    </div>
+  );
+}
+
+function RiquadroMappa() {
+  const punti = [
+    [22, 30],
+    [38, 20],
+    [52, 34],
+    [64, 52],
+    [34, 58],
+    [76, 26],
+  ];
+  return (
+    <div className="relative h-28 overflow-hidden rounded-lg border border-black/10 bg-[#f4f4f1]">
+      <div className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bob-indigo bg-bob-indigo/10" />
+      {punti.map(([x, y], i) => (
+        <span
+          key={i}
+          className={`absolute h-2.5 w-2.5 rounded-full border ${
+            i < 3
+              ? "border-white bg-bob-indigo"
+              : "border-black/25 bg-white"
+          }`}
+          style={{ left: `${x}%`, top: `${y}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function RiquadroCalendario() {
+  const barre = [0, 1, 2, 3, 4, 5, 6];
+  return (
+    <div className="flex h-28 items-end gap-1.5 rounded-lg border border-black/10 bg-white p-3">
+      {barre.map((g) => (
+        <div key={g} className="flex-1 space-y-1">
+          {g < 5 ? (
+            <>
+              <div className="h-10 rounded bg-bob-indigo/70" />
+              <div className="h-4 rounded bg-bob-indigo/25" />
+            </>
+          ) : (
+            <div className="h-3 rounded bg-bob-ink/10" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RiquadroMessaggi() {
+  return (
+    <div className="space-y-2 rounded-lg border border-black/10 bg-white p-3">
+      <div className="flex">
+        <div className="max-w-[70%] rounded-2xl rounded-bl-sm bg-black/[0.06] px-3 py-2">
+          <div className="h-2 w-24 rounded bg-bob-ink/20" />
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <div className="max-w-[70%] rounded-2xl rounded-br-sm bg-bob-indigo px-3 py-2">
+          <div className="h-2 w-16 rounded bg-white/70" />
+        </div>
+      </div>
+      <div className="flex items-center gap-1 pt-0.5 text-[10px] font-semibold text-bob-indigo">
+        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-bob-indigo text-[9px] text-white">
+          2
+        </span>
+        non letti
+      </div>
+    </div>
+  );
+}
+
+// Le tappe NON portano via dalla guida: fino a ieri ogni tappa aveva un link,
+// e cliccarlo interrompeva il giro a metà (segnalato il 28/08). Le cose da
+// fare si raccolgono nell'ultima tappa, dove il giro è finito e andarsene ha
+// senso.
 const TAPPE = [
   {
     titolo: "Qui arrivano le richieste",
     testo:
-      "Questa è la tua area di lavoro. Quando un cliente della tua zona cerca il tuo mestiere, la richiesta compare qui con il riassunto del problema. Nessun contatto da comprare: se sei nell’area giusta, arriva.",
-    link: null as { href: string; testo: string } | null,
+      "Questa è la tua area di lavoro. Quando un cliente della tua zona cerca il tuo mestiere, la richiesta compare qui con il riassunto del problema. Nessun contatto da comprare.",
+    riquadro: <RiquadroRichieste />,
   },
   {
     titolo: "Dove lavori",
     testo:
-      "Disegna il cerchio del tuo giro abituale, o scegli i quartieri a mano. È il dato che decide a quali richieste ti proponiamo: il centro del cerchio resta privato, pubblichiamo solo le zone.",
-    link: { href: "/impostazioni/zone", testo: "Imposta la tua area" },
+      "Disegni il cerchio del tuo giro, o scegli i quartieri a mano. È il dato che decide a quali richieste ti proponiamo: il centro resta privato, pubblichiamo solo le zone.",
+    riquadro: <RiquadroMappa />,
   },
   {
     titolo: "Il calendario",
     testo:
-      "Dagli orari dipendono le proposte che facciamo ai clienti. Se li lasci vuoti, Bob propone orari standard — e possono essere ore in cui non lavori. Con un piano a pagamento puoi anche far prenotare direttamente.",
-    link: { href: "/impostazioni/orari", testo: "Metti i tuoi orari" },
+      "Dagli orari dipendono le proposte che facciamo ai clienti. Se li lasci vuoti, proponiamo orari standard — e possono essere ore in cui non lavori.",
+    riquadro: <RiquadroCalendario />,
   },
   {
     titolo: "I messaggi",
     testo:
-      "Le conversazioni con i clienti stanno in Messaggi, con il contatore dei non letti in cima a ogni pagina. Una cosa detta chiara: le email di avviso non partono ancora, quindi per ora i messaggi si vedono qui dentro.",
-    link: { href: "/messaggi", testo: "Vedi i messaggi" },
+      "Le conversazioni stanno in Messaggi, con il contatore dei non letti in cima a ogni pagina. Detto chiaro: le email di avviso non partono ancora, quindi per ora si leggono qui dentro.",
+    riquadro: <RiquadroMessaggi />,
   },
 ];
 
@@ -169,6 +264,8 @@ export default function GuidaPrimoAccesso({
   useEffect(() => {
     const tasto = (e: KeyboardEvent) => {
       if (e.key === "Escape") chiudi(true);
+      if (e.key === "ArrowRight") setPasso((p) => Math.min(p + 1, TAPPE.length));
+      if (e.key === "ArrowLeft") setPasso((p) => Math.max(p - 1, 0));
     };
     window.addEventListener("keydown", tasto);
     return () => window.removeEventListener("keydown", tasto);
@@ -215,9 +312,27 @@ export default function GuidaPrimoAccesso({
     >
       <div className="card w-full max-w-lg rounded-b-none p-6 sm:rounded-b-2xl">
         <div className="mb-4 flex items-start justify-between gap-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/40">
-            {ultima ? "Ultimo passo" : `Passo ${passo + 1} di ${TAPPE.length + 1}`}
-          </p>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/40">
+              {ultima ? "Ultimo passo" : `Passo ${passo + 1} di ${TAPPE.length + 1}`}
+            </p>
+            {/* I pallini dicono quanto manca senza far contare: si vede
+                a colpo d'occhio che il giro è corto. */}
+            <div className="mt-2 flex gap-1.5" aria-hidden="true">
+              {Array.from({ length: TAPPE.length + 1 }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === passo
+                      ? "w-6 bg-bob-indigo"
+                      : i < passo
+                        ? "w-1.5 bg-bob-indigo/40"
+                        : "w-1.5 bg-black/10"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             onClick={() => chiudi(true)}
@@ -238,16 +353,7 @@ export default function GuidaPrimoAccesso({
             <p className="mt-2 text-sm leading-relaxed text-bob-ink/65">
               {tappa.testo}
             </p>
-            {tappa.link && (
-              <Link
-                href={tappa.link.href}
-                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-bob-indigo hover:underline"
-                onClick={() => chiudi(true)}
-              >
-                {tappa.link.testo}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Link>
-            )}
+            <div className="mt-4">{tappa.riquadro}</div>
           </>
         ) : (
           <>
