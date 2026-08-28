@@ -15,10 +15,15 @@ script si lancia dal Mac, una volta, e il risultato si committa.
 
 USO
     python3 scripts/build_milano_nil_geojson.py
-    python3 scripts/build_milano_nil_geojson.py --url <altro-url>
+    python3 scripts/build_milano_nil_geojson.py --url <indirizzo-specifico>
+    python3 scripts/build_milano_nil_geojson.py --elenca   # cosa offre il portale
 
-Solo libreria standard. Riconosce da sé se la risorsa è GeoJSON o un CSV con
-la geometria in WKT.
+Solo libreria standard. Lo script CERCA DA SÉ la risorsa giusta interrogando
+l'API del portale (CKAN): il dataset dei NIL pubblica più formati, e quello
+scaricato al primo tentativo — ds964_nil_wm_4326.csv — contiene soltanto i
+centroidi (colonne LONG_X_4326_CENTROID, LAT_Y_4326_CENTROID), non i perimetri.
+Se non trova nulla di utile, stampa l'elenco delle risorse invece di fallire in
+silenzio.
 
 COSA PRODUCE
 Un FeatureCollection con una feature per NIL, geometria semplificata (le
@@ -159,7 +164,9 @@ def da_csv(testo):
     if not col_geo:
         print("Colonne trovate:", campi, file=sys.stderr)
         raise SystemExit(
-            "Nessuna colonna con geometria WKT. Passa --url della risorsa GeoJSON."
+            "Questa risorsa non ha geometrie: sono soltanto i centroidi, che "
+            "abbiamo già.\nLancia  python3 scripts/build_milano_nil_geojson.py "
+            "--elenca  e manda l'elenco."
         )
     col_nome = next(
         (c for c in campi if "NIL" in c.upper() or "NOME" in c.upper()), campi[0]
@@ -167,14 +174,97 @@ def da_csv(testo):
     return [(riga.get(col_nome), wkt_a_poligoni(riga.get(col_geo))) for riga in righe]
 
 
+API_PACCHETTO = (
+    "https://dati.comune.milano.it/api/3/action/package_show?id="
+    "e8e765fc-d882-40b8-95d8-16ff3d39eb7c"
+)
+API_RICERCA = (
+    "https://dati.comune.milano.it/api/3/action/package_search?q=NIL+nuclei&rows=20"
+)
+
+
+def leggi(url, timeout=120):
+    return urllib.request.urlopen(url, timeout=timeout).read().decode("utf-8-sig")
+
+
+def risorse_del_pacchetto(url_api):
+    """Elenco (formato, nome, url) delle risorse di un pacchetto CKAN."""
+    try:
+        dati = json.loads(leggi(url_api, 60))
+    except Exception as e:
+        print("  (API non raggiungibile:", e, ")", file=sys.stderr)
+        return []
+    pacchetto = dati.get("result") or {}
+    if isinstance(pacchetto, list):
+        pacchetto = pacchetto[0] if pacchetto else {}
+    out = []
+    for r in pacchetto.get("resources", []):
+        out.append((
+            (r.get("format") or "").upper(),
+            r.get("name") or "",
+            r.get("url") or "",
+        ))
+    return out
+
+
+def scegli_geometrica(risorse):
+    """La prima risorsa che promette geometrie: GeoJSON, poi GML, poi KML."""
+    def punteggio(r):
+        formato, nome, url = r
+        testo = f"{formato} {nome} {url}".upper()
+        if "GEOJSON" in testo or url.lower().endswith(".geojson"):
+            return 3
+        if "GML" in testo:
+            return 2
+        if "KML" in testo:
+            return 1
+        return 0
+    candidate = sorted(risorse, key=punteggio, reverse=True)
+    return candidate[0] if candidate and punteggio(candidate[0]) > 0 else None
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--url", default=CSV_URL)
+    ap.add_argument("--url", default=None)
     ap.add_argument("--passo", type=int, default=3, help="dirada un vertice ogni N")
+    ap.add_argument("--elenca", action="store_true", help="mostra le risorse e esci")
     args = ap.parse_args()
 
-    print("Scarico", args.url)
-    testo = urllib.request.urlopen(args.url, timeout=120).read().decode("utf-8-sig")
+    if args.elenca:
+        print("Risorse del dataset NIL:")
+        for formato, nome, url in risorse_del_pacchetto(API_PACCHETTO):
+            print(f"  [{formato or '?'}] {nome}\n      {url}")
+        print("\nSe qui non c'è un GeoJSON, cerco anche fra i dataset simili:")
+        try:
+            dati = json.loads(leggi(API_RICERCA, 60))
+            for p in (dati.get("result") or {}).get("results", []):
+                print(f"  · {p.get('title')}  (id {p.get('id')})")
+        except Exception as e:
+            print("  (ricerca non riuscita:", e, ")")
+        return
+
+    url = args.url
+    if not url:
+        print("Cerco la risorsa con le geometrie sul portale…")
+        risorse = risorse_del_pacchetto(API_PACCHETTO)
+        for formato, nome, u in risorse:
+            print(f"  [{formato or '?'}] {nome or u.rsplit('/', 1)[-1]}")
+        scelta = scegli_geometrica(risorse)
+        if scelta:
+            print(f"Uso la risorsa [{scelta[0]}] {scelta[1]}")
+            url = scelta[2]
+        else:
+            print(
+                "\nNessuna risorsa con geometrie in questo dataset.\n"
+                "Lancia:  python3 scripts/build_milano_nil_geojson.py --elenca\n"
+                "e passami l'elenco: cerchiamo il dataset giusto insieme.\n"
+                "Ripiego intanto sul CSV noto, per vedere cosa contiene.",
+                file=sys.stderr,
+            )
+            url = CSV_URL
+
+    print("Scarico", url)
+    testo = leggi(url)
     grezzi = da_geojson(testo) if testo.lstrip().startswith("{") else da_csv(testo)
     print("Nuclei letti:", len(grezzi))
 
