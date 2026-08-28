@@ -1,106 +1,81 @@
-# Passaggio di consegne — 27 agosto 2026 (sera)
+# Passaggio di consegne — 28 agosto 2026
 
 ## Cosa ho fatto
 
-**Migrazione 057 applicata in produzione** e verificata: 28 zone di Milano in
-`city_zones`, copertura del professionista in due tabelle (geometria privata,
-gettoni pubblici), unità di misura nuove, costi accessori, `ready_at`.
+**Il primo ingresso del professionista, completo e in produzione.** L'iscrizione
+finisce nell'area di lavoro (prima atterrava su un form di impostazioni) e apre
+una **guida di cinque tappe** che spiega dove arrivano le richieste, dove si dice
+l'area di lavoro, il calendario, i messaggi, e chiude con una checklist
+interrogata al database. Ogni tappa ha il suo riquadro e nessun link che porta
+via a metà. Vista una volta si segna su `professionals.onboarding_completed_at`;
+resta il link «Rivedi la guida».
 
-**058**: chiude i sei rilievi che la 057 aveva aperto sugli advisor. Le due
-funzioni di trigger non sono più chiamabili via RPC (come la 034b), e
-`request_coverage_keys` — che per leggere `private.slugify` doveva essere
-SECURITY DEFINER aperta a `anon` — è stata sostituita da
-`cities.coverage_keys`, una colonna mantenuta da un trigger. Advisor di
-sicurezza: **zero rilievi**, tranne la leaked-password protection che richiede
-il piano Pro.
+**La pagina «Dove lavori»** (`/impostazioni/zone`): cerchio con centro
+trascinabile e raggio fino a 20 km, oppure quartieri a mano, oppure ampiezze
+larghe fino a tutta Italia e «anche a distanza». Fin dove si può arrivare lo
+decide il catalogo (`services.max_coverage_scope`, migrazione 059): un fotografo
+copre l'Italia, un idraulico la provincia.
 
-**059**: `services.max_coverage_scope` per i 15 mestieri. Un fotografo copre
-l'Italia, un idraulico la provincia: la domanda «quanto ti allontani» ha una
-risposta che dipende dal lavoro, non dalla persona. Valori di partenza, si
-cambiano con un update.
+**Sotto la mappa c'è Milano davvero**: i perimetri dei NIL del Comune (CC-BY) in
+`public/geo/milano-nil.geojson`, generati da `scripts/build_milano_nil_geojson.py`,
+disegnati in SVG sopra la tela. **Nessun fornitore di mappe**: niente tile,
+niente glyph, niente Google né Mapbox né MapTiler — l'IP del professionista e la
+porzione di città che guarda non escono da Bob.
 
-**Pagina «Dove lavori»** (`/impostazioni/zone`): mappa e zone sullo stesso
-schermo. Cerchio con centro trascinabile e slider del raggio, oppure quartieri
-scelti a mano; per le aree larghe (città, provincia, regione, tutta Italia)
-nessun disegno. **Nessun fornitore di mappe**: nessuna tile, nessun glyph,
-niente Google né Mapbox né MapTiler. Lo sfondo è un colore e sopra ci sono i
-dati nostri.
+**Il filtro per copertura è collegato** (`src/lib/data.ts`): la richiesta genera i
+propri gettoni e l'elenco tiene chi ne ha uno in comune, ordinando per
+precisione. Due regole da ricordare: chi non ha dichiarato un'area vale come
+«tutta la città in cui è iscritto», e una richiesta senza zona non penalizza chi
+ha dichiarato i quartieri.
 
-**Il filtro per copertura è collegato** (`src/lib/data.ts`): una richiesta
-genera i propri gettoni dalla città (e dalla zona, se il cliente l'ha detta) e
-l'elenco tiene chi ha un gettone in comune. L'ordinamento mette per primo il
-gettone più preciso che ha fatto match: chi copre tutta Italia compare per una
-richiesta di Milano, ma dietro all'idraulico del quartiere. `/api/match` accetta
-`?zone=`. Due regole che tengono in piedi il resto:
-- chi **non ha dichiarato** nessuna area vale come «tutta la città in cui è
-  iscritto»: senza, i cinque professionisti in produzione sparivano da ogni
-  elenco il giorno del deploy;
-- se il cliente **non dice la zona**, chi ha dichiarato dei quartieri di quella
-  città rientra comunque: altrimenti la precisione si punirebbe, e oggi
-  `requests.zone_slug` è NULL su tutte le richieste.
-
-**060**: `promo_codes.used_count` diventa il conteggio delle righe di
-`promo_redemptions`, mantenuto da un trigger su insert e delete. Diceva 2 con
-zero riscatti; ora è 0 e non può più divergere.
-
-**Nella pagina c'è un blocco «Provalo»**: scegli una zona e dice se una
-richiesta da lì ti trova, usando gli stessi gettoni pubblicati che usa la
-ricerca — non una simulazione scritta a parte.
-
-**L'iscrizione finisce nell'area di lavoro, non su un form.** Fino a oggi
-`/onboarding/profilo` mandava su `/impostazioni/azienda`: la prima cosa che un
-professionista vedeva di Bob era una pagina di campi. Ora si arriva su
-`/dashboard`, che apre da sola la **guida del primo accesso** — cinque tappe che
-mostrano dove arrivano le richieste, dove si dice l'area di lavoro, il
-calendario, i messaggi, e chiudono con una checklist interrogata al database
-(servizi, area, telefono, orari), non con delle spunte decise da noi. Vista una
-volta si segna su `professionals.onboarding_completed_at` e non torna; resta il
-link «Rivedi la guida» in fondo all'area di lavoro.
+**Migrazioni 057-060 applicate**, advisor di sicurezza a zero rilievi (resta solo
+la leaked-password protection, che vuole il piano Pro).
 
 ## Cosa è a metà
-- La guida dice «le email di avviso non partono ancora»: è vero e va detto,
-  ma è una frase da togliere il giorno che l'SMTP c'è.
-- **La chat non passa ancora la zona** a `/api/match`: il parametro c'è e
-  funziona, ma `BobChat.tsx` è area di André e va cambiato in un suo PR.
-  Finché non lo fa, il filtro lavora a livello di città.
-- **Non ho potuto provare la query dal vivo**: l'host di Supabase non è
-  nell'allowlist di rete della sessione, e nemmeno la shell del Mac ci arriva.
-  Le regole del filtro sono provate nel browser una per una, la RLS in SQL con i
-  ruoli veri, ma il giro completo va confermato con un comando (sotto).
-- Il poligono a mano libera: la colonna c'è (`area_geojson`), la UI no.
-- **Il worker di maplibre non viene emesso nel bundle di produzione di Next.**
-  Conseguenza: una sorgente geojson resta «non caricata» per sempre, senza
-  errore. Per questo il cerchio è un alone nel DOM e non un layer. Va sistemato
-  prima di aggiungere una mappa stradale (PMTiles), non prima.
-- Le etichette dei quartieri: diradate (pallino fuori area, nome corto dentro).
-  Al centro, con un cerchio piccolo, i nomi delle zone scelte possono ancora
-  toccarsi: è il limite di 28 etichette in tre chilometri.
+
+- **La chat non passa ancora `zone`** a `/api/match`: il parametro esiste e
+  funziona, ma `BobChat.tsx` e il percorso del preventivo sono di André. Finché
+  non li tocca, il filtro lavora a livello di città e `requests.zone_slug` resta
+  NULL su tutte le richieste.
+- **Il nostro elenco è di 28 zone, i nuclei ufficiali sono 88.** Sulla mappa si
+  vedono le zone bianche: chi lavora, per esempio, a Chiaravalle non ha una
+  casella. Decisione di prodotto aperta: allargare l'elenco o tenerlo corto.
+- `ready_at` esiste come colonna e **nessuno la scrive**: la checklist calcola,
+  ma il prodotto non dichiara lo stato «pronto a ricevere richieste».
+- Le domande dell'iscrizione: fatte 2 su 10 della specifica. Mancano soprattutto
+  **tariffa nell'unità del mestiere** (la pagina azienda dice ancora «€/h» fisso,
+  e un fotografo lavora a evento) e i **costi accessori** (colonne in database,
+  nessuna interfaccia).
+- Poligono a mano libera: colonna `area_geojson` pronta, interfaccia no. Da
+  valutare se serve davvero.
+- Il worker di maplibre non viene emesso nel bundle di Next: una sorgente geojson
+  resta «non caricata» senza errore. Per questo cerchio e quartieri sono in DOM e
+  SVG. Va sistemato **prima** di aggiungere una mappa stradale, non prima.
+- Zone di Roma e Torino: c'è il generatore, mancano i dati. Un comando quando
+  quelle città si aprono.
 
 ## Cosa ho applicato in produzione che l'altro deve sapere
 
-- **Migrazioni 057, 058, 059, 060 applicate** (file in repo prima dell'applicazione,
-  come da regola). `list_migrations` le riporta.
-- Una **copertura di prova** sul professionista demo `idromilano`: cerchio di
-  5 km dal Duomo, 18 zone. Cancellabile senza conseguenze.
+- **Migrazioni 057, 058, 059, 060 applicate** (file in repo prima
+  dell'applicazione, come da regola). Dopo il merge non c'è altro da fare sul
+  database.
 - **Da fare a mano su Supabase, ancora aperto**: aggiungere
-  `https://www.meetonda.com/auth/conferma` e
-  `http://localhost:3000/auth/conferma` ai Redirect URLs
-  (Authentication → URL Configuration). Senza, `emailRedirectTo` viene
-  ignorato e il link della mail torna sulla home.
-- Account di prova `sig.mozzato@gmail.com` cancellato due volte con DELETE su
-  `auth.users`: cancellazione dura, non il percorso della 056, che resta da
-  provare.
-
-## Come confermare il giro completo, dal tuo Mac
-
-```
-cd ~/BOB
-npm run dev
-curl -s "http://localhost:3000/api/match?service=idraulico&city=milano&zone=isola" | python3 -m json.tool | grep fullName
-curl -s "http://localhost:3000/api/match?service=idraulico&city=milano&zone=baggio" | python3 -m json.tool | grep fullName
-```
-
-`idromilano` ha un cerchio di 5 km dal Duomo (18 zone, Isola dentro, Baggio
-fuori): deve comparire nella prima e **non** nella seconda. Gli altri quattro
-professionisti, che non hanno dichiarato niente, compaiono in entrambe per la
-regola di compatibilità.
+  `https://www.meetonda.com/auth/conferma` e `http://localhost:3000/auth/conferma`
+  ai Redirect URLs (Authentication → URL Configuration). Senza,
+  `emailRedirectTo` viene ignorato e il link della mail di conferma torna sulla
+  home.
+- **Decisione da prendere a settembre: SMTP personalizzato.** Il mailer interno
+  di Supabase manda 2 email all'ora per tutto il progetto: il terzo
+  professionista che si iscrive nella stessa ora non entra mai. Quindici minuti
+  di lavoro più 8-10 giorni fra propagazione e warm-up, e l'outreach parte a
+  ottobre.
+- La guida è segnata come già vista per i cinque professionisti demo
+  `@bobapp.it`, così non si apre una finestra in mezzo a una dimostrazione.
+  Reversibile con un update.
+- `promo_codes.used_count` di BOB-FOUNDER-2026 ora è il conteggio delle righe di
+  `promo_redemptions` (trigger della 060): diceva 2 con zero riscatti.
+- Il ramo **`feat/mappa-copertura` su GitHub non va mergiato mai**: è la versione
+  vecchia con la guida difettosa. Da cancellare.
+- La **revisione 2 della specifica** (`docs/CHECKIN_PRIMO_INGRESSO.md`) vive solo
+  sul ramo locale `docs/checkin-primo-ingresso`: in `main` c'è la revisione 1,
+  che non parla né di mappa né di coperture ampie.

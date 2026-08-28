@@ -78,9 +78,14 @@ ZONES = [
 
 
 def norm(s):
-    s = unicodedata.normalize("NFD", (s or "").upper())
+    # str(): nel GeoJSON del Comune il campo ID_NIL e' un NUMERO, e la prima
+    # versione ci chiamava .upper() sopra. Meglio non fidarsi del tipo.
+    s = unicodedata.normalize("NFD", str(s or "").upper())
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    return re.sub(r"[^A-Z0-9 ]+", " ", s).strip()
+    # Gli spazi vanno compattati: l'apostrofo di "CITTA' STUDI" diventa uno
+    # spazio e ne restano due, quindi "CITTA STUDI" non ci si ritrovava dentro.
+    # Era l'unica delle 28 zone rimasta senza poligono.
+    return re.sub(r"\s+", " ", re.sub(r"[^A-Z0-9 ]+", " ", s)).strip()
 
 
 def zona_per(nome_nil):
@@ -134,11 +139,23 @@ def da_geojson(testo):
     out = []
     for f in dati.get("features", []):
         g = f.get("geometry") or {}
+        # ATTENZIONE all'ordine: le proprieta' sono ID_NIL, NIL, Valido_dal…
+        # e la prima che "contiene NIL" e' l'identificativo numerico. Si
+        # cercano prima le chiavi esatte, e si accettano solo valori testuali.
+        props = f.get("properties") or {}
         nome = None
-        for chiave, valore in (f.get("properties") or {}).items():
-            if "NIL" in chiave.upper() or "NOME" in chiave.upper():
+        for chiave in ("NIL", "nil", "NOME", "nome", "NIL_NAME", "Nome"):
+            valore = props.get(chiave)
+            if isinstance(valore, str) and valore.strip():
                 nome = valore
                 break
+        if nome is None:
+            for chiave, valore in props.items():
+                if not isinstance(valore, str) or not valore.strip():
+                    continue
+                if "NIL" in chiave.upper() or "NOME" in chiave.upper():
+                    nome = valore
+                    break
         anelli = []
         if g.get("type") == "Polygon":
             anelli = [g["coordinates"][0]]
