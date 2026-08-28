@@ -80,7 +80,11 @@ export interface Copertura {
 }
 
 export const RAGGIO_MIN = 500;
-export const RAGGIO_MAX = 50000;
+// Il raggio si ferma a 20 km: i quartieri di Milano stanno in una quindicina
+// di chilometri, oltre si prendono tutti e la domanda non e' piu' «dove giri»
+// ma «quanto sei disposto a spostarti» — che si risponde con l'ampiezza
+// (tutta la citta', la provincia, la regione), non allargando un cerchio.
+export const RAGGIO_MAX = 20000;
 export const RAGGIO_DEFAULT = 5000;
 
 const R_TERRA = 6371000;
