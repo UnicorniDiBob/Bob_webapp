@@ -188,6 +188,9 @@ export interface ProfessionalCard {
   verificationStatus: VerificationStatus;
   /** Livello del blocco 10 già "abbassato" per il pubblico (vedi publicVerificationLevel). */
   verificationLevel: VerificationLevel;
+  /** I gettoni di copertura pubblicati (057/058); vuoto = nessuna area dichiarata. */
+  coverageKeys: string[];
+  bestScope: string | null;
   /** Data del riscontro che ha prodotto il livello: si mostra sempre col badge. */
   verifiedAt: string | null;
   responseTimeLabel: string | null;

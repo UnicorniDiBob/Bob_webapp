@@ -1,4 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  gettoniRichiesta,
+  rangoCopertura,
+  trovaPerRichiesta,
+} from "@/lib/copertura";
 import { publicVerificationLevel, type VerificationLevel } from "@/lib/vat";
 import type {
   City,
@@ -152,6 +157,41 @@ const PROFESSIONAL_SELECT = `
   ratings ( score )
 `;
 
+/**
+ * I gettoni di copertura dei professionisti elencati.
+ *
+ * PERCHE' UNA QUERY A PARTE E NON UN EMBED. Un embed
+ * (`professional_coverage_public ( ... )`) dipende da come PostgREST risolve la
+ * relazione, e un errore lì non svuota una colonna: svuota l'INTERO elenco dei
+ * professionisti. Una query separata su una tabella minuscola costa un giro di
+ * rete e non può far sparire nessuno. Se fallisce, si ricade sulla regola di
+ * compatibilità (nessuna area dichiarata = la città di iscrizione), che è il
+ * comportamento di prima della 057.
+ */
+async function coveragesByProfessionalId(
+  ids: string[]
+): Promise<Record<string, { keys: string[]; bestScope: string | null }>> {
+  if (ids.length === 0) return {};
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("professional_coverage_public")
+    .select("professional_id, coverage_keys, best_scope")
+    .in("professional_id", ids);
+  if (error) return {};
+  const mappa: Record<string, { keys: string[]; bestScope: string | null }> = {};
+  for (const r of (data ?? []) as {
+    professional_id: string;
+    coverage_keys: string[] | null;
+    best_scope: string | null;
+  }[]) {
+    mappa[r.professional_id] = {
+      keys: r.coverage_keys ?? [],
+      bestScope: r.best_scope,
+    };
+  }
+  return mappa;
+}
+
 async function namesByUserId(
   userIds: string[]
 ): Promise<Record<string, string>> {
@@ -170,7 +210,8 @@ async function namesByUserId(
 
 function toCard(
   row: RawProfessionalRow,
-  names: Record<string, string>
+  names: Record<string, string>,
+  coperture: Record<string, { keys: string[]; bestScope: string | null }> = {}
 ): ProfessionalCard {
   const ratings = row.ratings ?? [];
   const nRatings = ratings.length;
@@ -182,6 +223,8 @@ function toCard(
 
   // Usiamo il primo servizio dichiarato (1 servizio per professionista nel pilota).
   const ps = row.professional_services?.[0];
+
+  const cop = coperture[row.id];
 
   return {
     id: row.id,
@@ -198,6 +241,8 @@ function toCard(
     ),
     verifiedAt: row.verification_level_at,
     responseTimeLabel: row.response_time_label,
+    coverageKeys: cop?.keys ?? [],
+    bestScope: cop?.bestScope ?? null,
     city: { name: row.cities?.name ?? "", slug: row.cities?.slug ?? "" },
     serviceName: ps?.services?.name ?? null,
     serviceSlug: ps?.services?.slug ?? null,
@@ -218,6 +263,33 @@ export interface ProfessionalFilters {
   citySlug?: string;
   serviceSlug?: string;
   maxPrice?: number;
+  /** La zona dichiarata dal cliente, se l'ha detta. */
+  zoneSlug?: string;
+}
+
+// ---------- Copertura geografica (migrazioni 057 e 058) ----------
+
+/**
+ * I gettoni di una richiesta: quelli della citta' (colonna mantenuta da un
+ * trigger, migrazione 058) piu' il gettone di zona, se il cliente l'ha detta.
+ * Vengono dal database, non da uno slugify riscritto qui: e' la ragione per cui
+ * i due elenchi si incontrano.
+ */
+export async function getRequestCoverageKeys(
+  citySlug: string,
+  zoneSlug?: string | null
+): Promise<string[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("cities")
+    .select("slug, coverage_keys")
+    .eq("slug", citySlug)
+    .maybeSingle();
+  if (!data) return [];
+  return gettoniRichiesta(
+    data as { slug: string; coverage_keys: string[] | null },
+    zoneSlug ?? null
+  );
 }
 
 export async function getProfessionals(
@@ -234,11 +306,35 @@ export async function getProfessionals(
     .is("deactivated_at", null);
 
   const rows = (data ?? []) as unknown as RawProfessionalRow[];
-  const names = await namesByUserId(rows.map((r) => r.user_id));
-  let cards = rows.map((r) => toCard(r, names));
+  const [names, coperture] = await Promise.all([
+    namesByUserId(rows.map((r) => r.user_id)),
+    coveragesByProfessionalId(rows.map((r) => r.id)),
+  ]);
+  let cards = rows.map((r) => toCard(r, names, coperture));
 
+  // COPERTURA GEOGRAFICA (057/058). Fino a oggi «dove lavora» era la citta'
+  // scritta sulla riga del professionista. Ora chi ha dichiarato un'area viene
+  // confrontato per gettoni: cinque quartieri, la provincia o tutta Italia
+  // rispondono alla stessa domanda con la stessa chiave.
+  //
+  // REGOLA DI COMPATIBILITA', non un dettaglio: un professionista che non ha
+  // ancora dichiarato niente vale come «tutta la citta' in cui e' iscritto».
+  // Senza questa riga i cinque professionisti in produzione, che non hanno
+  // nessuna copertura, sparirebbero da ogni elenco il giorno del deploy.
+  let gettoniDellaRichiesta: string[] = [];
   if (filters.citySlug) {
-    cards = cards.filter((c) => c.city.slug === filters.citySlug);
+    gettoniDellaRichiesta = await getRequestCoverageKeys(
+      filters.citySlug,
+      filters.zoneSlug
+    );
+    const citta = filters.citySlug;
+    cards = cards.filter((c) =>
+      trovaPerRichiesta(
+        { keys: c.coverageKeys, citySlug: c.city.slug },
+        gettoniDellaRichiesta,
+        citta
+      )
+    );
   }
   if (filters.serviceSlug) {
     cards = cards.filter((c) => c.serviceSlug === filters.serviceSlug);
@@ -249,8 +345,23 @@ export async function getProfessionals(
     );
   }
 
-  // Ordinamento: verificati prima, poi rating più alto, poi prezzo minore.
+  // Ordinamento: prima chi e' piu' vicino (il gettone piu' preciso che ha fatto
+  // match), poi verificati, poi rating piu' alto, poi prezzo minore. La
+  // precisione viene per prima di proposito: un professionista che copre tutta
+  // Italia deve comparire per una richiesta di Milano, ma non davanti
+  // all'idraulico del quartiere.
   cards.sort((a, b) => {
+    if (gettoniDellaRichiesta.length > 0) {
+      const ra = rangoCopertura(
+        { keys: a.coverageKeys, citySlug: a.city.slug },
+        gettoniDellaRichiesta
+      );
+      const rb = rangoCopertura(
+        { keys: b.coverageKeys, citySlug: b.city.slug },
+        gettoniDellaRichiesta
+      );
+      if (rb !== ra) return rb - ra;
+    }
     const v =
       verifiedWeight(b.verificationStatus) - verifiedWeight(a.verificationStatus);
     if (v !== 0) return v;
@@ -283,8 +394,11 @@ export async function getProfessionalById(
     .maybeSingle();
   if (!data) return null;
   const row = data as unknown as RawProfessionalRow;
-  const names = await namesByUserId([row.user_id]);
-  return toCard(row, names);
+  const [names, coperture] = await Promise.all([
+    namesByUserId([row.user_id]),
+    coveragesByProfessionalId([row.id]),
+  ]);
+  return toCard(row, names, coperture);
 }
 
 // Foto dei lavori conclusi (galleria pubblica sul profilo).

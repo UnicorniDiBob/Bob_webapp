@@ -201,7 +201,13 @@ function ProfiloInner() {
         body: JSON.stringify({ action: "sync" }),
       });
 
-      router.push("/impostazioni/azienda");
+      // FINISCE NELL'AREA DI LAVORO, non su un form di impostazioni. Fino a
+      // oggi si atterrava su /impostazioni/azienda: la prima cosa che un
+      // professionista vedeva di Bob era una pagina di campi, senza sapere
+      // dove arrivano le richieste. Ora si arriva in /dashboard, che apre da
+      // sola la guida del primo accesso (GuidaPrimoAccesso) e da lì manda
+      // dove serve.
+      router.push("/dashboard");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");

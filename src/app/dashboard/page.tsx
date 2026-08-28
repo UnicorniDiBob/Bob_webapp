@@ -18,6 +18,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ProWorkspace } from "@/components/ProWorkspace";
 import VerificaPromoBanner from "@/components/VerificaPromoBanner";
 import { CustomerHome } from "@/components/CustomerHome";
+import GuidaPrimoAccesso from "@/components/GuidaPrimoAccesso";
 
 interface StatoVerifica {
   level: "none" | "vat_verified" | "documents_verified";
@@ -34,6 +35,8 @@ interface ProProfile {
   /** Livello del blocco 10: decide sia il badge sia l'invito alla verifica. */
   verification_level: "none" | "vat_verified" | "documents_verified";
   subscription_tier: "free" | "pro" | "business";
+  /** Quando ha visto la guida del primo accesso (057). null = non ancora. */
+  onboarding_completed_at: string | null;
   city: { name: string } | null;
 }
 
@@ -49,6 +52,10 @@ export default function DashboardPage() {
     n: 0,
   });
   const [loadingPro, setLoadingPro] = useState(true);
+  // La guida del primo accesso: si apre da sola se il profilo non l'ha ancora
+  // vista, e si puo' riaprire dal link in fondo all'area di lavoro.
+  const [guidaAperta, setGuidaAperta] = useState(false);
+  const [guidaVista, setGuidaVista] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -73,7 +80,7 @@ export default function DashboardPage() {
       const { data: prof } = await supabase
         .from("professionals")
         .select(
-          "id, user_id, headline, bio, verification_status, verification_level, subscription_tier, cities ( name )"
+          "id, user_id, headline, bio, verification_status, verification_level, subscription_tier, onboarding_completed_at, cities ( name )"
         )
         .eq("user_id", user.id)
         .maybeSingle();
@@ -112,6 +119,8 @@ export default function DashboardPage() {
               "none",
             subscription_tier:
               (p.subscription_tier as ProProfile["subscription_tier"]) ?? "free",
+            onboarding_completed_at:
+              (p.onboarding_completed_at as string | null) ?? null,
             city: cityObj ? { name: cityObj.name } : null,
           });
         }
@@ -213,6 +222,34 @@ export default function DashboardPage() {
               rating={proRating}
               name={fullName ?? "Professionista"}
             />
+
+            {proProfile && (
+              <p className="text-center text-xs text-bob-ink/40">
+                <button
+                  type="button"
+                  onClick={() => setGuidaAperta(true)}
+                  className="font-medium text-bob-ink/50 underline-offset-2 transition hover:text-bob-indigo hover:underline"
+                  data-testid="button-rivedi-guida"
+                >
+                  Rivedi la guida
+                </button>
+              </p>
+            )}
+
+            {proProfile &&
+              user &&
+              (guidaAperta ||
+                (!guidaVista && proProfile.onboarding_completed_at === null)) && (
+                <GuidaPrimoAccesso
+                  professionalId={proProfile.id}
+                  userId={user.id}
+                  nome={fullName ?? "Professionista"}
+                  onChiudi={() => {
+                    setGuidaAperta(false);
+                    setGuidaVista(true);
+                  }}
+                />
+              )}
           </div>
         )
       ) : (
