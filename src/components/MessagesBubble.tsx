@@ -30,6 +30,7 @@ export function MessagesBubble() {
       }
       className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-bob-indigo text-white shadow-card-hover transition hover:scale-105 hover:bg-bob-indigo/90"
       data-testid="bubble-messaggi"
+      data-tour="messaggi"
     >
       <svg
         className="h-6 w-6"

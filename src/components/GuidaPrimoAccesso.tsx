@@ -1,439 +1,237 @@
 "use client";
 
-// La guida del primissimo accesso.
+// LA GUIDA DEL PRIMO ACCESSO — spiega la pagina, poi non ti molla.
 //
-// PERCHÉ ESISTE
-// Fino a oggi un professionista che finiva l'iscrizione veniva portato dritto
-// su un form di impostazioni: nessuno gli diceva dove arrivano le richieste,
-// dove sta il calendario, dove leggerà i messaggi. Il gap G46 nella mappa
-// diceva esattamente questo — «atterra su una dashboard vuota, nessun wizard,
-// nessuna checklist, nessuna email di benvenuto». Ora l'iscrizione finisce
-// nell'area di lavoro, e qui si spiega.
+// PERCHE' ESISTE. Un professionista che finiva l'iscrizione atterrava su una
+// dashboard vuota: nessuno gli diceva dove arrivano le richieste, dove sta il
+// calendario, dove leggera' i messaggi (gap G46 della mappa).
 //
-// LA REGOLA CHE SEGUE: spiega mentre chiede. Ogni tappa mostra un pezzo del
-// prodotto e dice la sola cosa che serve per farlo funzionare, con il link al
-// posto giusto. Niente campi da compilare dentro la guida: i campi vivono dove
-// si rivedono, in /impostazioni, altrimenti una risposta data qui non si
-// ritrova più.
+// LE DUE RISCRITTURE, in ordine, perche' l'errore di ognuna e' istruttivo.
 //
-// L'ULTIMA TAPPA È UNA CHECKLIST VERA, non un elenco di buone intenzioni: le
-// quattro righe sono interrogate al database. «Compari nelle ricerche» è la
-// domanda che conta, e la risposta arriva da professional_services e dai
-// gettoni di copertura, non da una spunta che ci mettiamo noi.
+// 28/08 — cinque tappe con finti riquadri grigi accanto alle frasi. Sembravano
+// un prodotto, non erano il prodotto: chi li guardava non imparava dove
+// stessero le cose, perche' quelle cose non erano quelle.
 //
-// Vista una volta, non torna: si segna onboarding_completed_at sul profilo
-// (colonna della 057). Resta il link «rivedi la guida», perché una guida che
-// non si può riaprire è una guida che hai perso.
+// 29/08 — ogni passo illumina l'elemento vero della pagina (data-tour=...): il
+// buco nell'ombra e' la pagina stessa. Meglio, ma finiva ancora dove finivano
+// le schermate: cinque spiegazioni, un saluto, e un professionista che restava
+// invisibile ai clienti esattamente come prima.
+//
+// ADESSO il giro finisce dove finisce il lavoro: dopo la spiegazione, la guida
+// legge cosa manca davvero e per ognuna manda nella pagina giusta, si segna il
+// punto (lib/guidaProgresso), e riprende al ritorno con una spunta verde in
+// piu'. Chiude quando lo stato dice «compari nelle ricerche», non quando
+// finiscono i passi. «Piu' tardi» resta sempre accanto: accompagnare non e'
+// costringere.
+//
+// COSA NON STA QUI. I campi da compilare: vivono in /impostazioni, dove poi si
+// rivedono. Averli anche qui vorrebbe dire due posti che scrivono lo stesso
+// dato, e prima o poi uno dei due divergerebbe. La guida ci porta, non li
+// duplica.
+//
+// L'unica scrittura sul server e' onboarding_completed_at (colonna della 057):
+// serve a non riproporre il giro da solo. Il ritorno lo governa il segnaposto.
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { Check, X, Loader2 } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { TourAncorato, type PassoTour } from "@/components/TourAncorato";
+import { useStatoProfilo, type VoceStato } from "@/lib/useStatoProfilo";
+import { scriviProgresso } from "@/lib/guidaProgresso";
 
 interface Props {
   professionalId: string;
   userId: string;
   nome: string;
+  /** Si riprende dalle cose da fare: la spiegazione e' gia' stata vista. */
+  riprendi?: boolean;
   /** Chiude la guida. Il chiamante decide se segnarla come vista. */
   onChiudi: (segnaComeVista: boolean) => void;
 }
 
-interface Stato {
-  servizi: number;
-  aree: number;
-  telefono: boolean;
-  orari: number;
-}
-
-// Un riquadro per tappa: mostra la cosa di cui si parla, invece di
-// descriverla. Sono div e bordi, nessuna immagine da caricare.
-function RiquadroRichieste() {
+/** Le quattro cose, dentro il pannello: al ritorno si vede la spunta in piu'. */
+function Riepilogo({ voci }: { voci: VoceStato[] }) {
   return (
-    <div className="space-y-2 rounded-lg border border-black/10 bg-white p-3">
-      <div className="flex items-center justify-between">
-        <div className="h-2 w-24 rounded bg-bob-ink/20" />
-        <span className="rounded-full bg-bob-indigo/10 px-2 py-0.5 text-[10px] font-semibold text-bob-indigo">
-          nuova
-        </span>
-      </div>
-      <div className="h-2 w-full rounded bg-bob-ink/10" />
-      <div className="h-2 w-3/5 rounded bg-bob-ink/10" />
-      <div className="flex gap-2 pt-1">
-        <div className="h-5 w-20 rounded-md bg-bob-indigo/80" />
-        <div className="h-5 w-16 rounded-md border border-black/10" />
-      </div>
-    </div>
-  );
-}
-
-function RiquadroMappa() {
-  const punti = [
-    [22, 30],
-    [38, 20],
-    [52, 34],
-    [64, 52],
-    [34, 58],
-    [76, 26],
-  ];
-  return (
-    <div className="relative h-28 overflow-hidden rounded-lg border border-black/10 bg-[#f4f4f1]">
-      <div className="absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bob-indigo bg-bob-indigo/10" />
-      {punti.map(([x, y], i) => (
-        <span
-          key={i}
-          className={`absolute h-2.5 w-2.5 rounded-full border ${
-            i < 3
-              ? "border-white bg-bob-indigo"
-              : "border-black/25 bg-white"
-          }`}
-          style={{ left: `${x}%`, top: `${y}%` }}
-        />
+    <ul className="space-y-1.5 rounded-xl bg-black/[0.03] p-3" data-testid="guida-riepilogo">
+      {voci.map((v) => (
+        <li key={v.chiave} className="flex items-center gap-2 text-xs">
+          <span
+            className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full ${
+              v.fatto ? "bg-emerald-600 text-white" : "border border-black/20"
+            }`}
+            aria-hidden="true"
+          >
+            {v.fatto && <Check className="h-2.5 w-2.5" />}
+          </span>
+          <span className={v.fatto ? "text-bob-ink/40" : "text-bob-ink/75"}>
+            {v.titolo}
+          </span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
-
-function RiquadroCalendario() {
-  const barre = [0, 1, 2, 3, 4, 5, 6];
-  return (
-    <div className="flex h-28 items-end gap-1.5 rounded-lg border border-black/10 bg-white p-3">
-      {barre.map((g) => (
-        <div key={g} className="flex-1 space-y-1">
-          {g < 5 ? (
-            <>
-              <div className="h-10 rounded bg-bob-indigo/70" />
-              <div className="h-4 rounded bg-bob-indigo/25" />
-            </>
-          ) : (
-            <div className="h-3 rounded bg-bob-ink/10" />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RiquadroMessaggi() {
-  return (
-    <div className="space-y-2 rounded-lg border border-black/10 bg-white p-3">
-      <div className="flex">
-        <div className="max-w-[70%] rounded-2xl rounded-bl-sm bg-black/[0.06] px-3 py-2">
-          <div className="h-2 w-24 rounded bg-bob-ink/20" />
-        </div>
-      </div>
-      <div className="flex justify-end">
-        <div className="max-w-[70%] rounded-2xl rounded-br-sm bg-bob-indigo px-3 py-2">
-          <div className="h-2 w-16 rounded bg-white/70" />
-        </div>
-      </div>
-      <div className="flex items-center gap-1 pt-0.5 text-[10px] font-semibold text-bob-indigo">
-        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-bob-indigo text-[9px] text-white">
-          2
-        </span>
-        non letti
-      </div>
-    </div>
-  );
-}
-
-// Le tappe NON portano via dalla guida: fino a ieri ogni tappa aveva un link,
-// e cliccarlo interrompeva il giro a metà (segnalato il 28/08). Le cose da
-// fare si raccolgono nell'ultima tappa, dove il giro è finito e andarsene ha
-// senso.
-const TAPPE = [
-  {
-    titolo: "Qui arrivano le richieste",
-    testo:
-      "Questa è la tua area di lavoro. Quando un cliente della tua zona cerca il tuo mestiere, la richiesta compare qui con il riassunto del problema. Nessun contatto da comprare.",
-    riquadro: <RiquadroRichieste />,
-  },
-  {
-    titolo: "Dove lavori",
-    testo:
-      "Disegni il cerchio del tuo giro, o scegli i quartieri a mano. È il dato che decide a quali richieste ti proponiamo: il centro resta privato, pubblichiamo solo le zone.",
-    riquadro: <RiquadroMappa />,
-  },
-  {
-    titolo: "Il calendario",
-    testo:
-      "Dagli orari dipendono le proposte che facciamo ai clienti. Se li lasci vuoti, proponiamo orari standard — e possono essere ore in cui non lavori.",
-    riquadro: <RiquadroCalendario />,
-  },
-  {
-    titolo: "I messaggi",
-    testo:
-      "Le conversazioni stanno in Messaggi, con il contatore dei non letti in cima a ogni pagina. Detto chiaro: le email di avviso non partono ancora, quindi per ora si leggono qui dentro.",
-    riquadro: <RiquadroMessaggi />,
-  },
-];
 
 export default function GuidaPrimoAccesso({
   professionalId,
   userId,
   nome,
+  riprendi = false,
   onChiudi,
 }: Props) {
   const supabase = createClient();
-  const [passo, setPasso] = useState(0);
-  const [stato, setStato] = useState<Stato | null>(null);
-  const [nonControllabile, setNonControllabile] = useState(false);
+  const router = useRouter();
+  const { esito } = useStatoProfilo(professionalId, userId);
   const [salvando, setSalvando] = useState(false);
 
-  const ultima = passo === TAPPE.length;
+  const stato = esito.fase === "letto" ? esito.stato : null;
 
-  useEffect(() => {
-    let annullato = false;
-    // Se la lettura non torna, la guida non deve restare a girare: dopo sei
-    // secondi si dice che non si e' potuto controllare. Uno spinner eterno e'
-    // il modo piu' sicuro di far chiudere la guida senza leggerla.
-    const scaduto = setTimeout(() => {
-      if (!annullato) setNonControllabile(true);
-    }, 6000);
-    (async () => {
-      try {
-        const [servizi, aree, telefono, orari] = await Promise.all([
-          supabase
-            .from("professional_services")
-          .select("id", { count: "exact", head: true })
-          .eq("professional_id", professionalId),
-          supabase
-            .from("professional_coverage")
-          .select("id", { count: "exact", head: true })
-          .eq("professional_id", professionalId),
-          supabase
-            .from("profile_phone")
-            .select("phone")
-            .eq("user_id", userId)
-            .maybeSingle(),
-          supabase
-            .from("professional_availability")
-          .select("id", { count: "exact", head: true })
-          .eq("professional_id", professionalId),
-        ]);
-        if (annullato) return;
-        clearTimeout(scaduto);
-
-        // ATTENZIONE: supabase-js NON lancia quando la lettura fallisce, torna
-        // un oggetto con .error e i conteggi a null. Senza questo controllo una
-        // rete caduta diventava «ti mancano 4 cose» a chi non gli manca
-        // niente: visto succedere nella prova, con la rete bloccata.
-        if (servizi.error || aree.error || telefono.error || orari.error) {
-          setNonControllabile(true);
-          return;
-        }
-
-        setNonControllabile(false);
-        setStato({
-          servizi: servizi.count ?? 0,
-          aree: aree.count ?? 0,
-          telefono: Boolean((telefono.data as { phone?: string } | null)?.phone),
-          orari: orari.count ?? 0,
-        });
-      } catch {
-        // Se non si riesce a leggere, si dice che non si e' riusciti: una
-        // checklist che mostra tutto da fare perche' la rete e' caduta manda
-        // il professionista a rifare cose che ha gia' fatto.
-        if (!annullato) setNonControllabile(true);
-      }
-    })();
-    return () => {
-      annullato = true;
-      clearTimeout(scaduto);
-    };
+  const segnaVista = useCallback(async () => {
+    await supabase
+      .from("professionals")
+      .update({ onboarding_completed_at: new Date().toISOString() })
+      .eq("id", professionalId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [professionalId, userId]);
+  }, [professionalId]);
 
-  const chiudi = useCallback(
+  // ---- 1. La pagina: cinque cose vere, illuminate dove stanno ----
+  const spiegazione: PassoTour[] = useMemo(
+    () => [
+      {
+        id: "richieste",
+        ancora: "richieste",
+        titolo: `Ci siamo, ${nome.split(" ")[0]}. Qui arrivano le richieste`,
+        testo:
+          "Questo riquadro, il primo della pagina, è il tuo lavoro in entrata: quando un cliente della tua zona cerca il tuo mestiere, la richiesta compare qui con il riassunto del problema e i pulsanti per rispondere. Adesso dice che non ce n'è nessuna, ed è vero: non ne è ancora arrivata.",
+      },
+      {
+        id: "calendario",
+        ancora: "calendario",
+        titolo: "Il calendario è la tua giornata",
+        testo:
+          "Gli appuntamenti confermati si posano qui, all'ora giusta. Puoi aggiungerne uno tu con «+ Nuovo appuntamento» in fondo al riquadro, o cliccare direttamente un'ora libera.",
+      },
+      {
+        id: "messaggi",
+        ancora: "messaggi",
+        fisso: true,
+        titolo: "Le conversazioni stanno in questa bolla",
+        testo:
+          "In basso a destra, sempre lì mentre navighi: apre i messaggi e porta il numero dei non letti. Detto chiaro: le email di avviso non partono ancora, quindi per ora i messaggi si leggono qui dentro.",
+        testoSenzaAncora:
+          "Le conversazioni stanno in Messaggi, che si apre dalla bolla in basso a destra e porta il numero dei non letti. Detto chiaro: le email di avviso non partono ancora, quindi per ora si leggono lì dentro.",
+      },
+      {
+        id: "impostazioni",
+        ancora: "impostazioni",
+        fisso: true,
+        titolo: "Zone, orari, numero, prezzi: qui dentro",
+        testo:
+          "Questa rotella, in alto a destra, apre le impostazioni: è lì che dici in quali quartieri lavori, a che ora, con che numero e a che prezzo. Fra un attimo ti ci porto io, una cosa alla volta.",
+        testoSenzaAncora:
+          "Da telefono le impostazioni stanno nel menu ☰ in alto a destra: è lì che dici in quali quartieri lavori, a che ora, con che numero e a che prezzo. Fra un attimo ti ci porto io, una cosa alla volta.",
+      },
+      {
+        id: "stato",
+        ancora: "stato",
+        titolo: "E questo dice se i clienti ti trovano",
+        testo:
+          "Il riquadro resta qui e risponde a una domanda sola: compari nelle ricerche? Non è un'etichetta che ti mettiamo noi — si accende da sola quando hai dichiarato di cosa ti occupi. Sotto, le cose che ti mancano.",
+        contenuto: stato ? <Riepilogo voci={stato.voci} /> : undefined,
+      },
+    ],
+    [nome, stato]
+  );
+
+  // ---- 2. Le cose che mancano: una per passo, con il link che ci porta ----
+  const daFare = useMemo(
+    () => (stato ? stato.voci.filter((v) => !v.fatto) : []),
+    [stato]
+  );
+
+  const cose: PassoTour[] = daFare.map((v) => ({
+    id: `cosa-${v.chiave}`,
+    ancora: "stato",
+    titolo: v.blocca ? `Ti manca questo: ${v.titolo.toLowerCase()}` : v.titolo,
+    testo: `${v.conseguenza} Ci vuole un minuto e ti ci porto io: quando hai finito, in cima alla pagina trovi il link per tornare qui.`,
+    contenuto: stato ? <Riepilogo voci={stato.voci} /> : undefined,
+    azione: { etichetta: "Portami lì →", href: v.href },
+  }));
+
+  // ---- 3. La chiusura: dipende da come sta il profilo, non dal copione ----
+  const chiusura: PassoTour = !stato
+    ? {
+        id: "fine",
+        ancora: "stato",
+        titolo: "Non riesco a controllare adesso",
+        testo:
+          "La connessione non mi ha risposto, quindi non ti dico cosa manca per non farti rifare cose già fatte. Il riquadro qui accanto ha un pulsante per riprovare.",
+      }
+    : daFare.length === 0
+      ? {
+          id: "fine",
+          ancora: "stato",
+          titolo: "Ci sei: i clienti ti trovano",
+          testo:
+            "Non manca niente. Da adesso le richieste della tua zona arrivano nel primo riquadro della pagina, e questo qui resta a dirti come stai messo.",
+          contenuto: <Riepilogo voci={stato.voci} />,
+        }
+      : {
+          id: "fine",
+          ancora: "stato",
+          titolo: stato.compare ? "Il resto quando vuoi" : "Quello che resta",
+          testo: stato.compare
+            ? "Quello che manca non ti nasconde: cambia quante richieste ti arrivano e come. Il riquadro resta qui con i link, non serve rifare la guida."
+            : "Finché non dici di cosa ti occupi resti fuori dalle ricerche. Il riquadro resta qui con il link: quando lo fai, lo stato si accende da solo.",
+          contenuto: <Riepilogo voci={stato.voci} />,
+        };
+
+  const passi = [...spiegazione, ...cose, chiusura];
+
+  const esci = useCallback(
     async (segna: boolean) => {
+      scriviProgresso(null);
       if (!segna) {
         onChiudi(false);
         return;
       }
       setSalvando(true);
-      await supabase
-        .from("professionals")
-        .update({ onboarding_completed_at: new Date().toISOString() })
-        .eq("id", professionalId);
+      await segnaVista();
       setSalvando(false);
       onChiudi(true);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [professionalId, onChiudi]
+    [onChiudi, segnaVista]
   );
 
-  useEffect(() => {
-    const tasto = (e: KeyboardEvent) => {
-      if (e.key === "Escape") chiudi(true);
-      if (e.key === "ArrowRight") setPasso((p) => Math.min(p + 1, TAPPE.length));
-      if (e.key === "ArrowLeft") setPasso((p) => Math.max(p - 1, 0));
-    };
-    window.addEventListener("keydown", tasto);
-    return () => window.removeEventListener("keydown", tasto);
-  }, [chiudi]);
+  // Il passaggio di consegne: si segna il punto, si smette di riaprire da soli,
+  // e si va. Il ritorno lo governa la barra sulle impostazioni.
+  const vaiA = useCallback(
+    (href: string) => {
+      const voce = daFare.find((v) => v.href === href);
+      scriviProgresso({
+        attiva: true,
+        spiegazioneVista: true,
+        etichetta: voce?.titolo,
+      });
+      void segnaVista();
+      router.push(href);
+    },
+    [daFare, router, segnaVista]
+  );
 
-  const righe = stato
-    ? [
-        {
-          fatto: stato.servizi > 0,
-          testo: "Hai detto di cosa ti occupi",
-          nota: "senza questo non compari in nessuna ricerca",
-          href: "/impostazioni/azienda",
-        },
-        {
-          fatto: stato.aree > 0,
-          testo: "Hai detto dove lavori",
-          nota: "senza, vali per la sola città in cui ti sei iscritto",
-          href: "/impostazioni/zone",
-        },
-        {
-          fatto: stato.telefono,
-          testo: "Hai lasciato un numero",
-          nota: "non lo vede il cliente: serve per farti arrivare le chiamate",
-          href: "/impostazioni/dati",
-        },
-        {
-          fatto: stato.orari > 0,
-          testo: "Hai messo i tuoi orari",
-          nota: "senza, proponiamo orari standard",
-          href: "/impostazioni/orari",
-        },
-      ]
-    : [];
-
-  const mancanti = righe.filter((r) => !r.fatto).length;
-  const tappa = TAPPE[passo];
+  // Finche' non so cosa manca non apro: un giro che cambia numero di passi
+  // mentre lo stai guardando e' un giro di cui non ti fidi piu'.
+  if (esito.fase === "carico") return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="guida-titolo"
-    >
-      <div className="card w-full max-w-lg rounded-b-none p-6 sm:rounded-b-2xl">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/40">
-              {ultima ? "Ultimo passo" : `Passo ${passo + 1} di ${TAPPE.length + 1}`}
-            </p>
-            {/* I pallini dicono quanto manca senza far contare: si vede
-                a colpo d'occhio che il giro è corto. */}
-            <div className="mt-2 flex gap-1.5" aria-hidden="true">
-              {Array.from({ length: TAPPE.length + 1 }).map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === passo
-                      ? "w-6 bg-bob-indigo"
-                      : i < passo
-                        ? "w-1.5 bg-bob-indigo/40"
-                        : "w-1.5 bg-black/10"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => chiudi(true)}
-            className="-mr-1 -mt-1 rounded-lg p-1 text-bob-ink/40 transition hover:bg-black/5 hover:text-bob-ink"
-            aria-label="Chiudi la guida"
-            data-testid="button-chiudi-guida"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        {!ultima ? (
-          <>
-            <h2 id="guida-titolo" className="text-xl font-bold text-bob-ink">
-              {passo === 0 ? `Ci siamo, ${nome.split(" ")[0]}. ` : ""}
-              {tappa.titolo}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-bob-ink/65">
-              {tappa.testo}
-            </p>
-            <div className="mt-4">{tappa.riquadro}</div>
-          </>
-        ) : (
-          <>
-            <h2 id="guida-titolo" className="text-xl font-bold text-bob-ink">
-              {!stato
-                ? "Cosa ti manca"
-                : mancanti === 0
-                  ? "Sei pronto a ricevere richieste"
-                  : mancanti === 1
-                    ? "Ti manca una cosa"
-                    : `Ti mancano ${mancanti} cose`}
-            </h2>
-            <p className="mt-2 text-sm text-bob-ink/60">
-              Questa lista non è un promemoria che ci siamo scritti: è quello che
-              il prodotto vede davvero adesso.
-            </p>
-            <ul className="mt-4 space-y-2">
-              {!stato && !nonControllabile && (
-                <li className="flex items-center gap-2 text-sm text-bob-ink/50">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  Controllo…
-                </li>
-              )}
-              {nonControllabile && (
-                <li className="text-sm text-bob-ink/60">
-                  Non riesco a controllare adesso: riapri la guida più tardi dal
-                  link «Rivedi la guida» in fondo all&apos;area di lavoro.
-                </li>
-              )}
-              {righe.map((r) => (
-                <li key={r.testo} className="flex items-start gap-2 text-sm">
-                  <span
-                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
-                      r.fatto ? "bg-emerald-600 text-white" : "border border-black/20"
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {r.fatto && <Check className="h-3 w-3" />}
-                  </span>
-                  <span className={r.fatto ? "text-bob-ink/50" : "text-bob-ink"}>
-                    {r.testo}
-                    {!r.fatto && (
-                      <>
-                        {" — "}
-                        <span className="text-bob-ink/50">{r.nota}. </span>
-                        <Link
-                          href={r.href}
-                          className="font-medium text-bob-indigo hover:underline"
-                          onClick={() => chiudi(true)}
-                        >
-                          Fallo ora
-                        </Link>
-                      </>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        <div className="mt-6 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => (passo === 0 ? chiudi(true) : setPasso(passo - 1))}
-            className="text-sm font-medium text-bob-ink/50 transition hover:text-bob-ink"
-          >
-            {passo === 0 ? "Salta" : "Indietro"}
-          </button>
-          <button
-            type="button"
-            onClick={() => (ultima ? chiudi(true) : setPasso(passo + 1))}
-            disabled={salvando}
-            className="btn-primary disabled:opacity-50"
-            data-testid="button-avanti-guida"
-          >
-            {ultima ? (salvando ? "Un attimo…" : "Iniziamo") : "Avanti"}
-          </button>
-        </div>
-      </div>
-    </div>
+    <TourAncorato
+      passi={passi}
+      etichettaFine="Iniziamo"
+      occupato={salvando}
+      indiceIniziale={riprendi ? spiegazione.length : 0}
+      onAzione={vaiA}
+      onEsci={esci}
+    />
   );
 }

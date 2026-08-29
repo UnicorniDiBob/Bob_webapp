@@ -23,6 +23,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { GuidaBarra } from "@/components/GuidaBarra";
 
 interface VoceNav {
   href: string;
@@ -70,6 +71,11 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="container-bob py-8 sm:py-10">
+      {/* Se il professionista e' arrivato qui dalla guida, la pagina lo dice e
+          gli tiene aperta la strada del ritorno. Sta sopra tutto: e' il motivo
+          per cui e' su questa pagina. */}
+      <GuidaBarra />
+
       <header className="mb-6">
         {/* Il ritorno al lavoro sta in cima e per primo: da qui si esce piu'
             spesso di quanto si entri, e l'etichetta dice dove si torna. */}

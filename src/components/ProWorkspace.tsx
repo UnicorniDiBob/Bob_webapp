@@ -11,6 +11,7 @@ import { AppointmentDetail } from "@/components/AppointmentDetail";
 import { ProCalendar } from "@/components/ProCalendar";
 import { DayItinerary } from "@/components/DayItinerary";
 import { ProRequestSummary } from "@/components/ProRequestSummary";
+import { StatoProfiloCard } from "@/components/StatoProfiloCard";
 import { fmtDay, fmtDuration, fmtRange } from "@/lib/calendar";
 import {
   getAppointments,
@@ -166,8 +167,15 @@ export function ProWorkspace({
 
   return (
     <div className="space-y-5">
-      {/* Riassunto richieste AI — primo blocco visibile */}
-      {proId && <ProRequestSummary />}
+      {/* Riassunto richieste AI — primo blocco visibile.
+          data-tour: la guida del primo accesso illumina questo riquadro vero,
+          non un suo disegno. Se sparisce l'attributo, il passo 1 della guida
+          resta senza ancora e si degrada a pannello centrale. */}
+      {proId && (
+        <div data-tour="richieste">
+          <ProRequestSummary />
+        </div>
+      )}
 
       {/* Contro-proposte dei clienti: un tap per confermare */}
       {pendingFromCustomers.length > 0 && (
@@ -247,7 +255,7 @@ export function ProWorkspace({
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         {/* Calendario con asse delle ore, stile Google Calendar */}
-        <div className="card p-4 sm:p-5">
+        <div className="card p-4 sm:p-5" data-tour="calendario">
           <ProCalendar
             appointments={appointments}
             loading={loading}
@@ -274,8 +282,16 @@ export function ProWorkspace({
           </button>
         </div>
 
-        {/* Colonna laterale: giro del giorno, prossimi, profilo */}
+        {/* Colonna laterale: stato del profilo, giro del giorno, prossimi.
+            Lo stato sta in cima perche' e' l'unica cosa della colonna che puo'
+            impedire al lavoro di arrivare: gli appuntamenti di oggi non
+            servono a chi non compare in nessuna ricerca. */}
         <div className="space-y-4">
+          <StatoProfiloCard
+            professionalId={profile.id}
+            userId={profile.user_id}
+          />
+
           <DayItinerary
             day={focusDay}
             appointments={appointments}
