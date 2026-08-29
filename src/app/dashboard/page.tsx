@@ -19,6 +19,7 @@ import { ProWorkspace } from "@/components/ProWorkspace";
 import VerificaPromoBanner from "@/components/VerificaPromoBanner";
 import { CustomerHome } from "@/components/CustomerHome";
 import GuidaPrimoAccesso from "@/components/GuidaPrimoAccesso";
+import { leggiProgresso } from "@/lib/guidaProgresso";
 
 interface StatoVerifica {
   level: "none" | "vat_verified" | "documents_verified";
@@ -56,6 +57,17 @@ export default function DashboardPage() {
   // vista, e si puo' riaprire dal link in fondo all'area di lavoro.
   const [guidaAperta, setGuidaAperta] = useState(false);
   const [guidaVista, setGuidaVista] = useState(false);
+  // Il giro era in corso ed e' andato a sistemare qualcosa: si riprende dalle
+  // cose da fare, non dalla spiegazione che ha gia' visto.
+  const [riprendiGuida, setRiprendiGuida] = useState(false);
+
+  useEffect(() => {
+    const progresso = leggiProgresso();
+    if (progresso?.attiva) {
+      setRiprendiGuida(true);
+      setGuidaAperta(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -186,10 +198,17 @@ export default function DashboardPage() {
               Cerca un professionista
             </Link>
           )}
+          {/* IMPOSTAZIONI, UNA VOLTA SOLA PER SCHERMO (29/08). Questo link
+              conviveva con la rotella dell'header, a due centimetri di
+              distanza e con lo stesso data-testid: due bottoni identici nello
+              stesso angolo, e un test che non sapeva quale dei due stesse
+              cliccando. La rotella pero' vive dentro un blocco `hidden
+              md:flex`: su telefono sparisce e resta solo la voce nel menu ☰.
+              Quindi il link resta, ma solo sotto md, dove la rotella non c'e'. */}
           <Link
             href="/impostazioni/dati"
-            className="btn-ghost text-sm"
-            data-testid="link-impostazioni"
+            className="btn-ghost text-sm md:hidden"
+            data-testid="link-impostazioni-dashboard"
           >
             Impostazioni
           </Link>
@@ -227,7 +246,10 @@ export default function DashboardPage() {
               <p className="text-center text-xs text-bob-ink/40">
                 <button
                   type="button"
-                  onClick={() => setGuidaAperta(true)}
+                  onClick={() => {
+                    setRiprendiGuida(false);
+                    setGuidaAperta(true);
+                  }}
                   className="font-medium text-bob-ink/50 underline-offset-2 transition hover:text-bob-indigo hover:underline"
                   data-testid="button-rivedi-guida"
                 >
@@ -236,6 +258,10 @@ export default function DashboardPage() {
               </p>
             )}
 
+            {/* La guida illumina elementi gia' in pagina e legge lo stato del
+                profilo per sapere cosa manca: da li' nascono i passi che
+                accompagnano. Si apre da sola al primo accesso, oppure quando un
+                giro lasciato a meta' chiede di riprendere. */}
             {proProfile &&
               user &&
               (guidaAperta ||
@@ -244,8 +270,10 @@ export default function DashboardPage() {
                   professionalId={proProfile.id}
                   userId={user.id}
                   nome={fullName ?? "Professionista"}
+                  riprendi={riprendiGuida}
                   onChiudi={() => {
                     setGuidaAperta(false);
+                    setRiprendiGuida(false);
                     setGuidaVista(true);
                   }}
                 />

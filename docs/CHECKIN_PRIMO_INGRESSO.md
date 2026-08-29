@@ -452,3 +452,32 @@ che lo usa. Dopo l'applicazione: advisor di sicurezza, e riga nel RoPA.
    query anon su `professional_coverage`.
 5. Advisor Supabase senza nuovi rilievi, righe RoPA scritte, `schema_check.sh`
    che ricostruisce lo schema dai soli file del repo.
+
+---
+
+## 13. Nota del 29/08/2026 — lo stato diventa una colonna che qualcuno scrive
+
+Il §0 diceva che *pronto a ricevere richieste* «non esiste in nessuna colonna».
+Non era piu' esatto: la 057 aveva creato `professionals.ready_at` e l'aveva
+protetta col trigger. Il punto era peggiore — **la colonna c'era e nessuno la
+scriveva** (6 professionisti in produzione, 6 `ready_at` NULL) mentre la frase
+mostrata al professionista veniva da un calcolo nel browser, senza alcun
+rapporto con la colonna.
+
+La **062** chiude il §12.3. Due trigger tengono `ready_at` vera: uno su
+`professional_services`, uno sullo spegnimento del profilo. Il client continua a
+non poterla scrivere; la protezione della 057 distingue le proprie UPDATE da
+quelle di un client con `pg_trigger_depth()`.
+
+**La definizione, decisa il 29/08 e volutamente stretta:** pronto = i clienti ti
+trovano, cioe' almeno un servizio dichiarato e profilo non disattivato. E'
+l'unica versione che il codice puo' dimostrare, perche' e' esattamente la
+condizione con cui `getProfessionals()` restituisce il profilo. Zone e orari
+restano consigli: senza, si compare lo stesso. Il telefono **non puo'** essere un
+requisito finche' le chiamate non esistono nel prodotto — quando esisteranno, si
+aggiunge alla condizione in `private.pro_e_pronto`, in un posto solo.
+
+La checklist delle quattro cose resta, ma e' un oggetto diverso e sta in un
+posto diverso: un riquadro fisso dell'area di lavoro (`StatoProfiloCard`) che
+dice cosa manca e cosa cambia. Lo stato lo tiene il server, la lista e' un
+controllo fatto sul momento: due cose, due provenienze, scritte come tali.

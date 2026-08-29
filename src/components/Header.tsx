@@ -114,6 +114,7 @@ export function Header() {
                 aria-label="Impostazioni del tuo account"
                 title="Impostazioni"
                 data-testid="link-impostazioni"
+                data-tour="impostazioni"
               >
                 <UserCog className="h-5 w-5" aria-hidden="true" />
               </Link>
