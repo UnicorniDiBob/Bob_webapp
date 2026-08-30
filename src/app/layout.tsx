@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { UnreadProvider } from "@/components/UnreadProvider";
+import { NotificheProvider } from "@/components/NotificheProvider";
+import { PromemoriaProfilo } from "@/components/PromemoriaProfilo";
 import { Header } from "@/components/Header";
 import { CancellazioneBanner } from "@/components/CancellazioneBanner";
 import { Footer } from "@/components/Footer";
@@ -84,12 +86,18 @@ export default function RootLayout({
         />
         <AuthProvider>
           <UnreadProvider>
-            <Header />
-            <CancellazioneBanner />
-            <main className="flex-1">{children}</main>
-            <ProBanner />
-            <MessagesBubble />
-            <Footer />
+            {/* Le notifiche di servizio stanno sopra il Header perche' la
+                campanella vive li' dentro, e sopra il promemoria perche' e'
+                lo stesso elenco a dire se il profilo compare o no. */}
+            <NotificheProvider>
+              <Header />
+              <CancellazioneBanner />
+              <main className="flex-1">{children}</main>
+              <ProBanner />
+              <MessagesBubble />
+              <PromemoriaProfilo />
+              <Footer />
+            </NotificheProvider>
           </UnreadProvider>
         </AuthProvider>
       </body>
