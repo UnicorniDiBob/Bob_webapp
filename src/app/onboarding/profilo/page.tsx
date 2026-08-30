@@ -194,11 +194,17 @@ function ProfiloInner() {
         }
       }
 
-      // 4. Applica l'eventuale codice promo riscattato al passo del piano.
+      // 4. Applica IL PIANO SCELTO al passo precedente, adesso che la riga
+      //    professionals esiste. Fino al 30/08 qui si chiamava "sync", che
+      //    applicava il piano piu' alto fra quelli concessi dai codici
+      //    riscattati: chi entrava con il codice dei fondatori e sceglieva
+      //    Free finiva Business lo stesso. Adesso si chiede il piano che ha
+      //    scelto lui, e il server lo concede solo se con i suoi sconti costa
+      //    zero (migrazione 064).
       await fetch("/api/onboarding/promo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "sync" }),
+        body: JSON.stringify({ action: "scegli", piano }),
       });
 
       // FINISCE NELL'AREA DI LAVORO, non su un form di impostazioni. Fino a
