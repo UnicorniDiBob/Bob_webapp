@@ -16,7 +16,7 @@ export function ContactButton({
 }) {
   const [open, setOpen] = useState(false);
 
-  const prefilled = `Ciao ${professional.fullName}, ho bisogno ${
+  const prefilled = `Ciao ${professional.displayName}, ho bisogno ${
     professional.serviceNeedPhrase ?? "di un intervento"
   } a ${professional.city.name}. Quando saresti disponibile e che costo prevedi?`;
 

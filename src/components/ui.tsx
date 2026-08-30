@@ -221,7 +221,7 @@ export function PriceTag({
 
 // ---------- Card professionista ----------
 export function ProfessionalCardItem({ p }: { p: ProfessionalCard }) {
-  const initials = p.fullName
+  const initials = p.displayName
     .split(" ")
     .map((w) => w[0])
     .slice(0, 2)
@@ -240,7 +240,7 @@ export function ProfessionalCardItem({ p }: { p: ProfessionalCard }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold text-bob-ink">{p.fullName}</h3>
+            <h3 className="truncate font-semibold text-bob-ink">{p.displayName}</h3>
           </div>
           <p className="truncate text-sm text-bob-ink/60">{p.headline}</p>
         </div>

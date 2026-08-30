@@ -46,7 +46,7 @@ export function RequestDialog({
   const pathname = usePathname();
   const [message, setMessage] = useState(
     prefilledMessage ||
-      `Ciao ${professional.fullName}, ho bisogno ${
+      `Ciao ${professional.displayName}, ho bisogno ${
         professional.serviceNeedPhrase ?? "di un intervento"
       } a ${professional.city.name}. Sei disponibile?`
   );
@@ -174,7 +174,7 @@ export function RequestDialog({
               <CircleCheck className="h-8 w-8 text-emerald-600" aria-hidden="true" />
             </div>
             <h3 className="text-lg font-semibold text-bob-ink">
-              Messaggio inviato a {professional.fullName}
+              Messaggio inviato a {professional.displayName}
             </h3>
             <p className="text-sm text-bob-ink/60">
               Trovi la richiesta nella tua area personale. Ti avviso appena
@@ -194,7 +194,7 @@ export function RequestDialog({
             <div className="mb-3 flex items-start justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-bob-ink">
-                  Scrivi a {professional.fullName}
+                  Scrivi a {professional.displayName}
                 </h3>
                 <p className="text-sm text-bob-ink/60">
                   Ho già preparato io il messaggio: puoi modificarlo.
@@ -217,7 +217,7 @@ export function RequestDialog({
               <div className="rounded-xl bg-bob-indigo-50 p-4 text-center">
                 <p className="text-sm text-bob-ink/70">
                   Accedi per inviare il messaggio e seguire la conversazione con{" "}
-                  {professional.fullName}.
+                  {professional.displayName}.
                 </p>
                 <Link
                   href={`/login?returnTo=${encodeURIComponent(pathname)}`}

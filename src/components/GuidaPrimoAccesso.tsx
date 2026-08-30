@@ -17,12 +17,17 @@
 // le schermate: cinque spiegazioni, un saluto, e un professionista che restava
 // invisibile ai clienti esattamente come prima.
 //
-// ADESSO il giro finisce dove finisce il lavoro: dopo la spiegazione, la guida
-// legge cosa manca davvero e per ognuna manda nella pagina giusta, si segna il
-// punto (lib/guidaProgresso), e riprende al ritorno con una spunta verde in
-// piu'. Chiude quando lo stato dice «compari nelle ricerche», non quando
-// finiscono i passi. «Piu' tardi» resta sempre accanto: accompagnare non e'
-// costringere.
+// 29/08 — ogni passo illumina l'elemento vero, e dopo la spiegazione la guida
+// manda a sistemare cio' che manca. Giusto nella sostanza, sbagliato nella
+// forma: una tappa per ogni cosa mancante, tutte ancorate allo STESSO
+// riquadro. Chi si iscriveva ne vedeva quattro piu' una di chiusura, cinque
+// passi in fila che illuminavano lo stesso rettangolo.
+//
+// 30/08 — un passo per ogni cosa vera della pagina, e uno solo per lo stato:
+// dentro c'e' la lista, e ogni riga che manca e' un link. Sei passi in tutto
+// invece di undici, e ognuno mostra qualcosa di diverso. Chiude quando lo
+// stato dice «compari nelle ricerche», non quando finiscono i passi. «Piu'
+// tardi» resta sempre accanto: accompagnare non e' costringere.
 //
 // COSA NON STA QUI. I campi da compilare: vivono in /impostazioni, dove poi si
 // rivedono. Averli anche qui vorrebbe dire due posti che scrivono lo stesso
@@ -34,7 +39,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TourAncorato, type PassoTour } from "@/components/TourAncorato";
 import { useStatoProfilo, type VoceStato } from "@/lib/useStatoProfilo";
@@ -50,12 +55,22 @@ interface Props {
   onChiudi: (segnaComeVista: boolean) => void;
 }
 
-/** Le quattro cose, dentro il pannello: al ritorno si vede la spunta in piu'. */
-function Riepilogo({ voci }: { voci: VoceStato[] }) {
+/**
+ * Le quattro cose, dentro il pannello. Quando riceve onVai, ogni riga non
+ * ancora fatta e' cliccabile: e' cosi' che quattro passi diventano un passo
+ * solo senza perdere niente per strada.
+ */
+function Riepilogo({
+  voci,
+  onVai,
+}: {
+  voci: VoceStato[];
+  onVai?: (href: string) => void;
+}) {
   return (
-    <ul className="space-y-1.5 rounded-xl bg-black/[0.03] p-3" data-testid="guida-riepilogo">
-      {voci.map((v) => (
-        <li key={v.chiave} className="flex items-center gap-2 text-xs">
+    <ul className="space-y-1 rounded-xl bg-black/[0.03] p-2" data-testid="guida-riepilogo">
+      {voci.map((v) => {
+        const spunta = (
           <span
             className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full ${
               v.fatto ? "bg-emerald-600 text-white" : "border border-black/20"
@@ -64,11 +79,37 @@ function Riepilogo({ voci }: { voci: VoceStato[] }) {
           >
             {v.fatto && <Check className="h-2.5 w-2.5" />}
           </span>
-          <span className={v.fatto ? "text-bob-ink/40" : "text-bob-ink/75"}>
-            {v.titolo}
-          </span>
-        </li>
-      ))}
+        );
+        if (v.fatto || !onVai) {
+          return (
+            <li
+              key={v.chiave}
+              className="flex items-center gap-2 px-1.5 py-1 text-xs"
+            >
+              {spunta}
+              <span className={v.fatto ? "text-bob-ink/40" : "text-bob-ink/75"}>
+                {v.titolo}
+              </span>
+            </li>
+          );
+        }
+        return (
+          <li key={v.chiave}>
+            <button
+              type="button"
+              onClick={() => onVai(v.href)}
+              data-testid={`guida-vai-${v.chiave}`}
+              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-xs hover:bg-black/[0.04]"
+            >
+              {spunta}
+              <span className="flex-1 text-bob-ink/75">{v.titolo}</span>
+              <span className="shrink-0 font-semibold text-bob-indigo">
+                Sistemalo <ArrowRight className="inline h-3 w-3" />
+              </span>
+            </button>
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -103,14 +144,14 @@ export default function GuidaPrimoAccesso({
         ancora: "richieste",
         titolo: `Ci siamo, ${nome.split(" ")[0]}. Qui arrivano le richieste`,
         testo:
-          "Questo riquadro, il primo della pagina, è il tuo lavoro in entrata: quando un cliente della tua zona cerca il tuo mestiere, la richiesta compare qui con il riassunto del problema e i pulsanti per rispondere. Adesso dice che non ce n'è nessuna, ed è vero: non ne è ancora arrivata.",
+          "Quando un cliente della tua zona cerca il tuo mestiere, la richiesta compare qui: il riassunto del problema e i pulsanti per rispondere. Adesso è vuoto perché non ne è ancora arrivata nessuna.",
       },
       {
         id: "calendario",
         ancora: "calendario",
         titolo: "Il calendario è la tua giornata",
         testo:
-          "Gli appuntamenti confermati si posano qui, all'ora giusta. Puoi aggiungerne uno tu con «+ Nuovo appuntamento» in fondo al riquadro, o cliccare direttamente un'ora libera.",
+          "Gli appuntamenti confermati si posano qui, all'ora giusta. Ne aggiungi uno tu cliccando un'ora libera.",
       },
       {
         id: "messaggi",
@@ -118,9 +159,9 @@ export default function GuidaPrimoAccesso({
         fisso: true,
         titolo: "Le conversazioni stanno in questa bolla",
         testo:
-          "In basso a destra, sempre lì mentre navighi: apre i messaggi e porta il numero dei non letti. Detto chiaro: le email di avviso non partono ancora, quindi per ora i messaggi si leggono qui dentro.",
+          "In basso a destra, sempre lì mentre navighi, con il numero dei non letti. Le email di avviso non partono ancora: per ora i messaggi si leggono qui dentro.",
         testoSenzaAncora:
-          "Le conversazioni stanno in Messaggi, che si apre dalla bolla in basso a destra e porta il numero dei non letti. Detto chiaro: le email di avviso non partono ancora, quindi per ora si leggono lì dentro.",
+          "Le conversazioni stanno in Messaggi, la bolla in basso a destra, con il numero dei non letti. Le email di avviso non partono ancora: per ora si leggono lì dentro.",
       },
       {
         // Il passo nuovo del 30/08: la campanella non si spiega da sola,
@@ -131,9 +172,9 @@ export default function GuidaPrimoAccesso({
         fisso: true,
         titolo: "Quando siamo noi a doverti dire qualcosa",
         testo:
-          "Questa campanella, in alto, è l'unico posto in cui ti parliamo noi: la verifica della partita IVA, le risposte dell'assistenza, e il motivo per cui — se succede — non compari nelle ricerche. Il pallino resta acceso finché la cosa non è sistemata, non finché non l'hai guardata.",
+          "Verifica della partita IVA, risposte dell'assistenza, e il motivo per cui — se succede — non compari nelle ricerche. Il pallino resta acceso finché la cosa non è sistemata, non finché non l'hai guardata.",
         testoSenzaAncora:
-          "Quando siamo noi a doverti dire qualcosa — la verifica della partita IVA, una risposta dell'assistenza, il motivo per cui non compari nelle ricerche — lo trovi in Notifiche, nel menu ☰ in alto a destra.",
+          "Verifica della partita IVA, risposte dell'assistenza, il motivo per cui non compari: sono in Notifiche, nel menu ☰ in alto a destra.",
       },
       {
         id: "impostazioni",
@@ -141,66 +182,39 @@ export default function GuidaPrimoAccesso({
         fisso: true,
         titolo: "Zone, orari, numero, prezzi: qui dentro",
         testo:
-          "Questa rotella, in alto a destra, apre le impostazioni: è lì che dici in quali quartieri lavori, a che ora, con che numero e a che prezzo. Fra un attimo ti ci porto io, una cosa alla volta.",
+          "Da qui: in quali quartieri lavori, a che ora, con che numero e a che prezzo. Fra un attimo ti ci porto io.",
         testoSenzaAncora:
-          "Da telefono le impostazioni stanno nel menu ☰ in alto a destra: è lì che dici in quali quartieri lavori, a che ora, con che numero e a che prezzo. Fra un attimo ti ci porto io, una cosa alla volta.",
+          "Le impostazioni stanno nel menu ☰ in alto a destra: quartieri, orari, numero e prezzi. Fra un attimo ti ci porto io.",
       },
       {
         id: "stato",
         ancora: "stato",
         titolo: "E questo dice se i clienti ti trovano",
         testo:
-          "Il riquadro resta qui e risponde a una domanda sola: compari nelle ricerche? Non è un'etichetta che ti mettiamo noi — si accende da sola quando hai dichiarato di cosa ti occupi. Sotto, le cose che ti mancano.",
-        contenuto: stato ? <Riepilogo voci={stato.voci} /> : undefined,
+          "Risponde a una domanda sola: compari nelle ricerche? Si accende da sola quando hai dichiarato di cosa ti occupi.",
       },
     ],
-    [nome, stato]
+    [nome]
   );
 
-  // ---- 2. Le cose che mancano: una per passo, con il link che ci porta ----
+  // ---- 2. Le cose che mancano: UN passo solo, non uno per cosa ----
+  //
+  // COM'ERA (fino al 30/08). Una tappa per ogni voce mancante, tutte ancorate
+  // allo stesso riquadro «stato», piu' una tappa di chiusura ancorata ancora
+  // li'. Un profilo appena iscritto ne aveva quattro piu' una: cinque passi di
+  // fila che illuminavano lo stesso rettangolo, con il pallino della guida che
+  // avanzava senza che sullo schermo cambiasse niente. Segnalato da Lucio: «mi
+  // sembra inutile avere le ultime 4 voci del tutorial per una unica sezione».
+  //
+  // COM'E' ADESSO. Un passo per ogni cosa vera della pagina, e uno solo per il
+  // riquadro dello stato: dentro c'e' la lista, e ogni riga che manca e' un
+  // link che porta a sistemarla. Le cose da fare non sono sparite — sono nel
+  // posto in cui il professionista le ritrovera' anche dopo, cioe' dentro il
+  // riquadro, invece che in una fila di passi che si vede una volta sola.
   const daFare = useMemo(
     () => (stato ? stato.voci.filter((v) => !v.fatto) : []),
     [stato]
   );
-
-  const cose: PassoTour[] = daFare.map((v) => ({
-    id: `cosa-${v.chiave}`,
-    ancora: "stato",
-    titolo: v.blocca ? `Ti manca questo: ${v.titolo.toLowerCase()}` : v.titolo,
-    testo: `${v.conseguenza} Ci vuole un minuto e ti ci porto io: quando hai finito, in cima alla pagina trovi il link per tornare qui.`,
-    contenuto: stato ? <Riepilogo voci={stato.voci} /> : undefined,
-    azione: { etichetta: "Portami lì →", href: v.href },
-  }));
-
-  // ---- 3. La chiusura: dipende da come sta il profilo, non dal copione ----
-  const chiusura: PassoTour = !stato
-    ? {
-        id: "fine",
-        ancora: "stato",
-        titolo: "Non riesco a controllare adesso",
-        testo:
-          "La connessione non mi ha risposto, quindi non ti dico cosa manca per non farti rifare cose già fatte. Il riquadro qui accanto ha un pulsante per riprovare.",
-      }
-    : daFare.length === 0
-      ? {
-          id: "fine",
-          ancora: "stato",
-          titolo: "Ci sei: i clienti ti trovano",
-          testo:
-            "Non manca niente. Da adesso le richieste della tua zona arrivano nel primo riquadro della pagina, e questo qui resta a dirti come stai messo.",
-          contenuto: <Riepilogo voci={stato.voci} />,
-        }
-      : {
-          id: "fine",
-          ancora: "stato",
-          titolo: stato.compare ? "Il resto quando vuoi" : "Quello che resta",
-          testo: stato.compare
-            ? "Quello che manca non ti nasconde: cambia quante richieste ti arrivano e come. Il riquadro resta qui con i link, non serve rifare la guida."
-            : "Finché non dici di cosa ti occupi resti fuori dalle ricerche. Il riquadro resta qui con il link: quando lo fai, lo stato si accende da solo.",
-          contenuto: <Riepilogo voci={stato.voci} />,
-        };
-
-  const passi = [...spiegazione, ...cose, chiusura];
 
   const esci = useCallback(
     async (segna: boolean) => {
@@ -232,6 +246,47 @@ export default function GuidaPrimoAccesso({
     },
     [daFare, router, segnaVista]
   );
+
+  // ---- 3. L'ultimo passo: dipende da come sta il profilo, non dal copione ----
+  const finale: PassoTour = useMemo(() => {
+    if (!stato) {
+      return {
+        id: "fine",
+        ancora: "stato",
+        titolo: "Non riesco a controllare adesso",
+        testo:
+          "La connessione non mi ha risposto, quindi non ti dico cosa manca per non farti rifare cose gia' fatte. Il riquadro qui accanto ha un pulsante per riprovare.",
+      };
+    }
+    if (daFare.length === 0) {
+      return {
+        id: "fine",
+        ancora: "stato",
+        titolo: "Ci sei: i clienti ti trovano",
+        testo:
+          "Non manca niente. Le richieste della tua zona arrivano nel primo riquadro della pagina, e questo resta a dirti come stai messo.",
+        contenuto: <Riepilogo voci={stato.voci} />,
+      };
+    }
+    // Il bottone principale punta alla cosa che pesa di piu': quella che
+    // nasconde, se c'e'; altrimenti la prima della lista.
+    const prima = daFare.find((v) => v.blocca) ?? daFare[0];
+    return {
+      id: "fine",
+      ancora: "stato",
+      titolo: stato.compare ? "Ti resta questo" : "Perche' non compari ancora",
+      testo: stato.motivo
+        ? `${stato.motivo} Le altre cose non ti nascondono: cambiano quante richieste ti arrivano e come. Tocca una riga e ti ci porto io.`
+        : "Tocca una riga e ti porto dove si sistema. Quando torni, la spunta e' gia' verde.",
+      contenuto: <Riepilogo voci={stato.voci} onVai={vaiA} />,
+      azione: { etichetta: `${prima.titolo} →`, href: prima.href },
+    };
+  }, [stato, daFare, vaiA]);
+
+  // L'elenco dei passi deve avere un'identita' stabile: TourAncorato ci
+  // appende sopra scrollTo e rimisure, e un array nuovo a ogni render gli
+  // faceva ripartire lo scorrimento animato in continuazione.
+  const passi = useMemo(() => [...spiegazione, finale], [spiegazione, finale]);
 
   // Finche' non so cosa manca non apro: un giro che cambia numero di passi
   // mentre lo stai guardando e' un giro di cui non ti fidi piu'.

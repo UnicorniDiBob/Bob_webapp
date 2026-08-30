@@ -328,3 +328,27 @@ DATA_COMPLIANCE.md §8.
 6. **Identità del titolare** in `src/lib/company.ts`: i `[PLACEHOLDER]` sono differiti a gennaio 2027 per scelta, ma l'informativa e questo registro hanno bisogno di un titolare reale prima di trattare dati di utenti veri su scala.
 7. **Memo DPO** (DATA_COMPLIANCE §7.4): non obbligatorio a questa scala, ma la valutazione va messa per iscritto.
 8. ~~**Cancellazione dei file di verifica** (A16)~~ — **chiuso il 19/08/2026 con la migrazione 056**: il cron `/api/cron/cancella-account` svuota `verifica-documenti/<user_id>/` prima di cancellare l'account. Vedi A20.
+
+---
+
+## A21 — Profilo pubblico del professionista
+
+Riga aggiunta il **30 agosto 2026** con la migrazione 065. Non esisteva: la
+pubblicazione del profilo di un professionista è una finalità distinta dalla
+gestione dell'account (A1) e dal questionario d'iscrizione (A15), e va scritta
+per conto suo.
+
+| | |
+|---|---|
+| **Finalità** | Rendere trovabile il professionista dai clienti: scheda pubblica, elenchi, pagine città e servizio |
+| **Base giuridica** | Contratto — art. 6(1)(b): è la prestazione stessa che il professionista chiede iscrivendosi |
+| **Interessati** | Professionisti |
+| **Dati** | **Nome dell'attività** (`professionals.business_name`), titolo, descrizione, anni di esperienza, tempo di risposta dichiarato, mestiere e sottocategorie, città e zone coperte, fascia di prezzo, livello di verifica e sua data, foto dei lavori, punteggio e recensioni ricevute |
+| **Tabelle** | `professionals`, `professional_services`, `professional_coverage_public`, `portfolio_items`, `ratings` |
+| **Destinatari** | Chiunque: sono pagine pubbliche, indicizzabili dai motori di ricerca |
+| **Trasferimenti** | Vercel (vedi A1). Nessun altro |
+| **Conservazione** | Finché il profilo è attivo. `deactivated_at` lo toglie subito dal pubblico (la pagina risponde 404, non «esiste se hai il link»); la cancellazione dell'account lo elimina a cascata |
+| **Sicurezza** | RLS in lettura pubblica solo sui profili non disattivati; le colonne di stato (verifica, livello, piano, `ready_at`) sono scrivibili solo dal server — `protect_professional_columns`, migrazioni 017/057/062 |
+| **Note** | **La 065 riduce i dati pubblicati, non li aumenta.** Prima il titolo della scheda era `profiles.full_name`, cioè il nome e cognome della persona: un dato personale pubblicato senza che servisse alla finalità. Ora è il nome dell'attività, scelto dal professionista, e il nome del titolare resta interno (assistenza, verifica P.IVA in A7, fatturazione). Per una ditta individuale i due possono coincidere: è una scelta del professionista, non un'imposizione nostra. **DA CONFERMARE**: i profili nati prima della 065 hanno `business_name` riempito dal backfill con il nome della persona — al primo salvataggio della scheda lo cambiano, ma finché non lo fanno pubblicano quello che pubblicavano prima |
+
+---

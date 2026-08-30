@@ -115,6 +115,7 @@ export async function getServiceCounts(): Promise<Record<string, number>> {
 type RawProfessionalRow = {
   id: string;
   user_id: string;
+  business_name: string | null;
   headline: string | null;
   bio: string | null;
   years_experience: number | null;
@@ -144,6 +145,7 @@ type RawProfessionalRow = {
 const PROFESSIONAL_SELECT = `
   id,
   user_id,
+  business_name,
   headline,
   bio,
   years_experience,
@@ -226,9 +228,19 @@ function toCard(
 
   const cop = coperture[row.id];
 
+  // IL NOME CHE VEDE IL CLIENTE (065). Il titolo della scheda e' il nome
+  // dell'attivita'; il nome del titolare e' un dato che serve a noi e non ha
+  // motivo di stare su una pagina pubblica. Finche' esistono profili nati
+  // prima della 065 il fallback resta il nome della persona: meglio una scheda
+  // con il nome giusto di ieri che una scheda senza titolo.
+  const fullName = names[row.user_id] ?? "Professionista";
+  const businessName = row.business_name?.trim() || null;
+
   return {
     id: row.id,
-    fullName: names[row.user_id] ?? "Professionista",
+    fullName,
+    businessName,
+    displayName: businessName ?? fullName,
     headline: row.headline,
     bio: row.bio,
     yearsExperience: row.years_experience,

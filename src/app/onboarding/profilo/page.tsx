@@ -12,8 +12,26 @@
 // 1. salva le risposte in onboarding_answers (RLS: solo tu e lo staff);
 // 2. crea la riga professionals se manca — è QUESTO il momento in cui il
 //    profilo pro nasce, prima lo creava lo staff a mano;
-// 3. sincronizza il tier con gli eventuali codici promo riscattati al passo 1
+// 3. scrive il NOME DELL'ATTIVITÀ (065) e, se lo dai, il CELLULARE;
+// 4. sincronizza il tier con gli eventuali codici promo riscattati al passo 1
 //    (il tier è protetto da trigger: passa dal server, non da qui).
+//
+// I DUE CAMPI AGGIUNTI IL 30/08, e perché.
+//
+// NOME DELL'ATTIVITÀ — non c'era, e il risultato era che la scheda pubblica si
+// intitolava con il nome e il cognome della persona iscritta. Il nome con cui
+// un professionista si presenta ai clienti è la prima cosa che deve leggersi;
+// il nome del titolare serve a noi (assistenza, verifica, fatturazione) e non
+// ha motivo di stare su una pagina pubblica. È obbligatorio ma non è un
+// ostacolo: arriva già scritto con «Nome Cognome» e chi ha una ditta lo
+// cambia. Vedi migrazione 065.
+//
+// CELLULARE — facoltativo, e resta facoltativo. Non lo vede il cliente: serve
+// a noi per l'assistenza e per la prenotazione diretta. Chiederlo qui evita
+// che resti una spunta rossa nella checklist per settimane; renderlo
+// obbligatorio sarebbe raccogliere un contatto per una funzione che ancora non
+// esiste (DATA_COMPLIANCE §2: minimizzazione). Stessa finalità e stessa riga
+// di RoPA della 051, nessun trattamento nuovo.
 //
 // PRIVACY (DATA_COMPLIANCE §2): base giuridica contratto per mestiere/città/
 // zona/esperienza; heard_from è facoltativo (legittimo interesse, metrica di
@@ -70,6 +88,8 @@ function ProfiloInner() {
   const [cities, setCities] = useState<CityRow[]>([]);
   const [services, setServices] = useState<ServiceRow[]>([]);
 
+  const [businessName, setBusinessName] = useState("");
+  const [phone, setPhone] = useState("");
   const [profession, setProfession] = useState("");
   const [professionAltro, setProfessionAltro] = useState("");
   const [cityId, setCityId] = useState("");
@@ -89,16 +109,36 @@ function ProfiloInner() {
         router.replace("/login?mode=signup&role=professional");
         return;
       }
-      const [{ data: roleRow }, citiesRes, servicesRes] = await Promise.all([
-        supabase.from("users").select("role").eq("id", user.id).maybeSingle(),
-        supabase.from("cities").select("id, name, status").order("name"),
-        supabase.from("services").select("id, name, slug").order("name"),
-      ]);
+      const [{ data: roleRow }, citiesRes, servicesRes, profRes, proRes] =
+        await Promise.all([
+          supabase.from("users").select("role").eq("id", user.id).maybeSingle(),
+          supabase.from("cities").select("id, name, status").order("name"),
+          supabase.from("services").select("id, name, slug").order("name"),
+          supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+          supabase
+            .from("professionals")
+            .select("business_name")
+            .eq("user_id", user.id)
+            .maybeSingle(),
+        ]);
       if (roleRow?.role !== "professional") {
         router.replace("/dashboard");
         return;
       }
       setUserId(user.id);
+      // Precompilato con il nome della persona: chi lavora in proprio non deve
+      // inventarsi niente, chi ha una ditta lo sovrascrive. Se il campo è già
+      // stato compilato (questionario rifatto) vince quello che c'è.
+      setBusinessName(
+        ((proRes.data as { business_name?: string | null } | null)
+          ?.business_name ??
+          (profRes.data as { full_name?: string | null } | null)?.full_name ??
+          "").trim()
+      );
       setCities((citiesRes.data ?? []) as CityRow[]);
       setServices((servicesRes.data ?? []) as ServiceRow[]);
       setChecking(false);
@@ -114,6 +154,23 @@ function ProfiloInner() {
     try {
       // Il select porta l'id del servizio (serve per professional_services);
       // il questionario conserva il nome, che è ciò che il pro ha letto.
+      const attivita = businessName.trim().replace(/\s+/g, " ");
+      if (attivita.length < 2 || attivita.length > 80) {
+        setError(
+          "Scrivi il nome con cui ti presenti ai clienti: da 2 a 80 caratteri."
+        );
+        setSubmitting(false);
+        return;
+      }
+      // Facoltativo, ma se c'è deve essere un numero: un campo che accetta
+      // qualunque cosa produce contatti inutilizzabili e nessun avviso.
+      const tel = phone.replace(/[\s./-]/g, "");
+      if (tel && !/^\+?\d{8,15}$/.test(tel)) {
+        setError("Il numero non mi torna. Solo cifre, con o senza +39.");
+        setSubmitting(false);
+        return;
+      }
+
       const servizioScelto =
         profession === "__altro__"
           ? null
@@ -159,6 +216,7 @@ function ProfiloInner() {
           .insert({
             user_id: userId,
             city_id: cityId,
+            business_name: attivita,
             years_experience: years ? Number(years) : null,
             verification_status: "unverified",
             subscription_tier: "free",
@@ -167,6 +225,24 @@ function ProfiloInner() {
           .single();
         if (insErr) throw insErr;
         professionalId = creato?.id ?? null;
+      } else {
+        // Questionario rifatto: il nome dell'attività è l'unica cosa che ha
+        // senso riscrivere (città ed esperienza si cambiano da /impostazioni).
+        const { error: updErr } = await supabase
+          .from("professionals")
+          .update({ business_name: attivita })
+          .eq("id", professionalId);
+        if (updErr) throw updErr;
+      }
+
+      // 2-bis. Il cellulare, se l'ha dato. Non blocca: se la scrittura fallisce
+      // il primo ingresso non si ferma per un campo facoltativo — resta nella
+      // checklist con il suo link, che è esattamente cosa serve.
+      if (tel) {
+        await supabase.from("profile_phone").upsert(
+          { user_id: userId, phone: tel, updated_at: new Date().toISOString() },
+          { onConflict: "user_id" }
+        );
       }
 
       // 3. IL SERVIZIO. Senza una riga in professional_services il profilo
@@ -236,14 +312,35 @@ function ProfiloInner() {
           <div className="mb-5 text-center">
             <LogoMark className="mx-auto mb-3" />
             <h1 className="text-xl font-bold text-bob-ink">
-              Due domande e ci siamo
+              Come ti presentiamo ai clienti
             </h1>
             <p className="mt-1 text-sm text-bob-ink/55">
-              Servono per proporti alle persone giuste nella tua zona.
+              Poche cose, e ci siamo.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div>
+              <label className="label-bob" htmlFor="businessName">
+                Nome della tua attività
+              </label>
+              <input
+                id="businessName"
+                type="text"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                className="input-bob"
+                maxLength={80}
+                placeholder="Es. IdroMilano Express"
+                data-testid="input-business-name"
+                required
+              />
+              <p className="mt-1 text-xs text-bob-ink/50">
+                È il titolo della tua scheda: i clienti vedono questo. Se
+                lavori in proprio va benissimo il tuo nome.
+              </p>
+            </div>
+
             <div>
               <label className="label-bob" htmlFor="profession">
                 Che lavoro fai?
@@ -318,6 +415,28 @@ function ProfiloInner() {
                 placeholder="Es. Isola, Navigli, hinterland nord…"
                 data-testid="input-zone"
               />
+            </div>
+
+            <div>
+              <label className="label-bob" htmlFor="phone">
+                Cellulare{" "}
+                <span className="font-normal text-bob-ink/40">(facoltativo)</span>
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="input-bob"
+                placeholder="Es. 348 1234567"
+                data-testid="input-phone"
+              />
+              <p className="mt-1 text-xs text-bob-ink/50">
+                Non lo vede il cliente: serve a noi per l&apos;assistenza e per
+                la prenotazione diretta.
+              </p>
             </div>
 
             <div>

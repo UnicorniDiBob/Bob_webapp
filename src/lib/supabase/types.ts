@@ -182,6 +182,14 @@ export interface RequestRow {
 export interface ProfessionalCard {
   id: string;
   fullName: string;
+  /** Nome dell'attivita' (065). null sui profili nati prima della migrazione. */
+  businessName: string | null;
+  /**
+   * Il nome da mostrare al pubblico: l'attivita' se c'e', altrimenti la
+   * persona. Le pagine pubbliche usano QUESTO, mai fullName: il nome del
+   * titolare e' un dato interno (assistenza, verifica, fatturazione).
+   */
+  displayName: string;
   headline: string | null;
   bio: string | null;
   yearsExperience: number | null;
