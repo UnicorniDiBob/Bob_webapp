@@ -54,6 +54,27 @@ interface ServiceRow {
   slug: string;
 }
 
+// GLI ERRORI DI POSTGREST NON SONO `Error`.
+// supabase-js non lancia: restituisce { error }, e qui quell'oggetto viene
+// rilanciato con `throw`. E' un oggetto semplice — { message, code, details,
+// hint } — quindi `err instanceof Error` e' FALSO e il vecchio ternario
+// finiva sempre nel ramo generico: sullo schermo compariva «Errore
+// imprevisto» e il motivo vero spariva. E' cosi' che il blocco corretto dalla
+// 066 e' rimasto invisibile: il messaggio diceva letteralmente «new row
+// violates row-level security policy», e nessuno l'ha mai letto.
+function messaggioErrore(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === "object" && err !== null) {
+    const e = err as { message?: unknown; code?: unknown };
+    if (typeof e.message === "string" && e.message) {
+      return typeof e.code === "string" && e.code
+        ? `${e.message} (${e.code})`
+        : e.message;
+    }
+  }
+  return "Errore imprevisto";
+}
+
 const CANALI = [
   "Passaparola",
   "Ricerca Google",
@@ -292,7 +313,7 @@ function ProfiloInner() {
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Errore imprevisto");
+      setError(messaggioErrore(err));
       setSubmitting(false);
     }
   }
