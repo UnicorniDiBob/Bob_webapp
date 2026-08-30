@@ -123,6 +123,19 @@ export default function GuidaPrimoAccesso({
           "Le conversazioni stanno in Messaggi, che si apre dalla bolla in basso a destra e porta il numero dei non letti. Detto chiaro: le email di avviso non partono ancora, quindi per ora si leggono lì dentro.",
       },
       {
+        // Il passo nuovo del 30/08: la campanella non si spiega da sola,
+        // perche' il suo contenuto prima viveva sparso in quattro pagine e
+        // nessuno lo cercava in un unico posto.
+        id: "notifiche",
+        ancora: "notifiche",
+        fisso: true,
+        titolo: "Quando siamo noi a doverti dire qualcosa",
+        testo:
+          "Questa campanella, in alto, è l'unico posto in cui ti parliamo noi: la verifica della partita IVA, le risposte dell'assistenza, e il motivo per cui — se succede — non compari nelle ricerche. Il pallino resta acceso finché la cosa non è sistemata, non finché non l'hai guardata.",
+        testoSenzaAncora:
+          "Quando siamo noi a doverti dire qualcosa — la verifica della partita IVA, una risposta dell'assistenza, il motivo per cui non compari nelle ricerche — lo trovi in Notifiche, nel menu ☰ in alto a destra.",
+      },
+      {
         id: "impostazioni",
         ancora: "impostazioni",
         fisso: true,

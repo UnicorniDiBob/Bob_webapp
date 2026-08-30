@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings, UserCog } from "lucide-react";
+import { Bell, Settings, UserCog } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "./AuthProvider";
+import { NotificheCampanella } from "./NotificheCampanella";
+import { useNotifiche } from "./NotificheProvider";
 import { VERIFICATION_LABEL } from "@/lib/vat";
 import { BadgeCheck } from "lucide-react";
 
@@ -20,6 +22,7 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, role, verificationLevel, signOut, loading } = useAuth();
+  const { daContare } = useNotifiche();
   const [open, setOpen] = useState(false);
 
   async function handleSignOut() {
@@ -97,6 +100,14 @@ export function Header() {
                   chi. Adesso il bottone porta a cio' che serve ogni giorno e
                   l'etichetta dipende dal ruolo; la configurazione sta
                   nell'icona accanto. */}
+              {/* LA CAMPANELLA (30/08). Le comunicazioni di servizio —
+                  verifica, risposte dell'assistenza, profilo invisibile —
+                  vivevano su quattro pagine diverse e si vedevano solo per
+                  caso. Sta qui perche' l'header e' l'unico posto presente su
+                  ogni pagina, e prima del bottone del lavoro perche' e'
+                  un avviso, non una destinazione. Gli account staff non ne
+                  hanno: le loro cose stanno in /admin. */}
+              {role !== "admin" && role !== "cs" && <NotificheCampanella />}
               <Link
                 href="/dashboard"
                 className="btn-secondary py-2"
@@ -181,7 +192,9 @@ export function Header() {
                 Admin
               </Link>
             )}
-            <div className="mt-2 flex gap-2">
+            {/* flex-wrap: con la campanella le voci sono cinque e su un
+                telefono stretto si schiacciavano l'una sull'altra. */}
+            <div className="mt-2 flex flex-wrap gap-2">
               {user ? (
                 <>
                   {role !== "professional" && role !== "admin" && role !== "cs" && (
@@ -198,6 +211,22 @@ export function Header() {
                   </Link>
                   {/* Su mobile l'icona da sola sarebbe un bersaglio ambiguo in
                       mezzo al menu: qui la voce e' scritta. */}
+                  {role !== "admin" && role !== "cs" && (
+                    <Link
+                      href="/notifiche"
+                      onClick={() => setOpen(false)}
+                      className="btn-ghost inline-flex items-center gap-1.5"
+                      data-testid="link-notifiche-mobile"
+                    >
+                      <Bell className="h-4 w-4" aria-hidden="true" />
+                      Notifiche
+                      {daContare > 0 && (
+                        <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-bob-indigo px-1 text-[10px] font-bold leading-none text-white">
+                          {daContare > 9 ? "9+" : daContare}
+                        </span>
+                      )}
+                    </Link>
+                  )}
                   <Link
                     href="/impostazioni/dati"
                     onClick={() => setOpen(false)}
