@@ -35,7 +35,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { useProfessional } from "@/lib/useProfessional";
 import { SectionHeader } from "@/components/ImpostazioniShell";
@@ -52,6 +51,12 @@ import {
   pianoById,
   type ScontiPerPiano,
 } from "@/lib/piani";
+import {
+  BADGE_RESTA,
+  effettoDisdetta,
+  funzioniCheRestano,
+  funzioniPerse,
+} from "@/lib/disdetta";
 import type { SubscriptionTier } from "@/lib/supabase/types";
 
 interface Codice {
@@ -69,7 +74,6 @@ const fmtData = (iso: string) =>
   });
 
 export default function PianoDashboardPage() {
-  const supabase = createClient();
   const router = useRouter();
   const { user, role, loading: authLoading } = useAuth();
   const { pro, loading, failed, reload } = useProfessional();
@@ -79,6 +83,8 @@ export default function PianoDashboardPage() {
   const [cambiato, setCambiato] = useState<string | null>(null);
   const [inCorso, setInCorso] = useState<SubscriptionTier | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
+  const [chiedoConferma, setChiedoConferma] = useState(false);
+  const [disdetto, setDisdetto] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -96,31 +102,25 @@ export default function PianoDashboardPage() {
       const json = (await res.json()) as {
         sconti?: ScontiPerPiano;
         codici?: Codice[];
+        attivoDal?: string | null;
       };
       if (json.sconti) setSconti(json.sconti);
       if (json.codici) setCodici(json.codici);
+      if (json.attivoDal !== undefined) setCambiato(json.attivoDal);
     } catch {
       // Senza codici la pagina mostra il listino pieno: nessun blocco.
     }
   }, []);
 
+  // «Attivo dal» arriva dalla ROUTE, non da una query dal browser.
+  // subscription_tier_events (migrazione 025) ha una sola policy di lettura, e
+  // e' per admin e cs: con la sessione di un professionista quella select non
+  // tornava MAI una riga, quindi la data non si e' mai vista. E' lo stesso
+  // inciampo dei promo_codes corretto il 30/08, ed era invisibile per lo stesso
+  // motivo: una riga che manca non somiglia a un errore.
   useEffect(() => {
     if (!user || !pro) return;
-    let active = true;
-    (async () => {
-      await leggiCodici();
-      const { data: ev } = await supabase
-        .from("subscription_tier_events")
-        .select("changed_at")
-        .eq("professional_id", pro.id)
-        .order("changed_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (active && ev) setCambiato((ev as { changed_at: string }).changed_at);
-    })();
-    return () => {
-      active = false;
-    };
+    void leggiCodici();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, pro?.id]);
 
@@ -142,6 +142,36 @@ export default function PianoDashboardPage() {
       // Il piano decide cosa vede in mezza applicazione (verifica, portfolio,
       // prenotazione diretta): si rilegge tutto, non solo questa pagina.
       await reload();
+      router.refresh();
+    } catch {
+      setErrore("Errore di rete: riprova.");
+    } finally {
+      setInCorso(null);
+    }
+  }
+
+  // La disdetta passa dalla stessa route del cambio piano — «scendere e'
+  // sempre concesso» e' gia' la regola del server, e non ne serve una seconda.
+  // Cambia cosa le sta intorno: un nome, cosa perdi, quando ha effetto.
+  async function disdici() {
+    if (inCorso) return;
+    setInCorso("free");
+    setErrore(null);
+    try {
+      const res = await fetch("/api/onboarding/promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "scegli", piano: "free" }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setErrore(json.error ?? "Non sono riuscito a registrare la disdetta.");
+        return;
+      }
+      setChiedoConferma(false);
+      setDisdetto(true);
+      await reload();
+      await leggiCodici();
       router.refresh();
     } catch {
       setErrore("Errore di rete: riprova.");
@@ -267,7 +297,7 @@ export default function PianoDashboardPage() {
           </p>
         )}
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {PIANI.filter((p) => p.id !== pro.tier).map((p) => {
+          {PIANI.filter((p) => p.id !== pro.tier && p.id !== "free").map((p) => {
             const et = etichettaPrezzo(p, sconti);
             const gratis = costaZero(p, sconti);
             return (
@@ -316,6 +346,107 @@ export default function PianoDashboardPage() {
           .
         </p>
       </div>
+
+      {/* LA DISDETTA.
+          Non e' una funzione nuova: i ToS pro (art. 3) e le FAQ di
+          /per-i-professionisti la promettono gia' entrambi, «in qualsiasi
+          momento dall'area riservata, senza costi di disdetta ne' penali».
+          Quello che mancava era che si chiamasse cosi'. Prima usciva dalla
+          griglia qui sopra come «Passa a Free»: stesso effetto, ma nessuna
+          conferma, nessun elenco di cosa si perde e nessuna data. Adesso Free
+          non e' piu' in griglia, cosi' la via d'uscita e' una sola e passa da
+          qui. */}
+      {pro.tier !== "free" && (
+        <div className="card p-5" data-testid="disdetta">
+          <h3 className="text-sm font-semibold text-bob-ink">
+            Disdici l&apos;abbonamento
+          </h3>
+
+          {disdetto ? (
+            <p
+              className="mt-1.5 text-sm leading-relaxed text-bob-ink/70"
+              data-testid="disdetta-fatta"
+            >
+              Disdetta registrata: sei sul piano Free. Il profilo resta
+              pubblico e continui a ricevere richieste e messaggi. Puoi tornare
+              a un piano superiore quando vuoi, da questa stessa pagina.
+            </p>
+          ) : !chiedoConferma ? (
+            <>
+              <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+                Puoi farlo in qualsiasi momento, senza costi di disdetta e
+                senza penali. Torni al piano Free: il profilo resta pubblico e
+                continui a ricevere richieste e messaggi.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setErrore(null);
+                  setChiedoConferma(true);
+                }}
+                className="mt-3 rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold text-bob-ink transition hover:border-black/25"
+                data-testid="apri-disdetta"
+              >
+                Disdici {attuale.nome}
+              </button>
+            </>
+          ) : (
+            <div className="mt-3" data-testid="conferma-disdetta">
+              <p className="text-sm font-semibold text-bob-ink">
+                Cosa smette di funzionare
+              </p>
+              <ul className="mt-1.5 space-y-1 text-sm text-bob-ink/70">
+                {funzioniPerse(pro.tier).map((f) => (
+                  <li key={f}>· {f}</li>
+                ))}
+              </ul>
+
+              <p className="mt-3 text-sm font-semibold text-bob-ink">
+                Cosa resta
+              </p>
+              <ul className="mt-1.5 space-y-1 text-sm text-bob-ink/70">
+                {funzioniCheRestano().map((f) => (
+                  <li key={f}>· {f}</li>
+                ))}
+              </ul>
+
+              <p className="mt-3 text-sm leading-relaxed text-bob-ink/60">
+                {effettoDisdetta().quando}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-bob-ink/60">
+                {BADGE_RESTA}
+              </p>
+
+              {errore && (
+                <p className="mt-3 text-sm text-red-600" data-testid="errore-disdetta">
+                  {errore}
+                </p>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={disdici}
+                  disabled={inCorso !== null}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+                  data-testid="conferma-disdetta-bottone"
+                >
+                  {inCorso === "free" ? "Registro…" : "Confermo la disdetta"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChiedoConferma(false)}
+                  disabled={inCorso !== null}
+                  className="rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold text-bob-ink transition hover:border-black/25 disabled:opacity-50"
+                  data-testid="annulla-disdetta"
+                >
+                  Lascia tutto com&apos;è
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
