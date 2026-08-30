@@ -46,19 +46,36 @@ come piano *consigliato*: smette solo di essere applicata da sola.
 ha policy solo per lo staff. La join tornava `null` e la pagina scriveva «Con
 il codice —». Adesso quei dati arrivano dalla route, con il service role.
 
+**«La tua azienda» non butta più via quello che hai scritto.** Se mancava il
+servizio principale, `handleSave` usciva *prima di scrivere qualunque cosa*:
+titolo, «chi sei», anni, tariffe e nota non venivano salvati e uscendo dalla
+pagina erano persi, con l'errore stampato milletrecento pixel sotto il campo
+che lo causava. Il servizio decide **una** cosa — la visibilità (062) — non se
+il resto del profilo si possa salvare: adesso il resto si salva sempre e il
+servizio mancante è un avviso di visibilità, con la stessa frase di campanella
+e promemoria. Restano bloccanti solo città (NOT NULL) e un titolo leggibile, e
+quando bloccano la pagina scorre sul campo e ce lo mette dentro il fuoco. In
+più «ci sono modifiche non salvate» e l'avviso del browser prima di chiudere.
+
+Prima di scrivere una riga ho eseguito in produzione **le stesse letture e
+scritture della pagina** con ruolo `authenticated` e l'`auth.uid()` di
+sig.mozzato, in una transazione poi annullata: 15 servizi visibili, entrambe le
+scritture accettate, `ready_at` che si accende. Il database non c'entrava — ed
+è anche la prova che la protezione riscritta dalla 062 regge sul percorso vero.
+
 ## Cosa è a metà
 
-- **Le 063 e 064 NON sono applicate**: i file sono nelle PR, l'applicazione su
-  Supabase è il passo successivo al merge (regola: prima il file nella PR).
-  Finché la 064 non è applicata, le colonne di sconto non esistono e la route
-  `/api/onboarding/promo` risponderebbe con un errore di colonna mancante sulla
-  `select`: **la 064 va applicata insieme al merge, non dopo con calma.**
-- **Advisor da rilanciare** dopo l'applicazione della 063 (deve tornare a zero
-  WARN nuovi) e della 064 (nessuna funzione nuova, ma la regola è la regola).
-- **Verifica dal vivo su www.meetonda.com** — desktop e 390px — ancora da fare:
-  il deploy non c'è. Da guardare in particolare: la campanella dentro l'header
-  su mobile (il menu ☰ adesso ha cinque voci, ho aggiunto `flex-wrap`), e il
-  pop-up del promemoria sotto i 400px.
+- **Le 063 e 064 sono applicate** (30/08, dopo il merge delle PR #13/#14/#15).
+  Advisor rilanciati: i due WARN sulle funzioni-trigger sono spariti. Resta
+  **un solo rilievo, preesistente e non nostro**: *Leaked Password Protection
+  Disabled* — un interruttore in Authentication → Passwords che confronta le
+  password con HaveIBeenPwned. Da accendere prima del pilota.
+- **Verifica dal vivo su www.meetonda.com** — desktop e 390px — ancora da fare.
+  Il deploy di produzione è READY su `c80f91d`, ma dalla sessione non si arriva
+  al sito e l'estensione Chrome non risultava collegata. Da guardare: la
+  campanella dentro l'header su mobile (il menu ☰ adesso ha cinque voci, ho
+  aggiunto `flex-wrap`), il pop-up del promemoria sotto i 400px, e il nuovo
+  terzo stato «salvato ma non compari» in fondo a «La tua azienda».
 - **`npm run build` non gira nel clone montato via bridge** (il worker esce con
   SIGBUS). Le due PR sono state costruite a parte, in un container pulito, e
   passano: `✓ Compiled successfully`, 64 pagine generate, `tsc --noEmit` e
@@ -75,7 +92,10 @@ il codice —». Adesso quei dati arrivano dalla route, con il service role.
 
 ## Cosa ho applicato in produzione che l'altro deve sapere
 
-- **Migrazione 062 applicata** il 30/08 alle 10:13 UTC. Sei righe
+- **Migrazioni 062, 063 e 064 applicate** il 30/08 (la 062 alle 10:13 UTC, le
+  altre due subito dopo il merge). `BOB-FOUNDER-2026` è 100% su tutti e tre i
+  piani e `used_count` è 0.
+- La 062, nel dettaglio: Sei righe
   `professionals` toccate: tutte e sei adesso hanno `ready_at`.
 - **Account di prova `sig.mozzato@gmail.com` riportato a zero** (non cancellato,
   quindi stessa password e nessuna email di Supabase consumata):

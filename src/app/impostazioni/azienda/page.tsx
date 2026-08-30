@@ -9,6 +9,26 @@
 //
 // Le colonne sensibili (verifica, tier) restano protette lato database dal
 // trigger protect_professional_columns: questa pagina non le tocca.
+//
+// IL SALVATAGGIO NON RIFIUTA PIU' TUTTO PER UN CAMPO SOLO (30/08).
+// Com'era: se mancava il servizio principale, handleSave usciva PRIMA di
+// scrivere qualunque cosa. Titolo, «chi sei», anni, tariffe e nota sul prezzo
+// non venivano salvati, e uscendo dalla pagina erano persi. Il campo mancante
+// sta in cima, il bottone Salva milletrecento pixel piu' giu': si leggeva una
+// riga rossa sopra il bottone che parlava di un campo fuori schermo, senza
+// nulla che lo segnasse. Segnalato da Lucio il 30/08 con la frase esatta: «se
+// esci non puoi proseguire da dove hai terminato».
+//
+// Com'e' adesso, e perche'. Il servizio decide UNA cosa: se compari nelle
+// ricerche (migrazione 062 — pronto = almeno un servizio dichiarato). Non
+// decide se il resto del profilo puo' essere salvato. Quindi il resto si salva
+// sempre, e il servizio mancante diventa quello che e': un avviso di
+// visibilita', con la stessa identica frase che usano la campanella e il
+// promemoria (motivoInvisibile, in lib/notifiche.ts).
+// Restano bloccanti solo le cose che il database non accetterebbe o che
+// renderebbero il profilo pubblico sbagliato: la citta' (NOT NULL su
+// professionals) e un titolo leggibile. E quando bloccano, la pagina scorre
+// sul campo e ce lo mette dentro il fuoco, invece di scriverlo in fondo.
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -21,6 +41,7 @@ import {
   SectionError,
   NoProProfile,
 } from "@/components/SectionStates";
+import { motivoInvisibile } from "@/lib/notifiche";
 
 interface City {
   id: string;
@@ -47,6 +68,23 @@ const RESPONSE_OPTIONS = [
   "Risponde in 24h",
   "Risponde in 48h",
 ];
+
+type CampoRotto = "citta" | "titolo" | "prezzo" | "servizio" | null;
+
+/** L'anello rosso su un campo che ha fermato il salvataggio. */
+const ANELLO = "ring-2 ring-red-400 border-red-300";
+
+/**
+ * Porta il campo sotto gli occhi e dentro il fuoco. Un errore scritto in fondo
+ * a un modulo alto due schermate non e' un errore: e' un indovinello.
+ */
+function portaSuCampo(id: string) {
+  if (typeof document === "undefined") return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  window.setTimeout(() => (el as HTMLElement).focus({ preventScroll: true }), 300);
+}
 
 export default function AziendaPage() {
   const supabase = createClient();
@@ -76,6 +114,16 @@ export default function AziendaPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  /** Quale campo ha fermato il salvataggio: si colora e prende il fuoco. */
+  const [campoRotto, setCampoRotto] = useState<CampoRotto>(null);
+  /** Salvato, ma c'e' una conseguenza da dire. Non e' un errore. */
+  const [avviso, setAvviso] = useState<string | null>(null);
+  /**
+   * L'istantanea dei campi come stavano all'ultimo salvataggio (o al
+   * caricamento). Serve a sapere se c'e' qualcosa di non salvato: senza, la
+   * pagina non puo' avvertire chi sta per uscire.
+   */
+  const [salvato, setSalvato] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -149,6 +197,58 @@ export default function AziendaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user, role]);
 
+  // L'impronta dei campi: cambia a ogni tasto, e confrontata con l'ultima
+  // salvata dice se c'e' del lavoro che uscendo si perderebbe.
+  const impronta = useMemo(
+    () =>
+      JSON.stringify([
+        cityId,
+        serviceId,
+        headline,
+        bio,
+        years,
+        responseLabel,
+        minPrice,
+        maxPrice,
+        priceNote,
+        [...subSlugs].sort(),
+      ]),
+    [
+      cityId,
+      serviceId,
+      headline,
+      bio,
+      years,
+      responseLabel,
+      minPrice,
+      maxPrice,
+      priceNote,
+      subSlugs,
+    ]
+  );
+
+  // Alla fine del caricamento l'impronta di partenza e' quella che c'e' scritto
+  // nel database: da li' in poi ogni differenza e' roba non salvata.
+  useEffect(() => {
+    if (booted && salvato === null) setSalvato(impronta);
+  }, [booted, salvato, impronta]);
+
+  const nonSalvato = salvato !== null && impronta !== salvato;
+
+  // L'avviso del browser prima di chiudere o ricaricare. Non copre la
+  // navigazione interna di Next (non c'e' un gancio per farlo in App Router):
+  // per quella c'e' la riga visibile accanto al bottone. Meglio due mezze
+  // reti dichiarate che una promessa che non regge.
+  useEffect(() => {
+    if (!nonSalvato) return;
+    function avvisa(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", avvisa);
+    return () => window.removeEventListener("beforeunload", avvisa);
+  }, [nonSalvato]);
+
   const serviceSubs = useMemo(
     () => subservices.filter((s) => s.service_id === serviceId),
     [subservices, serviceId]
@@ -160,19 +260,40 @@ export default function AziendaPage() {
     );
   }
 
+  function ferma(campo: Exclude<CampoRotto, null>, id: string, messaggio: string) {
+    setCampoRotto(campo);
+    setError(messaggio);
+    portaSuCampo(id);
+  }
+
   async function handleSave() {
     if (!user || !profileId || saving) return;
     setError(null);
+    setAvviso(null);
+    setCampoRotto(null);
     setSavedAt(null);
 
-    if (!cityId) return setError("Scegli la tua città.");
-    if (!serviceId) return setError("Scegli il servizio che offri.");
-    if (headline.trim().length < 5)
-      return setError("Scrivi un titolo di almeno 5 caratteri.");
+    // BLOCCANTI: solo cio' che il database rifiuterebbe (city_id e' NOT NULL su
+    // professionals) o che renderebbe pubblico un profilo sbagliato.
+    if (!cityId) {
+      return ferma("citta", "az-city", "Scegli la tua citta: senza, il profilo non si puo salvare.");
+    }
+    if (headline.trim().length < 5) {
+      return ferma(
+        "titolo",
+        "az-headline",
+        "Scrivi un titolo di almeno 5 caratteri: e la prima riga che legge un cliente."
+      );
+    }
     const minP = minPrice ? Number(minPrice) : null;
     const maxP = maxPrice ? Number(maxPrice) : null;
-    if (minP != null && maxP != null && minP > maxP)
-      return setError("Il prezzo minimo non può superare il massimo.");
+    if (minP != null && maxP != null && minP > maxP) {
+      return ferma(
+        "prezzo",
+        "az-min-price",
+        "Il prezzo minimo non puo superare il massimo."
+      );
+    }
 
     setSaving(true);
     try {
@@ -188,6 +309,20 @@ export default function AziendaPage() {
         })
         .eq("id", profileId);
       if (upErr) throw upErr;
+
+      // IL SERVIZIO NON BLOCCA IL SALVATAGGIO, decide la visibilita'. Se manca,
+      // tutto il resto e' gia' scritto qui sopra: si dice la conseguenza e si
+      // segna il campo, non si butta via il lavoro.
+      if (!serviceId) {
+        setSalvato(impronta);
+        setSavedAt(Date.now());
+        setCampoRotto("servizio");
+        setAvviso(
+          motivoInvisibile({ servizi: 0, disattivato: false }) ??
+            "manca il servizio principale"
+        );
+        return;
+      }
 
       const serviceFields = {
         professional_id: profileId,
@@ -213,6 +348,7 @@ export default function AziendaPage() {
         setServiceRowId((sIns as { id: string }).id);
       }
 
+      setSalvato(impronta);
       setSavedAt(Date.now());
     } catch {
       setError("Non sono riuscito a salvare. Controlla i campi e riprova.");
@@ -241,8 +377,12 @@ export default function AziendaPage() {
             <select
               id="az-city"
               value={cityId}
-              onChange={(e) => setCityId(e.target.value)}
-              className="input-bob"
+              onChange={(e) => {
+                setCityId(e.target.value);
+                if (campoRotto === "citta") setCampoRotto(null);
+              }}
+              aria-invalid={campoRotto === "citta"}
+              className={`input-bob ${campoRotto === "citta" ? ANELLO : ""}`}
               data-testid="profile-city"
             >
               <option value="">Scegli…</option>
@@ -256,7 +396,10 @@ export default function AziendaPage() {
           </div>
           <div>
             <label className="label-bob" htmlFor="az-service">
-              Servizio principale
+              Servizio principale{" "}
+              <span className="font-normal text-bob-ink/45">
+                {"\u2014 senza, non compari nelle ricerche"}
+              </span>
             </label>
             <select
               id="az-service"
@@ -264,8 +407,13 @@ export default function AziendaPage() {
               onChange={(e) => {
                 setServiceId(e.target.value);
                 setSubSlugs([]);
+                if (campoRotto === "servizio") {
+                  setCampoRotto(null);
+                  setAvviso(null);
+                }
               }}
-              className="input-bob"
+              aria-invalid={campoRotto === "servizio"}
+              className={`input-bob ${campoRotto === "servizio" ? ANELLO : ""}`}
               data-testid="profile-service"
             >
               <option value="">Scegli…</option>
@@ -309,10 +457,14 @@ export default function AziendaPage() {
           <input
             id="az-headline"
             value={headline}
-            onChange={(e) => setHeadline(e.target.value)}
+            onChange={(e) => {
+              setHeadline(e.target.value);
+              if (campoRotto === "titolo") setCampoRotto(null);
+            }}
             maxLength={80}
             placeholder="Es. Interventi idraulici rapidi in città"
-            className="input-bob"
+            aria-invalid={campoRotto === "titolo"}
+            className={`input-bob ${campoRotto === "titolo" ? ANELLO : ""}`}
             data-testid="profile-headline"
           />
         </div>
@@ -373,12 +525,17 @@ export default function AziendaPage() {
           <span className="label-bob">Tariffa indicativa (€/h)</span>
           <div className="mt-1 flex items-center gap-2">
             <input
+              id="az-min-price"
               type="number"
               min={0}
               value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
+              onChange={(e) => {
+                setMinPrice(e.target.value);
+                if (campoRotto === "prezzo") setCampoRotto(null);
+              }}
               placeholder="Min"
-              className="input-bob"
+              aria-invalid={campoRotto === "prezzo"}
+              className={`input-bob ${campoRotto === "prezzo" ? ANELLO : ""}`}
               aria-label="Tariffa minima oraria"
               data-testid="profile-min-price"
             />
@@ -410,13 +567,57 @@ export default function AziendaPage() {
         </div>
 
         {error && (
-          <p className="text-sm text-red-600" data-testid="profile-error">
+          <p
+            className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+            data-testid="profile-error"
+          >
             {error}
           </p>
         )}
-        {savedAt && !error && (
-          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+
+        {/* SALVATO, MA C'E' UNA CONSEGUENZA. Il verde direbbe «fatto» e
+            basterebbe a chiudere la pagina credendo di essere online; il rosso
+            direbbe «errore» e non e' vero, perche' e' tutto salvato. Un terzo
+            stato per una terza cosa. */}
+        {savedAt && avviso && !error && (
+          <div
+            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+            role="status"
+            data-testid="profile-salvato-invisibile"
+          >
+            <p>
+              <span className="font-semibold">
+                {"\u2713 Salvato, ma i clienti non ti trovano:"}
+              </span>{" "}
+              {avviso}.
+            </p>
+            <button
+              type="button"
+              onClick={() => portaSuCampo("az-service")}
+              className="mt-1.5 font-semibold underline-offset-2 hover:underline"
+              data-testid="profile-vai-al-servizio"
+            >
+              {"Scegli il servizio \u2192"}
+            </button>
+          </div>
+        )}
+
+        {savedAt && !avviso && !error && (
+          <p
+            className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+            role="status"
+          >
             ✓ Salvato. Le modifiche sono già online.
+          </p>
+        )}
+
+        {nonSalvato && !saving && (
+          <p
+            className="text-sm text-bob-ink/55"
+            data-testid="profile-non-salvato"
+          >
+            {"Ci sono modifiche non salvate."}
           </p>
         )}
 
