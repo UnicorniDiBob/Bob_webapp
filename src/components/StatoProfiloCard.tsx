@@ -86,12 +86,35 @@ export function StatoProfiloCard({
             </span>
           </p>
 
-          <p className="mt-1 pl-4 text-xs text-bob-ink/55">
+          {/* IL MOTIVO, NON UN RIMANDO (30/08). Qui c'era scritto «il primo
+              punto qui sotto è quello che ti tiene fuori»: una freccia verso
+              una lista, non una risposta. Chi legge «non compari» vuole
+              sapere PERCHE', e lo vuole sapere nella stessa frase. */}
+          {!esito.stato.compare && esito.stato.motivo && (
+            <div
+              className="mt-2 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2.5"
+              data-testid="motivo-invisibile"
+            >
+              <p className="text-xs leading-relaxed text-amber-900">
+                <span className="font-semibold">Perché:</span>{" "}
+                {esito.stato.motivo}.
+              </p>
+              <Link
+                href={esito.stato.hrefMotivo}
+                className="mt-1.5 inline-block text-xs font-semibold text-amber-800 underline-offset-2 hover:underline"
+                data-testid="link-risolvi-motivo"
+              >
+                Sistemalo adesso →
+              </Link>
+            </div>
+          )}
+
+          <p className="mt-2 pl-4 text-xs text-bob-ink/55">
             {esito.stato.mancanti === 0
               ? "Non manca niente."
               : esito.stato.compare
                 ? "Le cose qui sotto non ti nascondono: cambiano quante richieste ti arrivano e come."
-                : "Il primo punto qui sotto è quello che ti tiene fuori."}
+                : "Le altre righe non ti nascondono: cambiano quante richieste ricevi e come."}
           </p>
 
           <ul className="mt-3 space-y-2 border-t border-black/5 pt-3">

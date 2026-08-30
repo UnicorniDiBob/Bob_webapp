@@ -24,6 +24,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { dovesiSistema, motivoInvisibile } from "@/lib/notifiche";
 
 export type ChiaveStato = "servizi" | "zone" | "telefono" | "orari";
 
@@ -45,6 +46,15 @@ export interface StatoProfilo {
   voci: VoceStato[];
   /** Compare nelle ricerche: dipende SOLO dalle voci bloccanti. */
   compare: boolean;
+  /**
+   * PERCHE' non compare, in una frase leggibile. null quando compare.
+   * La frase nasce in lib/notifiche.ts (motivoInvisibile) perche' la stessa
+   * spiegazione va detta identica qui, nella campanella e nel promemoria: tre
+   * copie divergono, una sola no.
+   */
+  motivo: string | null;
+  /** La pagina dove si toglie il motivo qui sopra. */
+  hrefMotivo: string;
   /**
    * professionals.ready_at: da quando il server dichiara il profilo trovabile.
    * La scrivono i trigger della 062, mai il client. NULL finche' la migrazione
@@ -180,11 +190,21 @@ export function useStatoProfilo(
         ? true
         : fatti.servizi && !profilo.deactivated_at;
 
+      // Il motivo si calcola SEMPRE dai fatti, anche quando ready_at dice che
+      // compare: se i due non fossero d'accordo (trigger fermo, riga scritta a
+      // mano) meglio accorgersene qui che dal professionista.
+      const fattiVisibilita = {
+        servizi: servizi.count ?? 0,
+        disattivato: Boolean(profilo.deactivated_at),
+      };
+
       setEsito({
         fase: "letto",
         stato: {
           voci,
           compare,
+          motivo: compare ? null : motivoInvisibile(fattiVisibilita),
+          hrefMotivo: dovesiSistema(fattiVisibilita),
           readyAt,
           mancanti: voci.filter((v) => !v.fatto).length,
           letto: new Date(),

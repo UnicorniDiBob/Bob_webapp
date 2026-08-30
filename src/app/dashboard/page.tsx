@@ -16,16 +16,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ProWorkspace } from "@/components/ProWorkspace";
-import VerificaPromoBanner from "@/components/VerificaPromoBanner";
 import { CustomerHome } from "@/components/CustomerHome";
 import GuidaPrimoAccesso from "@/components/GuidaPrimoAccesso";
 import { leggiProgresso } from "@/lib/guidaProgresso";
-
-interface StatoVerifica {
-  level: "none" | "vat_verified" | "documents_verified";
-  reviewState: "pending" | "docs_requested" | "rejected" | null;
-  reviewNote: string | null;
-}
 
 interface ProProfile {
   id: string;
@@ -47,7 +40,6 @@ export default function DashboardPage() {
   const { user, role, fullName, loading } = useAuth();
 
   const [proProfile, setProProfile] = useState<ProProfile | null>(null);
-  const [statoVerifica, setStatoVerifica] = useState<StatoVerifica | null>(null);
   const [proRating, setProRating] = useState<{ avg: number | null; n: number }>({
     avg: null,
     n: 0,
@@ -99,23 +91,9 @@ export default function DashboardPage() {
 
       if (prof) {
         const p = prof as Record<string, unknown>;
-        // Stato della pratica di verifica: la riga è sua e la RLS gliela fa
-        // leggere. Serve al banner per dire a che punto è, invece di ripetere
-        // "verifica ora" a chi ha già mandato tutto.
-        const { data: ver } = await supabase
-          .from("professional_verification")
-          .select("level, vat_review_state, vat_review_note")
-          .eq("professional_id", p.id as string)
-          .maybeSingle();
-        if (active) {
-          const v = (ver ?? {}) as Record<string, unknown>;
-          setStatoVerifica({
-            level: (v.level as StatoVerifica["level"]) ?? "none",
-            reviewState:
-              (v.vat_review_state as StatoVerifica["reviewState"]) ?? null,
-            reviewNote: (v.vat_review_note as string) ?? null,
-          });
-        }
+        // LO STATO DELLA VERIFICA NON SI LEGGE PIU' QUI (30/08). Era servito a
+        // un riquadro sulla dashboard; adesso e' una notifica di servizio come
+        // le altre e la legge lib/notifiche.ts, in un posto solo per tutte.
         const cityObj = p.cities as { name: string } | null;
         if (active) {
           setProProfile({
@@ -224,18 +202,13 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Invito alla verifica: solo a chi non ce l'ha ancora E ha un
-                piano che la include — dal 14/08 la verifica è esclusiva di
-                Pro/Business, spingerla a un Free sarebbe un vicolo cieco. */}
-            {proProfile &&
-              proProfile.subscription_tier !== "free" &&
-              statoVerifica &&
-              statoVerifica.level === "none" && (
-              <VerificaPromoBanner
-                reviewState={statoVerifica.reviewState}
-                reviewNote={statoVerifica.reviewNote}
-              />
-            )}
+            {/* L'INVITO ALLA VERIFICA NON E' PIU' QUI (30/08). Era una fascia
+                sopra l'area di lavoro, cioe' l'unica notifica di servizio con
+                una casa propria: adesso sta nella campanella insieme alle
+                risposte dello staff e allo stato del profilo. Le regole (solo
+                a chi ha un piano che la include, quattro stati diversi per
+                quattro momenti della pratica) sono le stesse, scritte in
+                lib/notifiche.ts. */}
             <ProWorkspace
               profile={proProfile}
               rating={proRating}
