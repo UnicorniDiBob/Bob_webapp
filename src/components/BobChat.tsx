@@ -974,7 +974,7 @@ export function BobChat({
                       )}
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-bob-ink">
-                          {p.fullName}
+                          {p.displayName}
                         </p>
                         <p className="truncate text-xs text-bob-ink/60">
                           {p.headline}

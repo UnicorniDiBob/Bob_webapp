@@ -60,6 +60,33 @@ interface Riquadro {
 const ALONE = 8;
 const LARGHEZZA = 360;
 
+// PERCHE' IL GIRO ERA LEGNOSO (30/08, segnalato da Lucio: «non e' fluido nei
+// suoi passaggi, e' chiaramente laggoso»). Tre cose che si sommavano:
+//
+// 1. l'effetto che porta l'elemento in vista dipendeva dall'OGGETTO passo, non
+//    dal suo id. Il chiamante ricostruisce l'elenco dei passi a ogni render,
+//    quindi l'oggetto era nuovo ogni volta: ogni render faceva ripartire uno
+//    scrollTo({behavior:"smooth"}) e tre timeout di rimisura. Lo scroll fa
+//    partire l'evento scroll, che rimisura, che fa un setState, che fa un
+//    render, che fa ripartire lo scroll: un anello che si alimenta da solo.
+// 2. l'evento scroll rimisurava a ogni singolo evento — decine al secondo
+//    durante uno scorrimento animato — e ogni misura faceva un setState anche
+//    quando il rettangolo era identico a prima.
+// 3. il ritaglio ha una transizione di 300ms: se la posizione cambia a ogni
+//    fotogramma, la transizione non arriva mai a destinazione e si vede
+//    strisciare dietro la pagina. Adesso la transizione c'e' solo mentre si
+//    cambia passo, e si spegne durante lo scorrimento a dito.
+function stessoRiquadro(a: Riquadro | null, b: Riquadro | null) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    Math.abs(a.top - b.top) < 0.5 &&
+    Math.abs(a.left - b.left) < 0.5 &&
+    Math.abs(a.width - b.width) < 0.5 &&
+    Math.abs(a.height - b.height) < 0.5
+  );
+}
+
 function trova(ancora?: string): HTMLElement | null {
   if (!ancora || typeof document === "undefined") return null;
   return document.querySelector<HTMLElement>(`[data-tour="${ancora}"]`);
@@ -88,36 +115,43 @@ export function TourAncorato({
   );
   const [riquadro, setRiquadro] = useState<Riquadro | null>(null);
   const [stretto, setStretto] = useState(false);
+  /** true solo mentre si cambia passo: e' l'unico momento in cui l'alone deve
+      animarsi. Durante lo scorrimento a dito la transizione va spenta. */
+  const [inMovimento, setInMovimento] = useState(false);
   const finestra = useRef({ w: 1024, h: 768 });
   const pannello = useRef<HTMLDivElement>(null);
 
   const passo = passi[i];
   const ultimo = i === passi.length - 1;
 
+  // Si dipende dai VALORI del passo, non dall'oggetto: l'elenco dei passi viene
+  // ricostruito a ogni render del chiamante e l'identita' dell'oggetto cambia
+  // sempre, anche quando il passo e' lo stesso.
+  const idPasso = passo?.id;
+  const ancora = passo?.ancora;
+  const fisso = passo?.fisso ?? false;
+
   const misura = useCallback(() => {
     if (typeof window === "undefined") return;
     finestra.current = { w: window.innerWidth, h: window.innerHeight };
     setStretto(window.innerWidth < 640);
-    const el = trova(passo?.ancora);
-    if (!el) {
-      setRiquadro(null);
-      return;
-    }
-    const r = el.getBoundingClientRect();
-    // Elemento presente ma non renderizzato (display:none su un breakpoint):
-    // vale come assente, altrimenti si illumina un punto di zero pixel.
-    if (r.width < 4 || r.height < 4) {
-      setRiquadro(null);
-      return;
-    }
-    setRiquadro({ top: r.top, left: r.left, width: r.width, height: r.height });
-  }, [passo]);
+    const el = trova(ancora);
+    const r = el?.getBoundingClientRect();
+    // Elemento assente, oppure presente ma non renderizzato (display:none su un
+    // breakpoint): vale come assente, altrimenti si illumina un punto di zero
+    // pixel.
+    const prossimo =
+      r && r.width >= 4 && r.height >= 4
+        ? { top: r.top, left: r.left, width: r.width, height: r.height }
+        : null;
+    setRiquadro((prec) => (stessoRiquadro(prec, prossimo) ? prec : prossimo));
+  }, [ancora]);
 
   // Cambio di passo: si porta l'elemento in vista, poi si misura piu' volte
   // perche' lo scorrimento e' animato.
   useEffect(() => {
-    const el = trova(passo?.ancora);
-    if (el && !passo?.fisso) {
+    const el = trova(ancora);
+    if (el && !fisso) {
       const r = el.getBoundingClientRect();
       const alto = window.innerWidth < 640 ? 84 : Math.max(96, (window.innerHeight - r.height) / 2);
       window.scrollTo({
@@ -126,16 +160,37 @@ export function TourAncorato({
       });
     }
     misura();
+    setInMovimento(true);
     const t = [120, 340, 700].map((ms) => window.setTimeout(misura, ms));
+    const fine = window.setTimeout(() => setInMovimento(false), 760);
     pannello.current?.focus();
-    return () => t.forEach((id) => window.clearTimeout(id));
-  }, [i, misura, passo]);
+    return () => {
+      t.forEach((id) => window.clearTimeout(id));
+      window.clearTimeout(fine);
+    };
+    // idPasso e' nell'elenco perche' due passi possono condividere la stessa
+    // ancora (es. l'ultimo e il riepilogo): senza, cambiare passo non
+    // rimisurerebbe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idPasso, ancora, fisso, misura]);
 
+  // Una misura per fotogramma, non una per evento. Durante uno scorrimento
+  // animato gli eventi sono decine al secondo: misurarli tutti significa un
+  // render per evento, ed e' esattamente la sensazione di trascinamento.
   useEffect(() => {
-    const f = () => misura();
+    let atteso = 0;
+    const f = () => {
+      setInMovimento(false);
+      if (atteso) return;
+      atteso = window.requestAnimationFrame(() => {
+        atteso = 0;
+        misura();
+      });
+    };
     window.addEventListener("scroll", f, { passive: true });
     window.addEventListener("resize", f);
     return () => {
+      if (atteso) window.cancelAnimationFrame(atteso);
       window.removeEventListener("scroll", f);
       window.removeEventListener("resize", f);
     };
@@ -178,7 +233,9 @@ export function TourAncorato({
 
       {riquadro ? (
         <div
-          className="pointer-events-none fixed rounded-2xl ring-2 ring-bob-indigo transition-all duration-300"
+          className={`pointer-events-none fixed rounded-2xl ring-2 ring-bob-indigo ${
+            inMovimento ? "transition-all duration-300" : ""
+          }`}
           style={{
             top: riquadro.top - ALONE,
             left: riquadro.left - ALONE,
@@ -207,7 +264,9 @@ export function TourAncorato({
         className={
           stretto
             ? "fixed inset-x-0 bottom-0 rounded-t-2xl border-t border-black/10 bg-white p-5 shadow-2xl outline-none"
-            : "fixed rounded-2xl border border-black/10 bg-white p-5 shadow-2xl outline-none transition-all duration-300"
+            : `fixed rounded-2xl border border-black/10 bg-white p-5 shadow-2xl outline-none ${
+                inMovimento ? "transition-all duration-300" : ""
+              }`
         }
         style={stretto ? undefined : posizione()}
       >

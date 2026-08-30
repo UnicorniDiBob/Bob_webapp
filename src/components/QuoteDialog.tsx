@@ -252,7 +252,7 @@ export function QuoteDialog({
                   key={p.id}
                   className="chip bg-bob-indigo-50 text-bob-indigo"
                 >
-                  {p.fullName}
+                  {p.displayName}
                 </span>
               ))}
             </div>

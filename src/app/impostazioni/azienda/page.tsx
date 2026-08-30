@@ -69,7 +69,7 @@ const RESPONSE_OPTIONS = [
   "Risponde in 48h",
 ];
 
-type CampoRotto = "citta" | "titolo" | "prezzo" | "servizio" | null;
+type CampoRotto = "citta" | "attivita" | "titolo" | "prezzo" | "servizio" | null;
 
 /** L'anello rosso su un campo che ha fermato il salvataggio. */
 const ANELLO = "ring-2 ring-red-400 border-red-300";
@@ -102,6 +102,7 @@ export default function AziendaPage() {
 
   const [cityId, setCityId] = useState("");
   const [serviceId, setServiceId] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
   const [years, setYears] = useState("");
@@ -146,7 +147,7 @@ export default function AziendaPage() {
           supabase
             .from("professionals")
             .select(
-              "id, city_id, headline, bio, years_experience, response_time_label, subservice_slugs"
+              "id, city_id, business_name, headline, bio, years_experience, response_time_label, subservice_slugs"
             )
             .eq("user_id", user.id)
             .maybeSingle(),
@@ -167,6 +168,7 @@ export default function AziendaPage() {
         const p = prof as Record<string, unknown>;
         setProfileId(p.id as string);
         setCityId((p.city_id as string) ?? "");
+        setBusinessName((p.business_name as string) ?? "");
         setHeadline((p.headline as string) ?? "");
         setBio((p.bio as string) ?? "");
         setYears(p.years_experience != null ? String(p.years_experience) : "");
@@ -204,6 +206,7 @@ export default function AziendaPage() {
       JSON.stringify([
         cityId,
         serviceId,
+        businessName,
         headline,
         bio,
         years,
@@ -216,6 +219,7 @@ export default function AziendaPage() {
     [
       cityId,
       serviceId,
+      businessName,
       headline,
       bio,
       years,
@@ -278,6 +282,17 @@ export default function AziendaPage() {
     if (!cityId) {
       return ferma("citta", "az-city", "Scegli la tua citta: senza, il profilo non si puo salvare.");
     }
+    // Il nome dell'attivita' e' il titolo della scheda pubblica (065): senza,
+    // la scheda non ha un nome, e il vincolo del database rifiuterebbe comunque
+    // una stringa di un carattere.
+    const attivita = businessName.trim().replace(/\s+/g, " ");
+    if (attivita.length < 2) {
+      return ferma(
+        "attivita",
+        "az-business-name",
+        "Scrivi il nome con cui ti presenti ai clienti: e il titolo della tua scheda."
+      );
+    }
     if (headline.trim().length < 5) {
       return ferma(
         "titolo",
@@ -301,6 +316,7 @@ export default function AziendaPage() {
         .from("professionals")
         .update({
           city_id: cityId,
+          business_name: attivita,
           headline: headline.trim(),
           bio: bio.trim() || null,
           years_experience: years ? Number(years) : null,
@@ -449,6 +465,29 @@ export default function AziendaPage() {
             </div>
           </div>
         )}
+
+        <div>
+          <label className="label-bob" htmlFor="az-business-name">
+            Nome della tua attività
+          </label>
+          <input
+            id="az-business-name"
+            value={businessName}
+            onChange={(e) => {
+              setBusinessName(e.target.value);
+              if (campoRotto === "attivita") setCampoRotto(null);
+            }}
+            maxLength={80}
+            placeholder="Es. IdroMilano Express"
+            aria-invalid={campoRotto === "attivita"}
+            className={`input-bob ${campoRotto === "attivita" ? ANELLO : ""}`}
+            data-testid="profile-business-name"
+          />
+          <p className="mt-1 text-xs text-bob-ink/50">
+            È il titolo della tua scheda. Il tuo nome e cognome restano dati
+            nostri: non compaiono in pubblico.
+          </p>
+        </div>
 
         <div>
           <label className="label-bob" htmlFor="az-headline">
