@@ -20,7 +20,8 @@
 //
 // Azioni:
 //   { action: "redeem", code }   convalida e registra il riscatto
-//   { action: "stato" }          gli sconti attivi e i codici che li portano
+//   { action: "stato" }          gli sconti attivi, i codici che li portano e
+//                                la data dell'ultimo cambio di piano
 //   { action: "scegli", piano }  applica il piano scelto, se costa zero
 //
 // POST /api/onboarding/promo
@@ -125,7 +126,36 @@ export async function POST(request: Request) {
 
   // -------------------------------------------------------------------------
   if (body.action === "stato") {
-    return NextResponse.json({ ok: true, ...(await leggiStato(admin, user.id)) });
+    // ATTIVO DAL: si legge da qui, con il service role, per lo stesso motivo
+    // dei codici. subscription_tier_events (migrazione 025) ha una sola policy
+    // di select ed e' per admin e cs; /impostazioni/piano la interrogava dal
+    // browser con la sessione del professionista, quindi non tornava mai una
+    // riga e la data non si e' mai vista da quando la pagina esiste. Una riga
+    // che manca non somiglia a un errore: e' esattamente come era passata
+    // inosservata la join su promo_codes.
+    const { data: pro } = await admin
+      .from("professionals")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    let attivoDal: string | null = null;
+    if (pro) {
+      const { data: ev } = await admin
+        .from("subscription_tier_events")
+        .select("changed_at")
+        .eq("professional_id", pro.id)
+        .order("changed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      attivoDal = (ev as { changed_at: string } | null)?.changed_at ?? null;
+    }
+
+    return NextResponse.json({
+      ok: true,
+      attivoDal,
+      ...(await leggiStato(admin, user.id)),
+    });
   }
 
   // -------------------------------------------------------------------------
