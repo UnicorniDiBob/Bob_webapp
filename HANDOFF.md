@@ -1,98 +1,154 @@
-# Passaggio di consegne — 30 agosto 2026, sera (Lucio)
+# Passaggio di consegne — 30 agosto 2026 (Lucio)
+
+*Riscritto il 31 agosto. La versione precedente si era fermata alle 17:44 di
+ieri: dava la migrazione 065 per «non ancora applicata» e non conosceva le due
+PR successive. Se l'hai letta prima di adesso, quel quadro era vecchio di tre
+ore.*
 
 ## Cosa ho fatto
 
-**La scheda pubblica del professionista si intitola con il nome
-dell'attività, non con quello del titolare — migrazione 065.** Fino a oggi il
-titolo della scheda era `profiles.full_name`. Sui sei profili seminati a giugno
-non si vedeva, perché il seed ci aveva messo delle ragioni sociali; alla prima
-iscrizione vera è comparso quello che il codice fa davvero: «lucio mozzaglia»
-come titolo, e la ditta relegata a sottotitolo. Adesso c'è
-`professionals.business_name`, la chiede l'iscrizione (obbligatoria, ma
-precompilata con «Nome Cognome», così chi lavora in proprio non deve inventarsi
-niente) e si rivede in «La tua azienda». Il nome del titolare resta un dato
-nostro — assistenza, verifica P.IVA, fatturazione — e non compare più in
-nessuna pagina pubblica. In `lib/data.ts` c'è `displayName`: le pagine pubbliche
-usano quello, `fullName` resta per admin e interno. **Riga di RoPA nuova: A21**,
-che prima non esisteva — pubblicare il profilo di un professionista è una
-finalità distinta dalla gestione dell'account, e non era scritta da nessuna
-parte.
+**La scheda pubblica si intitola col nome dell'attività, non con quello del
+titolare — 065, PR #17.** Fino a ieri il titolo era `profiles.full_name`. Sui
+sei profili seminati a giugno non si vedeva, perché il seed ci aveva messo
+delle ragioni sociali; alla prima iscrizione vera è comparso quello che il
+codice fa davvero: «lucio mozzaglia» come titolo, e la ditta a sottotitolo.
+Adesso c'è `professionals.business_name`, la chiede l'iscrizione (obbligatoria
+ma precompilata con «Nome Cognome», così chi lavora in proprio non deve
+inventarsi niente) e si rivede in «La tua azienda». Il nome del titolare resta
+un dato nostro — assistenza, verifica P.IVA, fatturazione — e non compare più
+in nessuna pagina pubblica. In `lib/data.ts` c'è `displayName`: le pagine
+pubbliche usano quello, `fullName` resta per admin e interno. **Riga di RoPA
+nuova: A21** — pubblicare il profilo di un professionista è una finalità
+distinta dalla gestione dell'account, e non era scritta da nessuna parte.
 
 **Meno testo sulla scheda.** Erano quattro riquadri incolonnati; su un profilo
 appena iscritto tre erano intestazioni sopra il vuoto. Via il riquadro
-«RECENSIONI — ancora nessuna recensione, sii il primo a lavorare con X» (lo
-stato è già nella riga dei dati, «Ancora senza recensioni»); via l'intestazione
-«CHI È», che etichettava una descrizione già sotto il nome; via il paragrafo di
-tre righe sotto il badge di verifica, che ripeteva a parole la data e il caveat
-già scritti dentro il badge e nel suo tooltip. Le sezioni compaiono solo se
-hanno qualcosa dentro.
+«RECENSIONI — ancora nessuna recensione», via l'intestazione «CHI È», via il
+paragrafo sotto il badge di verifica che ripeteva a parole la data e il caveat
+già scritti nel badge. Le sezioni compaiono solo se hanno qualcosa dentro.
 
 **Il giro guidato era lento per un anello che si alimentava da solo.**
 L'effetto che porta l'elemento in vista dipendeva dall'OGGETTO passo, e
 `GuidaPrimoAccesso` ricostruiva l'elenco dei passi a ogni render: ogni render
 faceva ripartire uno `scrollTo({behavior:"smooth"})`, lo scroll faceva partire
 l'evento scroll, l'evento rimisurava, la misura faceva un `setState`, il
-`setState` faceva un render. Tre correzioni: si dipende dall'`id` del passo e
-non dall'oggetto; l'elenco dei passi è memoizzato; la misura è una per
-fotogramma (rAF) e non fa `setState` se il rettangolo non è cambiato. In più
-l'alone ha la transizione solo mentre si cambia passo — mentre si scorre a dito
-si spegne, altrimenti insegue una posizione che cambia a ogni fotogramma ed è
-quello che si vedeva strisciare.
-
-**Le ultime quattro tappe erano la stessa tappa.** Il giro faceva un passo per
-ogni cosa mancante, tutte ancorate allo stesso riquadro «stato», più una
-chiusura ancorata ancora lì: cinque passi in fila che illuminavano lo stesso
-rettangolo. Adesso il riquadro dello stato è **un passo solo** e la lista sta
-dentro il pannello, con ogni riga mancante cliccabile. Sei passi invece di
-undici, e ognuno mostra qualcosa di diverso. Accorciati anche i testi dei
-cinque passi di spiegazione.
+`setState` faceva un render. Adesso si dipende dall'`id` del passo, l'elenco è
+memoizzato, la misura è una per fotogramma (rAF) e non fa `setState` se il
+rettangolo non è cambiato. L'alone ha la transizione solo mentre si cambia
+passo. **E le tappe sono sei invece di undici:** le ultime quattro illuminavano
+tutte lo stesso riquadro «stato», che ora è un passo solo con la lista dentro
+il pannello e ogni riga mancante cliccabile.
 
 **Cellulare all'iscrizione, facoltativo.** Chiederlo lì evita che resti una
 spunta rossa nella checklist per settimane. Resta facoltativo: obbligarlo
-sarebbe raccogliere un contatto per una funzione (le chiamate) che non esiste
-ancora.
+sarebbe raccogliere un contatto per una funzione (le chiamate) che non esiste.
 
-**Account di prova `sig.mozzato@gmail.com` riportato a zero** — di nuovo, e con
-la stessa ricetta del 30/08 mattina: non cancellato, quindi stessa password e
-nessuna email di Supabase consumata. Azzerati `onboarding_completed_at`,
-`ready_at`, titolo, descrizione, anni, tempo di risposta; cancellati servizi,
-zone, orari, portfolio, telefono, riga e cronologia di verifica, risposte del
-questionario, riscatto promo, consensi, e il ticket di prova. Piano riportato a
-`free`. `BOB-FOUNDER-2026` è tornato a `used_count = 0` da solo (trigger della
-060). Per rifare il primo ingresso da capo: accedere e aprire
-`/onboarding/piano`, la dashboard riapre la guida da sola.
+**La disdetta si chiama disdetta — PR #18, nessuna migrazione.** I ToS pro
+(art. 3) e le FAQ di /per-i-professionisti promettono entrambi la disdetta «in
+qualsiasi momento dall'area riservata, senza costi di disdetta né penali».
+Dietro quella frase c'era un bottone «Passa a Free» dentro la griglia degli
+altri piani: il declassamento funzionava, ma non si chiamava disdetta, non
+diceva cosa si perde e non aveva una data. Ora `src/lib/disdetta.ts` tiene la
+DATA DI EFFETTO in un posto solo (oggi immediata, perché non esiste nessun
+periodo di fatturazione; la bozza ToS 4.3 promette già l'effetto «dalla fine
+del periodo in corso», che sarà vero da 12.1/12.2), `funzioniPerse` si ricava
+dai PIANI così segue il listino da sola, Free esce dalla griglia «Gli altri
+piani», e la conferma dice cosa smette di funzionare, cosa resta, quando ha
+effetto e che il badge di verifica già ottenuto NON viene tolto (art. 22:
+nessun declassamento è automatico). **Corretto nello stesso giro, stessa classe
+del bug dei promo_codes:** «Attivo dal» non si era mai visto, perché la pagina
+leggeva `subscription_tier_events` dal browser e la 025 ha una sola policy di
+select, per admin e cs — quattro righe esistenti, zero visibili al pro. Adesso
+la data arriva dalla route col service role.
+
+**Ricompilare il questionario non è più un vicolo cieco — 066, PR #19.**
+`onboarding_answers` aveva una policy di INSERT e due di SELECT, e nessuna di
+UPDATE: l'upsert della pagina, sulla riga che esiste già, è un UPDATE, e
+Postgres rispondeva 42501. Le risposte sono il PRIMO passo del salvataggio e la
+riga `professionals` nasce DOPO: qualunque interruzione in mezzo lasciava un
+account con le risposte scritte e senza profilo pro, e da lì ogni tentativo
+moriva sulla stessa riga. Non un account impallato: **un account che non poteva
+più iscriversi**, ed è quello che era capitato a `sig.mozzato@gmail.com` alle
+9:58. Non si vedeva perché supabase-js non lancia, restituisce `{ error }`, e
+quell'oggetto non è un'istanza di `Error`: il ternario nel catch cadeva sempre
+nel ramo generico e buttava via il messaggio, che diceva esattamente cosa non
+andava. La 066 aggiunge la policy di UPDATE (ognuno tocca la propria riga; lo
+staff continua solo a leggere) e `messaggioErrore()` legge anche `message` e
+`code` degli errori PostgREST.
+
+**Account di prova `sig.mozzato@gmail.com` azzerato due volte,** senza
+cancellarlo: stessa password, nessuna email di Supabase consumata. La ricetta
+non è più a memoria: sta in `scripts/reset_account_prova.sql`, con l'elenco
+chiuso degli account di prova come protezione e le tre chiavi di localStorage
+che il database non tocca. Ieri quel file esisteva **solo sul mio Mac**, non
+tracciato.
 
 **Piano scritto per i gruppi aziendali** — `docs/Bob_Gruppi_Aziendali_PIANO_30ago.md`,
 niente costruito. Riprende lo spike #38.0 e ci mette sopra la richiesta del 30/08.
 
+## Com'è la produzione adesso — verificato il 31/08, non a memoria
+
+- `origin/main` = `f5e164e`, deploy Vercel **READY** su production.
+- **065 e 066 sono applicate** e i due file sono nel repo: nessuna deriva fra
+  schema e repo (l'ordine è stato rispettato: PR, migrazione, merge).
+- `/professionisti` risponde con i sei profili intitolati col nome
+  dell'attività: il rischio «elenco vuoto» della 065 non si è verificato.
+- Advisor di **sicurezza**: un solo rilievo, `Leaked Password Protection`
+  disabilitata (richiede il piano Pro, m11t7). Advisor di **performance**: 180
+  rilievi — 128 `multiple_permissive_policies`, 11 `auth_rls_initplan`, 25 FK
+  senza indice, 16 indici inutilizzati. È quello che manca a m11t4.
+- `ready_at` è scritta per tutti e sei i professionisti (i trigger della 062
+  funzionano): l'ultima, «foto pro», alle 18:55 del 30/08.
+
+## Due cose rotte, trovate nella verifica dal vivo del 31/08
+
+1. **«Contatta foto».** Il bottone della scheda e la barra fissa mobile prendono
+   la PRIMA PAROLA del nome mostrato: era «Contatta Marco» quando il titolo era
+   il nome della persona, con la 065 diventa «Contatta foto» per «foto pro» e
+   «Contatta Mano» per «Mano Amica Milano». Vale per tutte le schede, in
+   produzione ora. È figlio della 065 e va chiuso con lei: nome intero, o
+   etichetta senza nome.
+2. **La barra fissa mobile copre 69 px e nessuno li compensa.** A 390 px `body`
+   e `main` hanno `padding-bottom: 0` e il footer finisce esattamente a
+   `scrollHeight`: le ultime righe del footer stanno permanentemente sotto la
+   barra.
+
+Il resto della verifica passa: a 390 px la scheda è un riquadro solo, senza
+intestazioni sopra il vuoto; a 1440 px nessuna barra fissa e nessuna sezione
+vuota.
+
 ## Cosa è a metà
 
-- **La migrazione 065 NON è ancora applicata.** Il file è nella PR, come da
-  regola. **L'ordine conta e in un verso solo:** il codice nuovo legge
-  `business_name`, e se Vercel mette in produzione `main` prima che la colonna
-  esista, PostgREST rifiuta la select e **l'elenco dei professionisti torna
-  vuoto**. Quindi: PR aperta → 065 applicata → merge. La 065 al contrario è
-  innocua (colonna nullable, backfill), applicarla in anticipo non rompe niente.
-- **Advisor Supabase da rilanciare dopo l'applicazione della 065.** La 065 non
-  aggiunge funzioni, ma la regola è la regola.
-- **Verifica dal vivo su www.meetonda.com, desktop e 390px: da fare.** Vale per
-  la scheda del professionista (il riquadro unico, la barra fissa in basso su
-  mobile) e per il giro guidato a passo cambiato.
-- **Il clone locale su questo Mac era in uno stato sporco**: `.git/index.lock`
-  rimasto da una sessione precedente, HEAD su `main` fermo a `c48e0ed` con
-  l'albero di lavoro a `4d082ca`. Il contenuto era tutto già spinto, niente
-  perso. Il ramo di consegna riparte da `origin/main`.
+- **Il giro guidato non è stato verificato dal vivo**: serve una sessione
+  autenticata da professionista, e rifarlo consuma lo stato dell'account di
+  prova. Da fare insieme, in dieci minuti.
+- **m11t9 è ancora aperta e non l'ha toccata nessuno:**
+  `/api/pro/instant-slots` è pubblica per scelta scritta nel file e restituisce
+  l'orizzonte di agenda libera di un pro dato un `psid`; `/api/pro/instant-book`
+  chiede il login (401 senza) ma **non ha controllo di ruolo né rifiuto
+  dell'auto-prenotazione**.
+- **Due definizioni della stessa verità.** `private.pro_e_pronto` (062) e
+  `getProfessionals()` in `lib/data.ts` dicono entrambe «almeno un servizio e
+  profilo non spento», ma in due posti: l'elenco pubblico NON filtra su
+  `ready_at`. Oggi coincidono; il giorno che una cambia, il pro legge «compari
+  nelle ricerche» e non compare. `motivoInvisibile()` è già l'unico posto dove
+  sta la frase — manca che l'elenco usi la stessa colonna.
 - Restano aperti dal 28-30/08: la chat non passa ancora `zone` a `/api/match`
   (codice di André); 28 zone nostre contro 88 nuclei ufficiali; tariffa
   nell'unità del mestiere e costi accessori senza interfaccia; il worker
-  maplibre non emesso nel bundle; `Leaked Password Protection` da accendere
-  prima del pilota; SMTP personalizzato non configurato.
+  maplibre non emesso nel bundle; le zone servite non compaiono ancora sulla
+  scheda del pro; `Leaked Password Protection` da accendere prima del pilota;
+  SMTP personalizzato non configurato.
 
 ## Cosa ho applicato in produzione che l'altro deve sapere
 
-- **Niente migrazioni applicate in questa sessione.** La 065 è ferma alla PR.
-- **Solo dati:** l'azzeramento dell'account di prova `sig.mozzato@gmail.com`
-  descritto sopra. Nessun altro record toccato, nessuno schema modificato.
+- **Migrazioni 065 e 066 applicate il 30/08**, entrambe col file nel repo prima
+  dell'applicazione. Chi ha un clone vecchio: `git pull`. La colonna
+  `professionals.business_name` esiste, le pagine pubbliche leggono
+  `displayName`, e `onboarding_answers` ha una policy di UPDATE.
+- **Il 31/08 non ho toccato nessuno schema e nessun dato.**
+- Solo dati, il 30/08: l'azzeramento dell'account di prova
+  `sig.mozzato@gmail.com`, due volte. Nessun altro record.
 - Da fare a mano su Supabase, ancora dal 28/08: aggiungere
   `https://www.meetonda.com/auth/conferma` e `http://localhost:3000/auth/conferma`
   ai Redirect URLs, e decidere l'SMTP personalizzato.
