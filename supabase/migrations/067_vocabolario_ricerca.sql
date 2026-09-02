@@ -1,4 +1,4 @@
--- 062: il vocabolario della ricerca — dalle parole che si scrivono al catalogo.
+-- 067: il vocabolario della ricerca — dalle parole che si scrivono al catalogo.
 --
 -- COSA MANCAVA. Per trovare un servizio oggi ci sono due strade: chiedere a Bob,
 -- oppure scorrere l'elenco con due tendine (città e servizio). Non esiste una
@@ -240,7 +240,7 @@ on conflict do nothing;
 --    Sono scritti come li scrive un cliente, non come li scrive un catalogo:
 --    "rubinetto che perde", non "perdita rubinetto o sifone". È il senso di
 --    tutta la migrazione. Sono un punto di partenza, non la verità: la lista
---    dei termini cercati e non trovati (migrazione 064) dirà quali mancano, e
+--    dei termini cercati e non trovati (migrazione 069) dirà quali mancano, e
 --    quelli si aggiungono da /admin/catalogo senza un deploy.
 --
 --    Niente apostrofi nei valori: "d acqua", non "d'acqua". La normalizzazione
