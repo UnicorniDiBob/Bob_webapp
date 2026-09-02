@@ -35,6 +35,14 @@ export interface SearchResolution {
   zoneSlug: string | null;
   /** Ha scritto «vicino a me»: e' un luogo, non un mestiere. */
   nearMe: boolean;
+  /**
+   * Gia' ordinati, e NON per punteggio: dalla 069 l'ordine e' per banda di
+   * 0.05, e dentro la banda vince prima la corrispondenza esatta e poi
+   * l'intervento sul mestiere. Percio' i punteggi che arrivano NON sono
+   * monotoni — «pulizie fine locazione» torna Fine locazione o trasloco
+   * (0.83) davanti a Pulizie (0.85), e quello e' il comportamento giusto.
+   * Non riordinare questo array per score: rifarlo disfa la 069.
+   */
   matches: SearchMatch[];
 }
 
