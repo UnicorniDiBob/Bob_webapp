@@ -1,4 +1,10 @@
-# Passaggio di consegne — 2 settembre 2026
+# Passaggio di consegne — 2 settembre 2026 (André, con Claude)
+
+> Sostituisce quello del 30 agosto sera (Lucio). HANDOFF.md si sovrascrive a
+> ogni sessione, ma **quello che è a metà non si sovrascrive: si porta avanti.**
+> Le voci ancora aperte del 28-30 agosto stanno più sotto, in una sezione loro.
+> La prima stesura di questo file le aveva buttate via, perché era stata scritta
+> su un clone fermo al 28 agosto.
 
 ## Cosa ho fatto
 
@@ -19,11 +25,11 @@ si chiama la voce di catalogo.
   termine contenuto 0.85, prefisso 0.80, somiglianza 0.40-0.99 per trigrammi o
   per sovrapposizione di parole piene. `src/lib/search.ts` la chiama e non
   lancia mai: se il database non risponde l'elenco resta sfogliabile.
-- **069 — pronta, NON applicata**: l'ordinamento a bande (fra due risposte
-  quasi pari vince l'intervento sul mestiere) e i token al sicuro da una
-  ri-semina. Va aperto il PR prima di applicarla.
+- **069 — pronta, NON applicata**: l'ordinamento a bande (fra due risposte quasi
+  pari vince l'intervento sul mestiere) e i token al sicuro da una ri-semina.
+  Va aperto il PR prima di applicarla.
 
-## Cosa è a metà
+## Cosa è a metà — della ricerca
 
 - **L'interfaccia non esiste.** Su `/professionisti` non c'è nessuna casella di
   ricerca: il risolutore è pronto e nessuna pagina lo chiama. Deciso che la
@@ -32,11 +38,11 @@ si chiama la voce di catalogo.
   `src/lib/data.ts` carica ancora TUTTI i professionisti e filtra in
   JavaScript. Va portato in SQL prima che siano qualche centinaio. I pesi sono
   decisi (intervento esatto 40 / mestiere 20, area 25-18-10-6-3, verifica
-  15-10-2, rating con smorzamento 12, prezzo 5, prenotazione immediata 5, più
-  un sorteggio giornaliero a parità) e vanno pubblicati in pagina come già si
-  fa su servizio×città, per l'art. 5 P2B.
-- **Due verità sullo stesso fatto**: `professional_services` (che ha il prezzo)
-  e `professionals.subservice_slugs` (un array). Va scelta una. E soprattutto:
+  15-10-2, rating con smorzamento 12, prezzo 5, prenotazione immediata 5, più un
+  sorteggio giornaliero a parità) e vanno pubblicati in pagina come già si fa su
+  servizio×città, per l'art. 5 P2B.
+- **Due verità sullo stesso fatto**: `professional_services` (che ha il prezzo) e
+  `professionals.subservice_slugs` (un array). Va scelta una. E soprattutto:
   **4 professionisti su 6 non dichiarano nessun intervento**, quindi la ricerca
   per intervento oggi trova poco non perché non funzioni, ma perché il dato non
   c'è. Va riempito a mano per i sei, e poi serve la schermata che lo chiede.
@@ -51,28 +57,68 @@ si chiama la voce di catalogo.
   bisogno di un preventivo per il bagno» dà due candidati a 0.45 e fra i due
   decide l'alfabeto. A quel livello si propone, non si afferma.
 
+## Cosa è a metà — portato avanti dal 28-30 agosto (Lucio)
+
+Nessuna di queste è chiusa. Stanno qui perché non le ha chiuse questa sessione,
+non perché siano meno urgenti.
+
+- **Verifica dal vivo su www.meetonda.com, desktop e 390px: ancora da fare.**
+  Vale per la scheda del professionista (il riquadro unico, la barra fissa in
+  basso su mobile) e per il giro guidato a passo cambiato. Vale anche per la
+  ricerca, quando avrà un'interfaccia.
+- **La chat non passa ancora `zone` a `/api/match`** — codice di André. Finché
+  non lo fa, il filtro per copertura lavora a livello di città e
+  `requests.zone_slug` resta NULL su tutte le richieste.
+- **28 zone nostre contro 88 nuclei ufficiali.** Decisione di prodotto aperta:
+  allargare l'elenco o tenerlo corto. Chi lavora a Chiaravalle non ha casella.
+  Riguarda anche la ricerca: il risolutore riconosce solo le 28.
+- **Tariffa nell'unità del mestiere e costi accessori**: colonne in database,
+  nessuna interfaccia. La pagina azienda dice ancora «€/h» fisso, e un fotografo
+  lavora a evento.
+- **Il worker maplibre non viene emesso nel bundle di Next**: una sorgente
+  geojson resta «non caricata» senza errore. Da sistemare prima di aggiungere
+  una mappa stradale, non prima.
+- **`Leaked Password Protection` da accendere prima del pilota** (vuole il piano
+  Pro). È l'unico rilievo che gli advisor di sicurezza continuano a dare.
+- **SMTP personalizzato non configurato.** Il mailer interno di Supabase manda
+  2 email all'ora per tutto il progetto: il terzo professionista che si iscrive
+  nella stessa ora non entra mai. Quindici minuti di lavoro più 8-10 giorni fra
+  propagazione e warm-up.
+- **Il clone locale su questo Mac tende a restare indietro.** Il 30/08 aveva un
+  `.git/index.lock` rimasto da una sessione precedente e HEAD fermo; il 02/09
+  era fermo alla 061 mentre in produzione erano applicate fino alla 066, ed è
+  per questo che il vocabolario è nato numerato 062 su un numero già preso.
+  **`git fetch origin` all'inizio di ogni sessione, e per i numeri di
+  migrazione guardare anche la storia applicata su Supabase, non solo i file.**
+
 ## Cosa ho applicato in produzione che l'altro deve sapere
 
 - **067 e 068 applicate** (file in repo prima dell'applicazione, come da
   regola). **069 NON applicata**: prima il PR.
 - **`unaccent` e `pg_trgm` ora installate**, nello schema `extensions` e non in
   `public`, per non lasciare un rilievo fisso agli advisor.
-- **Advisor di sicurezza: nessun rilievo nuovo.** Resta solo
-  `auth_leaked_password_protection`, che vuole il piano Pro.
-- La 067 dava all'admin una policy `for all`, che comprende SELECT: ogni
-  lettura pubblica valutava due policy. **Corretto dalla 068** in tre policy
-  separate, con `is_admin()` dentro un select.
+- **Advisor di sicurezza rilanciati due volte: nessun rilievo nuovo.** Resta
+  solo `auth_leaked_password_protection`. Questo chiude anche la voce di Lucio
+  «advisor da rilanciare dopo la 065».
+- **065 e 066 risultano applicate** (30/08). La voce «la 065 NON è ancora
+  applicata» del passaggio precedente è chiusa.
+- La 067 dava all'admin una policy `for all`, che comprende SELECT: ogni lettura
+  pubblica valutava due policy. **Corretto dalla 068** in tre policy separate,
+  con `is_admin()` dentro un select.
 - **Numerazione**: il README delle migrazioni diceva «next free number: 050»
-  quando in produzione si era già alla 061, e la mia prima correzione l'ha
-  messo su 063, che era preso e applicato. Ora dice 068 e va portato a **070**
-  quando la 069 entra. Il vocabolario è nato numerato 062 e collideva con
-  `062_ready_at`: rinominato in 067 dal PR #21, prima di essere applicato.
-- **Trappola disarmata dalla 069, da conoscere comunque**: rigiocare la 067
-  dopo la 068 — cosa che la 067 stessa invita a fare per ri-seminare il
-  catalogo — riportava indietro il trigger e lasciava ogni termine nuovo senza
-  parole piene. Silenzioso: la riga si trova ancora per prefisso e per
-  trigrammi, e sparisce solo dal confronto per parole. Mai scattata in
-  produzione (491 termini, 0 senza token).
-- **Il replay dai soli file del repo, 001 → 069, dà 0 errori** su un Postgres
-  16 vuoto con `pg_cron` e i due shim. Il README delle migrazioni dice ancora
-  «last verified: 001 → 049»: quella riga si può aggiornare.
+  quando in produzione si era già alla 061; ora dice 070. Il vocabolario è nato
+  numerato 062 e collideva con `062_ready_at`: rinominato in 067 dal PR #21,
+  prima di essere applicato.
+- **Trappola disarmata dalla 069, da conoscere comunque**: rigiocare la 067 dopo
+  la 068 — cosa che la 067 stessa invita a fare per ri-seminare il catalogo —
+  riportava indietro il trigger e lasciava ogni termine nuovo senza parole
+  piene. Silenzioso: la riga si trova ancora per prefisso e per trigrammi, e
+  sparisce solo dal confronto per parole. Mai scattata in produzione (491
+  termini, 0 senza token).
+- **Il replay dai soli file del repo, 001 → 069, dà 0 errori** su un Postgres 16
+  vuoto con `pg_cron` e i due shim. Il README delle migrazioni dice ancora «last
+  verified: 001 → 049»: quella riga si può aggiornare.
+- **Da fare a mano su Supabase, aperto dal 28/08**: aggiungere
+  `https://www.meetonda.com/auth/conferma` e
+  `http://localhost:3000/auth/conferma` ai Redirect URLs, e decidere l'SMTP
+  personalizzato.
