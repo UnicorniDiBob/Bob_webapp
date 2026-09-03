@@ -4,7 +4,7 @@ Schema changes for Bob are tracked here as **sequential** files named
 `NNN_name.sql` (e.g. `015_review_submission.sql`). Running them in order from the
 lowest number rebuilds the database schema from scratch on any machine or fresh clone.
 
-**Next free number: 070.**
+**Next free number: 071.**
 
 ## The rule
 
