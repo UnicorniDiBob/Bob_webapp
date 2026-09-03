@@ -7,6 +7,7 @@ import {
   getProfessionals,
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
+import { ComeOrdiniamo } from "@/components/ComeOrdiniamo";
 import { CityWaitlistForm } from "@/components/CityWaitlistForm";
 import { Hammer, MapPin } from "lucide-react";
 import { ServiceIcon } from "@/lib/serviceIcons";
@@ -158,9 +159,14 @@ export default async function CityPage({
       )}
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
           Tutti i professionisti
         </h2>
+        {pros.length > 0 && (
+          <p className="mb-3">
+            <ComeOrdiniamo />
+          </p>
+        )}
         {pros.length === 0 ? (
           <EmptyState
             title="Ancora nessun professionista qui"

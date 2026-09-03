@@ -17,7 +17,8 @@ import {
   getSubservicesByServiceSlug,
   getProfessionals,
 } from "@/lib/data";
-import { ProfessionalCardItem, EmptyState, BobDot } from "@/components/ui";
+import { ProfessionalCardItem, EmptyState } from "@/components/ui";
+import { ComeOrdiniamo } from "@/components/ComeOrdiniamo";
 import { ServiceIcon } from "@/lib/serviceIcons";
 import { withArticle, quale } from "@/lib/italian";
 import { JsonLd } from "@/components/JsonLd";
@@ -243,25 +244,16 @@ export default async function ServiceCityPage({
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
           {pros.length} professionist{pros.length === 1 ? "a" : "i"} a {city.name}
         </h2>
-        {/* Parametri di ranking dichiarati: il Reg. UE 2019/1150 (P2B) art. 5
-            obbliga a esplicitare i criteri principali di posizionamento e
-            l'eventuale influenza di un pagamento. Oggi nessuna posizione è
-            vendibile: quando arriva il Visibility Boost (M7/11.3) questa riga
-            va aggiornata, non rimossa. */}
+        {/* I parametri di posizionamento vivono in una sezione sola
+            (/come-funziona#ordine) e ci si arriva da qui: e' la forma che
+            l'art. 22 comma 4-bis del Codice del Consumo descrive, ed e'
+            l'unico modo di non avere quattro copie della stessa
+            dichiarazione che divergono. Prima questa riga elencava i criteri
+            in pagina, ma ne dimenticava il primo — la precisione dell'area,
+            che dalla 057/058 e' quello che pesa di piu'. */}
         {pros.length > 0 && (
-          <p className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-bob-ink/55">
-            <span className="inline-flex items-center gap-1.5">
-              <BobDot /> Prima i profili verificati
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <BobDot /> Poi la valutazione più alta
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <BobDot /> Poi la tariffa più bassa
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <BobDot /> Nessuna posizione è a pagamento
-            </span>
+          <p className="mb-4">
+            <ComeOrdiniamo />
           </p>
         )}
         {pros.length === 0 ? (

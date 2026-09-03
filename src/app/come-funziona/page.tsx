@@ -82,6 +82,68 @@ export default function ComeFunzionaPage() {
         </p>
       </section>
 
+      {/* I PARAMETRI DI POSIZIONAMENTO — la sezione che i link
+          «Come ordiniamo i risultati» raggiungono da ogni elenco.
+          È la «sezione specifica dell'interfaccia, direttamente e facilmente
+          accessibile dalla pagina in cui sono presentati i risultati» che
+          chiede l'art. 22 comma 4-bis del Codice del Consumo.
+
+          DEVE DESCRIVERE COME ORDINA IL CODICE OGGI, non come vorremmo che
+          ordinasse: i criteri qui sotto sono quelli di getProfessionals() in
+          src/lib/data.ts, nell'ordine in cui li applica. Quando il ranking
+          passa in SQL coi pesi di docs/RICERCA.md §4, questa sezione si
+          aggiorna NELLO STESSO commit — una pagina rimasta indietro qui
+          dichiara il falso.
+
+          L'ultima riga è vera oggi. Il giorno del primo slot sponsorizzato va
+          sostituita, non tolta, e la scheda sponsorizzata va etichettata:
+          l'allegato I punto 11-bis della 2005/29 vuole quella dichiarazione
+          dentro i risultati, dove un link non arriva. */}
+      <section
+        id="ordine"
+        className="mx-auto mt-10 max-w-3xl scroll-mt-24 rounded-2xl border border-black/5 p-7"
+      >
+        <h2 className="text-lg font-semibold text-bob-ink">
+          Come ordiniamo i risultati
+        </h2>
+        <p className="mt-2 text-sm text-bob-ink/65">
+          Quando vedi un elenco di professionisti, l&apos;ordine non è casuale e
+          non è alfabetico. Contano queste cose, in quest&apos;ordine:
+        </p>
+        <ol className="mt-4 space-y-3 text-sm text-bob-ink/70">
+          <li>
+            <strong className="text-bob-ink">Chi lavora dove servi tu.</strong>{" "}
+            Prima chi ha dichiarato proprio la tua zona, poi chi copre la città,
+            poi chi arriva da più lontano. Chi lavora in tutta Italia compare
+            comunque, ma non davanti a chi è nel tuo quartiere.
+          </li>
+          <li>
+            <strong className="text-bob-ink">Chi è verificato.</strong> Un
+            profilo con la partita IVA controllata viene prima di uno ancora da
+            controllare.
+          </li>
+          <li>
+            <strong className="text-bob-ink">La valutazione.</strong> La media
+            dei voti ricevuti, pesata sul numero di recensioni: cinque stelle su
+            due giudizi contano meno di quattro stelle e mezzo su venti.
+          </li>
+          <li>
+            <strong className="text-bob-ink">La tariffa.</strong> A parità di
+            tutto il resto, prima chi costa meno. È l&apos;ultimo criterio, non
+            il primo: il più economico non è automaticamente il più adatto.
+          </li>
+        </ol>
+        <p className="mt-4 text-sm font-medium text-bob-ink">
+          Nessuna posizione è a pagamento.
+        </p>
+        <p className="mt-1 text-sm text-bob-ink/65">
+          Nessun professionista può pagare per stare più in alto. Se un giorno
+          introdurremo spazi a pagamento, li troverai marcati
+          «Sponsorizzato» sulla scheda e questa pagina lo dirà: non cambieranno
+          l&apos;ordine degli altri.
+        </p>
+      </section>
+
       <div className="mt-10 flex flex-col items-center gap-3">
         <Link href="/" className="btn-primary px-6 py-3" data-testid="cta-parla-con-bob">
           Parla con Bob
