@@ -10,6 +10,7 @@ import type {
   Service,
   Subservice,
   ProfessionalCard,
+  ProfessionalOffer,
   PortfolioItem,
   VerificationStatus,
 } from "@/lib/supabase/types";
@@ -129,6 +130,7 @@ type RawProfessionalRow = {
     max_price: number | null;
     price_note: string | null;
     service_id: string;
+    subservice_id: string | null;
     services: {
       name: string;
       slug: string;
@@ -136,6 +138,7 @@ type RawProfessionalRow = {
       is_plural: boolean | null;
       takes_article: boolean | null;
     } | null;
+    subservices: { name: string; slug: string } | null;
   }[];
   ratings: { score: number }[];
 };
@@ -155,7 +158,7 @@ const PROFESSIONAL_SELECT = `
   response_time_label,
   city_id,
   cities ( name, slug ),
-  professional_services ( min_price, max_price, price_note, service_id, services ( name, slug, gender, is_plural, takes_article ) ),
+  professional_services ( min_price, max_price, price_note, service_id, subservice_id, services ( name, slug, gender, is_plural, takes_article ), subservices ( name, slug ) ),
   ratings ( score )
 `;
 
@@ -223,8 +226,63 @@ function toCard(
         10
       : null;
 
-  // Usiamo il primo servizio dichiarato (1 servizio per professionista nel pilota).
-  const ps = row.professional_services?.[0];
+  // LE OFFERTE, AL PLURALE.
+  //
+  // Fino alla 070 un professionista aveva una riga sola in
+  // professional_services, e qui si leggeva la [0] con un commento che diceva
+  // «1 servizio per professionista nel pilota». Dalla 070 le righe sono una
+  // per intervento offerto, e la [0] e' quella che capita: per Milano Clean
+  // Squad e' «pulizie ordinarie ricorrenti», che non ha prezzo, mentre
+  // «pulizie appartamenti» dello stesso professionista dichiara 20-28 euro.
+  // Risultato: la scheda diceva «Tariffa su richiesta» a chi una tariffa ce
+  // l'ha, e l'ordinamento per prezzo lo trattava come 9999, mandandolo in
+  // fondo. Non e' un difetto nato con la 070 — c'era gia' con quattro righe —
+  // ma la 070 lo ha reso normale.
+  const righe = row.professional_services ?? [];
+
+  const offers: ProfessionalOffer[] = righe.map((r) => ({
+    serviceSlug: r.services?.slug ?? null,
+    serviceName: r.services?.name ?? null,
+    subserviceSlug: r.subservices?.slug ?? null,
+    subserviceName: r.subservices?.name ?? null,
+    minPrice: r.min_price,
+    maxPrice: r.max_price,
+    priceNote: r.price_note,
+  }));
+
+  // IL MESTIERE e' quello che compare su piu' righe. Nel pilota ogni
+  // professionista ne ha uno solo, ma niente lo impone, e «la prima riga» non
+  // e' una risposta. A pari conteggio decide lo slug in ordine alfabetico:
+  // serve che la scheda sia la stessa a ogni caricamento, non che sia bella.
+  const conteggio = new Map<string, number>();
+  for (const r of righe) {
+    const slug = r.services?.slug;
+    if (slug) conteggio.set(slug, (conteggio.get(slug) ?? 0) + 1);
+  }
+  const slugMestiere =
+    [...conteggio.entries()].sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+    )[0]?.[0] ?? null;
+
+  const servizio =
+    righe.find((r) => r.services?.slug === slugMestiere)?.services ?? null;
+
+  // La fascia di prezzo si legge su tutte le righe DEL MESTIERE: il minimo
+  // piu' basso e il massimo piu' alto fra quelli dichiarati. Le due estremita'
+  // possono venire da interventi diversi, ed e' giusto: la scheda dice «da
+  // quanto a quanto lavora questa persona», non il prezzo di un lavoro solo.
+  const righeMestiere = slugMestiere
+    ? righe.filter((r) => r.services?.slug === slugMestiere)
+    : righe;
+  const minimi = righeMestiere
+    .map((r) => r.min_price)
+    .filter((n): n is number => n !== null);
+  const massimi = righeMestiere
+    .map((r) => r.max_price)
+    .filter((n): n is number => n !== null);
+  const minPrice = minimi.length > 0 ? Math.min(...minimi) : null;
+  const maxPrice = massimi.length > 0 ? Math.max(...massimi) : null;
+  const priceNote = righeMestiere.find((r) => r.price_note)?.price_note ?? null;
 
   const cop = coperture[row.id];
 
@@ -256,16 +314,17 @@ function toCard(
     coverageKeys: cop?.keys ?? [],
     bestScope: cop?.bestScope ?? null,
     city: { name: row.cities?.name ?? "", slug: row.cities?.slug ?? "" },
-    serviceName: ps?.services?.name ?? null,
-    serviceSlug: ps?.services?.slug ?? null,
+    serviceName: servizio?.name ?? null,
+    serviceSlug: servizio?.slug ?? null,
     // Nome già articolato, calcolato qui una volta così i componenti non devono
     // conoscere il genere grammaticale. Due forme perché il contesto cambia:
     // "cercavi delle pulizie" ma "ho bisogno di pulizie".
-    serviceWithArticle: ps?.services ? withArticle(ps.services) : null,
-    serviceNeedPhrase: ps?.services ? afterDi(ps.services) : null,
-    minPrice: ps?.min_price ?? null,
-    maxPrice: ps?.max_price ?? null,
-    priceNote: ps?.price_note ?? null,
+    serviceWithArticle: servizio ? withArticle(servizio) : null,
+    serviceNeedPhrase: servizio ? afterDi(servizio) : null,
+    offers,
+    minPrice,
+    maxPrice,
+    priceNote,
     avgRating,
     nRatings,
   };

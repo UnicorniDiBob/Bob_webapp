@@ -179,6 +179,24 @@ export interface RequestRow {
 }
 
 // Forma aggregata usata in UI: professionista + profilo + servizio + prezzi + rating.
+/**
+ * Un intervento che il professionista dichiara di fare, col suo prezzo.
+ * Dalla 070 `professional_services` ha una riga per intervento offerto: sono
+ * queste. Il prezzo puo' mancare — dichiarare dodici lavori non obbliga a
+ * fissare dodici tariffe — e un intervento senza prezzo resta pertinente.
+ * La riga con subserviceSlug null vuol dire «il mestiere, nessun intervento
+ * specifico»: la crea l'iscrizione.
+ */
+export interface ProfessionalOffer {
+  serviceSlug: string | null;
+  serviceName: string | null;
+  subserviceSlug: string | null;
+  subserviceName: string | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+  priceNote: string | null;
+}
+
 export interface ProfessionalCard {
   id: string;
   fullName: string;
@@ -210,6 +228,16 @@ export interface ProfessionalCard {
   // Nome retto da "di", per "ho bisogno ___" ("di un idraulico", "di pulizie"):
   // dopo "di" il partitivo si fonde. Derivati in data.ts, vedi src/lib/italian.ts.
   serviceNeedPhrase: string | null;
+  /**
+   * Tutti gli interventi dichiarati, non solo il primo. Serve alla ricerca
+   * per rispondere «fa QUESTO lavoro?» e all'etichetta onesta sulla scheda.
+   */
+  offers: ProfessionalOffer[];
+  /**
+   * La fascia di prezzo su TUTTE le righe del mestiere: il minimo piu' basso
+   * e il massimo piu' alto fra quelli dichiarati, non quelli della prima riga
+   * che capita. Null quando nessun intervento ha un prezzo.
+   */
   minPrice: number | null;
   maxPrice: number | null;
   priceNote: string | null;
