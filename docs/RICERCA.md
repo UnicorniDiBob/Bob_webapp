@@ -122,6 +122,35 @@ contatti per sempre.
 comportamento del singolo cliente, cronologia delle sue ricerche, qualunque
 profilazione. Il ranking è uguale per tutti.
 
+### Dove sono dichiarati, e perché basta un link
+
+I parametri stanno in **una sezione sola**, `/come-funziona#ordine`, e da ogni
+elenco di professionisti ci si arriva col link «Come ordiniamo i risultati»
+(`src/components/ComeOrdiniamo.tsx`).
+
+Non è una scorciatoia: l'**art. 22 comma 4-bis del Codice del Consumo** — che
+recepisce l'art. 7(4-bis) della direttiva 2005/29 — chiede esattamente «una
+sezione specifica dell'interfaccia online, **direttamente e facilmente
+accessibile dalla pagina in cui sono presentati i risultati**». Il link È il
+meccanismo che la norma descrive, a tre condizioni: la sezione esiste davvero,
+si raggiunge *da dove si vedono i risultati* (non solo dal fondo del sito), e
+l'etichetta dice di che si tratta.
+
+Un componente e non quattro righe uguali, perché il giorno in cui il modo di
+ordinare cambia va cambiato dappertutto insieme: quattro copie a mano sono
+quattro occasioni per dimenticarne una, e una pagina rimasta indietro dichiara
+il falso.
+
+**La sezione descrive il codice di OGGI, non i pesi di questo documento.** Oggi
+`getProfessionals` ordina per precisione dell'area, verifica, valutazione,
+tariffa. Quando il ranking passa in SQL coi pesi della tabella qui sopra, la
+sezione si aggiorna *nello stesso commit*.
+
+Com'era prima, per memoria: la dichiarazione stava scritta in pagina solo su
+servizio×città, e **ne dimenticava il primo criterio** — la precisione
+dell'area, che dalla 057/058 è quello che pesa di più. Le altre tre pagine di
+elenco non dichiaravano niente.
+
 ### Perché questo resta fuori dall'art. 22
 
 Il punteggio è una formula pubblicata, non una decisione automatizzata su una
@@ -151,15 +180,33 @@ risultato ha pagato per stare lì. Con lo slot etichettato lo sa leggendo.
 - **Reg. UE 2019/1150 (P2B) art. 5**: verso i professionisti vanno dichiarati i
   parametri principali e se e come un pagamento li influenza.
 
-**Attenzione a una riga che oggi è vera e domani non lo sarà.** La pagina
-servizio×città dichiara «**Nessuna posizione è a pagamento**». Il giorno in cui
-il primo slot sponsorizzato va in produzione, quella riga diventa falsa su una
-pagina pubblica. Va **sostituita, non tolta**, e in tutte e due le superfici
-(servizio×città e la ricerca). Testo previsto:
+**Attenzione a una riga che oggi è vera e domani non lo sarà.** La sezione
+`/come-funziona#ordine` dichiara «**Nessuna posizione è a pagamento**». Il
+giorno del primo slot sponsorizzato quella riga diventa falsa su una pagina
+pubblica: va **sostituita, non tolta**. Ora sta in un posto solo, quindi è una
+modifica sola — prima erano quattro pagine da ricordare.
 
-> Prima i profili verificati · poi la valutazione più alta · poi la tariffa più
-> bassa · i risultati marcati «Sponsorizzato» sono a pagamento e non cambiano
-> l'ordine degli altri
+**Il link però non copre il pagamento.** L'allegato I punto 11-bis è una
+pratica sleale *in sé* e pretende la dichiarazione **dentro i risultati**:
+l'etichetta «Sponsorizzato» va sulla scheda, dove la persona sta guardando.
+Nessun rimando la sostituisce. Quindi il giorno degli slot cambiano due cose:
+
+1. la scheda sponsorizzata prende l'etichetta — obbligatoria, visibile, non
+   rimandabile;
+2. la sezione dice che esistono spazi a pagamento, come sono scelti, e che non
+   cambiano l'ordine degli altri.
+
+I termini per i professionisti (§9 di `/termini/professionisti`) **lo
+promettono già**: «il posizionamento a pagamento è chiaramente identificato
+come tale ai clienti». L'etichetta non è una scelta di prodotto ancora aperta,
+è una promessa già firmata.
+
+Quegli stessi termini però elencano fra i criteri anche cose che il ranking
+**non usa**: reattività nelle risposte, completamento dei lavori sulla
+piattaforma, completezza del profilo. Dichiarare parametri che non esistono è
+l'errore opposto a quello che abbiamo appena corretto. Da sfoltire al prossimo
+`TERMS_VERSION` — che è un cambio sostanziale e tocca ciò che gli utenti hanno
+accettato, quindi va fatto di proposito e non di sfuggita.
 
 ## 6. Che cosa dichiara un professionista
 

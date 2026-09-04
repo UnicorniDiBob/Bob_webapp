@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getCities, getServices, getProfessionals } from "@/lib/data";
 import { ProfessionalFilters } from "@/components/ProfessionalFilters";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
+import { ComeOrdiniamo } from "@/components/ComeOrdiniamo";
 import type { ProfessionalCard } from "@/lib/supabase/types";
 
 export const revalidate = 120;
@@ -53,9 +54,12 @@ export default async function ProfessionalsPage({
 
       <ProfessionalFilters cities={cities} services={services} />
 
-      <p className="mb-4 mt-5 text-sm text-bob-ink/55" data-testid="text-results-count">
-        {sorted.length} professionist{sorted.length === 1 ? "a" : "i"}
-      </p>
+      <div className="mb-4 mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <p className="text-sm text-bob-ink/55" data-testid="text-results-count">
+          {sorted.length} professionist{sorted.length === 1 ? "a" : "i"}
+        </p>
+        {sorted.length > 0 && <ComeOrdiniamo />}
+      </div>
 
       {sorted.length === 0 ? (
         <EmptyState

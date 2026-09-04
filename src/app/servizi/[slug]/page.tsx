@@ -8,6 +8,7 @@ import {
   getCities,
 } from "@/lib/data";
 import { ProfessionalCardItem, EmptyState } from "@/components/ui";
+import { ComeOrdiniamo } from "@/components/ComeOrdiniamo";
 import { ServiceIcon } from "@/lib/serviceIcons";
 import { withArticle, quale } from "@/lib/italian";
 import { JsonLd } from "@/components/JsonLd";
@@ -180,10 +181,15 @@ export default async function ServicePage({
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
           {pros.length} professionist{pros.length === 1 ? "a" : "i"} disponibil
           {pros.length === 1 ? "e" : "i"}
         </h2>
+        {pros.length > 0 && (
+          <p className="mb-3">
+            <ComeOrdiniamo />
+          </p>
+        )}
         {pros.length === 0 ? (
           <EmptyState
             title="Nessun professionista disponibile per questo servizio"
