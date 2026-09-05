@@ -15,7 +15,16 @@
 // 2. search_events NON HA un utente, di proposito (mig 026). Le ricerche sono
 //    davvero anonime, quindi restano fuori — e il file lo dice, invece di
 //    lasciar credere che ce le siamo dimenticate.
-// 3. public.users NON CONTIENE L'EMAIL: ha solo id, role e created_at. L'email,
+// 3. appointments NON HA SEMPRE customer_id. La colonna esiste, ma la scrive un
+//    punto solo di tutto il repo: instant-book/route.ts, cioe' la prenotazione
+//    diretta. Gli appuntamenti nati da una proposta in chat o da una
+//    controproposta hanno customer_id NULL e solo request_id. Cercare per
+//    customer_id, come faceva questo file, restituiva la sezione appuntamenti
+//    VUOTA a un cliente che aveva usato Bob nel modo normale, presentandola
+//    come completa: una risposta incompleta agli artt. 15 e 20, che e'
+//    esattamente la cosa che la regola in testa a questo file vieta. Si cerca
+//    per tutte e due le strade e si uniscono per id.
+// 4. public.users NON CONTIENE L'EMAIL: ha solo id, role e created_at. L'email,
 //    la conferma dell'indirizzo e l'ultimo accesso vivono in auth.users, cioe'
 //    nello schema di Supabase, e si leggono con l'API di amministrazione. Un
 //    export costruito guardando solo lo schema public avrebbe consegnato a una
@@ -79,6 +88,24 @@ async function leggiIn(
   const { data, error } = await admin.from(tabella).select("*").in(colonna, valori);
   if (error) throw new Error(`${tabella}: ${error.message}`);
   return (data ?? []) as Riga[];
+}
+
+/**
+ * Unisce piu' elenchi di righe scartando i doppioni per id. Serve quando la
+ * stessa tabella si raggiunge da due chiavi diverse (vedi nota 3 in testa).
+ */
+function unisciPerId(...elenchi: Riga[][]): Riga[] {
+  const visti = new Set<string>();
+  const fuori: Riga[] = [];
+  for (const elenco of elenchi) {
+    for (const riga of elenco) {
+      const id = String(riga.id ?? "");
+      if (id && visti.has(id)) continue;
+      if (id) visti.add(id);
+      fuori.push(riga);
+    }
+  }
+  return fuori;
 }
 
 function senza(riga: Riga | undefined, ...chiavi: string[]): Riga | null {
@@ -157,16 +184,28 @@ export async function raccogliDatiCliente(
   const richieste = await leggi(admin, "requests", "customer_id", utente.id);
   const idRichieste = richieste.map((r) => String(r.id));
 
-  const [indirizziRichiesta, messaggi, appuntamenti, recensioni, brief] =
-    await Promise.all([
-      leggiIn(admin, "request_addresses", "request_id", idRichieste),
-      leggiIn(admin, "request_messages", "request_id", idRichieste),
-      leggi(admin, "appointments", "customer_id", utente.id),
-      leggi(admin, "ratings", "customer_id", utente.id),
-      // per user_id e non per richiesta: un brief nato in chat e mai diventato
-      // una richiesta e' comunque un dato che la persona ci ha dato.
-      leggi(admin, "job_briefs", "user_id", utente.id),
-    ]);
+  const [
+    indirizziRichiesta,
+    messaggi,
+    apptPerCliente,
+    apptPerRichiesta,
+    recensioni,
+    brief,
+  ] = await Promise.all([
+    leggiIn(admin, "request_addresses", "request_id", idRichieste),
+    leggiIn(admin, "request_messages", "request_id", idRichieste),
+    // Vedi la nota 3 in testa al file: due strade per la stessa tabella.
+    // Per customer_id si trovano le prenotazioni dirette; per request_id
+    // quelle nate da una proposta in chat, che hanno customer_id NULL.
+    leggi(admin, "appointments", "customer_id", utente.id),
+    leggiIn(admin, "appointments", "request_id", idRichieste),
+    leggi(admin, "ratings", "customer_id", utente.id),
+    // per user_id e non per richiesta: un brief nato in chat e mai diventato
+    // una richiesta e' comunque un dato che la persona ci ha dato.
+    leggi(admin, "job_briefs", "user_id", utente.id),
+  ]);
+
+  const appuntamenti = unisciPerId(apptPerCliente, apptPerRichiesta);
 
   const idPro = Array.from(
     new Set(
