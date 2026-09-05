@@ -145,7 +145,14 @@ export function UsersList({
           {filtered.map((u) => (
             <div key={u.id} className="card flex items-center gap-4 px-5 py-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-bob-indigo-50 text-sm font-bold text-bob-indigo">
-                {(u.full_name ?? "?")[0].toUpperCase()}
+                {/* NON (x ?? "?")[0] (05/09). Il ?? copre solo il null: con la
+                    stringa vuota — che la nostra stessa interfaccia sa
+                    produrre — ""[0] e' undefined e .toUpperCase() lancia in
+                    fase di render. Non si rompe una riga: si rompe tutta
+                    /admin/users, per admin e per cs, cioe' l'unica pagina da
+                    cui si potrebbe rimediare al nome vuoto. La forma sicura e'
+                    quella che admin/cs/page.tsx usa da sempre. */}
+                {u.full_name?.trim()?.[0]?.toUpperCase() ?? "?"}
               </div>
 
               <div className="min-w-0 flex-1">

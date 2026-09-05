@@ -22,14 +22,27 @@ export function EditUserButton({
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  // IL NOME NON PUO' RESTARE VUOTO (05/09). Non e' pignoleria di forma: un
+  // full_name vuoto faceva lanciare l'iniziale in /admin/users e portava giu'
+  // tutta la pagina — l'unica da cui si sarebbe potuto rimediare. Il controllo
+  // sta in tre punti perche' tre sono le porte: qui il bottone, sotto il
+  // required del campo, e nella PATCH, che e' l'unica che nessuno puo'
+  // aggirare.
+  const nomePulito = name.trim().replace(/\s+/g, " ");
+  const nomeVuoto = nomePulito.length === 0;
+
   async function save() {
+    if (nomeVuoto) {
+      setError("Il nome non puo' restare vuoto.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName: name, phone, about }),
+        body: JSON.stringify({ fullName: nomePulito, phone, about }),
       });
       if (!res.ok) {
         const json = await res.json();
@@ -60,13 +73,23 @@ export function EditUserButton({
             </h2>
             <div className="flex flex-col gap-3">
               <div>
-                <label className="label-bob">Nome e cognome</label>
+                <label className="label-bob" htmlFor="edit-user-name">
+                  Nome e cognome
+                </label>
                 <input
+                  id="edit-user-name"
                   className="input-bob"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nome Cognome"
+                  required
+                  aria-invalid={nomeVuoto}
                 />
+                {nomeVuoto && (
+                  <p className="mt-1 text-xs text-red-600">
+                    Serve un nome: senza, l&apos;elenco utenti non si apre più.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="label-bob">Telefono</label>
@@ -91,8 +114,8 @@ export function EditUserButton({
             <div className="mt-5 flex gap-2">
               <button
                 onClick={save}
-                disabled={saving}
-                className="btn-primary flex-1 py-2.5"
+                disabled={saving || nomeVuoto}
+                className="btn-primary flex-1 py-2.5 disabled:opacity-50"
               >
                 {saving ? "Salvo…" : "Salva modifiche"}
               </button>
