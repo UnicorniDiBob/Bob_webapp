@@ -12,6 +12,7 @@ import {
   Zap,
   Headphones,
   LifeBuoy,
+  Megaphone,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
@@ -58,6 +59,9 @@ export default async function AdminLayout({
               <SidebarLink href="/admin/catalogo" label="Prenotazione diretta" icon={Zap} />
             )}
             {isAdmin && (
+              <SidebarLink href="/admin/avvisi" label="Avvisi" icon={Megaphone} />
+            )}
+            {isAdmin && (
               <SidebarLink href="/admin/cs" label="Team" icon={Headphones} />
             )}
           </nav>
@@ -83,6 +87,7 @@ export default async function AdminLayout({
           <MobileLink href="/admin/assistenza" label="Assistenza" />
           {isAdmin && <MobileLink href="/admin/analisi" label="Analisi" />}
           {isAdmin && <MobileLink href="/admin/catalogo" label="Prenotazione" />}
+          {isAdmin && <MobileLink href="/admin/avvisi" label="Avvisi" />}
           {isAdmin && <MobileLink href="/admin/cs" label="CS" />}
         </div>
         {children}

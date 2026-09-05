@@ -160,6 +160,8 @@ Double opt-in: not legally required in Italy, but cheap and makes the consent pr
 | Breach log (internal) | Indefinite | Legal obligation | — |
 | Data-export archive | Not stored | Legal obligation (Art 6(1)(c), answering Arts 15/20) | Built in memory, streamed to the user, never written to a bucket |
 | Data-export timestamp (`profile_private.last_export_at`) | Account life, overwritten each time | 6(1)(f) — rate limit only | Dies with the account row |
+| Service announcements (`avvisi_servizio`) | 24 months after `fine_il` | 6(1)(f) — record of what we told users and when | Delete. No user personal data in the row; the author (`creato_da`, staff) is `on delete set null` |
+| Announcement-seen timestamp (`profiles.avvisi_visti_al`) | Account life, overwritten | 6(1)(f) — so the same popup isn't shown twice | Dies with the profile row; included in the Art. 15/20 export (it reads `profiles` with `select *`) |
 
 ---
 
