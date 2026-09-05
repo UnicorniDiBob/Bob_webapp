@@ -148,6 +148,11 @@ export function CustomerHome() {
         "id, status, problem_description, created_at, services ( name ), cities ( name ), request_professionals ( professional_id, professionals ( id, user_id ) )"
       )
       .eq("customer_id", user.id)
+      // «draft» = mai partita. Ci finiscono le richieste declassate quando la
+      // consegna al professionista fallisce (RequestDialog): esistono come
+      // riga, ma nessuno le ha ricevute. Fra i lavori in corso non ci vanno —
+      // nell'export dei dati sì, perché restano dati della persona.
+      .neq("status", "draft")
       .order("created_at", { ascending: false });
 
     const rows = (data ?? []) as Record<string, unknown>[];
