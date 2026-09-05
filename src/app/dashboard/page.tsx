@@ -171,11 +171,13 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {!isPro && (
-            <Link href="/#bob" className="btn-primary py-2.5" data-testid="link-cerca-pro">
-              Cerca un professionista
-            </Link>
-          )}
+          {/* IL BOTTONE «CERCA UN PROFESSIONISTA» NON E' PIU' QUI (05/09).
+              Puntava a /#bob, cioe' esattamente dove porta «Parla con Bob»
+              nell'header: due bottoni primari, stessa destinazione, stesso
+              schermo, a pochi centimetri l'uno dall'altro. Un cliente che ne
+              vede due si chiede in cosa differiscano, e la risposta era: in
+              niente. Resta quello dell'header, che c'e' su ogni pagina.
+              Segnalato da Lucio il 05/09. */}
           {/* IMPOSTAZIONI, UNA VOLTA SOLA PER SCHERMO (29/08). Questo link
               conviveva con la rotella dell'header, a due centimetri di
               distanza e con lo stesso data-testid: due bottoni identici nello
