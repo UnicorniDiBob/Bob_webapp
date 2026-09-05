@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import { sendMessage, updateAppointment } from "@/lib/messages";
 import { notifyEvent } from "@/lib/notify";
 import type { Appointment } from "@/lib/supabase/types";
+import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
 
 // Solo i campi che ci servono: la chat fa una select ristretta.
 export type ThreadAppointment = Pick<
@@ -244,9 +245,14 @@ export function AppointmentActions({
         className="mt-1.5 rounded-xl border border-black/10 bg-white p-3"
         data-testid={`appt-actions-${a.id}`}
       >
+        {/* La data e' cliccabile: apre «lo metto nel tuo calendario?» (05/09). */}
         <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-bob-ink">
           <Calendar className="h-3.5 w-3.5 text-bob-indigo" aria-hidden="true" />
-          {when} · {a.duration_minutes} min
+          <AggiungiAlCalendario appuntamento={a}>
+            <span>
+              {when} · {a.duration_minutes} min
+            </span>
+          </AggiungiAlCalendario>
         </p>
         <div className="mt-2.5 flex flex-wrap gap-1.5">
           <button

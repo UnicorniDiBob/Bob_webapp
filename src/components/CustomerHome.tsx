@@ -17,6 +17,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ReviewDialog } from "@/components/ReviewDialog";
 import { sendMessage } from "@/lib/messages";
 import { notifyEvent } from "@/lib/notify";
+import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
 
 interface CustomerRequest {
   id: string;
@@ -661,26 +662,34 @@ export function CustomerHome() {
                 const proposed = a.status === "proposed";
                 return (
                   <li key={a.id} className="flex items-center gap-3" data-testid={`appt-${a.id}`}>
-                    <div
-                      className={`min-w-[46px] rounded-xl px-2 py-1.5 text-center ${
-                        proposed ? "bg-amber-50" : "bg-bob-indigo-50"
-                      }`}
+                    {/* LA DATA E' CLICCABILE (05/09): apre «lo metto nel tuo
+                        calendario?». Prima era testo da ricopiare a mano. */}
+                    <AggiungiAlCalendario
+                      appuntamento={a}
+                      titoloVisibile={a.title || requestById(a.request_id)?.service?.name || undefined}
+                      className="no-underline"
                     >
-                      <p
-                        className={`text-[10px] font-medium ${
-                          proposed ? "text-amber-700" : "text-bob-indigo"
+                      <span
+                        className={`block min-w-[46px] rounded-xl px-2 py-1.5 text-center ${
+                          proposed ? "bg-amber-50" : "bg-bob-indigo-50"
                         }`}
                       >
-                        {dow}
-                      </p>
-                      <p
-                        className={`text-base font-bold leading-tight ${
-                          proposed ? "text-amber-800" : "text-bob-indigo"
-                        }`}
-                      >
-                        {day}
-                      </p>
-                    </div>
+                        <span
+                          className={`block text-[10px] font-medium ${
+                            proposed ? "text-amber-700" : "text-bob-indigo"
+                          }`}
+                        >
+                          {dow}
+                        </span>
+                        <span
+                          className={`block text-base font-bold leading-tight ${
+                            proposed ? "text-amber-800" : "text-bob-indigo"
+                          }`}
+                        >
+                          {day}
+                        </span>
+                      </span>
+                    </AggiungiAlCalendario>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-bob-ink">
                         {a.title || req?.service?.name || "Appuntamento"}

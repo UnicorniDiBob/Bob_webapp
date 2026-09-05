@@ -14,6 +14,7 @@ import {
   fmtHour,
   mapsSearchUrl,
 } from "@/lib/calendar";
+import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
 
 /**
  * Pannello di dettaglio di un appuntamento.
@@ -112,18 +113,29 @@ export function AppointmentDetail({
           </button>
         </div>
 
-        {/* Quando */}
+        {/* Quando — cliccabile: apre «lo metto nel tuo calendario?» (05/09).
+            Nell'elenco degli appuntamenti la riga e' gia' un bottone che apre
+            questo pannello, e un bottone dentro un bottone non e' HTML
+            valido: per il professionista la porta al calendario sta qui. */}
         <div className="rounded-xl bg-bob-indigo-50/60 px-3.5 py-3">
-          <p className="text-sm font-semibold capitalize text-bob-ink">
-            {fmtDayLong(start)}
-          </p>
-          <p className="mt-0.5 text-sm tabular-nums text-bob-indigo">
-            {fmtHour(start)} – {fmtHour(end)}
-            <span className="text-bob-ink/50">
-              {" "}
-              · {fmtDuration(appt.duration_minutes)}
+          <AggiungiAlCalendario
+            appuntamento={appt}
+            titoloVisibile={appt.title ?? undefined}
+            className="no-underline"
+          >
+            <span className="block">
+              <span className="block text-sm font-semibold capitalize text-bob-ink">
+                {fmtDayLong(start)}
+              </span>
+              <span className="mt-0.5 block text-sm tabular-nums text-bob-indigo">
+                {fmtHour(start)} – {fmtHour(end)}
+                <span className="text-bob-ink/50">
+                  {" "}
+                  · {fmtDuration(appt.duration_minutes)}
+                </span>
+              </span>
             </span>
-          </p>
+          </AggiungiAlCalendario>
         </div>
 
         {/* Dove */}
