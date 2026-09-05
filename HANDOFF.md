@@ -1,71 +1,76 @@
-# Passaggio di consegne — 5 settembre 2026 (Lucio, con Claude)
+# Passaggio di consegne — 5 settembre 2026, sera (Lucio, con Claude)
 
-> Sostituisce quello del 2 settembre (André). HANDOFF.md si sovrascrive a ogni
+> Sostituisce quello del 5 settembre mattina. HANDOFF.md si sovrascrive a ogni
 > sessione, **ma quello che è a metà si porta avanti, non si butta**: le voci
-> aperte del 28 agosto–2 settembre stanno più sotto, nella loro sezione.
+> aperte del 28 agosto–2 settembre stanno in fondo, nella loro sezione.
 
-## Cosa ho fatto
+## Cosa è andato in produzione oggi
 
-Sei rami, uno per bug, tutti basati su `origin/main` a `089abdf`, tutti con
-`npm run lint` pulito e `npm run build` verde. Non sono mergiati: vanno aperti
-come PR e passati dalla CI. **Nessuna migrazione: niente da applicare su
-Supabase.**
+Le sei correzioni del mattino sono mergiate (PR #27–#33) e Vercel le ha
+deployate. **Conseguenza da gestire: 1 professionista su 6 ha gli orari
+salvati.** Ora che `/api/pro/slots` legge `professional_availability` invece
+della finestra fissa 8-18, gli altri 5 non mostrano nessuno slot ai clienti —
+è il comportamento giusto, ma finché non confermano i loro orari il cliente
+deve scrivere in chat per fissare. Vanno chiesti, o messi a mano da admin.
 
-- **`fix/dashboard-doppio-cerca`** — nella dashboard del cliente «Cerca un
-  professionista» e «Parla con Bob» erano due bottoni primari sullo stesso
-  schermo, tutti e due verso `/#bob`. Tolto quello in pagina.
-- **`fix/orari-veri-non-standard`** — `/api/pro/slots` non leggeva
-  `professional_availability`: aveva dentro lun-sab 8-18 scritto nel codice e
-  lo mostrava al cliente come disponibilità del professionista. Ora legge le
-  fasce vere; zero fasce = zero slot e `orariConfermati: false`, e
-  l'interfaccia invita a proporre un orario in chat. `computeFreeSlots` è
-  rimossa dal repo, non deprecata. **Da sapere prima di mergiare: 1
-  professionista su 6 ha gli orari salvati.** Appena questo va in produzione,
-  gli altri 5 smettono di mostrare slot finché non li confermano.
-- **`fix/azienda-prezzi-salvati`** — `/impostazioni/azienda` diceva «✓ Salvato»
-  e buttava via `min_price`, `max_price` e `price_note` quando mancava il
-  servizio principale (regressione di `8f65505`). Ora la conferma arriva solo
-  se è stato scritto tutto.
-- **`fix/richiesta-inviata-davvero`** — `RequestDialog` non controllava gli
-  errori di `request_professionals`, `request_messages` e `request_addresses`
-  e mostrava comunque la spunta verde. Ora li controlla; se la consegna
-  fallisce la richiesta torna a `draft` e il cliente lo legge.
-- **`fix/export-appuntamenti-completi`** — l'export art. 15/20 leggeva
-  `appointments` solo per `customer_id`, che scrive solo la prenotazione
-  diretta: gli appuntamenti nati in chat mancavano. Ora si legge anche per
-  `request_id`. **In produzione recupera 9 appuntamenti su 2 clienti.**
-- **`feat/appuntamento-nel-calendario`** — ogni data di appuntamento è
-  cliccabile e apre «lo metto nel tuo calendario?»: file `.ics` da
-  `GET /api/appuntamenti/[id]/ics` (permessi lasciati alla RLS) o link a Google
-  Calendar. Dentro l'evento solo titolo, giorno, ora, durata.
+## Cosa ho fatto dopo (tre rami, nessuno mergiato)
+
+Basati su `origin/main` a `98f5ddc`, lint pulito e build verde su tutti e tre.
+
+- **`fix/admin-utenti-nome-vuoto`** — `(u.full_name ?? "?")[0].toUpperCase()`
+  copre il null e non la stringa vuota: `""[0]` è `undefined` e la pagina
+  `/admin/users` smette di aprirsi per admin e cs, cioè l'unica pagina da cui
+  si potrebbe rimediare. La stringa vuota la produceva la nostra interfaccia
+  (nessun `required`, nessun trim, PATCH che scriveva qualunque cosa): chiuse
+  tutte e tre le porte. Latente, 0 nomi vuoti in produzione su 14 profili.
+- **`fix/doppioni-navigazione`** — tre doppioni in un ramo solo perché sono la
+  stessa famiglia: il ritorno al lavoro di `ImpostazioniShell` ora è
+  `md:hidden` (stessa cura del doppione «Impostazioni» del 29/08); i cinque
+  «Parla con Bob» che puntavano a `/` ora puntano a `/#bob` come tutti gli
+  altri; via «Vai ai messaggi» da `ProWorkspace`, che conviveva con la bolla
+  flottante. **Non toccata** la fascia «Parla con Bob» delle due pagine
+  servizi: è un invito contestuale con un titolo suo, non un bottone nudo, ed
+  è l'unico invito a Bob che vede un professionista lì.
+- **`feat/avvisi-di-servizio`** — nuovo. Migrazione **071** (tabella
+  `avvisi_servizio` + `profiles.avvisi_visti_al`), pannello `/admin/avvisi`,
+  finestra al primo accesso, poi voce nella campanella, scadenza automatica.
 
 ## Cosa è a metà
 
-- **Nessuno dei sei rami è in produzione.** Vanno aperte le PR, fatta passare
-  la CI e mergiate.
-- **Verifica dal vivo su www.meetonda.com, desktop e 390px: da fare** dopo il
-  merge, per i cinque rami che toccano l'interfaccia.
-- **Gli orari dei 5 professionisti senza fasce** vanno chiesti, o messi a mano
-  da admin, prima o subito dopo il merge di `fix/orari-veri-non-standard`.
-- **Due cose trovate strada facendo, non sistemate, da aprire nel Piano:**
-  - `appointments.customer_name` è testo libero con il nome di una persona, e
-    su 14 righe (`source = 'pro'`) non è legata a nessun account: nessun
-    percorso di cancellazione, nessuna regola di conservazione. Va deciso cosa
-    ne facciamo — è la stessa famiglia di problemi dell'export.
+- **I tre rami non sono in produzione.** Vanno aperte le PR e mergiate.
+- **La 071 NON è applicata su Supabase**, e va bene così: il file sta nel PR
+  prima, come da regola. Dopo il merge: applicarla, poi **rilanciare gli
+  advisor di sicurezza** (è l'unica migrazione della giornata).
+- **Verifica dal vivo su www.meetonda.com, desktop e 390px**: da fare per le
+  sei di stamattina (già online) e per i tre rami nuovi dopo il merge.
+- **Gli avvisi non li vede chi non è loggato.** Volutamente: lo stato «già
+  visto» ha bisogno di un account. Se un giorno serve dire «il sito è fermo» a
+  chi non è entrato, serve una fascia pubblica separata — la policy di lettura
+  è `to authenticated`, quindi è un cambio consapevole, non una dimenticanza.
+- **Due cose trovate ieri, ancora aperte, da mettere nel Piano:**
+  - `appointments.customer_name` è il nome di una persona in testo libero, su
+    14 righe senza legame a nessun account: nessuna cancellazione, nessuna
+    conservazione.
   - la cancellazione account non tocca `appointments`: `customer_id` ha
-    `on delete set null`, quindi la riga resta con dentro il nome. Da guardare
-    insieme al punto sopra.
+    `on delete set null`, quindi la riga resta con dentro il nome.
 
 ## Cosa ho applicato in produzione che l'altro deve sapere
 
-**Niente.** Nessuna migrazione, nessuna modifica allo schema, nessun advisor
-rilanciato. Le uniche interrogazioni su Supabase sono state di sola lettura,
-per contare quanti professionisti hanno gli orari e quanti appuntamenti
-l'export stava perdendo.
+**Niente sul database.** Nessuna migrazione applicata, nessuna modifica allo
+schema. Le query su Supabase sono state di sola lettura (quanti professionisti
+hanno gli orari, quanti profili hanno il nome vuoto). Le sei PR del mattino le
+ha mergiate Lucio a mano.
+
+Nota su come è stato verificato il ramo degli avvisi, perché conviene rifarlo:
+`scripts/schema_check.sh` gira in un contenitore con `postgresql-16` e
+`postgresql-16-cron` installati, e il replay **001 → 071 dai soli file del
+repo dà 0 errori**. L'impronta a otto righe è stata prodotta ma **non è stata
+confrontata con la produzione**: quel passo resta da fare a mano con
+`scripts/schema_fingerprint.sql`, come dice la regola settimanale.
 
 ## Cosa è a metà — portato avanti dal 28 agosto–2 settembre
 
-Nessuna di queste è chiusa da questa sessione.
+Nessuna di queste è chiusa.
 
 - **La ricerca non ha interfaccia**: il risolutore (068) è pronto e nessuna
   pagina lo chiama. Deciso che vive dentro `/professionisti`.
@@ -75,14 +80,12 @@ Nessuna di queste è chiusa da questa sessione.
   P2B).
 - **Due verità sugli interventi**: `professional_services` (che ha il prezzo) e
   `professionals.subservice_slugs`. Va scelta una. E 4 pro su 6 non dichiarano
-  nessun intervento: la ricerca per intervento trova poco perché il dato non
-  c'è.
+  nessun intervento.
 - **Slot sponsorizzati** e **registro delle ricerche a vuoto** (`search_events`,
   senza `user_id`, 12 mesi): non costruiti.
 - **Le bande di fiducia** (sopra 0.80 risposta, 0.40-0.80 «forse cercavi») non
   sono rispettate dall'interfaccia.
-- **La chat non passa `zone` a `/api/match`** — codice di André. Finché non lo
-  fa, `requests.zone_slug` resta NULL.
+- **La chat non passa `zone` a `/api/match`** — codice di André.
 - **28 zone nostre contro 88 nuclei ufficiali**: decisione di prodotto aperta.
 - **Tariffa nell'unità del mestiere e costi accessori**: colonne in database,
   nessuna interfaccia. La pagina azienda dice ancora «€/h» fisso.
@@ -90,7 +93,7 @@ Nessuna di queste è chiusa da questa sessione.
 - **`Leaked Password Protection` da accendere prima del pilota** (vuole il
   piano Pro): l'unico rilievo che gli advisor continuano a dare.
 - **SMTP personalizzato non configurato**: 2 email all'ora per tutto il
-  progetto. Quindici minuti di lavoro più 8-10 giorni di warm-up.
+  progetto.
 - **Da fare a mano su Supabase, aperto dal 28/08**: aggiungere
   `https://www.meetonda.com/auth/conferma` e
   `http://localhost:3000/auth/conferma` ai Redirect URLs.
