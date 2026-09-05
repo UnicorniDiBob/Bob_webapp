@@ -326,18 +326,52 @@ export default function AziendaPage() {
         .eq("id", profileId);
       if (upErr) throw upErr;
 
-      // IL SERVIZIO NON BLOCCA IL SALVATAGGIO, decide la visibilita'. Se manca,
-      // tutto il resto e' gia' scritto qui sopra: si dice la conseguenza e si
-      // segna il campo, non si butta via il lavoro.
+      // IL SERVIZIO NON BLOCCA IL SALVATAGGIO DEL PROFILO, decide la
+      // visibilita'. Ma tariffa minima, massima e nota sul prezzo NON stanno su
+      // professionals: stanno in professional_services, che senza service_id
+      // non ha nemmeno una riga dove esistere.
+      //
+      // COM'ERA FINO AL 05/09, E PERCHE' ERA PEGGIO DI PRIMA. Questo ramo
+      // faceva setSalvato + setSavedAt e poi return, cioe' scriveva «✓ Salvato»
+      // e spegneva l'indicatore «modifiche non salvate» PRIMA di arrivare alle
+      // tre colonne del prezzo. Il pro compilava le tariffe, leggeva che era
+      // tutto a posto, usciva, e le tariffe non c'erano piu'. Caso vero: chi in
+      // onboarding ha scelto «Altro...» e quindi non ha un servizio principale.
+      // Il commit 8f65505 (30/08), quello intitolato «non butta piu' via quello
+      // che hai scritto», ha salvato i campi di professionals e lasciato fuori
+      // questi tre — aggiungendo una conferma che prima non c'era. Una
+      // conferma falsa fa piu' danno di un errore: l'errore fa riprovare.
+      //
+      // COM'E' ADESSO. Si distingue fra «non c'era niente da scrivere» e «c'e'
+      // qualcosa che non ho scritto». Nel secondo caso niente «✓ Salvato» e
+      // niente impronta aggiornata: l'avviso di modifiche non salvate resta
+      // acceso, perche' e' vero, e la riga dice quale campo manca e cosa
+      // succede se si esce.
       if (!serviceId) {
-        setSalvato(impronta);
-        setSavedAt(Date.now());
-        setCampoRotto("servizio");
-        setAvviso(
-          motivoInvisibile({ servizi: 0, disattivato: false }) ??
-            "manca il servizio principale"
+        const prezziDaScrivere =
+          minPrice.trim() !== "" ||
+          maxPrice.trim() !== "" ||
+          priceNote.trim() !== "";
+
+        if (!prezziDaScrivere) {
+          // Tutto quello che c'era da salvare e' salvato: resta solo la
+          // conseguenza sulla visibilita', con la stessa frase della
+          // campanella e del promemoria.
+          setSalvato(impronta);
+          setSavedAt(Date.now());
+          setCampoRotto("servizio");
+          setAvviso(
+            motivoInvisibile({ servizi: 0, disattivato: false }) ??
+              "manca il servizio principale"
+          );
+          return;
+        }
+
+        return ferma(
+          "servizio",
+          "az-service",
+          "Il resto del profilo è salvato, ma la tariffa e la nota sul prezzo no: senza un servizio principale non hanno dove stare. Scegli il servizio qui sopra e salva di nuovo — se esci adesso, quei tre campi si perdono."
         );
-        return;
       }
 
       const serviceFields = {
