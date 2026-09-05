@@ -8,6 +8,7 @@ import { Header } from "@/components/Header";
 import { CancellazioneBanner } from "@/components/CancellazioneBanner";
 import { Footer } from "@/components/Footer";
 import { MessagesBubble } from "@/components/MessagesBubble";
+import { AvvisiPopup } from "@/components/AvvisiPopup";
 import { ProBanner } from "@/components/ProBanner";
 import { JsonLd } from "@/components/JsonLd";
 
@@ -91,6 +92,12 @@ export default function RootLayout({
                 lo stesso elenco a dire se il profilo compare o no. */}
             <NotificheProvider>
               <Header />
+              {/* Gli avvisi di servizio (071) si mettono davanti una volta
+                  sola, al primo accesso dopo la pubblicazione. Dentro
+                  NotificheProvider perche' finiscono anche nella campanella,
+                  e sopra il contenuto perche' e' l'unica cosa che diciamo che
+                  puo' riguardare il fatto stesso che il sito funzioni. */}
+              <AvvisiPopup />
               <CancellazioneBanner />
               <main className="flex-1">{children}</main>
               <ProBanner />

@@ -29,6 +29,15 @@
 // dimenticato. Quando servira' mandarle davvero (email, push) allora la coda
 // avra' senso: oggi no.
 //
+// L'UNICA ECCEZIONE ALLA REGOLA QUI SOPRA sono gli avvisi di servizio (071).
+// Quelli non sono derivabili da niente: sono un testo che una persona dello
+// staff scrive apposta per tutti — «lunedi' alle 3 il server sara' fermo» non
+// si deduce da nessuna riga esistente. Hanno una tabella loro, non contengono
+// dati personali degli utenti, e la finestra temporale la fa rispettare la
+// policy di lettura, non un filtro scritto qui. Entrano in questo elenco come
+// tutte le altre voci, perche' dopo la finestra del primo accesso e' qui che
+// una persona va a cercarle.
+//
 // LO STATO «LETTO» STA NEL BROWSER, non sul server: e' una preferenza
 // d'interfaccia, dura quanto il dispositivo e non deve finire in nessun
 // registro dei trattamenti (stessa logica di lib/guidaProgresso.ts). Prezzo
@@ -37,6 +46,7 @@
 // su users e questo file cambia in un punto solo.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { leggiAvvisiInCorso } from "@/lib/avvisi";
 
 export type LivelloNotifica = "azione" | "avviso" | "fatto";
 
@@ -46,10 +56,15 @@ export interface Notifica {
   livello: LivelloNotifica;
   titolo: string;
   testo: string;
-  /** Dove si risolve. Sempre una pagina che esiste. */
-  href: string;
+  /**
+   * Dove si risolve. Sempre una pagina che esiste — oppure niente, quando non
+   * c'e' niente da risolvere: un avviso di servizio si legge e basta, e un
+   * link finto che rimanda alla pagina in cui sei gia' e' peggio di nessun
+   * link.
+   */
+  href?: string;
   /** Il testo del link: dice cosa succede cliccando, non «vai». */
-  azione: string;
+  azione?: string;
   /** Quando la notizia e' nata. null = e' uno stato, non un evento. */
   quando: string | null;
   /** Chi parla: lo staff ha un nome, il sistema non ne ha uno. */
@@ -116,6 +131,23 @@ export async function caricaNotifiche(
 ): Promise<Notifica[]> {
   const out: Notifica[] = [];
   const pro = ctx.role === "professional";
+
+  // 0. Gli avvisi di servizio (071). Prima di tutto il resto perche' sono
+  //    l'unica voce che non riguarda questa persona in particolare ma il
+  //    servizio nel suo insieme: se il sito sta per fermarsi, viene prima di
+  //    una partita IVA da verificare. Un disservizio in corso entra come
+  //    «azione», cioe' resta acceso sul pallino finche' dura, invece di
+  //    spegnersi appena hai aperto la campanella una volta.
+  for (const a of await leggiAvvisiInCorso(supabase)) {
+    out.push({
+      id: `avviso:${a.id}`,
+      livello: a.livello === "disservizio" ? "azione" : "avviso",
+      titolo: a.titolo,
+      testo: a.testo,
+      quando: a.inizio_il,
+      mittente: "Bob",
+    });
+  }
 
   const [cancellazione, ticket, profilo] = await Promise.all([
     supabase

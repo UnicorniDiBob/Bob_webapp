@@ -100,15 +100,22 @@ export function NotificaVoce({
           {n.mittente && <span>{n.mittente}</span>}
           {n.mittente && n.quando && <span aria-hidden="true">·</span>}
           {n.quando && <span>{quandoLeggibile(n.quando)}</span>}
-          {(n.mittente || n.quando) && <span aria-hidden="true">·</span>}
-          <Link
-            href={n.href}
-            onClick={onNavigato}
-            className="font-semibold text-bob-indigo hover:underline"
-            data-testid={`notifica-azione-${n.id.split(":")[0]}`}
-          >
-            {n.azione} →
-          </Link>
+          {/* Il link c'e' solo se c'e' davvero un posto dove andare. Un
+              avviso di servizio (071) si legge e basta: mettergli sotto un
+              «vai →» che riporta alla pagina in cui sei gia' e' rumore. */}
+          {n.href && n.azione && (
+            <>
+              {(n.mittente || n.quando) && <span aria-hidden="true">·</span>}
+              <Link
+                href={n.href}
+                onClick={onNavigato}
+                className="font-semibold text-bob-indigo hover:underline"
+                data-testid={`notifica-azione-${n.id.split(":")[0]}`}
+              >
+                {n.azione} →
+              </Link>
+            </>
+          )}
         </p>
       </div>
     </li>
