@@ -53,6 +53,8 @@ export function RequestDialog({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Inviato, ma l'indirizzo non e' arrivato: va detto, non nascosto. */
+  const [indirizzoPerso, setIndirizzoPerso] = useState(false);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -83,6 +85,12 @@ export function RequestDialog({
     if (!user) return;
     setSubmitting(true);
     setError(null);
+    // Se la richiesta nasce ma il collegamento al professionista no, questa
+    // riga resta senza destinatario: serve saperlo nel catch per declassarla.
+    let idRichiesta: string | null = null;
+    // L'indirizzo non blocca l'invio, ma se non e' stato salvato la conferma
+    // deve dirlo, invece di lasciar credere che il pro ce l'abbia.
+    let indirizzoNonSalvato = false;
     try {
       // Risolvi gli ID di città e servizio (obbligatori nella tabella requests).
       const [cityId, serviceId] = await Promise.all([
@@ -117,18 +125,33 @@ export function RequestDialog({
         .single();
 
       if (reqErr || !req) throw reqErr ?? new Error("Richiesta non creata");
+      idRichiesta = req.id as string;
 
-      // (41.1) L'indirizzo viaggia a parte, mai nella prosa.
+      // (41.1) L'indirizzo viaggia a parte, mai nella prosa. Se questo insert
+      // fallisce la richiesta NON si annulla — il cliente ha comunque scritto
+      // al professionista — ma non si tace: lo dice la schermata di conferma,
+      // cosi' l'indirizzo si puo' ridare in chat.
       if (context.address) {
-        await supabase.from("request_addresses").insert({
-          request_id: req.id,
-          address_line: context.address.slice(0, 200),
-          city_name: context.cityName ?? professional.city.name ?? null,
-        });
+        const { error: addrErr } = await supabase
+          .from("request_addresses")
+          .insert({
+            request_id: req.id,
+            address_line: context.address.slice(0, 200),
+            city_name: context.cityName ?? professional.city.name ?? null,
+          });
+        indirizzoNonSalvato = Boolean(addrErr);
       }
 
-      // Collega il professionista e salva il messaggio iniziale.
-      await Promise.all([
+      // COLLEGAMENTO E MESSAGGIO: QUI L'ERRORE NON SI PUO' IGNORARE (05/09).
+      // Il client di Supabase NON lancia quando una scrittura fallisce:
+      // restituisce { error } e prosegue. Questi due insert non venivano
+      // controllati, e subito dopo la finestra mostrava la spunta verde e «ti
+      // avviso appena risponde». Risultato possibile: la riga in requests
+      // c'era, nessun professionista collegato, nessun messaggio salvato, e il
+      // pro non riceveva niente — mentre il cliente aspettava una risposta che
+      // non poteva arrivare. Il gemello QuoteDialog controllava gia' entrambi:
+      // due file che fanno la stessa cosa, uno giusto e uno no.
+      const [linkRes, msgRes] = await Promise.all([
         supabase.from("request_professionals").insert({
           request_id: req.id,
           professional_id: professional.id,
@@ -142,6 +165,8 @@ export function RequestDialog({
           message,
         }),
       ]);
+      if (linkRes.error) throw linkRes.error;
+      if (msgRes.error) throw msgRes.error;
 
       notifyEvent("new_request", {
         requestId: req.id,
@@ -149,9 +174,22 @@ export function RequestDialog({
         preview: message,
       });
       setDone(true);
+      setIndirizzoPerso(indirizzoNonSalvato);
     } catch {
+      // La richiesta puo' essere nata e restare senza destinatario. Non c'e'
+      // una policy di delete su requests per il cliente, ma c'e' quella di
+      // update: la si riporta a "draft", cioe' allo stato di chi non ha ancora
+      // inviato niente. Cosi' non compare fra i lavori in corso e non entra
+      // nei conteggi delle interazioni. Se anche questo fallisce, pazienza:
+      // l'importante e' non aver detto al cliente che era andata bene.
+      if (idRichiesta) {
+        await supabase
+          .from("requests")
+          .update({ status: "draft" })
+          .eq("id", idRichiesta);
+      }
       setError(
-        "Qualcosa è andato storto nell'invio. Riprova tra poco."
+        "Non sono riuscito a consegnare il messaggio: non è stato inviato niente. Riprova tra poco."
       );
     } finally {
       setSubmitting(false);
@@ -180,6 +218,15 @@ export function RequestDialog({
               Trovi la richiesta nella tua area personale. Ti avviso appena
               risponde.
             </p>
+            {indirizzoPerso && (
+              <p
+                className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800"
+                data-testid="request-indirizzo-perso"
+              >
+                Il messaggio è partito, ma il tuo indirizzo non si è salvato:
+                scrivilo in chat quando fissate l&apos;appuntamento.
+              </p>
+            )}
             <div className="mt-2 flex w-full gap-2">
               <Link href="/dashboard" className="btn-secondary flex-1 py-2.5">
                 Vai all&apos;area personale
