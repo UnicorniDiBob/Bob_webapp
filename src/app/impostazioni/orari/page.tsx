@@ -40,9 +40,10 @@ export default function OrariPage() {
   return (
     <div className="space-y-5">
       <SectionHeader title="Orari e disponibilità">
-        Da qui dipendono gli orari che Bob propone ai clienti. Se qui è vuoto,
-        Bob propone comunque degli orari standard — e possono essere ore in cui
-        non lavori.
+        Da qui dipendono gli orari che Bob propone ai clienti, e solo da qui:
+        se è vuoto, Bob non propone niente e il cliente deve scriverti in chat
+        per fissare. Nessun orario standard, nessuna ora inventata al posto
+        tuo.
       </SectionHeader>
 
       <div className="card p-5">

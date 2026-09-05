@@ -103,8 +103,11 @@ const TESTI: Record<ChiaveStato, Omit<VoceStato, "fatto">> = {
   orari: {
     chiave: "orari",
     titolo: "I tuoi orari",
+    // La frase di prima diceva «proponiamo ai clienti orari standard»: era
+    // vera, ed era il bug. Dal 05/09 non proponiamo piu' niente senza le tue
+    // fasce, quindi la conseguenza e' un'altra e va scritta com'e'.
     conseguenza:
-      "Senza, proponiamo ai clienti orari standard — e possono essere ore in cui non lavori.",
+      "Senza, i clienti non vedono nessun orario libero: per fissare devono scrivertelo in chat.",
     href: "/impostazioni/orari",
     tabella: "professional_availability",
     blocca: false,

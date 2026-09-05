@@ -85,6 +85,12 @@ export function AppointmentActions({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  /**
+   * false = il professionista non ha ancora confermato i suoi orari. Non e'
+   * la stessa cosa di «e' pieno»: lo dice la rotta, e va detto al cliente con
+   * parole diverse (05/09).
+   */
+  const [orariConfermati, setOrariConfermati] = useState(true);
 
   const a = appointment;
   const when = fmtWhen(a.starts_at);
@@ -192,6 +198,7 @@ export function AppointmentActions({
     setPickerOpen(true);
     setSlots([]);
     setErr(null);
+    setOrariConfermati(true);
     setSlotsLoading(true);
     try {
       const res = await fetch(
@@ -199,6 +206,7 @@ export function AppointmentActions({
       );
       const d = await res.json();
       setSlots((d.slots as string[]) ?? []);
+      setOrariConfermati(d.orariConfermati !== false);
     } catch {
       setSlots([]);
     }
@@ -308,6 +316,19 @@ export function AppointmentActions({
             {slotsLoading ? (
               <p className="mt-5 text-sm text-bob-ink/50">
                 Controllo le disponibilità…
+              </p>
+            ) : !orariConfermati ? (
+              /* NON E' «E' PIENO» (05/09). Prima qui finiva anche il pro che
+                 non aveva mai dichiarato i suoi orari, e al suo posto ne
+                 proponevamo di inventati. Adesso, quando gli orari non ci
+                 sono, si dice quello che e' vero. */
+              <p
+                className="mt-5 text-sm text-bob-ink/60"
+                data-testid="chat-slot-orari-mancanti"
+              >
+                {counterpartName} non ha ancora indicato i suoi orari, quindi
+                non posso mostrarti quando è libero: scrivi in chat e proponi
+                tu quando ti andrebbe bene.
               </p>
             ) : slots.length === 0 ? (
               <p className="mt-5 text-sm text-bob-ink/60">

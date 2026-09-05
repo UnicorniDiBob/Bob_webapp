@@ -7,7 +7,11 @@ import { Calendar, MessageCircle } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useUnread } from "@/components/UnreadProvider";
 import { createClient } from "@/lib/supabase/client";
-import { busyFromAppointments, computeFreeSlots } from "@/lib/slots";
+import {
+  busyFromAppointments,
+  computeFreeSlotsWithAvailability,
+  type AvailabilityWindow,
+} from "@/lib/slots";
 import { notifyEvent } from "@/lib/notify";
 import {
   getConversations,
@@ -96,6 +100,12 @@ function MessaggiInner() {
   const [replacingApptId, setReplacingApptId] = useState<string | null>(null);
   // Slot rapidi: i prossimi orari liberi del pro, un tap invece di digitare.
   const [quickSlots, setQuickSlots] = useState<Date[]>([]);
+  /**
+   * null = non ancora letto. false = il pro non ha nessuna fascia salvata in
+   * professional_availability, quindi non ci sono orari suoi da proporre e non
+   * ne inventiamo (05/09).
+   */
+  const [orariMiei, setOrariMiei] = useState<boolean | null>(null);
   const [myBusy, setMyBusy] = useState<
     { start: number; end: number }[]
   >([]);
@@ -154,28 +164,74 @@ function MessaggiInner() {
   }, [user, role]);
 
   // All'apertura del dialog carica il calendario del pro e calcola gli slot.
+  //
+  // GLI ORARI SUGGERITI SONO I SUOI (05/09). Prima questa scorciatoia usava
+  // computeFreeSlots, cioe' la settimana inventata lun-sab 8-18: proponeva al
+  // pro i «suoi prossimi orari liberi» dentro una finestra che non aveva mai
+  // dichiarato, e da li' partiva una proposta al cliente. Adesso le fasce
+  // arrivano da professional_availability. Se non ne ha, non si suggerisce
+  // niente: il campo data e ora resta a mano e il dialog gli chiede di
+  // confermare i suoi orari una volta per tutte.
   useEffect(() => {
     if (!proposeOpen || !myProId) return;
     (async () => {
       const supabase = createClient();
-      const { data } = await supabase
-        .from("appointments")
-        .select("starts_at, duration_minutes, status")
-        .eq("professional_id", myProId)
-        .gte(
-          "starts_at",
-          new Date(Date.now() - 24 * 3600 * 1000).toISOString()
-        );
+      const [{ data: appts }, { data: avail, error: availErr }] =
+        await Promise.all([
+          supabase
+            .from("appointments")
+            .select("starts_at, duration_minutes, status")
+            .eq("professional_id", myProId)
+            .gte(
+              "starts_at",
+              new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+            ),
+          supabase
+            .from("professional_availability")
+            .select("weekday, start_time, end_time")
+            .eq("professional_id", myProId),
+        ]);
+
       const busy = busyFromAppointments(
-        (data ?? []) as {
+        (appts ?? []) as {
           starts_at: string;
           duration_minutes: number;
           status: string;
         }[]
       );
       setMyBusy(busy);
+
+      // Una lettura fallita non e' «non hai orari»: non si accusa il pro di
+      // non aver fatto una cosa che magari ha fatto. Nessun suggerimento,
+      // nessun rimprovero.
+      if (availErr) {
+        setOrariMiei(null);
+        setQuickSlots([]);
+        return;
+      }
+
+      const windows: AvailabilityWindow[] = ((avail ?? []) as {
+        weekday: number;
+        start_time: string;
+        end_time: string;
+      }[]).map((w) => ({
+        weekday: w.weekday,
+        start: w.start_time.slice(0, 5),
+        end: w.end_time.slice(0, 5),
+      }));
+
+      setOrariMiei(windows.length > 0);
       setQuickSlots(
-        computeFreeSlots({ busy, durationMinutes: apptDuration, max: 6 })
+        windows.length === 0
+          ? []
+          : computeFreeSlotsWithAvailability({
+              windows,
+              busy,
+              durationMinutes: apptDuration,
+              stepMinutes: 60,
+              days: 7,
+              max: 6,
+            })
       );
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -683,6 +739,23 @@ function MessaggiInner() {
               Il cliente riceve la proposta in chat e la conferma dalla sua
               area personale.
             </p>
+            {orariMiei === false && (
+              <div
+                className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+                data-testid="propose-orari-mancanti"
+              >
+                Non hai ancora confermato i tuoi orari, quindi qui non ti
+                suggerisco niente: scrivi data e ora a mano, oppure{" "}
+                <Link
+                  href="/impostazioni/orari"
+                  className="font-semibold underline underline-offset-2"
+                >
+                  confermali una volta per tutte
+                </Link>{" "}
+                — da lì in poi te li propongo io, e i clienti vedono i tuoi
+                orari veri invece di doverti scrivere.
+              </div>
+            )}
             {quickSlots.length > 0 && (
               <div className="mt-4">
                 <p className="label-bob">I tuoi prossimi orari liberi</p>
