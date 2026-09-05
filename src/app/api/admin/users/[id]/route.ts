@@ -33,9 +33,24 @@ export async function PATCH(
     return NextResponse.json({ error: "Body non valido" }, { status: 400 });
   }
 
+  // IL NOME VUOTO SI FERMA QUI (05/09). Questa rotta scriveva qualunque cosa
+  // le arrivasse, stringa vuota compresa, e un full_name vuoto faceva lanciare
+  // l'iniziale in /admin/users portando giu' l'intera pagina — per admin e per
+  // cs, cioe' proprio la pagina da cui si sarebbe rimediato. Il form adesso
+  // non lo manda piu', ma il form e' una cortesia: la rotta e' la porta che
+  // nessuno puo' aggirare, e per questo il controllo vive qui.
+  if (body.fullName !== undefined && body.fullName.trim() === "") {
+    return NextResponse.json(
+      { error: "Il nome non puo' essere vuoto." },
+      { status: 400 }
+    );
+  }
+
   // Aggiorna il profilo (nome, bio). Il telefono vive altrove dalla 051.
   const profilePatch: Record<string, string> = {};
-  if (body.fullName !== undefined) profilePatch.full_name = body.fullName;
+  if (body.fullName !== undefined) {
+    profilePatch.full_name = body.fullName.trim().replace(/\s+/g, " ");
+  }
   if (body.about !== undefined) profilePatch.about = body.about;
 
   if (Object.keys(profilePatch).length > 0) {
