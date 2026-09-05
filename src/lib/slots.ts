@@ -1,9 +1,18 @@
 // Calcolo degli slot liberi di un professionista, condiviso client/server.
-// Regole del pilota: lun-sab, 8:00-18:00 ORA ITALIANA, slot di un'ora,
-// anticipo minimo 2 ore. Le ore sono calcolate esplicitamente in
-// Europe/Rome: il server (Vercel) gira in UTC e senza questa conversione
-// gli slot uscivano spostati di 2 ore. Quando i pro avranno orari
-// configurabili, questo modulo li leggerà dal profilo.
+//
+// UNA SOLA FONTE PER GLI ORARI: professional_availability (05/09).
+// Questo modulo esportava anche computeFreeSlots, che NON leggeva il profilo:
+// aveva dentro una settimana scritta da noi — lun-sab 8:00-18:00, uguale per
+// tutti — e la usavano /api/pro/slots e la scorciatoia «i tuoi prossimi orari
+// liberi» in /messaggi. Il risultato era che al cliente comparivano ore in cui
+// il professionista non lavora, e nessuno se ne accorgeva perché sembravano
+// dati veri. La funzione è stata tolta, non deprecata: finché resta
+// esportata, prima o poi qualcuno la richiama. Chi ha bisogno di slot usa
+// computeFreeSlotsWithAvailability e, se le fasce sono zero, non propone
+// niente — che è la risposta giusta, non un caso da tappare con un default.
+//
+// Le ore sono calcolate esplicitamente in Europe/Rome: il server (Vercel) gira
+// in UTC e senza questa conversione gli slot uscivano spostati di 2 ore.
 
 export interface BusyInterval {
   start: number; // epoch ms
@@ -22,64 +31,6 @@ function romeDay(d: Date): { ymd: string; weekday: string } {
   };
 }
 
-// Istante assoluto corrispondente alle HH:00 italiane del giorno ymd.
-// Prova i due offset possibili (CEST/CET) e verifica quale è corretto.
-function atRomeHour(ymd: string, hour: number): Date {
-  const hh = String(hour).padStart(2, "0");
-  for (const off of ["+02:00", "+01:00"]) {
-    const d = new Date(`${ymd}T${hh}:00:00${off}`);
-    const check = Number(
-      new Intl.DateTimeFormat("en-GB", {
-        timeZone: TZ,
-        hour: "2-digit",
-        hour12: false,
-      }).format(d)
-    );
-    if (check === hour % 24) return d;
-  }
-  return new Date(`${ymd}T${hh}:00:00+01:00`);
-}
-
-export function computeFreeSlots(opts: {
-  busy: BusyInterval[];
-  durationMinutes: number;
-  days?: number; // orizzonte in giorni (default 7)
-  dayStartHour?: number; // default 8 (ora italiana)
-  dayEndHour?: number; // default 18 (ora italiana)
-  minLeadMs?: number; // anticipo minimo (default 2 ore)
-  max?: number; // massimo slot restituiti (default 24)
-}): Date[] {
-  const { busy, durationMinutes } = opts;
-  const days = opts.days ?? 7;
-  const startH = opts.dayStartHour ?? 8;
-  const endH = opts.dayEndHour ?? 18;
-  const lead = opts.minLeadMs ?? 2 * 3600 * 1000;
-  const max = opts.max ?? 24;
-
-  const out: Date[] = [];
-  const now = Date.now();
-
-  for (let d = 0; d < days && out.length < max; d++) {
-    const base = new Date(now + d * 24 * 3600 * 1000);
-    const { ymd, weekday } = romeDay(base);
-    if (weekday === "Sun") continue; // domenica: riposo
-
-    for (
-      let h = startH;
-      h + durationMinutes / 60 <= endH && out.length < max;
-      h++
-    ) {
-      const slot = atRomeHour(ymd, h);
-      const s = slot.getTime();
-      const e = s + durationMinutes * 60000;
-      if (s < now + lead) continue;
-      if (busy.some((b) => s < b.end && e > b.start)) continue;
-      out.push(slot);
-    }
-  }
-  return out;
-}
-
 // Intervalli occupati a partire dalle righe appointments (proposti inclusi:
 // uno slot in attesa di conferma non va offerto due volte).
 export function busyFromAppointments(
@@ -94,8 +45,8 @@ export function busyFromAppointments(
 }
 
 // --- Prenotazione diretta: slot dagli orari configurati dal pro ---------------
-// A differenza di computeFreeSlots (finestra fissa 8-18), qui gli orari arrivano
-// da professional_availability (fasce settimanali per weekday, 0=dom..6=sab).
+// Gli orari arrivano da professional_availability (fasce settimanali per
+// weekday, 0=dom..6=sab). Zero fasce = zero slot, di proposito.
 
 export interface AvailabilityWindow {
   weekday: number; // 0=domenica .. 6=sabato

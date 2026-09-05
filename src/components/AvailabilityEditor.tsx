@@ -2,8 +2,10 @@
 
 // Orari di disponibilità del professionista (professional_availability).
 // Il pro imposta, per giorno della settimana, una o più fasce orarie.
-// Questi orari alimenteranno gli slot prenotabili quando la prenotazione
-// diretta sarà pubblica (Fase 1); oggi il pro può già configurarli.
+// Questi orari sono la SOLA fonte degli slot che vede un cliente: li usano la
+// prenotazione diretta e, dal 05/09, anche /api/pro/slots (prima quella rotta
+// aveva una settimana fissa 8-18 scritta nel codice). Zero fasce salvate =
+// zero slot proposti, di proposito.
 //
 // Persistenza: si cancellano le righe esistenti del pro e si reinseriscono
 // quelle correnti (le policy RLS consentono al pro di gestire solo le proprie).
@@ -188,12 +190,21 @@ export default function AvailabilityEditor({
   return (
     <div className="space-y-3" data-testid="availability-editor">
       <p className="text-sm text-bob-ink/60">
-        {"Imposta gli orari in cui accetti prenotazioni. Serviranno a mostrare gli slot liberi quando la prenotazione diretta sarà attiva."}
+        {"Imposta gli orari in cui accetti prenotazioni: sono gli unici che i clienti vedono quando cercano un momento libero con te."}
       </p>
 
+      {/* LA RIGA QUI SOTTO ADESSO DICE IL VERO (05/09). Prometteva già
+          «finché non salvi, i clienti non vedono slot liberi», ma non era
+          così: /api/pro/slots ignorava questa tabella e proponeva comunque
+          lun-sab 8-18. Ora la promessa e il codice coincidono, e la richiesta
+          di conferma è esplicita: i valori sotto sono una proposta nostra,
+          diventano tuoi solo quando li confermi. */}
       {!hadSaved && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {"⚠ Orari non ancora salvati. Questi sono valori suggeriti: controllali e premi “Salva orari” per attivarli — finché non salvi, i clienti non vedono slot liberi."}
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          data-testid="availability-da-confermare"
+        >
+          {"⚠ Non hai ancora confermato i tuoi orari. Quelli qui sotto sono una proposta nostra, non i tuoi: finché non li confermi i clienti non vedono nessun orario libero e per fissare devono scriverti in chat. Controllali e premi “Conferma questi orari”."}
         </div>
       )}
 
@@ -275,7 +286,7 @@ export default function AvailabilityEditor({
       )}
       {savedAt && !error && (
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          ✓ Orari salvati.
+          ✓ Orari salvati: da adesso i clienti vedono questi, e solo questi.
         </p>
       )}
 
@@ -286,7 +297,7 @@ export default function AvailabilityEditor({
         className="btn-secondary py-2.5"
         data-testid="availability-save"
       >
-        {saving ? "Salvo…" : "Salva orari"}
+        {saving ? "Salvo…" : hadSaved ? "Salva orari" : "Conferma questi orari"}
       </button>
     </div>
   );

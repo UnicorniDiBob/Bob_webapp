@@ -137,6 +137,8 @@ export function CustomerHome() {
   const [slotPickerFor, setSlotPickerFor] = useState<Appointment | null>(null);
   const [slots, setSlots] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  /** false = il pro non ha ancora confermato i suoi orari (05/09). */
+  const [orariConfermati, setOrariConfermati] = useState(true);
   const [slotSaving, setSlotSaving] = useState(false);
   const [slotErr, setSlotErr] = useState<string | null>(null);
 
@@ -292,6 +294,7 @@ export function CustomerHome() {
     setSlotPickerFor(a);
     setSlots([]);
     setSlotErr(null);
+    setOrariConfermati(true);
     setSlotsLoading(true);
     try {
       const res = await fetch(
@@ -299,6 +302,7 @@ export function CustomerHome() {
       );
       const d = await res.json();
       setSlots((d.slots as string[]) ?? []);
+      setOrariConfermati(d.orariConfermati !== false);
     } catch {
       setSlots([]);
     }
@@ -833,6 +837,17 @@ export function CustomerHome() {
             {slotsLoading ? (
               <p className="mt-5 text-sm text-bob-ink/50">
                 Controllo le disponibilità…
+              </p>
+            ) : !orariConfermati ? (
+              /* Vedi /api/pro/slots: «nessuno slot» e «orari mai dichiarati»
+                 sono due cose diverse e al cliente vanno dette diverse. */
+              <p
+                className="mt-5 text-sm text-bob-ink/60"
+                data-testid="slot-orari-mancanti"
+              >
+                {proName(slotPickerFor.professional_id)} non ha ancora indicato
+                i suoi orari, quindi non posso mostrarti quando è libero:
+                scrivi in chat e proponi tu quando ti andrebbe bene.
               </p>
             ) : slots.length === 0 ? (
               <p className="mt-5 text-sm text-bob-ink/60">
