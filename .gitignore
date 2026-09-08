@@ -35,3 +35,6 @@ next-env.d.ts
 # un xlsx rimasto sul disco di chi lo aveva generato prima.
 roadmap/BOB_Roadmap_Gantt.xlsx
 scripts/.nil_cache.csv
+
+# gli screenshot delle verifiche dal vivo, non un deliverable del progetto
+/Claude outputs/
