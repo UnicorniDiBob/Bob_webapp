@@ -25,6 +25,7 @@ import Link from "next/link";
 import { AlertTriangle, PowerOff, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { ContoAllaRovescia } from "@/components/ContoAllaRovescia";
 import {
   fermoAdesso,
   leggiManutenzioni,
@@ -70,7 +71,8 @@ export function ManutenzioneBanner() {
         data-testid="banner-fermo-staff"
       >
         <PowerOff className="mr-1.5 inline h-4 w-4 align-[-2px]" aria-hidden="true" />
-        Bob è fermo per tutti tranne lo staff. Riapre {quandoLeggibile(adesso.fine_il)}.{" "}
+        Bob è fermo per tutti tranne lo staff. Riapre{" "}
+        <ContoAllaRovescia fine={adesso.fine_il} />.{" "}
         <Link href="/admin/manutenzione" className="underline">
           Gestisci
         </Link>

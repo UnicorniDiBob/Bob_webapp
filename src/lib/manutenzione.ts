@@ -120,6 +120,28 @@ export function quandoLeggibile(
 }
 
 /**
+ * Quanto manca alla riapertura, come lo legge una persona.
+ *
+ * UN OROLOGIO, NON UNA DATA. «Torniamo alle 19:16» obbliga chi legge a
+ * guardare l'ora e fare una sottrazione, e alle 3 di notte con il sito fermo
+ * quella sottrazione non la fa nessuno: si chiude la pagina. «Fra 12:30» si
+ * capisce senza pensarci, e soprattutto si vede scorrere — che e' l'unica cosa
+ * che distingue una pagina viva da una pagina piantata.
+ *
+ * Sotto l'ora: mm:ss. Sopra: h:mm:ss. Scaduto: stringa vuota, e chi chiama
+ * decide cosa dire al posto suo.
+ */
+export function restante(iso: string, adesso: number = Date.now()): string {
+  const s = Math.floor((new Date(iso).getTime() - adesso) / 1000);
+  if (!isFinite(s) || s <= 0) return "";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const dd = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${h}:${dd(m)}:${dd(sec)}` : `${m}:${dd(sec)}`;
+}
+
+/**
  * Il testo che il preavviso mette davanti. Uno solo, usato dalla fascia
  * pubblica e dall'avviso della 071, cosi' non si scrive due volte.
  */
@@ -141,8 +163,16 @@ function esc(s: string): string {
 
 /**
  * La pagina che vede chi arriva a sito fermo. Autosufficiente di proposito:
- * nessun CSS esterno, nessuno script, nessuna immagine. Se dipendesse da un
- * pezzo del sito sarebbe la pagina che si rompe proprio quando serve.
+ * nessun CSS esterno, nessuna immagine, nessuna richiesta di rete. L'unico
+ * script e' una decina di righe scritte qui dentro, per l'orologio: se
+ * dipendesse da un pezzo del sito sarebbe la pagina che si rompe proprio
+ * quando serve, e senza JavaScript resta comunque scritta l'ora di riapertura.
+ *
+ * NON DICE COME ENTRA LO STAFF, e la prima versione lo diceva. Una pagina che
+ * annuncia «se sei dello staff entra da /login» spiega a chiunque passi di li'
+ * che esiste una porta e dove sta, mentre a noi non serve: la sappiamo. La
+ * porta resta /login e resta protetta dalla password come sempre — quello che
+ * si toglie e' l'invito a provarla, non la serratura.
  */
 export function paginaFermo(f: Manutenzione, adesso = Date.now()): string {
   const torna = quandoLeggibile(f.fine_il, adesso);
@@ -178,11 +208,42 @@ a{color:#5b5bd6}
 <h1>Ci fermiamo un momento</h1>
 <p class="m">${esc(f.motivo)}</p>
 ${dettaglio}
-<p class="t">Torniamo ${esc(torna)}.</p>
+<p class="t" id="t" data-fine="${esc(f.fine_il)}">Torniamo ${esc(torna)}.</p>
 <p class="s">Le richieste e i messaggi già inviati non si perdono: li ritrovi
-tutti quando riapriamo. Se sei dello staff, entra da
-<a href="/login">/login</a>.</p>
-</main></body></html>`;
+tutti quando riapriamo.</p>
+</main>
+<script>
+// L'OROLOGIO, E IL RIENTRO DA SOLO.
+// Questa pagina non carica niente da fuori — e' la sua ragione d'essere — ma
+// una decina di righe qui dentro non sono una dipendenza: girano anche se
+// tutto il resto del sito e' spento. Senza JavaScript resta scritta l'ora di
+// riapertura, che e' l'informazione vera; il conto alla rovescia e' quello che
+// la rende leggibile senza fare una sottrazione.
+// Alla scadenza la pagina si ricarica da sola, ogni quindici secondi: chi ha
+// lasciato la scheda aperta si ritrova dentro senza toccare niente, e se nel
+// frattempo abbiamo prolungato il fermo rilegge il cartello nuovo.
+(function () {
+  var t = document.getElementById("t");
+  if (!t) return;
+  var fine = new Date(t.getAttribute("data-fine")).getTime();
+  if (!fine) return;
+  var scaduto = false;
+  function dd(n) { return n < 10 ? "0" + n : "" + n; }
+  function tic() {
+    var s = Math.floor((fine - Date.now()) / 1000);
+    if (s <= 0) {
+      if (!scaduto) { scaduto = true; t.textContent = "Stiamo riaprendo\u2026"; }
+      return;
+    }
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), q = s % 60;
+    t.textContent = "Torniamo fra " + (h > 0 ? h + ":" + dd(m) + ":" + dd(q) : m + ":" + dd(q));
+  }
+  tic();
+  setInterval(tic, 1000);
+  setInterval(function () { if (scaduto) location.reload(); }, 15000);
+})();
+</script>
+</body></html>`;
 }
 
 /**

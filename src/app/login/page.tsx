@@ -10,6 +10,13 @@ import { LogoMark } from "@/components/Logo";
 import { TermsDialog } from "@/components/TermsDialog";
 import { TERMS_VERSION } from "@/components/TermsContent";
 import type { UserRole } from "@/lib/supabase/types";
+import { ContoAllaRovescia } from "@/components/ContoAllaRovescia";
+import {
+  fermoAdesso,
+  leggiManutenzioni,
+  quandoLeggibile,
+  type Manutenzione,
+} from "@/lib/manutenzione";
 
 type Mode = "login" | "signup";
 
@@ -54,6 +61,30 @@ function LoginInner() {
   const [mode, setMode] = useState<Mode>(
     params.get("mode") === "signup" ? "signup" : "login"
   );
+
+  // MENTRE BOB E' FERMO, DA QUI SI ENTRA E BASTA (073).
+  //
+  // /login e' l'unica porta che il middleware lascia aperta durante un fermo,
+  // e serve: se la lasciassimo chiudere, chi deve riaprire il sito e non ha la
+  // sessione in corso resterebbe fuori insieme a tutti gli altri. Ma questa
+  // pagina non e' solo l'accesso — e' anche l'iscrizione, stesso indirizzo con
+  // un interruttore. Lasciarla intera vuol dire tenere aperte le registrazioni
+  // mentre dichiariamo il sito chiuso, e ogni iscrizione consuma una delle 2
+  // email/ora del mailer di Supabase, che e' il tetto di TUTTO il progetto:
+  // una persona che si iscrive per sbaglio alle 3 di notte si porta via la
+  // quota che serve a noi per rientrare.
+  //
+  // Quindi durante il fermo il pannello di iscrizione sparisce e resta solo
+  // «Accedi». La pagina se lo chiede da sola invece di farselo dire dal
+  // middleware: la 073 e' leggibile anche senza sessione, la domanda «c'e' un
+  // fermo adesso?» ha una risposta sola, e cosi' vale comunque si arrivi qui.
+  //
+  // Quello che questo NON fa, e va saputo: `supabase.auth.signUp` parte dal
+  // browser e va dritta a Supabase senza passare dalle nostre rotte. Qui si
+  // nasconde il modulo, non si spegne l'endpoint — per spegnerlo davvero c'e'
+  // l'interruttore «disable signups» nelle impostazioni Auth, che pero' blocca
+  // anche noi. Contro l'iscrizione per sbaglio basta; come barriera dura, no.
+  const [fermo, setFermo] = useState<Manutenzione | null>(null);
   const [role, setRole] = useState<Extract<UserRole, "customer" | "professional">>(
     params.get("role") === "professional" ? "professional" : "customer"
   );
@@ -73,6 +104,24 @@ function LoginInner() {
   // Attesa della conferma email: quando è valorizzato, il form lascia il
   // posto alla schermata "controlla la posta" che riprova il login da sola.
   const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const righe = await leggiManutenzioni(supabase);
+      if (!vivo) return;
+      const adesso = fermoAdesso(righe);
+      if (!adesso) return;
+      setFermo(adesso);
+      // Anche chi arriva da /login?mode=signup vede l'accesso: il deep link
+      // del funnel pro non deve scavalcare un sito dichiarato chiuso.
+      setMode("login");
+    })();
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   // Il consenso si sblocca solo dopo che i termini sono stati aperti: non si
@@ -454,6 +503,20 @@ function LoginInner() {
       />
       <div className="w-full max-w-md">
         <div className="card p-7">
+          {fermo && (
+            <div
+              className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-sm leading-relaxed text-amber-900"
+              data-testid="login-fermo"
+            >
+              <strong className="font-semibold">
+                Bob è fermo per manutenzione.
+              </strong>{" "}
+              Riapre <ContoAllaRovescia fine={fermo.fine_il} />, cioè{" "}
+              {quandoLeggibile(fermo.fine_il)}. Da qui puoi entrare se hai già
+              un account; le iscrizioni riprendono alla riapertura.
+            </div>
+          )}
+
           <div className="mb-5 text-center">
             <LogoMark className="mx-auto mb-3" />
             <h1 className="text-xl font-bold text-bob-ink">
@@ -807,6 +870,7 @@ function LoginInner() {
             </button>
           </form>
 
+          {!fermo && (
           <p className="mt-5 text-center text-sm text-bob-ink/60">
             {mode === "login" ? "Non hai un account? " : "Hai già un account? "}
             <button
@@ -821,6 +885,7 @@ function LoginInner() {
               {mode === "login" ? "Registrati" : "Accedi"}
             </button>
           </p>
+          )}
         </div>
 
         <p className="mt-4 text-center text-xs text-bob-ink/45">
