@@ -17,6 +17,10 @@ interface QuoteContext {
   serviceName?: string;
   // Nome retto da "di" ("di pulizie"): chi apre il dialog lo ricava dal
   // catalogo, qui non conosciamo il genere grammaticale. Vedi src/lib/italian.ts.
+  // (6b) L'intervento preciso, quando lo sappiamo: la ricerca lo riconosce
+  // dalla frase digitata, la chat di Bob lo ha nel brief. Senza questo un
+  // lavoro chiuso non sa dire QUALE lavoro era — vedi docs/RICERCA.md §6.
+  subserviceSlug?: string | null;
   serviceNeedPhrase?: string;
   problem?: string;
   urgency?: Severity;
@@ -88,6 +92,25 @@ export function QuoteDialog({
     return (data?.id as string) ?? null;
   }
 
+  /**
+   * (6b) L'intervento vale solo dentro il suo mestiere: se la coppia non
+   * torna — il cliente cercava un lavoro di un altro mestiere — resta NULL,
+   * che e' meglio di un intervento sbagliato scritto sulla richiesta.
+   */
+  async function resolveSubserviceId(
+    serviceId: string,
+    slug?: string | null
+  ): Promise<string | null> {
+    if (!slug) return null;
+    const { data } = await supabase
+      .from("subservices")
+      .select("id")
+      .eq("slug", slug)
+      .eq("service_id", serviceId)
+      .maybeSingle();
+    return (data?.id as string) ?? null;
+  }
+
   async function submit() {
     if (!user || professionals.length === 0) return;
     setSubmitting(true);
@@ -109,6 +132,11 @@ export function QuoteDialog({
         return;
       }
 
+      const subserviceId = await resolveSubserviceId(
+        serviceId,
+        context.subserviceSlug
+      );
+
       // Una sola richiesta di preventivo (status 'quote_request'), nessun budget.
       const { data: req, error: reqErr } = await supabase
         .from("requests")
@@ -116,6 +144,7 @@ export function QuoteDialog({
           customer_id: user.id,
           city_id: cityId,
           service_id: serviceId,
+          subservice_id: subserviceId,
           status: "quote_request",
           problem_description: context.problem ?? message,
           urgency: context.urgency ?? null,

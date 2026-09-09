@@ -247,7 +247,14 @@ export function ProfessionalCardItem({
 
   return (
     <Link
-      href={`/professionisti/${p.id}`}
+      href={
+        // (6b) L'intervento cercato viaggia nel link, altrimenti la pagina del
+        // professionista non sa che lavoro il cliente stava cercando e la
+        // richiesta nasce senza intervento. Vedi docs/RICERCA.md §6.
+        intervento
+          ? `/professionisti/${p.id}?intervento=${encodeURIComponent(intervento.slug)}`
+          : `/professionisti/${p.id}`
+      }
       className="card group flex flex-col gap-3 p-5 hover:-translate-y-0.5 hover:shadow-card-hover"
       data-testid={`card-professional-${p.id}`}
     >
