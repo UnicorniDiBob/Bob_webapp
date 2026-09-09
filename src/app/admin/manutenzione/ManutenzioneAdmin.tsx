@@ -31,6 +31,7 @@ import { PowerOff, CalendarClock, ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { quandoLeggibile, type Manutenzione } from "@/lib/manutenzione";
+import { ContoAllaRovescia } from "@/components/ContoAllaRovescia";
 
 interface Riga extends Manutenzione {
   immediata: boolean;
@@ -384,7 +385,12 @@ export function ManutenzioneAdmin() {
           </p>
           <p className="mt-2 text-sm text-bob-ink/80">{inCorso.motivo}</p>
           <p className="mt-1 text-sm text-bob-ink/60">
-            Riapre da solo {quandoLeggibile(inCorso.fine_il)}.
+            Riapre da solo <ContoAllaRovescia fine={inCorso.fine_il} />, alle{" "}
+            {new Date(inCorso.fine_il).toLocaleTimeString("it-IT", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            .
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
