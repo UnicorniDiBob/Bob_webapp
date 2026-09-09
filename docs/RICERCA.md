@@ -212,7 +212,8 @@ accettato, quindi va fatto di proposito e non di sfuggita.
 
 **`professional_services` è la verità** (mig. 070): una riga per intervento
 offerto, col suo prezzo, la sua unità di misura e la prenotazione immediata.
-`professionals.subservice_slugs` è deprecata e la eliminerà la 071 — ma **solo
+`professionals.subservice_slugs` è deprecata e la eliminerà la 072 o la 073
+(la 071 è gli avvisi di servizio) — ma **solo
 dopo** che il codice ha smesso di leggerla, perché Vercel pubblica `main` da sé
 mentre le migrazioni passano da Supabase a mano.
 
@@ -223,6 +224,54 @@ non prende i punti del prezzo.
 Una riga con `subservice_id` NULL vuol dire «il mestiere, nessun intervento
 specifico»: la crea l'iscrizione, ed è la ragione per cui esiste il punteggio
 20 «solo mestiere».
+
+### Il modulo del professionista: di chi è, e l'idea di ricavarlo dai lavori chiusi
+
+Il modulo che chiede a un professionista quali lavori fa **non esiste**: le
+dichiarazioni di oggi le ha messe la 070 a mano, su sei professionisti. Il
+lavoro è **di Lucio** (deciso da André il 9 settembre 2026), e va discusso con
+lui prima di scriverlo, perché due requisiti cambiano il progetto:
+
+1. **Deve costare al professionista il meno possibile.** Un elenco di 105
+   caselle da spuntare non lo compila nessuno.
+2. **Dovrebbe aggiornarsi da sé, in base ai lavori che il professionista
+   chiude.** Chi ha davvero riparato tre lavandini lo ha dimostrato meglio di
+   chi ha spuntato una casella.
+
+**La seconda idea è possibile, ma non con i dati di oggi.** Verificato sulla
+produzione il 9 settembre 2026:
+
+- La catena esiste: `appointments.request_id` → `requests.subservice_id`, e in
+  parallelo `appointments.professional_service_id`.
+- **`requests.subservice_id` è NULL su 10 righe su 10.** La colonna c'è e
+  nessuno la scrive: quindi oggi un lavoro chiuso non sa dire *quale* lavoro
+  era. Numeri: 29 appuntamenti, 7 completati, 9 con una richiesta collegata, 6
+  con un'offerta collegata.
+- La strada `professional_service_id` è circolare: punta a una riga che dà per
+  già fatta la dichiarazione che vorremmo ricavare.
+
+**Prerequisito, e sta sul lato cliente (André):** quando nasce una richiesta,
+scriverci dentro l'intervento riconosciuto. `search_resolve` restituisce già
+`subservice_id` con un punteggio di certezza — è esattamente il pezzo che
+manca. Senza questo, ricavare le dichiarazioni dai lavori chiusi non ha
+sorgente.
+
+**Il modulo serve comunque**, perché un professionista appena iscritto ha zero
+lavori chiusi: la deduzione può solo *aggiungere* a una prima dichiarazione,
+non sostituirla. Ma può essere piccolo: i lavori più comuni del mestiere già
+spuntati, e il professionista togliere quelli che non fa.
+
+**Due vincoli da non scoprire dopo:**
+
+- Una dichiarazione dedotta **sposta un professionista nell'ordinamento**. Per
+  la regola del progetto e per l'art. 22 GDPR, qualunque cosa che
+  deprioritizza un professionista vuole un umano nel giro. La forma che
+  soddisfa entrambi: la deduzione **propone** («abbiamo visto che hai fatto X,
+  confermi?»), costa un tocco, e **non toglie mai** un lavoro da sé.
+- Se «i lavori dedotti dagli incarichi chiusi» diventa un parametro, va scritto
+  nei parametri pubblicati (§4 e `/come-funziona#ordine`) e nei termini verso i
+  professionisti (art. 5 P2B). Aggiungere un parametro senza dirlo è la cosa
+  che quelle due pagine esistono per evitare.
 
 ## 7. Che cosa si registra delle ricerche, e che cosa no
 
