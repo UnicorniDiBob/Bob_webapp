@@ -1,5 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  leggiFermoInCorso,
+  percorsoSempreAperto,
+  rispostaFermo,
+} from "@/lib/manutenzione";
 
 /**
  * Rotte che non esistono per chi non e' autenticato. /admin NON sta qui: ha un
@@ -61,6 +66,34 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+
+  // FERMO PER MANUTENZIONE (073) — prima di ogni altra cosa.
+  //
+  // Sta qui, e non in una pagina, perche' deve valere per TUTTO: pagine
+  // pubbliche, area riservata, rotte /api, richieste dei crawler. Un blocco
+  // dentro il layout lascerebbe fuori le API, che sono esattamente il modo in
+  // cui una richiesta continua ad arrivare mentre il sito «e' fermo».
+  //
+  // COSTA UNA CHIAMATA OGNI DIECI SECONDI, non una per richiesta: la finestra
+  // se la tiene in mano lib/manutenzione. Se quella lettura fallisce torna
+  // null e il sito resta su — chiudere Bob perche' una query e' andata storta
+  // sarebbe un guasto che ci facciamo da soli.
+  //
+  // LO STAFF PASSA. Il controllo del ruolo si paga solo QUANDO il fermo e'
+  // acceso, cioe' quasi mai: la query in piu' non tocca il traffico normale.
+  const fermo = await leggiFermoInCorso();
+  if (fermo && !percorsoSempreAperto(pathname)) {
+    let staff = false;
+    if (user) {
+      const { data: chiSono } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      staff = chiSono?.role === "admin" || chiSono?.role === "cs";
+    }
+    if (!staff) return rispostaFermo(fermo);
+  }
 
   // Area personale: serve una sessione, e basta quella. Il returnTo ricalca la
   // convenzione che le pagine usano gia' (/login?returnTo=/impostazioni/dati),

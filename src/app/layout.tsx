@@ -9,6 +9,7 @@ import { CancellazioneBanner } from "@/components/CancellazioneBanner";
 import { Footer } from "@/components/Footer";
 import { MessagesBubble } from "@/components/MessagesBubble";
 import { AvvisiPopup } from "@/components/AvvisiPopup";
+import { ManutenzioneBanner } from "@/components/ManutenzioneBanner";
 import { ProBanner } from "@/components/ProBanner";
 import { JsonLd } from "@/components/JsonLd";
 
@@ -91,6 +92,11 @@ export default function RootLayout({
                 campanella vive li' dentro, e sopra il promemoria perche' e'
                 lo stesso elenco a dire se il profilo compare o no. */}
             <NotificheProvider>
+              {/* Il preavviso del fermo (073) sta SOPRA il Header: lo vede anche
+                  chi non ha un account, che la finestra della 071 non
+                  raggiunge, ed e' l'unica cosa che puo' riguardare il fatto
+                  stesso che fra un'ora il sito risponda. */}
+              <ManutenzioneBanner />
               <Header />
               {/* Gli avvisi di servizio (071) si mettono davanti una volta
                   sola, al primo accesso dopo la pubblicazione. Dentro
