@@ -23,6 +23,16 @@
 //   { action: "stato" }          gli sconti attivi, i codici che li portano e
 //                                la data dell'ultimo cambio di piano
 //   { action: "scegli", piano }  applica il piano scelto, se costa zero
+//   { action: "disdici" }        registra la disdetta: subito se il piano non
+//                                costa niente, altrimenti a fine periodo (074)
+//   { action: "annulla-disdetta" } toglie una disdetta non ancora scattata
+//
+// LA DISDETTA STA QUI E NON NEL BROWSER, per la stessa ragione del piano: la
+// data di effetto la calcola il server e le colonne `disdetta_*` sono protette
+// dal trigger della 074. Se la scrivesse il client, un professionista potrebbe
+// disdire e poi spostarsi la data all'anno 3000 — cioe' tenersi il piano per
+// sempre. La regola di quando scade e' una sola, in lib/disdetta.ts, e la
+// chiamano sia la pagina (per dirla) sia questa route (per scriverla).
 //
 // POST /api/onboarding/promo
 
@@ -39,6 +49,7 @@ import {
   pianoById,
   type ScontiPerPiano,
 } from "@/lib/piani";
+import { effettoDisdetta } from "@/lib/disdetta";
 
 const PIANI_VALIDI: SubscriptionTier[] = ["free", "pro", "business"];
 
@@ -135,7 +146,7 @@ export async function POST(request: Request) {
     // inosservata la join su promo_codes.
     const { data: pro } = await admin
       .from("professionals")
-      .select("id")
+      .select("id, disdetta_chiesta_il, disdetta_effettiva_dal")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -151,11 +162,110 @@ export async function POST(request: Request) {
       attivoDal = (ev as { changed_at: string } | null)?.changed_at ?? null;
     }
 
+    const riga = pro as {
+      disdetta_chiesta_il: string | null;
+      disdetta_effettiva_dal: string | null;
+    } | null;
+
     return NextResponse.json({
       ok: true,
       attivoDal,
+      disdetta: riga?.disdetta_effettiva_dal
+        ? {
+            chiestaIl: riga.disdetta_chiesta_il,
+            effettivaDal: riga.disdetta_effettiva_dal,
+          }
+        : null,
       ...(await leggiStato(admin, user.id)),
     });
+  }
+
+  // -------------------------------------------------------------------------
+  if (body.action === "disdici") {
+    const { data: pro } = await admin
+      .from("professionals")
+      .select("id, subscription_tier")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!pro) {
+      return NextResponse.json({ error: "Nessun profilo professionista." }, { status: 404 });
+    }
+    const tier = pro.subscription_tier as SubscriptionTier;
+    if (tier === "free") {
+      return NextResponse.json({ error: "Sei già sul piano Free." }, { status: 400 });
+    }
+
+    const { sconti } = await leggiStato(admin, user.id);
+    const attivoDal = await leggiAttivoDal(admin, pro.id as string);
+    // GRATIS = il piano che ha adesso non gli costa niente. Oggi e' sempre
+    // cosi', perche' i piani si attivano con un codice: il ramo «fine periodo»
+    // esiste gia' e si accende da solo il giorno del primo pagamento.
+    const gratis = costaZero(pianoById(tier), sconti);
+    const effetto = effettoDisdetta({ gratis, attivoDal });
+
+    if (effetto.immediata) {
+      const { error } = await admin
+        .from("professionals")
+        .update({
+          subscription_tier: "free",
+          disdetta_chiesta_il: new Date().toISOString(),
+          disdetta_effettiva_dal: null,
+        })
+        .eq("id", pro.id);
+      if (error) {
+        return NextResponse.json({ error: "Non sono riuscito a registrare la disdetta." }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true, immediata: true, effettivaDal: null, quando: effetto.quando });
+    }
+
+    const { error } = await admin
+      .from("professionals")
+      .update({
+        disdetta_chiesta_il: new Date().toISOString(),
+        disdetta_effettiva_dal: effetto.effettivaDal,
+      })
+      .eq("id", pro.id);
+    if (error) {
+      return NextResponse.json({ error: "Non sono riuscito a registrare la disdetta." }, { status: 500 });
+    }
+    return NextResponse.json({
+      ok: true,
+      immediata: false,
+      effettivaDal: effetto.effettivaDal,
+      quando: effetto.quando,
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Annullare la disdetta prima che scatti non e' una cortesia: e' quello che
+  // rende innocuo il bottone. Senza, il primo che clicca per sbaglio ci scrive.
+  if (body.action === "annulla-disdetta") {
+    const { data: pro } = await admin
+      .from("professionals")
+      .select("id, disdetta_effettiva_dal")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!pro) {
+      return NextResponse.json({ error: "Nessun profilo professionista." }, { status: 404 });
+    }
+    const quando = (pro as { disdetta_effettiva_dal: string | null }).disdetta_effettiva_dal;
+    if (!quando) {
+      return NextResponse.json({ ok: true, annullata: false, motivo: "nessuna disdetta in corso" });
+    }
+    if (new Date(quando).getTime() <= Date.now()) {
+      return NextResponse.json(
+        { error: "Questa disdetta è già scaduta: il piano sta per scendere. Puoi riattivarlo da «Gli altri piani»." },
+        { status: 409 }
+      );
+    }
+    const { error } = await admin
+      .from("professionals")
+      .update({ disdetta_chiesta_il: null, disdetta_effettiva_dal: null })
+      .eq("id", pro.id);
+    if (error) {
+      return NextResponse.json({ error: "Non sono riuscito ad annullare la disdetta." }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, annullata: true });
   }
 
   // -------------------------------------------------------------------------
@@ -193,9 +303,16 @@ export async function POST(request: Request) {
     }
 
     if ((pro.subscription_tier as string) !== piano) {
+      // Cambiare piano cancella una disdetta in corso: la data si riferiva al
+      // piano vecchio, e lasciarla li' farebbe scendere a free un piano appena
+      // scelto — il tipo di sorpresa che nessuno collega alla sua causa.
       const { error } = await admin
         .from("professionals")
-        .update({ subscription_tier: piano })
+        .update({
+          subscription_tier: piano,
+          disdetta_chiesta_il: null,
+          disdetta_effettiva_dal: null,
+        })
         .eq("id", pro.id);
       if (error) {
         return NextResponse.json(
@@ -208,6 +325,21 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ error: "Azione sconosciuta" }, { status: 400 });
+}
+
+/** Da quando ha il piano che ha adesso: l'ultimo cambio registrato (mig. 025). */
+async function leggiAttivoDal(
+  admin: SupabaseClient,
+  professionalId: string
+): Promise<string | null> {
+  const { data } = await admin
+    .from("subscription_tier_events")
+    .select("changed_at")
+    .eq("professional_id", professionalId)
+    .order("changed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return (data as { changed_at: string } | null)?.changed_at ?? null;
 }
 
 /**
