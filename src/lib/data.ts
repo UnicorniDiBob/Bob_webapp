@@ -436,20 +436,107 @@ export async function getProfessionals(
     );
   }
 
-  // Ordinamento: prima chi ha dichiarato PROPRIO l'intervento cercato, poi chi
-  // e' piu' vicino (il gettone piu' preciso che ha fatto match), poi
-  // verificati, poi rating piu' alto, poi prezzo minore.
+  // ORDINAMENTO (072). Due fasi, e la prima non si compra ne' si scavalca:
   //
-  // L'intervento esatto viene per primo perche' e' la domanda che il cliente
-  // ha fatto: chi scrive «rubinetto che perde» ha detto una cosa piu' precisa
-  // di «idraulico», e ignorarla vorrebbe dire buttare via l'informazione in
-  // piu'. Ma NON esclude: chi fa l'idraulico e non ha dichiarato quel lavoro
-  // resta in elenco, sotto, e la sua scheda lo dice — con sei professionisti,
-  // escludere vuol dire mostrare il vuoto a chi un idraulico ce l'ha.
+  //   1. chi ha dichiarato PROPRIO l'intervento cercato sta in un gruppo che
+  //      viene prima. E' la domanda che il cliente ha fatto. Ma NON esclude:
+  //      chi fa l'idraulico e non ha dichiarato quel lavoro resta in elenco,
+  //      sotto, e la sua scheda lo dice — con sei professionisti, escludere
+  //      vuol dire mostrare il vuoto a chi un idraulico ce l'ha;
+  //   2. dentro il gruppo ordina il punteggio di merito 0-100 calcolato da
+  //      `professionals_score` (area, valutazione, tempo di risposta
+  //      misurato, prezzo dichiarato, disponibilita', verifica, completezza).
   //
-  // La precisione dell'area viene subito dopo, e per lo stesso motivo di
-  // prima: chi copre tutta Italia deve comparire per una richiesta di Milano,
-  // ma non davanti all'idraulico del quartiere.
+  // Il punteggio sta in SQL e non qui perche' due dei suoi addendi —
+  // le valutazioni e il tempo di risposta — vivono in tabelle che il browser
+  // di un cliente non puo' leggere, ed e' giusto che non possa.
+  //
+  // A parita' di punti si sorteggia con un seme che cambia ogni giorno:
+  // ricaricare la pagina non rimescola l'elenco, ma non e' il nome fortunato
+  // a prendere tutti i contatti per sempre.
+  const punteggi = await punteggiDelGiorno(supabase, cards, filters);
+  if (punteggi) {
+    cards.sort((a, b) => {
+      const pa = punteggi.get(a.id);
+      const pb = punteggi.get(b.id);
+      const oa = pa?.offre ? 1 : 0;
+      const ob = pb?.offre ? 1 : 0;
+      if (oa !== ob) return ob - oa;
+      const d = (pb?.punti ?? 0) - (pa?.punti ?? 0);
+      if (Math.abs(d) >= 0.01) return d;
+      return semeDelGiorno(a.id) - semeDelGiorno(b.id);
+    });
+  } else {
+    // La 072 non c'e' ancora (o ha smesso di rispondere): si torna alla
+    // catena di spareggi di prima. Serve per la finestra fra il merge e
+    // l'applicazione della migrazione, in cui Vercel ha gia' pubblicato il
+    // codice e Supabase non ha ancora la funzione. Si potra' togliere quando
+    // la 072 e' applicata e verificata — non prima.
+    ordinaSenzaPunteggio(cards, filters, gettoniDellaRichiesta);
+  }
+
+  return cards;
+}
+
+interface PunteggioPro {
+  offre: boolean;
+  punti: number;
+}
+
+/**
+ * Chiede a `professionals_score` (mig. 072) il punteggio dei professionisti
+ * rimasti in elenco. Restituisce null se la funzione non risponde: chi chiama
+ * torna all'ordinamento vecchio invece di mostrare un elenco a caso.
+ */
+async function punteggiDelGiorno(
+  supabase: ReturnType<typeof createClient>,
+  cards: ProfessionalCard[],
+  filters: ProfessionalFilters
+): Promise<Map<string, PunteggioPro> | null> {
+  if (cards.length === 0) return new Map();
+  const { data, error } = await supabase.rpc("professionals_score", {
+    p_ids: cards.map((c) => c.id),
+    p_city_slug: filters.citySlug ?? null,
+    p_zone_slug: filters.zoneSlug ?? null,
+    p_subservice_slug: filters.subserviceSlug ?? null,
+  });
+  if (error || !Array.isArray(data)) return null;
+  const mappa = new Map<string, PunteggioPro>();
+  for (const riga of data as Array<Record<string, unknown>>) {
+    const id = typeof riga.professional_id === "string" ? riga.professional_id : null;
+    if (!id) continue;
+    mappa.set(id, {
+      offre: riga.offre_intervento === true,
+      punti: Number(riga.punti ?? 0),
+    });
+  }
+  // Se la funzione c'e' ma non ha risposto per nessuno, meglio l'ordinamento
+  // vecchio che un elenco ordinato tutto a zero.
+  return mappa.size > 0 ? mappa : null;
+}
+
+/**
+ * Il seme del sorteggio a parita' di punteggio. Cambia una volta al giorno e
+ * non a ogni richiesta: l'elenco deve essere stabile per chi ricarica la
+ * pagina o torna indietro, e diverso domani.
+ */
+function semeDelGiorno(id: string): number {
+  const giorno = new Date().toISOString().slice(0, 10);
+  let h = 2166136261;
+  const s = `${giorno}:${id}`;
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+/** L'ordinamento di prima della 072, tenuto come rete di sicurezza. */
+function ordinaSenzaPunteggio(
+  cards: ProfessionalCard[],
+  filters: ProfessionalFilters,
+  gettoniDellaRichiesta: string[]
+): void {
   cards.sort((a, b) => {
     if (filters.subserviceSlug) {
       const ia = offreIntervento(a, filters.subserviceSlug) ? 1 : 0;
@@ -474,8 +561,6 @@ export async function getProfessionals(
     if (r !== 0) return r;
     return (a.minPrice ?? 9999) - (b.minPrice ?? 9999);
   });
-
-  return cards;
 }
 
 function verifiedWeight(status: VerificationStatus): number {

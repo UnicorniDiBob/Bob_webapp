@@ -97,21 +97,48 @@ Il punteggio è **deterministico e pubblicato**. Nessun apprendimento, nessuna
 personalizzazione, nessun LLM che decide l'ordine: tre cose che renderebbero
 impossibile rispondere a un professionista che chiede perché è settimo.
 
-| criterio | punti | perché |
-|---|---|---|
-| intervento esatto dichiarato | 40 | è la domanda che il cliente ha fatto |
-| solo il mestiere padre | 20 | pertinente, ma non è quello che ha chiesto |
-| nessuna corrispondenza | escluso | |
-| area: zona / città / provincia / regione / Italia | 25 / 18 / 10 / 6 / 3 | chi è vicino serve meglio; chi copre l'Italia deve comparire, non vincere |
-| verifica: Pro+ / verificato / in corso | 15 / 10 / 2 | M4 dice che il livello deve pesare in modo visibile |
-| valutazione | fino a 12 | vedi sotto |
-| prezzo più basso | fino a 5 | una spinta, mai la decisione |
-| prenotazione immediata con slot nella settimana | 5 | è disponibilità vera, non una promessa |
+**Due fasi, non una somma sola** (mig. 072).
 
-**La valutazione si smorza:** `12 × (media/5) × (n/(n+5))`. Con 14 recensioni in
-tutta la piattaforma, una media 5,0 su due voti non può battere una 4,8 su
-venti. Senza lo smorzamento il ranking premierebbe chi ha poche recensioni
-fortunate, che è il modo più veloce per rendere il punteggio non credibile.
+1. **Chi dichiara proprio il lavoro cercato sta in un gruppo che viene prima.**
+   Nessun punteggio di merito lo scavalca. In una somma unica un profilo pieno
+   di stelle avrebbe potuto superare chi fa esattamente quel lavoro, che è la
+   domanda che il cliente ha fatto. Il gruppo però **non esclude**: chi fa il
+   mestiere e non ha dichiarato quel lavoro resta in elenco, sotto, e la scheda
+   lo dice.
+2. **Dentro il gruppo ordina il punteggio di merito, 0-100.**
+
+| voce | punti | perché |
+|---|---|---|
+| area: zona / città / provincia / regione / macro / Italia | 20 / 15 / 8 / 4 / 3 / 2 | chi è vicino serve meglio; chi copre l'Italia deve comparire, non vincere |
+| valutazione | fino a 25 | vedi sotto |
+| tempo di risposta **misurato** | fino a 20 | ≤30 min 20, ≤2 h 16, ≤8 h 12, ≤24 h 8, ≤72 h 4, oltre 0 |
+| prezzo **dichiarato** | 15 sul lavoro cercato, 10 su qualcosa che offre | un prezzo che non c'è non fa decidere nessuno |
+| disponibilità | 10 con orari + prenotazione immediata, 7 con orari | disponibilità vera, non una promessa |
+| verifica | verificato 7, in corso 3 | M4 dice che il livello deve pesare in modo visibile |
+| completezza della scheda | fino a 3 | presentazione, nome dell'attività, almeno un lavoro dichiarato |
+
+**La valutazione, in due passaggi.** Prima si smorza verso la media della
+piattaforma con peso 5: `(media_sua × n + media_piattaforma × 5) / (n + 5)`.
+Poi si mappa sulla scala: 3,0 stelle valgono 0 punti, 5,0 valgono 25. Il
+secondo passaggio non è cosmetico — con tutte le medie fra 4,5 e 5,0 la prima
+formula da sola distribuiva **meno di un punto su venticinque**, cioè non
+distingueva nessuno. Con 14 valutazioni in tutta la piattaforma questa voce
+resta comunque quasi piatta: è giusto che lo sia, e si sveglia da sé quando le
+recensioni arrivano.
+
+**Quello che non sappiamo non toglie punti.** Tempo di risposta non ancora
+misurato: 10 su 20, il centro. Orari non dichiarati: 5 su 10. Nessuna
+valutazione: la media della piattaforma. Un ordinamento che punisce l'assenza
+di dati misura noi, non il professionista — cinque pro su sei non hanno orari
+perché non li abbiamo mai chiesti, e lo stesso vale per i prezzi mancanti su 8
+righe di offerta su 13.
+
+**Il tempo di risposta è misurato, non dichiarato.**
+`professionals.response_time_label` è una frase che il professionista scrive su
+di sé e **non entra nel punteggio**: premiarla vorrebbe dire premiare chi
+scrive, non chi risponde. La misura è la mediana dei minuti fra il primo
+messaggio del cliente su una richiesta e la prima risposta del professionista
+su quella richiesta, ultimi 90 giorni.
 
 **A parità di punteggio si sorteggia**, con un seme che cambia ogni giorno e
 non a ogni richiesta (così la pagina è stabile per chi la ricarica). Con sei
@@ -120,7 +147,54 @@ contatti per sempre.
 
 **Che cosa NON entra nel punteggio**, e resta fuori finché non è scritto qui:
 comportamento del singolo cliente, cronologia delle sue ricerche, qualunque
-profilazione. Il ranking è uguale per tutti.
+profilazione, qualunque pagamento. Il ranking è uguale per tutti.
+
+**Dove è calcolato.** `public.professionals_score(ids, città, zona, intervento)`
+(mig. 072), `security definer` con `search_path` fissato: due degli addendi —
+le valutazioni e il tempo di risposta — stanno in tabelle che il browser di un
+cliente non può leggere, e la funzione ne fa uscire solo aggregati per
+professionista, mai un messaggio e mai un cliente. Restituisce **le singole
+voci** e non solo il totale, perché a un professionista che chiede perché è
+settimo si risponde con gli addendi.
+
+`getProfessionals` conserva la catena di spareggi vecchia come rete di
+sicurezza (`ordinaSenzaPunteggio`) e la usa solo se la funzione non risponde:
+serve alla finestra fra il merge e l'applicazione della 072, in cui Vercel ha
+già pubblicato il codice e Supabase non ha ancora la funzione. **Si toglie
+quando la 072 è applicata e verificata, non prima.**
+
+**Il filtro è ancora in JavaScript.** Chi entra in elenco lo decide ancora
+`getProfessionals` in memoria, con la regola di compatibilità della 057/058
+(nessuna area dichiarata = tutta la città di iscrizione). Il punteggio è in
+SQL, la selezione no: con seicento professionisti va spostata anche quella.
+
+> **Da allineare, e non è nel nostro PR:** la sezione 9 dei termini per i
+> professionisti (`src/components/TermsContent.tsx`, area di Lucio) elenca
+> parametri diversi — «disponibilità dichiarata, reattività nelle risposte,
+> completamento dei lavori sulla piattaforma» — e **non nomina** il criterio
+> che oggi viene prima di tutti, cioè chi dichiara il lavoro cercato. Due
+> dichiarazioni pubbliche che non concordano sono peggio di una dichiarazione
+> breve: l'art. 5 P2B chiede i parametri principali verso i professionisti, e
+> quelli sono questi. Il numero di lavori conclusi, in particolare, non è più
+> una voce a sé: entra come peso delle valutazioni, per non contarlo due volte
+> e per non punire due volte chi ha appena cominciato.
+>
+> Testo già pronto da incollare in sezione 9, primo capoverso, così i due
+> documenti dicono la stessa cosa:
+>
+> «L'ordine con cui i profili sono presentati ai clienti si decide in due
+> tempi. Primo: se il cliente ha cercato un lavoro preciso, chi ha dichiarato
+> quell'intervento viene presentato prima di chi ha dichiarato solo il
+> mestiere, e nessun altro elemento lo scavalca. Secondo: dentro quel gruppo
+> ordina un punteggio su cento composto da precisione dell'area rispetto alla
+> richiesta (fino a 20), valutazioni ricevute pesate sul loro numero (fino a
+> 25), tempo di prima risposta misurato sulle conversazioni degli ultimi 90
+> giorni (fino a 20), presenza di un prezzo dichiarato (fino a 15),
+> disponibilità con orari pubblicati e prenotazione immediata (fino a 10),
+> livello di verifica raggiunto (fino a 7) e completezza del profilo (fino a
+> 3). Un elemento che non abbiamo ancora misurato vale il valore centrale
+> della sua scala e non sottrae punti. A parità di punteggio l'ordine è
+> sorteggiato con un criterio che cambia una volta al giorno.»
 
 ### Dove sono dichiarati, e perché basta un link
 
@@ -302,28 +376,33 @@ sorpreso due volte.
    dopo ogni migrazione.
 4. Dal vivo su www.meetonda.com, desktop **e 390px**.
 
-## 9. Stato al 5 settembre 2026 — fotografia, non verità
+## 9. Stato al 9 settembre 2026 — fotografia, non verità
 
 Invecchia dal giorno dopo: la verità è il repo, lo schema vivo e la produzione.
 
-**C'è**: vocabolario (491 termini, tutti e 105 gli interventi non-«Altro»
-coperti); risolutore con bande e ordinamento per specificità;
-`professional_services` come verità unica con l'unione già fatta; la casella di
-ricerca su `/professionisti`, con i suggerimenti mentre si scrive, la pastiglia
-che mostra come ha capito e le tre bande rispettate; il primo criterio del
-ranking — chi ha dichiarato l'intervento cercato viene prima di chi non l'ha
-dichiarato, e la scheda lo dice a entrambi.
+**C'è**: vocabolario (491 termini, 0 senza token, tutti e 105 gli interventi
+non-«Altro» coperti); risolutore con bande e ordinamento per specificità;
+`professional_services` come verità unica (13 righe, 12 con l'intervento
+preciso, 5 pro su 6); la casella di ricerca su `/professionisti`, con i
+suggerimenti mentre si scrive, la pastiglia che mostra come ha capito e le tre
+bande rispettate; **il punteggio di merito 0-100 della 072**, con le due fasi
+di §4 e gli addendi in chiaro; la richiesta che ricorda **quale** lavoro era
+(`requests.subservice_id`, scritto dalla ricerca e dal brief di Bob).
 
-**Non c'è**: il resto del ranking coi pesi di §4 — `getProfessionals` carica
-ancora tutti i professionisti e ordina in JavaScript, e il criterio
-dell'intervento è un raggruppamento (prima chi lo dichiara), non ancora un
-punteggio; gli slot sponsorizzati; il registro delle ricerche a vuoto; la
-schermata che chiede al professionista i suoi interventi; il `drop column`
-della 071.
+**Non c'è**: la selezione di chi entra in elenco, ancora in JavaScript e in
+memoria; gli slot sponsorizzati e la sostituzione della frase «Nessuna
+posizione è a pagamento»; il registro delle **ricerche a vuoto** — attenzione,
+`search_events` esiste dalla 026 e registra gli slug, ma non la frase digitata
+né il fatto che non abbia trovato niente; la schermata che chiede al
+professionista i suoi interventi (di Lucio, vedi §6); il `drop column` di
+`subservice_slugs`.
 
-**Il limite vero non è il codice, è il dato**: quattro professionisti su sei
-non dichiaravano nessun intervento prima della 070, e «scarico otturato»
-oggi non trova nessuno perché nessuno l'ha dichiarato — non perché la ricerca
-non funzioni. Adesso che l'intervento dichiarato decide il primo posto, il
-valore di quella schermata è salito: è quella che riempie il dato su cui il
-ranking si regge.
+**Da allineare**: la sezione 9 dei termini per i professionisti elenca
+parametri che non sono più questi. Vedi il riquadro in §4.
+
+**Il limite vero non è il codice, è il dato**: «scarico otturato» oggi non
+trova nessuno perché nessuno l'ha dichiarato — non perché la ricerca non
+funzioni. Otto righe di offerta su 13 non hanno un prezzo e un solo
+professionista su sei ha gli orari, e da oggi quelle due assenze costano punti
+veri nel ranking: 15 il prezzo, 5 la disponibilità. È la ragione per cui la
+schermata delle dichiarazioni vale più di qualunque altra cosa nella lista.
