@@ -108,41 +108,94 @@ export default function ComeFunzionaPage() {
         </h2>
         <p className="mt-2 text-sm text-bob-ink/65">
           Quando vedi un elenco di professionisti, l&apos;ordine non è casuale e
-          non è alfabetico. Contano queste cose, in quest&apos;ordine — la prima
-          solo quando hai cercato un lavoro preciso:
+          non è alfabetico. Funziona in due tempi: <strong>prima una cosa
+          sola</strong>, e poi un punteggio su cento.
         </p>
-        <ol className="mt-4 space-y-3 text-sm text-bob-ink/70">
+        <p className="mt-4 text-sm text-bob-ink/70">
+          <strong className="text-bob-ink">
+            Primo: chi fa proprio il lavoro che hai cercato.
+          </strong>{" "}
+          Se hai scritto «rubinetto che perde», chi ha dichiarato quell&apos;
+          intervento viene prima di tutti gli altri, e nessun punteggio lo
+          scavalca. Gli altri idraulici restano in elenco, sotto: la loro scheda
+          dice che quel lavoro non l&apos;hanno dichiarato, così puoi
+          chiederglielo lo stesso invece di non vederli affatto.
+        </p>
+        <p className="mt-3 text-sm text-bob-ink/70">
+          <strong className="text-bob-ink">
+            Poi, dentro il gruppo, ordina il punteggio.
+          </strong>{" "}
+          Sono cento punti in tutto, e si compongono così:
+        </p>
+        <ul className="mt-4 space-y-3 text-sm text-bob-ink/70">
           <li>
             <strong className="text-bob-ink">
-              Chi fa proprio il lavoro che hai cercato.
+              Chi lavora dove servi tu — fino a 20.
             </strong>{" "}
-            Se hai scritto «rubinetto che perde», chi ha dichiarato quell&apos;
-            intervento viene prima. Gli altri idraulici restano in elenco, sotto:
-            la loro scheda dice che quel lavoro non l&apos;hanno dichiarato, così
-            puoi chiederglielo lo stesso invece di non vederli affatto.
-          </li>
-          <li>
-            <strong className="text-bob-ink">Chi lavora dove servi tu.</strong>{" "}
             Prima chi ha dichiarato proprio la tua zona, poi chi copre la città,
             poi chi arriva da più lontano. Chi lavora in tutta Italia compare
-            comunque, ma non davanti a chi è nel tuo quartiere.
+            comunque, ma parte da due punti invece che da venti.
           </li>
           <li>
-            <strong className="text-bob-ink">Chi è verificato.</strong> Un
-            profilo con la partita IVA controllata viene prima di uno ancora da
-            controllare.
+            <strong className="text-bob-ink">La valutazione — fino a 25.</strong>{" "}
+            La media dei voti, pesata sul numero di recensioni: cinque stelle su
+            due giudizi contano meno di quattro e mezzo su venti. Poche
+            recensioni avvicinano alla media della piattaforma, non a zero. Sotto
+            le tre stelle la valutazione smette di dare punti.
           </li>
           <li>
-            <strong className="text-bob-ink">La valutazione.</strong> La media
-            dei voti ricevuti, pesata sul numero di recensioni: cinque stelle su
-            due giudizi contano meno di quattro stelle e mezzo su venti.
+            <strong className="text-bob-ink">
+              Quanto ci mette a risponderti — fino a 20.
+            </strong>{" "}
+            Misurato, non dichiarato: il tempo che passa fra il tuo primo
+            messaggio e la sua prima risposta, negli ultimi tre mesi. Chi
+            risponde entro mezz&apos;ora prende tutto, chi ci mette più di tre
+            giorni non prende niente.
           </li>
           <li>
-            <strong className="text-bob-ink">La tariffa.</strong> A parità di
-            tutto il resto, prima chi costa meno. È l&apos;ultimo criterio, non
-            il primo: il più economico non è automaticamente il più adatto.
+            <strong className="text-bob-ink">
+              Se il prezzo è scritto — fino a 15.
+            </strong>{" "}
+            I punti vanno a chi <em>dichiara</em> un prezzo, non a chi costa
+            meno: un preventivo che non c&apos;è non ti aiuta a decidere, e
+            premiare il numero più basso su prezzi che nessuno verifica
+            premierebbe chi scrive meno, non chi lavora meglio.
           </li>
-        </ol>
+          <li>
+            <strong className="text-bob-ink">
+              Se puoi prenotare davvero — fino a 10.
+            </strong>{" "}
+            Orari veri sul calendario, e la prenotazione immediata dove c&apos;è.
+          </li>
+          <li>
+            <strong className="text-bob-ink">Chi è verificato — fino a 7.</strong>{" "}
+            Un profilo con la partita IVA controllata viene prima di uno ancora
+            da controllare.
+          </li>
+          <li>
+            <strong className="text-bob-ink">
+              La scheda compilata — fino a 3.
+            </strong>{" "}
+            Una presentazione, il nome dell&apos;attività, almeno un lavoro
+            dichiarato.
+          </li>
+        </ul>
+        <p className="mt-4 text-sm text-bob-ink/65">
+          <strong className="text-bob-ink">
+            Quello che non sappiamo non toglie punti.
+          </strong>{" "}
+          Se di un professionista non abbiamo ancora misurato il tempo di
+          risposta, o non ci ha ancora dato i suoi orari, quella voce vale il
+          centro della scala: chi è appena arrivato non parte ultimo per il solo
+          fatto di essere appena arrivato. E a parità di punti si sorteggia, con
+          un sorteggio che cambia una volta al giorno — così l&apos;elenco è
+          stabile se ricarichi la pagina, ma non è sempre lo stesso nome a stare
+          davanti.
+        </p>
+        <p className="mt-3 text-sm text-bob-ink/65">
+          Non contano, e non conteranno finché non è scritto qui: che cosa hai
+          cercato in passato, chi sei, e qualunque pagamento.
+        </p>
         <p className="mt-4 text-sm font-medium text-bob-ink">
           Nessuna posizione è a pagamento.
         </p>
