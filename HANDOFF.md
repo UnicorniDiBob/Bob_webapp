@@ -37,24 +37,29 @@ una data invece di una promessa.
   codice: **il secondo si accende da solo il giorno del primo pagamento**,
   senza che nessuno debba ricordarsi di cambiare una frase. Si può annullare
   finché non scatta, e scegliere un altro piano la cancella.
+- **Il fermo si legge prima di entrare, e si vede scorrere** (PR #46). Conto
+  alla rovescia «Torniamo fra 12:34» sulla pagina 503, sull'avviso di accesso,
+  sulla fascia rossa dello staff e nel pannello admin, tutti dalla stessa
+  funzione; alla scadenza la pagina si ricarica da sola ogni quindici secondi.
+  La pagina di cortesia **non dice più dove entra lo staff**: a noi non serviva
+  e a chiunque passasse spiegava che una porta c'è e dov'è. E durante un fermo
+  **da `/login` si entra e basta**: il pannello di iscrizione sparisce, con in
+  cima l'avviso, così chi non ha un account legge che siamo fermi prima di
+  provare a entrare invece di scoprirlo dopo.
+- **`scripts/reset_account_prova.sql` è in git** (stesso PR): era l'unica copia
+  di una cosa che gira contro la produzione.
 - **Advisor di sicurezza rilanciati dopo ogni migrazione: puliti.** Resta solo
   `Leaked Password Protection`, che vuole il piano Pro.
 
 ## Cosa è a metà
 
-- **`feat/fermo-orologio` è spinto ma la PR non è aperta.** Due commit fuori da
-  `main`: il conto alla rovescia («Torniamo fra 12:34» su 503, login, fascia
-  staff e pannello admin, con ricarica automatica alla scadenza), l'avviso di
-  fermo **sulla pagina di accesso** — così chi non ha un account lo legge prima
-  di provare a entrare, non dopo — e `scripts/reset_account_prova.sql` che
-  entra in git. **È la prima cosa da chiudere**, ed è a un clic:
-  `.../pull/new/feat/fermo-orologio`.
-- **Durante un fermo si può ancora creare un account.** `/login` è anche la
-  pagina di iscrizione, e ogni registrazione consuma una delle 2 email/ora del
-  mailer di Supabase. Il ramo qui sopra nasconde il modulo, ma `signUp` parte
-  dal browser e va dritta a Supabase: si spegne davvero solo con «disable
-  signups» nelle impostazioni Auth, che blocca anche noi. Contro l'iscrizione
-  per sbaglio basta; come barriera dura no.
+- **Durante un fermo l'iscrizione è nascosta, non spenta.** `/login` è anche la
+  pagina di registrazione, e ogni iscrizione consuma una delle 2 email/ora del
+  mailer di Supabase — il tetto di tutto il progetto. La #46 toglie il modulo
+  dalla pagina, ma `signUp` parte dal browser e va dritta a Supabase: l'unico
+  modo di spegnerlo davvero è «disable signups» nelle impostazioni Auth, che
+  però blocca anche noi. Contro l'iscrizione per sbaglio basta; come barriera
+  dura no, e va saputo prima del pilota.
 - **Il 503 non è ancora provato in produzione con traffico vero.** Il fermo
   rapido funziona (provato dal vivo), ma nei log non c'è nessun 503 servito.
   Si prova in un modo solo: fermare Bob davvero, per quindici minuti, con
