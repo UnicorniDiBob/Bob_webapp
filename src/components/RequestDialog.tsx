@@ -12,6 +12,10 @@ import type { ProfessionalCard } from "@/lib/supabase/types";
 interface RequestContext {
   citySlug?: string;
   serviceSlug?: string;
+  // (6b) L'intervento preciso, quando lo sappiamo: la ricerca lo riconosce
+  // dalla frase digitata, la chat di Bob lo ha nel brief. Senza questo un
+  // lavoro chiuso non sa dire QUALE lavoro era — vedi docs/RICERCA.md §6.
+  subserviceSlug?: string | null;
   problem?: string;
   urgency?: "bassa" | "media" | "alta";
   budgetMin?: number | null;
@@ -81,6 +85,25 @@ export function RequestDialog({
     return (data?.id as string) ?? null;
   }
 
+  /**
+   * (6b) L'intervento vale solo dentro il suo mestiere: se la coppia non
+   * torna — il cliente cercava un lavoro di un altro mestiere — resta NULL,
+   * che e' meglio di un intervento sbagliato scritto sulla richiesta.
+   */
+  async function resolveSubserviceId(
+    serviceId: string,
+    slug?: string | null
+  ): Promise<string | null> {
+    if (!slug) return null;
+    const { data } = await supabase
+      .from("subservices")
+      .select("id")
+      .eq("slug", slug)
+      .eq("service_id", serviceId)
+      .maybeSingle();
+    return (data?.id as string) ?? null;
+  }
+
   async function submit() {
     if (!user) return;
     setSubmitting(true);
@@ -106,12 +129,18 @@ export function RequestDialog({
         return;
       }
 
+      const subserviceId = await resolveSubserviceId(
+        serviceId,
+        context.subserviceSlug
+      );
+
       const { data: req, error: reqErr } = await supabase
         .from("requests")
         .insert({
           customer_id: user.id,
           city_id: cityId,
           service_id: serviceId,
+          subservice_id: subserviceId,
           status: "sent",
           problem_description: context.problem ?? message,
           urgency: context.urgency ?? null,

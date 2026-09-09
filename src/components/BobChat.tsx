@@ -1362,6 +1362,8 @@ export function BobChat({
             budgetMin: collected.budgetMin ?? null,
             budgetMax: collected.budgetMax ?? null,
             briefId,
+            // (6b) il brief sa gia' quale lavoro e': non buttarlo via qui
+            subserviceSlug: brief.subtaskSlug ?? null,
           }}
           onClose={() => setRequestFor(null)}
         />
@@ -1380,6 +1382,8 @@ export function BobChat({
             problem: collected.summary || undefined,
             urgency: collected.urgency,
             briefId,
+            // (6b) il brief sa gia' quale lavoro e': non buttarlo via qui
+            subserviceSlug: brief.subtaskSlug ?? null,
             // (41.1) fuori dalla prosa, dentro request_addresses
             address: collected.address ?? null,
             // (045/046) posizione grossolana, visibile ai pro prima della scelta
