@@ -66,6 +66,12 @@ interface Codice {
   redeemedAt: string;
 }
 
+/** Una disdetta chiesta e non ancora scattata (074). */
+interface DisdettaInCorso {
+  chiestaIl: string | null;
+  effettivaDal: string;
+}
+
 const fmtData = (iso: string) =>
   new Date(iso).toLocaleDateString("it-IT", {
     day: "numeric",
@@ -85,6 +91,7 @@ export default function PianoDashboardPage() {
   const [errore, setErrore] = useState<string | null>(null);
   const [chiedoConferma, setChiedoConferma] = useState(false);
   const [disdetto, setDisdetto] = useState(false);
+  const [disdetta, setDisdetta] = useState<DisdettaInCorso | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -103,10 +110,12 @@ export default function PianoDashboardPage() {
         sconti?: ScontiPerPiano;
         codici?: Codice[];
         attivoDal?: string | null;
+        disdetta?: DisdettaInCorso | null;
       };
       if (json.sconti) setSconti(json.sconti);
       if (json.codici) setCodici(json.codici);
       if (json.attivoDal !== undefined) setCambiato(json.attivoDal);
+      if (json.disdetta !== undefined) setDisdetta(json.disdetta);
     } catch {
       // Senza codici la pagina mostra il listino pieno: nessun blocco.
     }
@@ -150,9 +159,9 @@ export default function PianoDashboardPage() {
     }
   }
 
-  // La disdetta passa dalla stessa route del cambio piano — «scendere e'
-  // sempre concesso» e' gia' la regola del server, e non ne serve una seconda.
-  // Cambia cosa le sta intorno: un nome, cosa perdi, quando ha effetto.
+  // La disdetta ha una route sua da quando ha una data (074): non e' piu' «un
+  // cambio piano verso il basso», perche' su un piano pagato il piano NON
+  // cambia adesso — cambia a fine periodo, e nel frattempo resta tutto.
   async function disdici() {
     if (inCorso) return;
     setInCorso("free");
@@ -161,15 +170,44 @@ export default function PianoDashboardPage() {
       const res = await fetch("/api/onboarding/promo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "scegli", piano: "free" }),
+        body: JSON.stringify({ action: "disdici" }),
       });
-      const json = (await res.json()) as { ok?: boolean; error?: string };
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        immediata?: boolean;
+      };
       if (!res.ok || !json.ok) {
         setErrore(json.error ?? "Non sono riuscito a registrare la disdetta.");
         return;
       }
       setChiedoConferma(false);
-      setDisdetto(true);
+      if (json.immediata) setDisdetto(true);
+      await reload();
+      await leggiCodici();
+      router.refresh();
+    } catch {
+      setErrore("Errore di rete: riprova.");
+    } finally {
+      setInCorso(null);
+    }
+  }
+
+  async function annullaDisdetta() {
+    if (inCorso) return;
+    setInCorso("free");
+    setErrore(null);
+    try {
+      const res = await fetch("/api/onboarding/promo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "annulla-disdetta" }),
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) {
+        setErrore(json.error ?? "Non sono riuscito ad annullare la disdetta.");
+        return;
+      }
       await reload();
       await leggiCodici();
       router.refresh();
@@ -185,6 +223,11 @@ export default function PianoDashboardPage() {
   if (!pro) return <NoProProfile />;
 
   const attuale = pianoById(pro.tier);
+  // Il piano gli costa qualcosa? Oggi mai — si attivano tutti con un codice —
+  // e quindi la disdetta e' immediata. Il ramo «fine periodo» e' gia' scritto
+  // e si accende da solo il giorno in cui qualcuno paga davvero.
+  const gratis = costaZero(attuale, sconti);
+  const effetto = effettoDisdetta({ gratis, attivoDal: cambiato });
   const etichettaAttuale = etichettaPrezzo(attuale, sconti);
   const promo = codici[0] ?? null;
 
@@ -362,7 +405,30 @@ export default function PianoDashboardPage() {
             Disdici l&apos;abbonamento
           </h3>
 
-          {disdetto ? (
+          {disdetta ? (
+            <div data-testid="disdetta-in-corso">
+              <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
+                Disdetta registrata
+                {disdetta.chiestaIl ? ` il ${fmtData(disdetta.chiestaIl)}` : ""}.
+                Resti su <strong>{attuale.nome}</strong> fino al{" "}
+                <strong>{fmtData(disdetta.effettivaDal)}</strong>: fino a quel
+                giorno non cambia niente, poi passi al piano Free.
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-bob-ink/60">
+                Il profilo resta pubblico e continui a ricevere richieste e
+                messaggi anche dopo. {BADGE_RESTA}
+              </p>
+              <button
+                type="button"
+                onClick={annullaDisdetta}
+                disabled={inCorso !== null}
+                className="btn-secondary mt-3 py-2 text-sm disabled:opacity-50"
+                data-testid="annulla-disdetta"
+              >
+                {inCorso ? "Annullo…" : "Annulla la disdetta"}
+              </button>
+            </div>
+          ) : disdetto ? (
             <p
               className="mt-1.5 text-sm leading-relaxed text-bob-ink/70"
               data-testid="disdetta-fatta"
@@ -377,6 +443,9 @@ export default function PianoDashboardPage() {
                 Puoi farlo in qualsiasi momento, senza costi di disdetta e
                 senza penali. Torni al piano Free: il profilo resta pubblico e
                 continui a ricevere richieste e messaggi.
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+                {effetto.quando}
               </p>
               <button
                 type="button"
@@ -411,7 +480,7 @@ export default function PianoDashboardPage() {
               </ul>
 
               <p className="mt-3 text-sm leading-relaxed text-bob-ink/60">
-                {effettoDisdetta().quando}
+                {effetto.quando}
               </p>
               <p className="mt-2 text-sm leading-relaxed text-bob-ink/60">
                 {BADGE_RESTA}
@@ -431,7 +500,11 @@ export default function PianoDashboardPage() {
                   className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
                   data-testid="conferma-disdetta-bottone"
                 >
-                  {inCorso === "free" ? "Registro…" : "Confermo la disdetta"}
+                  {inCorso === "free"
+                    ? "Registro…"
+                    : effetto.immediata
+                      ? "Confermo la disdetta"
+                      : `Confermo: disdico dal ${fmtData(effetto.effettivaDal!)}`}
                 </button>
                 <button
                   type="button"
