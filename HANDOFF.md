@@ -43,6 +43,36 @@
 - **La richiesta ricorda quale lavoro era** (PR #42): `requests.subservice_id`
   lo scrive la ricerca e lo scrive il brief di Bob. Era la colonna vuota su
   cui poggia l'idea di dedurre le dichiarazioni dai lavori chiusi.
+- **Le ancore funzionano anche a freddo** (PR #50). `VaiAllAncora` in
+  `src/app/layout.tsx`: al montaggio, se c'e' un hash e il bersaglio esiste, lo
+  porta in vista — con qualche tentativo ravvicinato, perche' sopra il
+  bersaglio si montano da soli la fascia del fermo e la finestra degli avvisi e
+  spostano il punto giusto, e smettendo al primo tocco dell'utente. Prima
+  `/come-funziona#ordine` aperto da un link incollato lasciava la pagina in
+  cima: il clic dentro il sito funzionava, un link condiviso no, e la sezione
+  sull'ordinamento e' proprio quella che l'art. 22 co. 4-bis vuole
+  raggiungibile. Verificato dal vivo: `scrollY` 809 su `#ordine` e 723 su
+  `#come-funziona`, sezione a 96px, dal primo campione. **`behavior: "instant"`
+  non e' cosmetico**: `globals.css` mette `scroll-behavior: smooth` su `html`,
+  e un'animazione non parte in una scheda che non e' in primo piano — cioe'
+  esattamente il caso del link aperto da un messaggio.
+- **077 · Il prezzo conta anche quando e' una tariffa, applicata.** La voce
+  «prezzo» guardava solo `min_price`: ora conta
+  `coalesce(min_price, max_price, rate_amount)`. Tre righe con la tariffa
+  oraria contavano come «senza prezzo». In produzione: su «pulizie ordinarie»
+  Milano Clean Squad passa da 10 a 15 punti, nessun altro cambia, FOTOPRO resta
+  a 0 perche' un prezzo non ce l'ha davvero. Advisor dopo: solo `Leaked
+  Password Protection`.
+- **Il punteggio si e' mosso da solo su traffico vero.** FOTOPRO e' passato da
+  52.43 a 62.43 senza che nessuno toccasse niente: il suo tempo di risposta e'
+  passato da «mai misurato» (10, il centro) a **2 minuti** (20). Il trigger
+  della 075 ha registrato una risposta vera in `professional_signals` e
+  l'ordine e' cambiato. E' la prima volta che la reattivita' misurata funziona
+  su traffico reale e non in una prova.
+- **Le due fasi si vedono all'opera.** Su «pulizie ordinarie» Milano Clean
+  Squad e' primo con **71.21** davanti a IdroMilano con **71.63**: ha meno
+  punti e sta davanti perche' ha dichiarato il lavoro cercato. E' la regola,
+  non un difetto.
 - **Verifica dal vivo FATTA** su www.meetonda.com, desktop e 390px reali — per
   la parte ricerca/ordinamento la voce aperta dal 5 settembre è chiusa. Visto
   funzionare: i suggerimenti dal server («bagno allagato» → *Emergenza
@@ -55,20 +85,14 @@
 
 ## Cosa è a metà — mio
 
-- **Il punteggio ignora `rate_amount`.** La voce «prezzo» guarda
-  `min_price`/`max_price`. Delle 8 righe senza forbice, **3 hanno una tariffa**
-  (Milano Clean Squad: 20, 20 e 30 €/ora su `ordinarie-ricorrenti`,
-  `profonda-una-tantum`, `pulizie-uffici-piccoli`). Chi ha messo la tariffa
-  oraria invece della forbice prende meno punti di quanto merita: oggi costa 5
-  punti in uno scenario, non 15, perché quel pro ha un'altra riga con la
-  forbice. Trovato leggendo il numero corretto da Lucio. Si sistema nella
-  funzione, e si lega alla voce vecchia «tariffa nell'unità del mestiere».
-- **L'ancora `#ordine` non salta se la pagina si apre a freddo.** Un link
-  incollato o un segnalibro su `/come-funziona#ordine` lascia `scrollY` a 0 con
-  la sezione 904px sotto la piega; il clic dal link nei risultati invece
-  atterra a 96px, giusto. È il solito App Router: l'elemento non c'è ancora
-  quando il browser gestisce l'hash. Serve un effetto client dopo il mount, e
-  sistema **tutte** le ancore del sito. È il prossimo pezzo.
+- **La scheda non mostra la tariffa.** La 077 da' i punti a chi dichiara un
+  prezzo in qualunque forma, ma la scheda pubblica stampa solo la forbice:
+  quelle tre tariffe orarie il cliente non le vede ancora. Il punteggio premia
+  la dichiarazione — il buco e' nostro, non del professionista — ma la frase
+  «un preventivo che non c'e' non ti aiuta a decidere» su
+  `/come-funziona#ordine` e' mantenuta a meta' finche' la scheda non la scrive.
+  E' la voce vecchia «tariffa nell'unita' del mestiere», e da oggi ha un motivo
+  in piu' per essere chiusa: e' interfaccia, non punteggio.
 - **La selezione di chi entra in elenco è ancora in JavaScript e in memoria.**
   Il punteggio è in SQL, il filtro no: con seicento professionisti va spostato
   anche quello.
@@ -78,7 +102,8 @@
   commit** va sostituita la frase «Nessuna posizione è a pagamento» in
   `/come-funziona#ordine` — sostituita, non cancellata — e la targhetta
   «Sponsorizzato» va **dentro** l'elenco (all. I punto 11-bis).
-- **Registro delle ricerche a vuoto**: dalla 076. Attenzione: `search_events`
+- **Registro delle ricerche a vuoto**: dalla **078** (la 076 e' dei doppioni,
+  la 077 e' andata al prezzo). Attenzione: `search_events`
   **esiste già** dalla 026 e registra gli slug, non la frase digitata né il
   fatto che non abbia trovato niente. È un paio di colonne, non una tabella.
 - **`drop column subservice_slugs`**: solo dopo che nessun codice la legge più.
@@ -89,8 +114,10 @@
 
 ## Cosa ho applicato in produzione che l'altro deve sapere
 
-- **072 e 075 applicate su Supabase**, advisor rilanciati dopo: pulito tranne
-  `Leaked Password Protection`.
+- **072, 075 e 077 applicate su Supabase**, advisor rilanciati dopo ognuna:
+  pulito tranne `Leaked Password Protection`. La 077 sostituisce la stessa
+  funzione, quindi non aggiunge oggetti nuovi — e l'ho verificato invece di
+  darlo per scontato.
 - **Roba nuova che gira da sola**: un cron alle 04:10 UTC
   (`aggiorna-segnali-professionisti`, traccia in `system_job_runs` — se un
   giorno non compare, non è girato) e un **trigger su `request_messages`** che
@@ -104,6 +131,10 @@
   nessun account **22, con 16 nomi distinti**; righe di offerta senza forbice
   **8, di cui 3 con una tariffa** — quindi senza *nessun* prezzo sono 5. Su
   entrambi i conteggi ora siamo d'accordo, verificati sul database.
+- **Numerazione: la 075 sono i segnali e la 077 e' il prezzo. La 076 resta
+  libera per i doppioni del catalogo**, che e' di Lucio: un numero prenotato
+  resta prenotato anche se il file non c'e' ancora. Sotto la storia di come si
+  era rotta.
 - **Numerazione: la 075 sono i segnali, non i doppioni del catalogo.** Il
   handoff del 9 la prenotava a parole per i doppioni; nessun file era stato
   scritto, quindi non è andato perso niente — ma **i doppioni, il registro
@@ -177,8 +208,9 @@ voce non c'è più.
   `service`, `maxPrice`. Codice mio.
 - **28 zone nostre contro 88 nuclei ufficiali**: decisione di prodotto aperta.
 - **Tariffa nell'unità del mestiere e costi accessori**: colonne in database,
-  nessuna interfaccia. La pagina azienda dice ancora «€/h» fisso — e si lega al
-  difetto del `rate_amount` qui sopra.
+  nessuna interfaccia. La pagina azienda dice ancora «€/h» fisso. Dalla 077 il
+  punteggio la conta, quindi resta solo il lato che il cliente vede — ed è il
+  lato che manca.
 - **Il worker maplibre non viene emesso nel bundle di Next.**
 - **`Leaked Password Protection` da accendere prima del pilota** (vuole il
   piano Pro): l'unico rilievo che gli advisor continuano a dare.
