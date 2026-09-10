@@ -150,12 +150,36 @@ comportamento del singolo cliente, cronologia delle sue ricerche, qualunque
 profilazione, qualunque pagamento. Il ranking è uguale per tutti.
 
 **Dove è calcolato.** `public.professionals_score(ids, città, zona, intervento)`
-(mig. 072), `security definer` con `search_path` fissato: due degli addendi —
-le valutazioni e il tempo di risposta — stanno in tabelle che il browser di un
-cliente non può leggere, e la funzione ne fa uscire solo aggregati per
-professionista, mai un messaggio e mai un cliente. Restituisce **le singole
-voci** e non solo il totale, perché a un professionista che chiede perché è
-settimo si risponde con gli addendi.
+(mig. 072, riscritta dalla 075), `security invoker` con `search_path` fissato.
+Restituisce **le singole voci** e non solo il totale, perché a un
+professionista che chiede perché è settimo si risponde con gli addendi.
+
+La 072 era nata `security definer`, perché il tempo di risposta si calcola su
+`request_messages`, che un visitatore non può leggere — e non deve. Gli advisor
+l'hanno segnalata due volte (lint 0028 e 0029) e avevano ragione: una funzione
+`definer` chiamabile da chiunque è una porta che va guardata, non spiegata.
+La **075** separa le due cose invece di conviverci:
+
+- `public.professional_signals` — una riga per professionista con la **mediana
+  dei minuti di prima risposta** e su quante conversazioni è calcolata.
+  Lettura pubblica di proposito: è un parametro di ordinamento dichiarato, e
+  pubblicarlo come dato è più onesto che calcolarlo di nascosto. Nessuna policy
+  di scrittura per nessun ruolo — un professionista che potesse scrivere il
+  proprio tempo di risposta lo renderebbe una dichiarazione, cioè esattamente
+  quello che volevamo evitare. `on delete cascade`: la riga muore con lui.
+- `public.aggiorna_segnali_professionisti(ids)` — il calcolo, in un posto solo,
+  `definer` ma con `execute` revocato a `public`, `anon` e `authenticated`
+  (stesso schema della 074): la chiamano il trigger e il cron, non il browser.
+- un trigger su `request_messages` aggiorna il professionista **appena
+  risponde**, e il lavoro notturno `aggiorna-segnali-professionisti` (04:10
+  UTC, traccia in `system_job_runs`) ripassa tutti — la finestra dei 90 giorni
+  è mobile, e senza il giro chi smette di rispondere terrebbe per sempre la
+  mediana buona dell'ultima volta.
+
+Tutte le altre tabelle che il punteggio consulta — `professionals`, `cities`,
+`ratings`, `professional_services`, `professional_coverage_public`,
+`professional_availability` — hanno già una policy di lettura pubblica, quindi
+da qui in poi il punteggio non tocca più niente di privato.
 
 `getProfessionals` conserva la catena di spareggi vecchia come rete di
 sicurezza (`ordinaSenzaPunteggio`) e la usa solo se la funzione non risponde:
@@ -386,7 +410,9 @@ non-«Altro» coperti); risolutore con bande e ordinamento per specificità;
 preciso, 5 pro su 6); la casella di ricerca su `/professionisti`, con i
 suggerimenti mentre si scrive, la pastiglia che mostra come ha capito e le tre
 bande rispettate; **il punteggio di merito 0-100 della 072**, con le due fasi
-di §4 e gli addendi in chiaro; la richiesta che ricorda **quale** lavoro era
+di §4 e gli addendi in chiaro, `security invoker` dalla 075 e con il tempo di
+risposta in una tabella pubblica sua (`professional_signals`), aggiornata da un
+trigger e da un giro notturno; la richiesta che ricorda **quale** lavoro era
 (`requests.subservice_id`, scritto dalla ricerca e dal brief di Bob).
 
 **Non c'è**: la selezione di chi entra in elenco, ancora in JavaScript e in
