@@ -159,7 +159,10 @@ export default function ComeFunzionaPage() {
             I punti vanno a chi <em>dichiara</em> un prezzo, non a chi costa
             meno: un preventivo che non c&apos;è non ti aiuta a decidere, e
             premiare il numero più basso su prezzi che nessuno verifica
-            premierebbe chi scrive meno, non chi lavora meglio.
+            premierebbe chi scrive meno, non chi lavora meglio. Vale in
+            qualunque forma sia scritto — una fascia «da tanto a tanto» oppure
+            una tariffa nell&apos;unità di misura del mestiere, per esempio a
+            ora.
           </li>
           <li>
             <strong className="text-bob-ink">

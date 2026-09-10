@@ -112,7 +112,7 @@ impossibile rispondere a un professionista che chiede perché è settimo.
 | area: zona / città / provincia / regione / macro / Italia | 20 / 15 / 8 / 4 / 3 / 2 | chi è vicino serve meglio; chi copre l'Italia deve comparire, non vincere |
 | valutazione | fino a 25 | vedi sotto |
 | tempo di risposta **misurato** | fino a 20 | ≤30 min 20, ≤2 h 16, ≤8 h 12, ≤24 h 8, ≤72 h 4, oltre 0 |
-| prezzo **dichiarato** | 15 sul lavoro cercato, 10 su qualcosa che offre | un prezzo che non c'è non fa decidere nessuno |
+| prezzo **dichiarato**, in qualunque forma | 15 sul lavoro cercato, 10 su qualcosa che offre | un prezzo che non c'è non fa decidere nessuno |
 | disponibilità | 10 con orari + prenotazione immediata, 7 con orari | disponibilità vera, non una promessa |
 | verifica | verificato 7, in corso 3 | M4 dice che il livello deve pesare in modo visibile |
 | completezza della scheda | fino a 3 | presentazione, nome dell'attività, almeno un lavoro dichiarato |
@@ -125,6 +125,19 @@ formula da sola distribuiva **meno di un punto su venticinque**, cioè non
 distingueva nessuno. Con 14 valutazioni in tutta la piattaforma questa voce
 resta comunque quasi piatta: è giusto che lo sia, e si sveglia da sé quando le
 recensioni arrivano.
+
+**Prezzo vuol dire prezzo, non forbice** (mig. 077). Contano la forbice, il
+solo massimo e la **tariffa nell'unità del mestiere** (`rate_amount`, per
+esempio 20 €/ora): `coalesce(min_price, max_price, rate_amount)`. Fino alla 077
+la voce guardava solo `min_price`, e tre righe con la tariffa oraria contavano
+come «senza prezzo» — chi aveva risposto nel modo giusto per il suo mestiere
+prendeva meno punti di chi aveva risposto nel modo che ci aspettavamo noi.
+Verificato in produzione: su una ricerca di «pulizie ordinarie» quel
+professionista passa da 10 a 15 punti, nessun altro cambia. **Resta aperto il
+lato interfaccia**: la scheda mostra la forbice, quindi quelle tariffe il
+cliente ancora non le vede. Il punteggio premia la dichiarazione — il buco è
+nostro, non suo — ma la frase «un preventivo che non c'è non ti aiuta a
+decidere» è mantenuta a metà finché la scheda non scrive la tariffa.
 
 **Quello che non sappiamo non toglie punti.** Tempo di risposta non ancora
 misurato: 10 su 20, il centro. Orari non dichiarati: 5 su 10. Nessuna
