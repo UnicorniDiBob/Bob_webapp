@@ -12,6 +12,7 @@ import { AvvisiPopup } from "@/components/AvvisiPopup";
 import { ManutenzioneBanner } from "@/components/ManutenzioneBanner";
 import { ProBanner } from "@/components/ProBanner";
 import { JsonLd } from "@/components/JsonLd";
+import { VaiAllAncora } from "@/components/VaiAllAncora";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.meetonda.com";
@@ -105,6 +106,11 @@ export default function RootLayout({
                   puo' riguardare il fatto stesso che il sito funzioni. */}
               <AvvisiPopup />
               <CancellazioneBanner />
+              {/* I link con l'ancora funzionano anche a freddo: senza questo,
+                  `/come-funziona#ordine` e gli undici «Parla con Bob» che
+                  puntano a `/#bob` aprono la pagina in cima. Vedi il commento
+                  in VaiAllAncora.tsx. */}
+              <VaiAllAncora />
               <main className="flex-1">{children}</main>
               <ProBanner />
               <MessagesBubble />
