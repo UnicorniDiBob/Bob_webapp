@@ -150,14 +150,6 @@ comportamento del singolo cliente, cronologia delle sue ricerche, qualunque
 profilazione, qualunque pagamento. Il ranking è uguale per tutti.
 
 **Dove è calcolato.** `public.professionals_score(ids, città, zona, intervento)`
-<<<<<<< Updated upstream
-(mig. 072), `security definer` con `search_path` fissato: due degli addendi —
-le valutazioni e il tempo di risposta — stanno in tabelle che il browser di un
-cliente non può leggere, e la funzione ne fa uscire solo aggregati per
-professionista, mai un messaggio e mai un cliente. Restituisce **le singole
-voci** e non solo il totale, perché a un professionista che chiede perché è
-settimo si risponde con gli addendi.
-=======
 (mig. 072, riscritta dalla 075), `security invoker` con `search_path` fissato.
 Restituisce **le singole voci** e non solo il totale, perché a un
 professionista che chiede perché è settimo si risponde con gli addendi.
@@ -188,7 +180,6 @@ Tutte le altre tabelle che il punteggio consulta — `professionals`, `cities`,
 `ratings`, `professional_services`, `professional_coverage_public`,
 `professional_availability` — hanno già una policy di lettura pubblica, quindi
 da qui in poi il punteggio non tocca più niente di privato.
->>>>>>> Stashed changes
 
 `getProfessionals` conserva la catena di spareggi vecchia come rete di
 sicurezza (`ordinaSenzaPunteggio`) e la usa solo se la funzione non risponde:
@@ -419,13 +410,9 @@ non-«Altro» coperti); risolutore con bande e ordinamento per specificità;
 preciso, 5 pro su 6); la casella di ricerca su `/professionisti`, con i
 suggerimenti mentre si scrive, la pastiglia che mostra come ha capito e le tre
 bande rispettate; **il punteggio di merito 0-100 della 072**, con le due fasi
-<<<<<<< Updated upstream
-di §4 e gli addendi in chiaro; la richiesta che ricorda **quale** lavoro era
-=======
 di §4 e gli addendi in chiaro, `security invoker` dalla 075 e con il tempo di
 risposta in una tabella pubblica sua (`professional_signals`), aggiornata da un
 trigger e da un giro notturno; la richiesta che ricorda **quale** lavoro era
->>>>>>> Stashed changes
 (`requests.subservice_id`, scritto dalla ricerca e dal brief di Bob).
 
 **Non c'è**: la selezione di chi entra in elenco, ancora in JavaScript e in
