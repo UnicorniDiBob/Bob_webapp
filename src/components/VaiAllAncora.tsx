@@ -64,7 +64,17 @@ export function VaiAllAncora() {
           document.getElementById(id) ??
           document.querySelector(`[name="${CSS.escape(id)}"]`);
         if (!bersaglio) return;
-        bersaglio.scrollIntoView({ block: "start" });
+        // `behavior: "instant"` non e' un dettaglio di gusto. `globals.css`
+        // mette `scroll-behavior: smooth` su `html`, e uno scorrimento
+        // animato **non parte affatto** in una scheda che non e' in primo
+        // piano: Chrome non anima quello che nessuno guarda. Ed e' proprio
+        // quello il caso per cui questo componente esiste — un link aperto in
+        // una scheda dietro, da un messaggio. Verificato dal vivo il
+        // 10/09/2026 su www.meetonda.com in una scheda nascosta: con `smooth`
+        // `scrollY` resta 0, con `instant` va a 809, che e' esattamente dove
+        // arriva il clic. E nessuno vuole vedersi animare novecento pixel
+        // all'arrivo.
+        bersaglio.scrollIntoView({ block: "start", behavior: "instant" });
       }, ritardo)
     );
 
