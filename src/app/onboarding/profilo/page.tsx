@@ -88,7 +88,7 @@ export default function OnboardingProfiloPage() {
   return (
     <Suspense
       fallback={
-        <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+        <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
           Carico…
         </div>
       }
@@ -320,7 +320,7 @@ function ProfiloInner() {
 
   if (checking) {
     return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+      <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
         Carico…
       </div>
     );
@@ -335,7 +335,7 @@ function ProfiloInner() {
             <h1 className="text-xl font-bold text-bob-ink">
               Come ti presentiamo ai clienti
             </h1>
-            <p className="mt-1 text-sm text-bob-ink/55">
+            <p className="mt-1 text-sm text-bob-ink/70">
               Poche cose, e ci siamo.
             </p>
           </div>
@@ -356,7 +356,7 @@ function ProfiloInner() {
                 data-testid="input-business-name"
                 required
               />
-              <p className="mt-1 text-xs text-bob-ink/50">
+              <p className="mt-1 text-xs text-bob-ink/65">
                 È il titolo della tua scheda: i clienti vedono questo. Se
                 lavori in proprio va benissimo il tuo nome.
               </p>
@@ -393,7 +393,7 @@ function ProfiloInner() {
                 />
               )}
               {profession === "__altro__" && (
-                <p className="mt-1 text-xs text-bob-ink/50">
+                <p className="mt-1 text-xs text-bob-ink/65">
                   Le categorie fuori elenco le colleghiamo a mano: per
                   comparire subito nelle ricerche scegli quella più vicina al
                   tuo lavoro.
@@ -425,7 +425,7 @@ function ProfiloInner() {
 
             <div>
               <label className="label-bob" htmlFor="zone">
-                Zona o quartiere <span className="font-normal text-bob-ink/40">(facoltativo)</span>
+                Zona o quartiere <span className="font-normal text-bob-ink/65">(facoltativo)</span>
               </label>
               <input
                 id="zone"
@@ -441,7 +441,7 @@ function ProfiloInner() {
             <div>
               <label className="label-bob" htmlFor="phone">
                 Cellulare{" "}
-                <span className="font-normal text-bob-ink/40">(facoltativo)</span>
+                <span className="font-normal text-bob-ink/65">(facoltativo)</span>
               </label>
               <input
                 id="phone"
@@ -454,7 +454,7 @@ function ProfiloInner() {
                 placeholder="Es. 348 1234567"
                 data-testid="input-phone"
               />
-              <p className="mt-1 text-xs text-bob-ink/50">
+              <p className="mt-1 text-xs text-bob-ink/65">
                 Non lo vede il cliente: serve a noi per l&apos;assistenza e per
                 la prenotazione diretta.
               </p>
@@ -482,7 +482,7 @@ function ProfiloInner() {
 
             <div>
               <label className="label-bob" htmlFor="heardFrom">
-                Come ci hai conosciuto? <span className="font-normal text-bob-ink/40">(facoltativo)</span>
+                Come ci hai conosciuto? <span className="font-normal text-bob-ink/65">(facoltativo)</span>
               </label>
               <select
                 id="heardFrom"

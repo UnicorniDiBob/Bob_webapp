@@ -121,7 +121,7 @@ export function Header() {
                   ingranaggi diversi nello stesso header si confondono. */}
               <Link
                 href="/impostazioni/dati"
-                className="rounded-xl p-2.5 text-bob-ink/55 transition hover:bg-bob-indigo-50 hover:text-bob-indigo"
+                className="rounded-xl p-2.5 text-bob-ink/70 transition hover:bg-bob-indigo-50 hover:text-bob-indigo"
                 aria-label="Impostazioni del tuo account"
                 title="Impostazioni"
                 data-testid="link-impostazioni"
@@ -221,7 +221,7 @@ export function Header() {
                       <Bell className="h-4 w-4" aria-hidden="true" />
                       Notifiche
                       {daContare > 0 && (
-                        <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-bob-indigo px-1 text-[10px] font-bold leading-none text-white">
+                        <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-bob-indigo px-1 text-2xs font-bold leading-none text-white">
                           {daContare > 9 ? "9+" : daContare}
                         </span>
                       )}

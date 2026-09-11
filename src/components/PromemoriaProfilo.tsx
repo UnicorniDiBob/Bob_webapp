@@ -197,12 +197,12 @@ function Corpo({
 
         {altre.length > 0 && (
           <div className="mt-4 rounded-xl bg-black/[0.03] px-4 py-3">
-            <p className="text-xs font-semibold text-bob-ink/60">
+            <p className="text-xs font-semibold text-bob-ink/70">
               Poi, quando hai tempo:
             </p>
             <ul className="mt-1.5 space-y-1">
               {altre.map((v) => (
-                <li key={v.chiave} className="text-xs leading-relaxed text-bob-ink/55">
+                <li key={v.chiave} className="text-xs leading-relaxed text-bob-ink/70">
                   <span className="font-medium text-bob-ink/75">{v.titolo}</span>{" "}
                   — {v.conseguenza}
                 </li>
@@ -230,7 +230,7 @@ function Corpo({
           </button>
         </div>
 
-        <p className="mt-3 text-[11px] leading-relaxed text-bob-ink/40">
+        <p className="mt-3 text-2xs leading-relaxed text-bob-ink/65">
           Te lo ricordiamo una volta al giorno, e smettiamo da solo appena
           compari nelle ricerche. Lo stato completo è sempre in{" "}
           <Link

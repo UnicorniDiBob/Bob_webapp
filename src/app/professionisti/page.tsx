@@ -128,7 +128,7 @@ export default async function ProfessionalsPage({
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
           Trova il professionista giusto
         </h1>
-        <p className="mt-2 max-w-xl text-sm text-bob-ink/60">
+        <p className="mt-2 max-w-xl text-sm text-bob-ink/70">
           Scrivi il lavoro che ti serve con parole tue, oppure filtra per città
           e servizio.
         </p>
@@ -145,7 +145,7 @@ export default async function ProfessionalsPage({
         >
           {capito ? (
             <>
-              <span className="text-bob-ink/60">
+              <span className="text-bob-ink/70">
                 {sicuro ? "Stai cercando" : "Forse cercavi"}
               </span>
               <span className="inline-flex items-center gap-2 rounded-full bg-bob-indigo-50 px-3 py-1 text-bob-ink">
@@ -153,7 +153,7 @@ export default async function ProfessionalsPage({
                 <Link
                   href="/professionisti"
                   aria-label="Azzera la ricerca"
-                  className="text-bob-ink/45 hover:text-bob-ink"
+                  className="text-bob-ink/65 hover:text-bob-ink"
                   data-testid="azzera-ricerca"
                 >
                   ✕
@@ -171,7 +171,7 @@ export default async function ProfessionalsPage({
                 ))}
             </>
           ) : (
-            <span className="text-bob-ink/60">
+            <span className="text-bob-ink/70">
               Non ho capito «{frase}». Prova con altre parole, o{" "}
               <Link href="/" className="text-bob-indigo hover:underline">
                 raccontalo a Bob
@@ -185,7 +185,7 @@ export default async function ProfessionalsPage({
       <ProfessionalFilters cities={cities} services={services} />
 
       <div className="mb-4 mt-5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <p className="text-sm text-bob-ink/55" data-testid="text-results-count">
+        <p className="text-sm text-bob-ink/70" data-testid="text-results-count">
           {sorted.length} professionist{sorted.length === 1 ? "a" : "i"}
         </p>
         {sorted.length > 0 && <ComeOrdiniamo />}

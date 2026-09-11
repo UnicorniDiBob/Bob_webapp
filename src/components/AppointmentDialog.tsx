@@ -139,7 +139,7 @@ export function AppointmentDialog({
           </h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-bob-ink/50 hover:bg-black/5"
+            className="rounded-lg p-1.5 text-bob-ink/65 hover:bg-black/5"
             aria-label="Chiudi"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -229,7 +229,7 @@ export function AppointmentDialog({
           </div>
           {/* Luogo: serve al pro per sapere dove andare e per il giro del giorno */}
           <div className="rounded-xl border border-black/[0.07] p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-bob-ink/45">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-bob-ink/65">
               Luogo
             </p>
             <div className="space-y-3">

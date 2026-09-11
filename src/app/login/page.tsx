@@ -30,7 +30,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+        <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
           Carico…
         </div>
       }
@@ -438,7 +438,7 @@ function LoginInner() {
               confermare l&apos;indirizzo. Apri il link, poi torna qui: questa
               pagina si aggiorna da sola.
             </p>
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-bob-ink/50">
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-bob-ink/65">
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-bob-indigo" />
               In attesa della conferma…
             </div>
@@ -463,7 +463,7 @@ function LoginInner() {
               Ho confermato
             </button>
             {info && (
-              <p className="mt-3 text-xs text-bob-ink/55">{info}</p>
+              <p className="mt-3 text-xs text-bob-ink/70">{info}</p>
             )}
             <button
               type="button"
@@ -522,7 +522,7 @@ function LoginInner() {
             <h1 className="text-xl font-bold text-bob-ink">
               {mode === "login" ? "Bentornato" : "Crea il tuo account"}
             </h1>
-            <p className="mt-1 text-sm text-bob-ink/60">
+            <p className="mt-1 text-sm text-bob-ink/70">
               {mode === "login"
                 ? "Accedi per seguire le tue richieste."
                 : "Bastano pochi secondi per iniziare."}
@@ -548,7 +548,7 @@ function LoginInner() {
                     <User className="h-4 w-4" aria-hidden="true" />
                     Cliente
                   </span>
-                  <span className="mt-0.5 block text-xs font-normal text-bob-ink/50">
+                  <span className="mt-0.5 block text-xs font-normal text-bob-ink/65">
                     Cerco un servizio
                   </span>
                 </button>
@@ -566,7 +566,7 @@ function LoginInner() {
                     <Wrench className="h-4 w-4" aria-hidden="true" />
                     Professionista
                   </span>
-                  <span className="mt-0.5 block text-xs font-normal text-bob-ink/50">
+                  <span className="mt-0.5 block text-xs font-normal text-bob-ink/65">
                     Offro un servizio
                   </span>
                 </button>
@@ -671,7 +671,7 @@ function LoginInner() {
                     ))}
                   </select>
                 </div>
-                <p className="mt-1 text-xs text-bob-ink/50">
+                <p className="mt-1 text-xs text-bob-ink/65">
                   Devi avere almeno 18 anni per usare BOB.
                 </p>
               </div>
@@ -837,7 +837,7 @@ function LoginInner() {
                       Termini visualizzati
                     </span>
                   ) : (
-                    <span className="text-xs text-bob-ink/50">
+                    <span className="text-xs text-bob-ink/65">
                       Aprili per poter spuntare la casella
                     </span>
                   )}
@@ -871,7 +871,7 @@ function LoginInner() {
           </form>
 
           {!fermo && (
-          <p className="mt-5 text-center text-sm text-bob-ink/60">
+          <p className="mt-5 text-center text-sm text-bob-ink/70">
             {mode === "login" ? "Non hai un account? " : "Hai già un account? "}
             <button
               onClick={() => {
@@ -888,7 +888,7 @@ function LoginInner() {
           )}
         </div>
 
-        <p className="mt-4 text-center text-xs text-bob-ink/45">
+        <p className="mt-4 text-center text-xs text-bob-ink/65">
           Continuando accetti i{" "}
           <Link href="/termini" className="underline hover:text-bob-indigo">
             termini del servizio

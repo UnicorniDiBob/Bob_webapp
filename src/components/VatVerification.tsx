@@ -155,7 +155,7 @@ export default function VatVerification({
 
   if (!booted) {
     return (
-      <p className="mt-1 text-sm text-bob-ink/50">Carico lo stato della verifica…</p>
+      <p className="mt-1 text-sm text-bob-ink/65">Carico lo stato della verifica…</p>
     );
   }
 
@@ -173,7 +173,7 @@ export default function VatVerification({
     <div className="mt-2 space-y-3">
       {/* Stato attuale, con la stessa etichetta che vedono i clienti. */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-bob-ink/60">Il tuo livello:</span>
+        <span className="text-sm text-bob-ink/70">Il tuo livello:</span>
         <VerificationLevelBadge
           level={level}
           verifiedAt={row?.vat_checked_at ?? null}
@@ -308,7 +308,7 @@ export default function VatVerification({
                 {formatError}
               </p>
             )}
-            <p className="mt-1.5 text-xs text-bob-ink/45">
+            <p className="mt-1.5 text-xs text-bob-ink/65">
               Puoi scriverla con o senza il prefisso IT. Massimo 3 tentativi al
               giorno.
             </p>
@@ -317,7 +317,7 @@ export default function VatVerification({
           <div>
             <label className="label-bob" htmlFor="pf-ragione-sociale">
               Nome completo dell&apos;azienda{" "}
-              <span className="font-normal text-bob-ink/45">(facoltativo)</span>
+              <span className="font-normal text-bob-ink/65">(facoltativo)</span>
             </label>
             <input
               id="pf-ragione-sociale"
@@ -329,7 +329,7 @@ export default function VatVerification({
               className="input-bob mt-1"
               data-testid="vat-business-name"
             />
-            <p className="mt-1.5 text-xs text-bob-ink/45">
+            <p className="mt-1.5 text-xs text-bob-ink/65">
               Compilalo se la partita IVA è intestata a un nome diverso da
               quello del tuo profilo — per esempio una società: così la verifica
               può concludersi subito invece di passare da un controllo a mano.
@@ -360,7 +360,7 @@ export default function VatVerification({
         </p>
       )}
 
-      <p className="text-xs text-bob-ink/45">
+      <p className="text-xs text-bob-ink/65">
         Usiamo la partita IVA solo per verificare i requisiti del tuo profilo,
         interrogando banche dati pubbliche, e conserviamo l&apos;esito del
         controllo come prova di cosa risultava a quella data. Non è mai visibile

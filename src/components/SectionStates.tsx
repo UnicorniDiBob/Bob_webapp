@@ -38,7 +38,7 @@ export function SectionError({
       <p className="text-sm font-semibold text-bob-ink">
         Non sono riuscito a caricare questa sezione.
       </p>
-      <p className="mt-1.5 text-sm text-bob-ink/60">
+      <p className="mt-1.5 text-sm text-bob-ink/70">
         {children ??
           "Può essere la connessione. Gli altri dati del tuo account non sono stati toccati."}
       </p>
@@ -62,7 +62,7 @@ export function NoProProfile() {
       <p className="text-sm font-semibold text-bob-ink">
         Manca l&apos;ultimo passo dell&apos;iscrizione
       </p>
-      <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+      <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
         Il tuo account professionista esiste, ma il profilo no: senza quello non
         possiamo mostrarti ai clienti. Sono due minuti — scegli il piano e
         rispondi a quattro domande.
@@ -92,7 +92,7 @@ export function UpgradeNeeded({
         {what} è incluso in Bob Pro e Bob Business
       </p>
       {children && (
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
           {children}
         </p>
       )}

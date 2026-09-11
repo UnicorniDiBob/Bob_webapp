@@ -43,7 +43,7 @@ export default async function HomePage() {
               prezzo, disponibilità e qualità — e nessuna fee per usarmi come
               cliente.
             </p>
-            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-bob-ink/55">
+            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-bob-ink/70">
               <span className="inline-flex items-center gap-1.5">
                 <BobDot /> Prezzi trasparenti
               </span>
@@ -80,7 +80,7 @@ export default async function HomePage() {
                 {s.n}
               </div>
               <h3 className="mt-3 font-semibold text-bob-ink">{s.t}</h3>
-              <p className="mt-1 text-sm leading-relaxed text-bob-ink/60">{s.d}</p>
+              <p className="mt-1 text-sm leading-relaxed text-bob-ink/70">{s.d}</p>
             </div>
           ))}
         </div>
@@ -107,7 +107,7 @@ export default async function HomePage() {
                 >
                   <div>
                     <h3 className="font-semibold text-bob-ink">{c.name}</h3>
-                    <p className="text-sm text-bob-ink/55">
+                    <p className="text-sm text-bob-ink/70">
                       {active
                         ? "Professionisti disponibili"
                         : "Segnala il tuo interesse"}
@@ -117,7 +117,7 @@ export default async function HomePage() {
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                       active
                         ? "bg-emerald-50 text-emerald-700"
-                        : "bg-black/5 text-bob-ink/50"
+                        : "bg-black/5 text-bob-ink/65"
                     }`}
                   >
                     {active ? "Attiva" : "Lista d'attesa"}
@@ -151,7 +151,7 @@ export default async function HomePage() {
               {/* Senza professionisti la card non annuncia il proprio vuoto:
                   la riga sparisce invece di dire "presto disponibile". */}
               {serviceCounts[s.id] ? (
-                <p className="text-xs text-bob-ink/50">
+                <p className="text-xs text-bob-ink/65">
                   {serviceCounts[s.id]} professionist
                   {serviceCounts[s.id] === 1 ? "a" : "i"}
                 </p>
@@ -215,7 +215,7 @@ function SectionHead({
           {title}
         </h2>
         {subtitle && (
-          <p className="mt-2 max-w-xl text-sm text-bob-ink/60">{subtitle}</p>
+          <p className="mt-2 max-w-xl text-sm text-bob-ink/70">{subtitle}</p>
         )}
       </div>
       {action && (

@@ -71,7 +71,7 @@ export function SupportoForm({
               : " Annotalo: senza un account è il solo riferimento che hai, e serve se ci riscrivi."}
           </p>
         )}
-        <p className="mt-2 text-sm text-bob-ink/60">
+        <p className="mt-2 text-sm text-bob-ink/70">
           Rispondiamo entro un giorno lavorativo. La risposta la scriviamo qui
           dentro Bob{emailUtente ? "" : " e ti avvisiamo appena possibile"}.
         </p>
@@ -116,7 +116,7 @@ export function SupportoForm({
             autoComplete="email"
             data-testid="supporto-email"
           />
-          <p className="mt-1.5 text-xs text-bob-ink/50">
+          <p className="mt-1.5 text-xs text-bob-ink/65">
             Serve solo a risponderti su questa richiesta. Non ti iscrive a
             niente.
           </p>
@@ -175,7 +175,7 @@ export function SupportoForm({
           placeholder="Raccontacelo come lo racconteresti a voce: cosa stavi facendo, cosa ti aspettavi, cosa è successo invece."
           data-testid="supporto-messaggio"
         />
-        <p className="mt-1.5 text-xs text-bob-ink/50">
+        <p className="mt-1.5 text-xs text-bob-ink/65">
           {message.length < 20
             ? "Almeno una ventina di caratteri: con due parole non riusciamo ad aiutarti."
             : `${message.length} caratteri.`}
@@ -197,7 +197,7 @@ export function SupportoForm({
         {stato === "invio" ? "Invio…" : "Invia la richiesta"}
       </button>
 
-      <p className="text-xs leading-relaxed text-bob-ink/45">
+      <p className="text-xs leading-relaxed text-bob-ink/65">
         Usiamo quello che scrivi solo per rispondere a questa richiesta. Se hai
         un account, la richiesta viene cancellata insieme a esso. Dettagli
         nell&apos;

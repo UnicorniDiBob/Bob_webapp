@@ -229,7 +229,7 @@ export function QuoteDialog({
                 ? "professionista"
                 : "professionisti"}
             </h3>
-            <p className="text-sm text-bob-ink/60">
+            <p className="text-sm text-bob-ink/70">
               Trovi tutte le risposte nella tua area personale: ti avviso appena
               arrivano i preventivi, così confronti i prezzi con calma.
             </p>
@@ -249,7 +249,7 @@ export function QuoteDialog({
                 <h3 className="text-lg font-semibold text-bob-ink">
                   Chiedi un preventivo
                 </h3>
-                <p className="text-sm text-bob-ink/60">
+                <p className="text-sm text-bob-ink/70">
                   Invio la stessa richiesta a{" "}
                   {professionals.length === 1
                     ? "questo professionista"
@@ -259,7 +259,7 @@ export function QuoteDialog({
               </div>
               <button
                 onClick={onClose}
-                className="rounded-lg p-1.5 text-bob-ink/50 hover:bg-black/5"
+                className="rounded-lg p-1.5 text-bob-ink/65 hover:bg-black/5"
                 aria-label="Chiudi"
               >
                 <svg
@@ -287,7 +287,7 @@ export function QuoteDialog({
             </div>
 
             {loading ? (
-              <p className="py-6 text-center text-sm text-bob-ink/50">Carico…</p>
+              <p className="py-6 text-center text-sm text-bob-ink/65">Carico…</p>
             ) : !user ? (
               <div className="rounded-xl bg-bob-indigo-50 p-4 text-center">
                 <p className="text-sm text-bob-ink/70">
@@ -331,7 +331,7 @@ export function QuoteDialog({
                         professionals.length === 1 ? "pro" : "pro"
                       }`}
                 </button>
-                <p className="mt-2 text-center text-xs text-bob-ink/45">
+                <p className="mt-2 text-center text-xs text-bob-ink/65">
                   Chiedere preventivi è gratis. La fee si applica solo a lavoro
                   concluso.
                 </p>

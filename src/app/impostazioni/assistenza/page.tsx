@@ -31,7 +31,7 @@ const ETICHETTA_STATO: Record<Ticket["status"], { testo: string; classe: string 
   nuovo: { testo: "Ricevuta", classe: "bg-bob-indigo-50 text-bob-indigo" },
   in_lavorazione: { testo: "Ci stiamo guardando", classe: "bg-amber-50 text-amber-800" },
   risposto: { testo: "Risposta pronta", classe: "bg-emerald-50 text-emerald-700" },
-  chiuso: { testo: "Chiusa", classe: "bg-black/[0.05] text-bob-ink/55" },
+  chiuso: { testo: "Chiusa", classe: "bg-black/[0.05] text-bob-ink/70" },
 };
 
 const ETICHETTA_CATEGORIA: Record<string, string> = {
@@ -103,7 +103,7 @@ export default function AssistenzaPage() {
           <p className="text-sm font-semibold text-bob-ink">
             Non hai richieste aperte
           </p>
-          <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+          <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
             Se qualcosa non funziona o non ti torna, scrivici: rispondiamo entro
             un giorno lavorativo.
           </p>
@@ -124,7 +124,7 @@ export default function AssistenzaPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="font-semibold text-bob-ink">{t.subject}</h3>
-                    <p className="mt-0.5 text-xs text-bob-ink/50">
+                    <p className="mt-0.5 text-xs text-bob-ink/65">
                       {ETICHETTA_CATEGORIA[t.category] ?? t.category} ·{" "}
                       {fmt(t.created_at)} ·{" "}
                       <span className="font-mono">{t.ref}</span>
@@ -152,7 +152,7 @@ export default function AssistenzaPage() {
                     </p>
                   </div>
                 ) : (
-                  <p className="mt-4 text-sm text-bob-ink/50">
+                  <p className="mt-4 text-sm text-bob-ink/65">
                     Non abbiamo ancora risposto. Quando lo facciamo, la risposta
                     compare qui.
                   </p>

@@ -47,7 +47,7 @@ export function MessagesBubble() {
       </svg>
       {unread > 0 && (
         <span
-          className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold leading-none text-white"
+          className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-2xs font-bold leading-none text-white"
           data-testid="bubble-unread"
         >
           {label}

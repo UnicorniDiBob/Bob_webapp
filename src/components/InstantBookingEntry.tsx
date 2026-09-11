@@ -110,7 +110,7 @@ export default function InstantBookingEntry({
       <p className="text-xs font-semibold uppercase tracking-wide text-bob-indigo">
         Prenota online
       </p>
-      <p className="mt-1 text-sm text-bob-ink/60">
+      <p className="mt-1 text-sm text-bob-ink/70">
         Blocca subito uno slot a tariffa fissa, senza attendere un preventivo.
       </p>
       <ul className="mt-3 space-y-2">
@@ -123,7 +123,7 @@ export default function InstantBookingEntry({
               <p className="truncate text-sm font-semibold text-bob-ink">
                 {s.subserviceName}
               </p>
-              <p className="text-xs text-bob-ink/55">
+              <p className="text-xs text-bob-ink/70">
                 {s.rate_amount.toLocaleString("it-IT")}€ /{" "}
                 {RATE_UNIT_LABELS[s.rate_unit]} · min {s.min_units}
               </p>

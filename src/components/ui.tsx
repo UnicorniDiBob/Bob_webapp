@@ -50,7 +50,7 @@ export function Stars({
 }) {
   if (value === null) {
     return (
-      <span className="text-xs text-bob-ink/40" data-testid="text-no-rating">
+      <span className="text-xs text-bob-ink/65" data-testid="text-no-rating">
         Ancora senza recensioni
       </span>
     );
@@ -73,7 +73,7 @@ export function Stars({
       </span>
       <span className="text-sm font-semibold text-bob-ink">{value.toFixed(1)}</span>
       {typeof count === "number" && count > 0 && (
-        <span className="text-xs text-bob-ink/50">({count})</span>
+        <span className="text-xs text-bob-ink/65">({count})</span>
       )}
     </span>
   );
@@ -106,7 +106,7 @@ export function VerificationBadge({ status }: { status: VerificationStatus }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium text-bob-ink/60">
+    <span className="inline-flex items-center gap-1 rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium text-bob-ink/70">
       Non ancora verificato
     </span>
   );
@@ -136,7 +136,7 @@ function fmtVerifiedDate(d: string | null): string | null {
 }
 
 const LEVEL_STYLE: Record<VerificationLevel, string> = {
-  none: "bg-black/5 text-bob-ink/60",
+  none: "bg-black/5 text-bob-ink/70",
   vat_verified: "bg-bob-indigo-50 text-bob-indigo",
   documents_verified: "bg-emerald-50 text-emerald-700",
 };
@@ -206,7 +206,7 @@ export function PriceTag({
   max: number | null;
 }) {
   if (min === null && max === null) {
-    return <span className="text-sm text-bob-ink/50">Tariffa su richiesta</span>;
+    return <span className="text-sm text-bob-ink/65">Tariffa su richiesta</span>;
   }
   const fmt = (n: number) => `${Number(n).toLocaleString("it-IT")}€`;
   return (
@@ -214,7 +214,7 @@ export function PriceTag({
       {min !== null && max !== null
         ? `${fmt(min)}–${fmt(max)}`
         : fmt((min ?? max) as number)}
-      <span className="font-normal text-bob-ink/50">/h</span>
+      <span className="font-normal text-bob-ink/65">/h</span>
     </span>
   );
 }
@@ -266,7 +266,7 @@ export function ProfessionalCardItem({
           <div className="flex items-center gap-2">
             <h3 className="truncate font-semibold text-bob-ink">{p.displayName}</h3>
           </div>
-          <p className="truncate text-sm text-bob-ink/60">{p.headline}</p>
+          <p className="truncate text-sm text-bob-ink/70">{p.headline}</p>
         </div>
       </div>
 
@@ -279,7 +279,7 @@ export function ProfessionalCardItem({
 
       {intervento && (
         <p
-          className={`text-xs ${dichiarato ? "font-medium text-bob-ink/75" : "text-bob-ink/45"}`}
+          className={`text-xs ${dichiarato ? "font-medium text-bob-ink/75" : "text-bob-ink/65"}`}
           data-testid={dichiarato ? "offre-intervento" : "non-dichiara-intervento"}
         >
           {dichiarato
@@ -300,7 +300,7 @@ export function ProfessionalCardItem({
           compact
         />
         {p.responseTimeLabel && (
-          <span className="text-xs text-bob-ink/50">{p.responseTimeLabel}</span>
+          <span className="text-xs text-bob-ink/65">{p.responseTimeLabel}</span>
         )}
       </div>
     </Link>
@@ -321,7 +321,7 @@ export function EmptyState({
         <Search className="h-6 w-6" aria-hidden="true" />
       </div>
       <h3 className="font-semibold text-bob-ink">{title}</h3>
-      <p className="max-w-sm text-sm text-bob-ink/60">{description}</p>
+      <p className="max-w-sm text-sm text-bob-ink/70">{description}</p>
     </div>
   );
 }

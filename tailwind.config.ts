@@ -42,6 +42,24 @@ const config: Config = {
       maxWidth: {
         container: "1120px",
       },
+      // La scala tipografica.
+      //
+      // Non e' un ritocco estetico: l'87% delle utility di dimensione del
+      // progetto (820 su 942) erano text-sm o text-xs, cioe' 14px o meno, e
+      // la dimensione piu' frequente sullo schermo era 12px. Alzare qui i
+      // token vale piu' di 500 sostituzioni sparse nei componenti, si rivede
+      // in un file solo e si annulla in una riga.
+      //
+      // I valori grandi (2xl in su) restano quelli di Tailwind: il problema
+      // non erano i titoli.
+      fontSize: {
+        "2xs": ["0.6875rem", { lineHeight: "0.875rem" }], //  11px - solo dati fitti (calendario)
+        xs: ["0.8125rem", { lineHeight: "1.125rem" }],    //  13px - era 12
+        sm: ["0.9375rem", { lineHeight: "1.375rem" }],    //  15px - era 14
+        base: ["1.0625rem", { lineHeight: "1.625rem" }],  //  17px - era 16
+        lg: ["1.1875rem", { lineHeight: "1.75rem" }],     //  19px - era 18
+        xl: ["1.3125rem", { lineHeight: "1.875rem" }],    //  21px - era 20
+      },
       keyframes: {
         "fade-up": {
           "0%": { opacity: "0", transform: "translateY(8px)" },

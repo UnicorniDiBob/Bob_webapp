@@ -62,7 +62,7 @@ export function CodaAssistenza({
 
       {chiusi.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/45">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/65">
             Già lavorate ({chiusi.length})
           </h2>
           <div className="space-y-3">
@@ -121,7 +121,7 @@ function Riga({ t, apribile }: { t: TicketAdmin; apribile?: boolean }) {
       >
         <div className="min-w-0">
           <p className="truncate font-semibold text-bob-ink">{t.subject}</p>
-          <p className="mt-0.5 text-xs text-bob-ink/50">
+          <p className="mt-0.5 text-xs text-bob-ink/65">
             <span className="font-mono">{t.ref}</span> ·{" "}
             {CATEGORIA[t.category] ?? t.category} · {t.email}
             {!t.user_id && " · senza account"} · {fmt(t.created_at)}
@@ -129,7 +129,7 @@ function Riga({ t, apribile }: { t: TicketAdmin; apribile?: boolean }) {
         </div>
         <span
           className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${
-            age.urgente ? "bg-red-50 text-red-700" : "bg-black/[0.05] text-bob-ink/60"
+            age.urgente ? "bg-red-50 text-red-700" : "bg-black/[0.05] text-bob-ink/70"
           }`}
         >
           {age.testo}

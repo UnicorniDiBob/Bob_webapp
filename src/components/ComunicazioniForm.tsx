@@ -198,7 +198,7 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
         <h3 className="text-sm font-semibold text-bob-ink">
           Comunicazioni di servizio
         </h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
           Fanno parte del servizio: sono il modo in cui sai che è successo
           qualcosa. Non hanno una spunta perché non sono pubblicità e non
           chiediamo il tuo permesso per mandartele — le riceverai finché il tuo
@@ -208,11 +208,11 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
           {SERVIZIO.map((s) => (
             <li key={s.titolo} className="py-3">
               <p className="text-sm font-medium text-bob-ink">{s.titolo}</p>
-              <p className="mt-0.5 text-sm text-bob-ink/55">{s.quando}</p>
+              <p className="mt-0.5 text-sm text-bob-ink/70">{s.quando}</p>
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-xs leading-relaxed text-bob-ink/45">
+        <p className="mt-4 text-xs leading-relaxed text-bob-ink/65">
           Se non vuoi più riceverle, la strada è chiudere l&apos;account: le
           trovi in{" "}
           <Link
@@ -230,7 +230,7 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
         <h3 className="text-sm font-semibold text-bob-ink">
           Comunicazioni commerciali
         </h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
           Queste sì, e solo se le vuoi. Sono spente per scelta nostra: nessuna è
           attiva perché ti sei iscritto. Puoi cambiare idea quando vuoi, in
           entrambe le direzioni, e non cambia nulla del servizio.
@@ -250,11 +250,11 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
                     <p className="text-sm font-medium text-bob-ink">
                       {v.titolo}
                     </p>
-                    <p className="mt-1 text-sm leading-relaxed text-bob-ink/60">
+                    <p className="mt-1 text-sm leading-relaxed text-bob-ink/70">
                       {v.spiegazione}
                     </p>
                     {s && (
-                      <p className="mt-2 text-xs text-bob-ink/45">
+                      <p className="mt-2 text-xs text-bob-ink/65">
                         {acceso ? "Attivata" : "Disattivata"} il{" "}
                         {new Date(s.at).toLocaleDateString("it-IT", {
                           day: "numeric",
@@ -289,7 +289,7 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
           })}
         </ul>
 
-        <p className="mt-4 text-xs leading-relaxed text-bob-ink/45">
+        <p className="mt-4 text-xs leading-relaxed text-bob-ink/65">
           Registriamo ogni scelta con la data e il testo che avevi davanti:
           serve a noi per dimostrare che il consenso c&apos;era, e a te per
           sapere cosa hai accettato. I dettagli nell&apos;

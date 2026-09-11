@@ -50,7 +50,7 @@ export default function OrariPage() {
         <h3 className="text-sm font-semibold text-bob-ink">
           La tua settimana
         </h3>
-        <p className="mt-1 text-sm text-bob-ink/55">
+        <p className="mt-1 text-sm text-bob-ink/70">
           Un intervallo per giorno. I giorni che lasci spenti sono giorni in cui
           non ti proponiamo.
         </p>
@@ -63,7 +63,7 @@ export default function OrariPage() {
         <h3 className="text-sm font-semibold text-bob-ink">
           Prenotazione diretta
         </h3>
-        <p className="mt-1 text-sm text-bob-ink/55">
+        <p className="mt-1 text-sm text-bob-ink/70">
           Per i lavori a tariffa fissa: il cliente prenota uno slot senza
           chiederti niente prima. Attivala solo su quello che sai già quanto
           costa e quanto dura.
@@ -78,7 +78,7 @@ export default function OrariPage() {
               tier={pro.tier}
             />
           ) : (
-            <p className="text-sm text-bob-ink/55">
+            <p className="text-sm text-bob-ink/70">
               Prima scegli il servizio principale in{" "}
               <Link
                 href="/impostazioni/azienda"

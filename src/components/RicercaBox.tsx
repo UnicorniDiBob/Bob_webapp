@@ -146,7 +146,7 @@ export function RicercaBox({ valoreIniziale = "" }: { valoreIniziale?: string })
               >
                 <span className="text-bob-ink">{s.display}</span>
                 {s.subservice && (
-                  <span className="shrink-0 text-xs text-bob-ink/45">
+                  <span className="shrink-0 text-xs text-bob-ink/65">
                     {s.service}
                   </span>
                 )}

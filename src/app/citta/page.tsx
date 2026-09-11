@@ -26,7 +26,7 @@ export default async function CitiesPage() {
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
           Dove puoi trovare un professionista
         </h1>
-        <p className="mt-2 max-w-xl text-sm text-bob-ink/60">
+        <p className="mt-2 max-w-xl text-sm text-bob-ink/70">
           Partiamo da Milano, dove i professionisti sono già verificati e pronti.
           Le altre città arrivano una alla volta, con la stessa cura.
         </p>
@@ -47,13 +47,13 @@ export default async function CitiesPage() {
                     Attiva
                   </span>
                 ) : (
-                  <span className="chip border-black/10 bg-black/[0.03] text-bob-ink/60">
+                  <span className="chip border-black/10 bg-black/[0.03] text-bob-ink/70">
                     Lista d&apos;attesa
                   </span>
                 )}
               </div>
               <h2 className="mt-4 text-lg font-semibold text-bob-ink">{c.name}</h2>
-              <p className="mt-1 text-sm text-bob-ink/60">
+              <p className="mt-1 text-sm text-bob-ink/70">
                 {active
                   ? `${n} professionist${n === 1 ? "a" : "i"} disponibil${
                       n === 1 ? "e" : "i"

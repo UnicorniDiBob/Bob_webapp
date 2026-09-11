@@ -23,8 +23,10 @@ export const DAY_LABELS_LONG = [
 ];
 
 /** Altezza di un'ora nella griglia, in px. */
-export const HOUR_PX_WEEK = 56;
-export const HOUR_PX_DAY = 72;
+// Alzati con la scala tipografica: le etichette passano da 10px a 11px e a
+// 56px/ora un appuntamento da mezz'ora non teneva piu' due righe.
+export const HOUR_PX_WEEK = 64;
+export const HOUR_PX_DAY = 80;
 
 /** Altezza minima di un blocco, per restare leggibile anche a 15 minuti. */
 export const MIN_BLOCK_PX = 20;

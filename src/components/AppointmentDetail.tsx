@@ -85,7 +85,7 @@ export function AppointmentDetail({
         <div className="mb-4 flex items-start justify-between gap-2">
           <div className="min-w-0">
             <span
-              className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+              className={`inline-block rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide ${
                 STATUS_CHIP[appt.status]
               }`}
               data-testid="detail-status"
@@ -98,7 +98,7 @@ export function AppointmentDetail({
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1.5 text-bob-ink/50 hover:bg-black/5"
+            className="shrink-0 rounded-lg p-1.5 text-bob-ink/65 hover:bg-black/5"
             aria-label="Chiudi"
           >
             <svg
@@ -129,7 +129,7 @@ export function AppointmentDetail({
               </span>
               <span className="mt-0.5 block text-sm tabular-nums text-bob-indigo">
                 {fmtHour(start)} – {fmtHour(end)}
-                <span className="text-bob-ink/50">
+                <span className="text-bob-ink/65">
                   {" "}
                   · {fmtDuration(appt.duration_minutes)}
                 </span>
@@ -140,7 +140,7 @@ export function AppointmentDetail({
 
         {/* Dove */}
         <div className="mt-3 rounded-xl border border-black/[0.07] px-3.5 py-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-bob-ink/45">
+          <p className="text-xs font-medium uppercase tracking-wide text-bob-ink/65">
             Dove
           </p>
           {appt.location_address ? (
@@ -149,10 +149,10 @@ export function AppointmentDetail({
                 {appt.location_address}
               </p>
               {appt.location_city && (
-                <p className="text-sm text-bob-ink/60">{appt.location_city}</p>
+                <p className="text-sm text-bob-ink/70">{appt.location_city}</p>
               )}
               {appt.location_notes && (
-                <p className="mt-1 flex items-start gap-1 break-words text-xs text-bob-ink/55">
+                <p className="mt-1 flex items-start gap-1 break-words text-xs text-bob-ink/70">
                   <Key className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                   <span>{appt.location_notes}</span>
                 </p>
@@ -170,7 +170,7 @@ export function AppointmentDetail({
               )}
             </>
           ) : (
-            <p className="mt-1 text-sm text-bob-ink/50">
+            <p className="mt-1 text-sm text-bob-ink/65">
               Nessun indirizzo. Aggiungilo con «Modifica» per vederlo nel giro
               del giorno.
             </p>
@@ -197,7 +197,7 @@ export function AppointmentDetail({
           />
           {appt.notes && (
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-bob-ink/45">
+              <dt className="text-xs font-medium uppercase tracking-wide text-bob-ink/65">
                 Note
               </dt>
               <dd className="mt-1 whitespace-pre-wrap break-words text-bob-ink/80">
@@ -208,13 +208,13 @@ export function AppointmentDetail({
           {appt.booking_answers &&
             Object.keys(appt.booking_answers).length > 0 && (
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-bob-ink/45">
+                <dt className="text-xs font-medium uppercase tracking-wide text-bob-ink/65">
                   Dettagli della prenotazione
                 </dt>
                 <dd className="mt-1 space-y-1">
                   {Object.entries(appt.booking_answers).map(([k, v]) => (
                     <p key={k} className="break-words text-bob-ink/80">
-                      <span className="text-bob-ink/50">{k}:</span> {String(v)}
+                      <span className="text-bob-ink/65">{k}:</span> {String(v)}
                     </p>
                   ))}
                 </dd>
@@ -289,7 +289,7 @@ export function AppointmentDetail({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <dt className="shrink-0 text-xs font-medium uppercase tracking-wide text-bob-ink/45">
+      <dt className="shrink-0 text-xs font-medium uppercase tracking-wide text-bob-ink/65">
         {label}
       </dt>
       <dd className="min-w-0 break-words text-right font-medium text-bob-ink">

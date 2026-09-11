@@ -8,11 +8,11 @@ export function Footer() {
       <div className="container-bob grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div className="sm:col-span-2 lg:col-span-2">
           <Logo />
-          <p className="mt-3 max-w-xs text-sm text-bob-ink/60">
+          <p className="mt-3 max-w-xs text-sm text-bob-ink/70">
             Ciao, sono Bob. Ti aiuto a capire il tuo problema e a trovare il
             professionista giusto, con prezzi chiari e zero attrito.
           </p>
-          <p className="mt-3 text-sm text-bob-ink/60">
+          <p className="mt-3 text-sm text-bob-ink/70">
             Scrivici:{" "}
             <a
               href={`mailto:${COMPANY.contactEmail}`}
@@ -26,7 +26,7 @@ export function Footer() {
 
         <div>
           <h4 className="mb-3 text-sm font-semibold text-bob-ink">Esplora</h4>
-          <ul className="space-y-2 text-sm text-bob-ink/60">
+          <ul className="space-y-2 text-sm text-bob-ink/70">
             <li><Link href="/servizi" className="hover:text-bob-indigo">Servizi</Link></li>
             <li><Link href="/citta" className="hover:text-bob-indigo">Città</Link></li>
             <li><Link href="/professionisti" className="hover:text-bob-indigo">Professionisti</Link></li>
@@ -38,12 +38,12 @@ export function Footer() {
 
         <div>
           <h4 className="mb-3 text-sm font-semibold text-bob-ink">Per chi lavora</h4>
-          <ul className="space-y-2 text-sm text-bob-ink/60">
+          <ul className="space-y-2 text-sm text-bob-ink/70">
             <li><Link href="/per-i-professionisti" className="hover:text-bob-indigo">Diventa professionista</Link></li>
             <li><Link href="/login" className="hover:text-bob-indigo">Accedi</Link></li>
           </ul>
           <h4 className="mb-3 mt-6 text-sm font-semibold text-bob-ink">Trasparenza</h4>
-          <p className="text-sm text-bob-ink/60">
+          <p className="text-sm text-bob-ink/70">
             Nessun lead a pagamento. La fee si applica solo quando un lavoro si
             chiude davvero.
           </p>
@@ -51,7 +51,7 @@ export function Footer() {
 
         <div>
           <h4 className="mb-3 text-sm font-semibold text-bob-ink">Legale</h4>
-          <ul className="space-y-2 text-sm text-bob-ink/60">
+          <ul className="space-y-2 text-sm text-bob-ink/70">
             <li><Link href="/chi-siamo" className="hover:text-bob-indigo">Chi siamo</Link></li>
             <li><Link href="/privacy" className="hover:text-bob-indigo">Privacy</Link></li>
             <li><Link href="/cookie-policy" className="hover:text-bob-indigo">Cookie policy</Link></li>
@@ -61,7 +61,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-black/5">
-        <div className="container-bob flex flex-col items-center justify-between gap-2 py-5 text-xs text-bob-ink/50 sm:flex-row">
+        <div className="container-bob flex flex-col items-center justify-between gap-2 py-5 text-xs text-bob-ink/65 sm:flex-row">
           <span>
             © {new Date().getFullYear()} BOB — {COMPANY.legalName} · P.IVA{" "}
             {COMPANY.vat}

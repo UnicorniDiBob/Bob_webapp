@@ -368,7 +368,7 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
             {COMPANY.contactEmail}
           </a>
         </p>
-        <p className="text-xs text-bob-ink/45">
+        <p className="text-xs text-bob-ink/65">
           Termini per {isPro ? "i professionisti" : "i clienti"} · versione{" "}
           {TERMS_VERSION} · ultimo aggiornamento: {TERMS_UPDATED}.
         </p>

@@ -68,7 +68,7 @@ export function ProRequestSummary() {
   if (loading) {
     return (
       <div className="card p-5">
-        <p className="text-sm text-bob-ink/50">Carico nuove richieste…</p>
+        <p className="text-sm text-bob-ink/65">Carico nuove richieste…</p>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export function ProRequestSummary() {
   if (items.length === 0) {
     return (
       <div className="card p-5">
-        <p className="text-sm text-bob-ink/60">Nessuna nuova richiesta da revisionare.</p>
+        <p className="text-sm text-bob-ink/70">Nessuna nuova richiesta da revisionare.</p>
       </div>
     );
   }
@@ -138,7 +138,7 @@ export function ProRequestSummary() {
                 </span>
               )}
               <span className={`chip text-xs ${urg.color}`}>{urg.label}</span>
-              <span className="chip bg-gray-100 text-bob-ink/60 text-xs">
+              <span className="chip bg-gray-100 text-bob-ink/70 text-xs">
                 {budget}
               </span>
             </div>
@@ -149,7 +149,7 @@ export function ProRequestSummary() {
             {/* Contesto raccolto da Bob (022): brief + foto del problema */}
             {(item.briefSummary || item.briefPhotos?.length > 0) && (
               <div className="rounded-xl border border-black/5 bg-black/[0.02] p-3">
-                <p className="mb-1.5 text-xs font-medium text-bob-ink/50">
+                <p className="mb-1.5 text-xs font-medium text-bob-ink/65">
                   Dalla chat con Bob
                 </p>
                 {item.briefSummary && (
@@ -180,7 +180,7 @@ export function ProRequestSummary() {
 
             {/* Bozza risposta */}
             <div className="rounded-xl border border-black/5 bg-bob-indigo-50 p-3">
-              <p className="mb-1.5 text-xs font-medium text-bob-ink/50">Bozza risposta</p>
+              <p className="mb-1.5 text-xs font-medium text-bob-ink/65">Bozza risposta</p>
               <p className="text-sm text-bob-ink">{item.draftReply}</p>
             </div>
 

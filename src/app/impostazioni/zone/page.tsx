@@ -43,7 +43,7 @@ export default function ZonePage() {
         <AreaLavoroEditor professionalId={pro.id} cityIdIniziale={pro.cityId} />
       </div>
 
-      <p className="text-xs text-bob-ink/45">
+      <p className="text-xs text-bob-ink/65">
         Il centro del cerchio resta privato: pubblichiamo solo le zone che
         copri, mai il punto da cui parti.
       </p>

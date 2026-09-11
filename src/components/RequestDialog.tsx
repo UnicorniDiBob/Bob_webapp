@@ -243,7 +243,7 @@ export function RequestDialog({
             <h3 className="text-lg font-semibold text-bob-ink">
               Messaggio inviato a {professional.displayName}
             </h3>
-            <p className="text-sm text-bob-ink/60">
+            <p className="text-sm text-bob-ink/70">
               Trovi la richiesta nella tua area personale. Ti avviso appena
               risponde.
             </p>
@@ -272,13 +272,13 @@ export function RequestDialog({
                 <h3 className="text-lg font-semibold text-bob-ink">
                   Scrivi a {professional.displayName}
                 </h3>
-                <p className="text-sm text-bob-ink/60">
+                <p className="text-sm text-bob-ink/70">
                   Ho già preparato io il messaggio: puoi modificarlo.
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="rounded-lg p-1.5 text-bob-ink/50 hover:bg-black/5"
+                className="rounded-lg p-1.5 text-bob-ink/65 hover:bg-black/5"
                 aria-label="Chiudi"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -288,7 +288,7 @@ export function RequestDialog({
             </div>
 
             {loading ? (
-              <p className="py-6 text-center text-sm text-bob-ink/50">Carico…</p>
+              <p className="py-6 text-center text-sm text-bob-ink/65">Carico…</p>
             ) : !user ? (
               <div className="rounded-xl bg-bob-indigo-50 p-4 text-center">
                 <p className="text-sm text-bob-ink/70">
@@ -325,7 +325,7 @@ export function RequestDialog({
                 >
                   {submitting ? "Invio…" : "Invia messaggio"}
                 </button>
-                <p className="mt-2 text-center text-xs text-bob-ink/45">
+                <p className="mt-2 text-center text-xs text-bob-ink/65">
                   Usare Bob è gratis. La fee si applica solo a lavoro concluso.
                 </p>
               </>

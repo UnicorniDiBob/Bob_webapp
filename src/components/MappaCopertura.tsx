@@ -181,7 +181,7 @@ export default function MappaCopertura({
       const etichetta = attiva && conNome;
 
       bottone.className = etichetta
-        ? "whitespace-nowrap rounded-full border border-bob-indigo bg-bob-indigo px-2 py-0.5 text-[11px] font-medium text-white shadow-sm"
+        ? "whitespace-nowrap rounded-full border border-bob-indigo bg-bob-indigo px-2 py-0.5 text-2xs font-medium text-white shadow-sm"
         : attiva
           ? "h-3.5 w-3.5 rounded-full border-2 border-white bg-bob-indigo shadow"
           : "h-3 w-3 rounded-full border border-black/25 bg-white/90 shadow-sm hover:border-bob-indigo";

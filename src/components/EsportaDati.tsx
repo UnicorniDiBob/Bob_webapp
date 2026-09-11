@@ -68,14 +68,14 @@ export function EsportaDati() {
         <h3 className="text-base font-semibold text-bob-ink">
           Scarica i tuoi dati
         </h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
           Un archivio con tutto quello che Bob tiene collegato al tuo account:
           profilo, richieste, conversazioni con i professionisti, appuntamenti,
           recensioni che hai scritto, le tue scelte sulle comunicazioni e le
           foto che avevi caricato parlando con Bob. È tuo, non devi spiegare
           perché lo vuoi, e puoi portartelo altrove.
         </p>
-        <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/50">
+        <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/65">
           Formato JSON, come previsto dal diritto alla portabilità (art. 20
           GDPR). Puoi scaricarlo una volta ogni {INTERVALLO_EXPORT_ORE} ore.
         </p>

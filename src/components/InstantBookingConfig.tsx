@@ -271,7 +271,7 @@ export default function InstantBookingConfig({
 
   if (loading) {
     return (
-      <div className="text-sm text-bob-ink/50">
+      <div className="text-sm text-bob-ink/65">
         Carico le opzioni di prenotazione diretta…
       </div>
     );
@@ -281,7 +281,7 @@ export default function InstantBookingConfig({
     const selected = new Set(subSlugs);
     const toPick = catEligible.filter((s) => !selected.has(s.slug));
     return (
-      <div className="space-y-2 text-sm text-bob-ink/60">
+      <div className="space-y-2 text-sm text-bob-ink/70">
         <p>
           {"La prenotazione diretta permette ai clienti di prenotare uno slot a tariffa fissa senza chiederti un preventivo."}
         </p>
@@ -302,7 +302,7 @@ export default function InstantBookingConfig({
 
   return (
     <div className="space-y-4" data-testid="instant-booking-config">
-      <p className="text-sm text-bob-ink/60">
+      <p className="text-sm text-bob-ink/70">
         {"Attiva la prenotazione diretta sui lavori a tariffa fissa: i clienti potranno prenotare uno slot senza doverti scrivere prima. Puoi attivarla o disattivarla per ogni servizio quando vuoi."}
       </p>
 
@@ -335,7 +335,7 @@ export default function InstantBookingConfig({
                   data-testid={`instant-toggle-${c.subserviceId}`}
                 />
                 <span className="relative h-5 w-9 rounded-full bg-black/15 transition-colors peer-checked:bg-bob-indigo after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4" />
-                <span className="text-xs text-bob-ink/60">
+                <span className="text-xs text-bob-ink/70">
                   {c.enabled ? "Attiva" : "Disattivata"}
                 </span>
               </label>
@@ -402,7 +402,7 @@ export default function InstantBookingConfig({
                     className="input-bob"
                     placeholder={String(MIN_CANCELLATION_WINDOW_HOURS)}
                   />
-                  <p className="mt-1 text-xs text-bob-ink/45">
+                  <p className="mt-1 text-xs text-bob-ink/65">
                     {"Minimo "}
                     {MIN_CANCELLATION_WINDOW_HOURS}
                     {" ore, imposto dalla piattaforma."}
@@ -434,7 +434,7 @@ export default function InstantBookingConfig({
       >
         {saving ? "Salvo…" : "Salva prenotazione diretta"}
       </button>
-      <p className="text-xs text-bob-ink/45">
+      <p className="text-xs text-bob-ink/65">
         {"Perché i clienti possano prenotare, imposta anche i tuoi orari in “Orari di disponibilità” qui sotto."}
       </p>
     </div>

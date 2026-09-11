@@ -184,12 +184,12 @@ export default function AvailabilityEditor({
   }
 
   if (loading) {
-    return <div className="text-sm text-bob-ink/50">Carico i tuoi orari…</div>;
+    return <div className="text-sm text-bob-ink/65">Carico i tuoi orari…</div>;
   }
 
   return (
     <div className="space-y-3" data-testid="availability-editor">
-      <p className="text-sm text-bob-ink/60">
+      <p className="text-sm text-bob-ink/70">
         {"Imposta gli orari in cui accetti prenotazioni: sono gli unici che i clienti vedono quando cercano un momento libero con te."}
       </p>
 
@@ -224,7 +224,7 @@ export default function AvailabilityEditor({
                     data-testid={`availability-day-${w}`}
                   />
                   <span className="relative h-5 w-9 rounded-full bg-black/15 transition-colors peer-checked:bg-bob-indigo after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4" />
-                  <span className="text-xs text-bob-ink/60">
+                  <span className="text-xs text-bob-ink/70">
                     {d.open ? "Aperto" : "Chiuso"}
                   </span>
                 </label>
@@ -243,7 +243,7 @@ export default function AvailabilityEditor({
                         className="input-bob w-32"
                         aria-label={`${label} inizio`}
                       />
-                      <span className="text-bob-ink/40">–</span>
+                      <span className="text-bob-ink/65">–</span>
                       <input
                         type="time"
                         value={r.end}

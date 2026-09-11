@@ -105,7 +105,7 @@ export function AppointmentActions({
     return (
       <div
         className={`mt-1.5 inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold ${
-          ok ? "bg-emerald-50 text-emerald-700" : "bg-black/[0.04] text-bob-ink/55"
+          ok ? "bg-emerald-50 text-emerald-700" : "bg-black/[0.04] text-bob-ink/70"
         }`}
         data-testid={`appt-status-${a.id}`}
       >
@@ -123,7 +123,7 @@ export function AppointmentActions({
   if (isPast) {
     return (
       <div
-        className="mt-1.5 inline-flex items-center gap-1.5 rounded-xl bg-black/[0.04] px-3 py-1.5 text-xs font-semibold text-bob-ink/55"
+        className="mt-1.5 inline-flex items-center gap-1.5 rounded-xl bg-black/[0.04] px-3 py-1.5 text-xs font-semibold text-bob-ink/70"
         data-testid={`appt-expired-${a.id}`}
       >
         <Clock className="h-3.5 w-3.5" aria-hidden="true" />
@@ -309,12 +309,12 @@ export function AppointmentActions({
             <h3 className="text-lg font-bold text-bob-ink">
               Proponi un altro orario
             </h3>
-            <p className="mt-1 text-sm text-bob-ink/60">
+            <p className="mt-1 text-sm text-bob-ink/70">
               Questi sono gli orari liberi di {counterpartName} nei prossimi
               giorni: scegline uno e glielo propongo io.
             </p>
             {slotsLoading ? (
-              <p className="mt-5 text-sm text-bob-ink/50">
+              <p className="mt-5 text-sm text-bob-ink/65">
                 Controllo le disponibilità…
               </p>
             ) : !orariConfermati ? (
@@ -323,7 +323,7 @@ export function AppointmentActions({
                  proponevamo di inventati. Adesso, quando gli orari non ci
                  sono, si dice quello che e' vero. */
               <p
-                className="mt-5 text-sm text-bob-ink/60"
+                className="mt-5 text-sm text-bob-ink/70"
                 data-testid="chat-slot-orari-mancanti"
               >
                 {counterpartName} non ha ancora indicato i suoi orari, quindi
@@ -331,7 +331,7 @@ export function AppointmentActions({
                 tu quando ti andrebbe bene.
               </p>
             ) : slots.length === 0 ? (
-              <p className="mt-5 text-sm text-bob-ink/60">
+              <p className="mt-5 text-sm text-bob-ink/70">
                 Non ci sono slot liberi nei prossimi 7 giorni: scrivigli in chat
                 e trovate un orario insieme.
               </p>
@@ -339,7 +339,7 @@ export function AppointmentActions({
               <div className="mt-4 flex flex-col gap-3">
                 {Array.from(byDay.entries()).map(([day, daySlots]) => (
                   <div key={day}>
-                    <p className="text-xs font-semibold capitalize text-bob-ink/55">
+                    <p className="text-xs font-semibold capitalize text-bob-ink/70">
                       {day}
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
