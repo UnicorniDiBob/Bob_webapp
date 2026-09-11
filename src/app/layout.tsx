@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
 import { UnreadProvider } from "@/components/UnreadProvider";
@@ -13,6 +14,27 @@ import { ManutenzioneBanner } from "@/components/ManutenzioneBanner";
 import { ProBanner } from "@/components/ProBanner";
 import { JsonLd } from "@/components/JsonLd";
 import { VaiAllAncora } from "@/components/VaiAllAncora";
+
+// Il carattere di Bob. Schibsted Grotesk, licenza SIL Open Font.
+//
+// Perche' next/font e non un <link> a fonts.googleapis.com: next/font scarica
+// i file al momento della build e li serve dal NOSTRO dominio. Il browser
+// dell'utente non parla mai con Google, quindi non c'e' trasferimento di IP
+// verso gli USA da spiegare nell'informativa (vedi docs/DATA_COMPLIANCE.md).
+// In piu' e' una richiesta di rete in meno e niente salto di carattere.
+//
+// E' un font variabile sull'asse del peso, 400-900: per questo `weight` non
+// si specifica. Il codice usa 400/500/600/700/800/900 e nulla sotto il 400,
+// quindi l'asse copre tutto quello che serve.
+//
+// `variable` espone --font-schibsted, a cui punta fontFamily.sans in
+// tailwind.config.ts. La classe va su <html> perche' il preflight di Tailwind
+// mette font-family proprio li'.
+const schibsted = Schibsted_Grotesk({
+  subsets: ["latin", "latin-ext"],
+  display: "swap",
+  variable: "--font-schibsted",
+});
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.meetonda.com";
@@ -65,7 +87,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="it">
+    <html lang="it" className={schibsted.variable}>
       <body className="flex min-h-screen flex-col">
         <JsonLd
           data={{

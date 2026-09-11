@@ -17,7 +17,11 @@ const config: Config = {
         },
       },
       fontFamily: {
+        // Schibsted Grotesk, caricato da next/font in src/app/layout.tsx.
+        // Quello che segue e' la scorta per i pochi millisecondi prima che il
+        // file sia pronto, e per il caso in cui non arrivi affatto.
         sans: [
+          "var(--font-schibsted)",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
