@@ -1,89 +1,107 @@
-# Passaggio di consegne — 10 settembre 2026 (André, con Claude)
+# Passaggio di consegne — 11 settembre 2026 (André, con Claude)
 
-> Sostituisce quello del 9 settembre di Lucio (PR #48) e ne porta avanti tutte
-> le voci ancora aperte, nelle sezioni in fondo. HANDOFF.md si sovrascrive a
-> ogni sessione, **ma quello che è a metà si porta avanti, non si butta**.
+> Sostituisce quello del 10 settembre sera (PR #53) e ne porta avanti tutte le
+> voci ancora aperte, nelle sezioni in fondo. HANDOFF.md si sovrascrive a ogni
+> sessione, **ma quello che è a metà si porta avanti, non si butta**.
 >
-> Nota di processo, perché è costata due giorni: ieri e oggi i due handoff sono
-> vissuti su rami mentre `main` teneva quello dell'8. Due rami che riscrivono
-> lo stesso file dalla stessa base **non si mergiano in fila**: il secondo
-> conflitta. La regola pratica è una sola — **il handoff si mergia il giorno
-> che si scrive**, e chi arriva dopo riscrive sopra quello che trova in `main`.
-> Questo file è la fusione dei due giorni, fatta a mano su `main`.
+> Scritto e mergiato lo stesso giorno, come dice la regola imparata a caro
+> prezzo il 9 e il 10.
 
-## Cosa è andato in produzione (10 settembre — il punteggio è vivo)
+## Cosa è andato in produzione (11 settembre — Bob ha un carattere)
 
-- **La 072 è applicata** (07:02 UTC). `professionals_score` esiste,
-  `getProfessionals` non ricade più su `ordinaSenzaPunteggio`: **il punteggio
-  in elenco è acceso**. Chiude la voce che il handoff del 9 lasciava aperta.
-- **075 · I segnali pubblici, applicata** (07:35 UTC). La 072 era nata
-  `security definer` e chiamabile da chi visita il sito, perché il tempo di
-  risposta si calcola su `request_messages`. Due rilievi advisor (0028 e 0029),
-  e avevano ragione. La 075 separa le due cose: `professional_signals` (una
-  riga per professionista con la **mediana dei minuti di prima risposta** e su
-  quante conversazioni), `aggiorna_segnali_professionisti()` con `execute`
-  revocato a public/anon/authenticated, un **trigger** su `request_messages`
-  che aggiorna il pro appena risponde, e il lavoro notturno
-  **`aggiorna-segnali-professionisti` alle 04:10 UTC** con traccia in
-  `system_job_runs`. `professionals_score` è tornata **`security invoker`**:
-  non legge più niente di privato. **Advisor dopo: solo `Leaked Password
-  Protection`.** I punteggi prima e dopo la riscrittura sono identici.
-- **Come ordina, in due tempi.** Primo: chi ha dichiarato *quel* lavoro sta in
-  un gruppo che viene prima, e nessun punteggio lo scavalca. Poi, dentro il
-  gruppo, cento punti: area 20, valutazione 25, **tempo di risposta misurato**
-  20, **prezzo dichiarato** 15, disponibilità 10, verifica 7, completezza 3.
-  Quello che non abbiamo misurato vale il centro della scala e non toglie
-  punti. Pubblicato su `/come-funziona#ordine`, spiegato in `docs/RICERCA.md`
-  §4.
-- **Due scelte da sapere**: i punti vanno a chi *dichiara* un prezzo, non a chi
-  costa meno (premiare il numero più basso su prezzi che nessuno verifica
-  premia chi scrive meno); e il numero di lavori conclusi non è più una voce a
-  sé, entra come peso delle valutazioni, per non contarlo due volte e non
-  punire due volte chi ha appena cominciato.
-- **La richiesta ricorda quale lavoro era** (PR #42): `requests.subservice_id`
-  lo scrive la ricerca e lo scrive il brief di Bob. Era la colonna vuota su
-  cui poggia l'idea di dedurre le dichiarazioni dai lavori chiusi.
-- **Le ancore funzionano anche a freddo** (PR #50). `VaiAllAncora` in
-  `src/app/layout.tsx`: al montaggio, se c'e' un hash e il bersaglio esiste, lo
-  porta in vista — con qualche tentativo ravvicinato, perche' sopra il
-  bersaglio si montano da soli la fascia del fermo e la finestra degli avvisi e
-  spostano il punto giusto, e smettendo al primo tocco dell'utente. Prima
-  `/come-funziona#ordine` aperto da un link incollato lasciava la pagina in
-  cima: il clic dentro il sito funzionava, un link condiviso no, e la sezione
-  sull'ordinamento e' proprio quella che l'art. 22 co. 4-bis vuole
-  raggiungibile. Verificato dal vivo: `scrollY` 809 su `#ordine` e 723 su
-  `#come-funziona`, sezione a 96px, dal primo campione. **`behavior: "instant"`
-  non e' cosmetico**: `globals.css` mette `scroll-behavior: smooth` su `html`,
-  e un'animazione non parte in una scheda che non e' in primo piano — cioe'
-  esattamente il caso del link aperto da un messaggio.
-- **077 · Il prezzo conta anche quando e' una tariffa, applicata.** La voce
-  «prezzo» guardava solo `min_price`: ora conta
-  `coalesce(min_price, max_price, rate_amount)`. Tre righe con la tariffa
-  oraria contavano come «senza prezzo». In produzione: su «pulizie ordinarie»
-  Milano Clean Squad passa da 10 a 15 punti, nessun altro cambia, FOTOPRO resta
-  a 0 perche' un prezzo non ce l'ha davvero. Advisor dopo: solo `Leaked
-  Password Protection`.
-- **Il punteggio si e' mosso da solo su traffico vero.** FOTOPRO e' passato da
-  52.43 a 62.43 senza che nessuno toccasse niente: il suo tempo di risposta e'
-  passato da «mai misurato» (10, il centro) a **2 minuti** (20). Il trigger
-  della 075 ha registrato una risposta vera in `professional_signals` e
-  l'ordine e' cambiato. E' la prima volta che la reattivita' misurata funziona
-  su traffico reale e non in una prova.
-- **Le due fasi si vedono all'opera.** Su «pulizie ordinarie» Milano Clean
-  Squad e' primo con **71.21** davanti a IdroMilano con **71.63**: ha meno
-  punti e sta davanti perche' ha dichiarato il lavoro cercato. E' la regola,
-  non un difetto.
-- **Verifica dal vivo FATTA** su www.meetonda.com, desktop e 390px reali — per
-  la parte ricerca/ordinamento la voce aperta dal 5 settembre è chiusa. Visto
-  funzionare: i suggerimenti dal server («bagno allagato» → *Emergenza
-  allagamento, idraulico*), la targhetta «Stai cercando», l'URL che si
-  canonicalizza in `?q=…&service=idraulico`, la scheda che dice «Offre
-  emergenza allagamento», **l'ordine in pagina identico al punteggio SQL**
-  (71.63 / 68.77 / 66.66 / 66.21 / 64.66 / 52.43), il link «Come ordiniamo i
-  risultati» che atterra sulla sezione esatta, e a 390px `scrollWidth` esatto
-  390 su entrambe le pagine, zero elementi più larghi del telefono.
+Giornata su una cosa sola: il **blocco A** dell'audit design
+(`claude/AUDIT_design_11set.md`). Nessuna migrazione, nessun tocco a Supabase,
+nessuna modifica funzionale. Solo interfaccia.
 
-## Cosa è a metà — mio
+- **Il carattere.** Prima `fontFamily.sans` era lo stack di sistema, cioè
+  nessuna scelta mai fatta: `document.fonts` sulla home restituiva un array
+  vuoto. Ora è **Schibsted Grotesk** (Bakken & Bæck, SIL Open Font 1.1),
+  variabile 400–900 — deciso da André e Lucio guardando otto candidati resi
+  dentro le schermate vere di Bob, non su una specimen page.
+- **Caricato con `next/font/google`, non con un `<link>` a Google.** I file si
+  scaricano alla build e si servono da `/_next/static/media/*.woff2`, cioè dal
+  nostro dominio: il browser dell'utente non parla mai con Google, quindi non
+  c'è un trasferimento di IP verso gli USA da mettere nell'informativa. La
+  classe va su `<html>` e non su `<body>` perché il preflight di Tailwind mette
+  `font-family` proprio lì.
+- **La scala tipografica cambiata nel config, non nei componenti.** L'87% delle
+  utility di dimensione (820 su 942) stava a 14px o meno, e la dimensione più
+  frequente sullo schermo era 12px. Invece di 537 sostituzioni a mano, i token
+  cambiano significato in `tailwind.config.ts`: `xs` 12→13, `sm` 14→15, `base`
+  16→17, `lg` 18→19, `xl` 20→21, più un nuovo `2xs` da 11px per i dati fitti.
+  Da `2xl` in su restano i valori di Tailwind. **Un file invece di centinaia, e
+  si annulla in una riga** — se la scala non convince, si torna indietro senza
+  toccare nessun componente.
+- **I 56 `text-[10px]` e `text-[11px]`** scavalcavano la scala: ora passano per
+  `2xs`. Non esistono più dimensioni fuori sistema.
+- **475 grigi portati sopra la soglia di contrasto.** Misurati su `#fafafb`:
+  `/40`=2.43, `/45`=2.78, `/50`=3.19, `/55`=3.69, `/60`=4.29, contro una soglia
+  AA di 4.50. **Nessuno passava.** Mappati su `/65` (5.02) e `/70` (5.91)
+  conservando l'ordine di intensità.
+- **Il calendario ha più aria**: `HOUR_PX_WEEK` 56→64, `HOUR_PX_DAY` 72→80,
+  perché con le etichette a 11px invece di 10 un appuntamento da mezz'ora non
+  teneva più due righe.
+- **Verifica dal vivo FATTA** su www.meetonda.com dopo il deploy, desktop e
+  390px: font `__Schibsted_Grotesk_7aaf8b` attivo e auto-ospitato; dimensioni
+  in pagina 13/15/16/17/24/30 — **il 12px non esiste più**; **81 testi
+  controllati, zero sotto AA, contrasto peggiore 4.89**; a 390px `scrollWidth`
+  esatto 390, nessun overflow.
+- **Nota di metodo, perché l'errore è facile da rifare**: il primo giro di
+  misura del contrasto dava 9 falsi positivi a 1.16:1. Erano i chip con
+  `bg-black/5`. Risalire al primo sfondo non trasparente **non basta** — vanno
+  composti tutti gli strati semitrasparenti fino a quello opaco, altrimenti un
+  5% di nero viene letto come nero pieno.
+
+## Cosa è a metà — mio (11 settembre)
+
+- **Il calendario non è mai stato guardato dal vivo.** È dietro il login, che
+  la sessione di lavoro non aveva. È l'unico punto a rischio di tutto il blocco
+  A: **11px dentro un blocco da mezz'ora**. Se due righe non entrano, si alza
+  ancora `HOUR_PX_WEEK` in `src/lib/calendar.ts` o si riportano le etichette a
+  10px lasciando tutto il resto — una riga in entrambi i casi. **Da fare al
+  primo login.**
+- **Il blocco B dell'audit — la larghezza — è il prossimo, e ha una scadenza
+  vera.** Oggi `container-bob` è 1120px fissi e serve sia le pagine pubbliche
+  sia la dashboard: su uno schermo da 1840px **720px sono margine vuoto, il 39%
+  dello schermo**, e il calendario ne riceve 676. I margini sono più larghi del
+  calendario. Serve un `container-app` largo per dashboard, messaggi e
+  impostazioni, lasciando `container-bob` a 1120 per le pagine pubbliche, dove
+  è giusto. **Ogni schermata costruita da qui a gennaio nasce dentro il guscio
+  attuale**: fatto adesso, quello che viene dopo nasce giusto; fatto a
+  dicembre, si rifà quello che c'è in mezzo.
+- **Il blocco C — le modali che diventano pagine — è il costoso.**
+  `InstantBookingDialog` sono 667 righe dentro `max-w-lg` (512px);
+  `QuoteDialog`, `RequestDialog` e `AppointmentDialog` stanno fra 320 e 345
+  righe dentro 448px. Una modale va bene per «sei sicuro?», non per un flusso
+  di lavoro senza URL e senza tasto indietro. Tocca routing e struttura: 1–2
+  settimane, e **non deve atterrare nelle ultime 4–6 settimane prima del
+  pilota**.
+- **Restano 6 `font-mono`** che cadono sul mono di sistema. Schibsted non ha un
+  monospaziato; l'abbinamento naturale è IBM Plex Mono o JetBrains Mono. Non
+  urgente, ma è l'ultimo pezzo di tipografia non scelta.
+
+## Cosa ho applicato in produzione che l'altro deve sapere
+
+- **Niente su Supabase oggi.** Nessuna migrazione, nessun oggetto nuovo,
+  nessun advisor da rilanciare. Solo un deploy Vercel da `main`.
+- **Ho toccato 18 file dell'area di Lucio** — tutto `src/app/admin/**` più
+  `src/components/admin/CatalogInstantEditor.tsx` — e questo **strappa la
+  regola** «un'edit nell'area dell'altro va nel suo PR». L'ho fatto lo stesso
+  perché era una sostituzione meccanica e globale, non una modifica funzionale:
+  lo stesso passaggio di `text-bob-ink/45` → `/65` su tutto il progetto.
+  Lasciare fuori l'admin avrebbe significato un admin con contrasti diversi dal
+  resto del sito e una seconda passata da fare dopo. **Ma la regola è stata
+  attraversata e va detto, non nascosto**: Lucio, se preferisci che l'admin
+  torni com'era, è un `git revert` selettivo su quei 18 file.
+- **La scala è globale da adesso.** Qualunque componente nuovo scritto da qui
+  in avanti eredita 13/15/17 invece di 12/14/16, e i grigi hanno un pavimento a
+  `/65`. Se qualcosa sembra «troppo grande» rispetto a com'era, non è il
+  componente: è il token, e si discute in `tailwind.config.ts`.
+- **`text-2xs` (11px) esiste e va usato solo per i dati fitti**, cioè il
+  calendario. Non è una nuova taglia generica: se serve testo piccolo altrove,
+  quasi sempre la risposta giusta è `text-xs`.
+
+## Cosa è a metà — portato avanti dal 10 settembre (André)
 
 - **La scheda non mostra la tariffa.** La 077 da' i punti a chi dichiara un
   prezzo in qualunque forma, ma la scheda pubblica stampa solo la forbice:
@@ -112,7 +130,7 @@
   `docs/RICERCA.md` §4. È un file dell'area di Lucio: va nel suo PR, e insieme
   all'apertura dei pagamenti, col preavviso art. 3 P2B.
 
-## Cosa ho applicato in produzione che l'altro deve sapere
+## Applicato in produzione nei giorni scorsi — resta valido
 
 - **072, 075 e 077 applicate su Supabase**, advisor rilanciati dopo ognuna:
   pulito tranne `Leaked Password Protection`. La 077 sostituisce la stessa
