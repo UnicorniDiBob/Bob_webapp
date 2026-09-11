@@ -154,7 +154,7 @@ export default function AccessoPage() {
 
   if (loading || !user) {
     return (
-      <div className="card p-6 text-sm text-bob-ink/50" aria-busy="true">
+      <div className="card p-6 text-sm text-bob-ink/65" aria-busy="true">
         Carico…
       </div>
     );
@@ -171,7 +171,7 @@ export default function AccessoPage() {
         <h3 className="text-sm font-semibold text-bob-ink">
           Email di accesso
         </h3>
-        <p className="mt-1.5 text-sm text-bob-ink/60">
+        <p className="mt-1.5 text-sm text-bob-ink/70">
           È l&apos;indirizzo con cui entri e a cui mandiamo le comunicazioni di
           servizio.
         </p>
@@ -211,7 +211,7 @@ export default function AccessoPage() {
               autoComplete="email"
               data-testid="input-new-email"
             />
-            <p className="text-xs text-bob-ink/50">
+            <p className="text-xs text-bob-ink/65">
               Per sicurezza riceverai un link di conferma sia sull&apos;email
               attuale sia su quella nuova: il cambio avviene solo quando
               confermi da entrambe.
@@ -248,7 +248,7 @@ export default function AccessoPage() {
       {/* ---- Password ---- */}
       <form onSubmit={salvaPassword} className="card p-5 sm:p-6">
         <h3 className="text-sm font-semibold text-bob-ink">Password</h3>
-        <p className="mt-1.5 text-sm text-bob-ink/60">
+        <p className="mt-1.5 text-sm text-bob-ink/70">
           Per cambiarla serve quella attuale: è il controllo che impedisce a chi
           trova il tuo telefono sbloccato di prendersi l&apos;account.
         </p>
@@ -282,7 +282,7 @@ export default function AccessoPage() {
                 autoComplete="new-password"
                 data-testid="input-new-password"
               />
-              <p className="mt-1 text-xs text-bob-ink/45">
+              <p className="mt-1 text-xs text-bob-ink/65">
                 Almeno {PASSWORD_MIN} caratteri.
               </p>
             </div>
@@ -329,12 +329,12 @@ export default function AccessoPage() {
         <h3 className="text-sm font-semibold text-bob-ink">
           Chiudere l&apos;account
         </h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
           Puoi chiudere il tuo account quando vuoi, senza spiegare perché. Il
           profilo si spegne subito; i dati vengono cancellati dopo{" "}
           {GIORNI_RIPENSAMENTO} giorni, così hai il tempo di ripensarci.
         </p>
-        <p className="mt-2.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-2.5 text-sm leading-relaxed text-bob-ink/70">
           Cosa succede: spariscono profilo, richieste, messaggi, appuntamenti e
           i documenti che hai caricato. Le fatture, se ce ne sono, restano per il
           tempo che ci impone la legge. Le recensioni che hai scritto restano

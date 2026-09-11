@@ -87,7 +87,7 @@ function Riepilogo({
               className="flex items-center gap-2 px-1.5 py-1 text-xs"
             >
               {spunta}
-              <span className={v.fatto ? "text-bob-ink/40" : "text-bob-ink/75"}>
+              <span className={v.fatto ? "text-bob-ink/65" : "text-bob-ink/75"}>
                 {v.titolo}
               </span>
             </li>

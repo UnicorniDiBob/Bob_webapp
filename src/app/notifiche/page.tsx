@@ -43,7 +43,7 @@ export default function NotifichePage() {
 
   if (loading || !user) {
     return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+      <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
         Carico…
       </div>
     );
@@ -55,10 +55,10 @@ export default function NotifichePage() {
         <div>
           <span className="section-eyebrow">Notifiche di servizio</span>
           <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-bob-ink">
-            <Bell className="h-6 w-6 text-bob-ink/40" aria-hidden="true" />
+            <Bell className="h-6 w-6 text-bob-ink/65" aria-hidden="true" />
             Cosa ti abbiamo detto
           </h1>
-          <p className="mt-1.5 text-sm text-bob-ink/60">
+          <p className="mt-1.5 text-sm text-bob-ink/70">
             Verifica, risposte dell&apos;assistenza, stato del tuo profilo e
             del tuo account. I messaggi dei clienti stanno in{" "}
             <Link
@@ -82,7 +82,7 @@ export default function NotifichePage() {
       </header>
 
       {!caricate ? (
-        <div className="card p-6 text-center text-sm text-bob-ink/50">
+        <div className="card p-6 text-center text-sm text-bob-ink/65">
           Controllo…
         </div>
       ) : notifiche.length === 0 ? (
@@ -90,7 +90,7 @@ export default function NotifichePage() {
           <p className="text-base font-semibold text-bob-ink">
             Non c&apos;è niente da leggere.
           </p>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-bob-ink/55">
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-bob-ink/70">
             Quando avremo qualcosa da dirti — una verifica da completare, una
             risposta dell&apos;assistenza, un problema sul tuo profilo — lo
             trovi qui, e la campanella nell&apos;intestazione si accende.
@@ -111,7 +111,7 @@ export default function NotifichePage() {
         </ul>
       )}
 
-      <p className="mt-4 text-center text-xs leading-relaxed text-bob-ink/40">
+      <p className="mt-4 text-center text-xs leading-relaxed text-bob-ink/65">
         Queste notifiche si calcolano dal tuo account ogni volta che apri la
         pagina: non sono una copia salvata da qualche parte, quindi spariscono
         da sole quando la cosa che le ha fatte nascere è risolta.

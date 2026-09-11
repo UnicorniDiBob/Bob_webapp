@@ -74,7 +74,7 @@ export function GuidaBarra() {
         <button
           type="button"
           onClick={() => scriviProgresso(null)}
-          className="rounded-lg p-1.5 text-bob-ink/40 transition hover:bg-black/5 hover:text-bob-ink"
+          className="rounded-lg p-1.5 text-bob-ink/65 transition hover:bg-black/5 hover:text-bob-ink"
           aria-label="Esci dalla guida"
           data-testid="button-esci-guida"
         >

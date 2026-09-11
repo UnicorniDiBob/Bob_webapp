@@ -60,7 +60,7 @@ export function EditUserButton({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="shrink-0 rounded-xl border border-black/10 px-3 py-1.5 text-xs font-medium text-bob-ink/60 hover:border-bob-indigo/30 hover:text-bob-indigo"
+        className="shrink-0 rounded-xl border border-black/10 px-3 py-1.5 text-xs font-medium text-bob-ink/70 hover:border-bob-indigo/30 hover:text-bob-indigo"
       >
         Modifica
       </button>

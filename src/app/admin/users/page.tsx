@@ -79,7 +79,7 @@ export default async function AdminUsersPage() {
         <h1 className="text-2xl font-bold tracking-tight text-bob-ink">
           Gestione utenti
         </h1>
-        <p className="mt-1 text-sm text-bob-ink/55">
+        <p className="mt-1 text-sm text-bob-ink/70">
           {rows.length} utenti registrati. Cerca, filtra per ruolo e modifica i profili.
         </p>
       </div>

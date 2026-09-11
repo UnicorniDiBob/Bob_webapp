@@ -43,7 +43,7 @@ export default async function AdminCatalogoPage() {
         <h1 className="text-2xl font-bold tracking-tight text-bob-ink">
           Prenotazione diretta — catalogo
         </h1>
-        <p className="mt-1 text-sm text-bob-ink/55">
+        <p className="mt-1 text-sm text-bob-ink/70">
           Scegli quali lavori possono essere prenotati direttamente e definisci i
           campi che il cliente compila. Solo i lavori a tariffa fissa dovrebbero
           essere idonei.

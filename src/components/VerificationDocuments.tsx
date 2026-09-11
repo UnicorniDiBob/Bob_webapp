@@ -100,7 +100,7 @@ export default function VerificationDocuments({
 
   return (
     <div className="mt-3">
-      <p className="text-sm text-bob-ink/60">
+      <p className="text-sm text-bob-ink/70">
         Se lo staff ti ha chiesto dei documenti (visura, attestati, documento
         d&apos;identità), caricali qui: li vede solo il team di verifica.
       </p>
@@ -127,7 +127,7 @@ export default function VerificationDocuments({
           <Upload className="h-4 w-4" aria-hidden="true" />
           {busy ? "Carico…" : "Carica un documento"}
         </button>
-        <span className="text-xs text-bob-ink/40">PDF, JPG, PNG · max {MAX_MB} MB</span>
+        <span className="text-xs text-bob-ink/65">PDF, JPG, PNG · max {MAX_MB} MB</span>
       </div>
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
@@ -139,10 +139,10 @@ export default function VerificationDocuments({
               key={d.id}
               className="flex items-center gap-2 rounded-xl border border-black/5 bg-black/[0.02] px-3 py-2 text-sm"
             >
-              <FileText className="h-4 w-4 shrink-0 text-bob-ink/40" aria-hidden="true" />
+              <FileText className="h-4 w-4 shrink-0 text-bob-ink/65" aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate text-bob-ink/75">{d.file_name}</span>
               {d.status === "in_esame" && (
-                <span className="inline-flex items-center gap-1 text-xs text-bob-ink/50">
+                <span className="inline-flex items-center gap-1 text-xs text-bob-ink/65">
                   <Clock className="h-3.5 w-3.5" aria-hidden="true" /> In esame
                 </span>
               )}

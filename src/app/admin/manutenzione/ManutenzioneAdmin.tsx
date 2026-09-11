@@ -80,9 +80,9 @@ function leggibile(iso: string): string {
 
 function stato(r: Riga): { testo: string; classe: string } {
   const ora = Date.now();
-  if (r.annullata_il) return { testo: "Annullata", classe: "bg-black/5 text-bob-ink/50" };
+  if (r.annullata_il) return { testo: "Annullata", classe: "bg-black/5 text-bob-ink/65" };
   if (new Date(r.fine_il).getTime() <= ora) {
-    return { testo: "Finita", classe: "bg-black/5 text-bob-ink/50" };
+    return { testo: "Finita", classe: "bg-black/5 text-bob-ink/65" };
   }
   if (new Date(r.inizio_il).getTime() > ora) {
     return { testo: "Programmata", classe: "bg-amber-50 text-amber-700" };
@@ -354,10 +354,10 @@ export function ManutenzioneAdmin() {
       <header className="mb-6">
         <span className="section-eyebrow">Admin</span>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-bob-ink">
-          <PowerOff className="h-6 w-6 text-bob-ink/40" aria-hidden="true" />
+          <PowerOff className="h-6 w-6 text-bob-ink/65" aria-hidden="true" />
           Fermo e manutenzione
         </h1>
-        <p className="mt-1.5 text-sm text-bob-ink/60">
+        <p className="mt-1.5 text-sm text-bob-ink/70">
           Mentre una finestra è in corso, chi non è staff non entra da nessuna
           parte: vede una pagina di cortesia con il motivo e l&apos;ora di
           riapertura. Admin e CS continuano a lavorare normalmente.
@@ -384,7 +384,7 @@ export function ManutenzioneAdmin() {
             Bob è fermo adesso
           </p>
           <p className="mt-2 text-sm text-bob-ink/80">{inCorso.motivo}</p>
-          <p className="mt-1 text-sm text-bob-ink/60">
+          <p className="mt-1 text-sm text-bob-ink/70">
             Riapre da solo <ContoAllaRovescia fine={inCorso.fine_il} />, alle{" "}
             {new Date(inCorso.fine_il).toLocaleTimeString("it-IT", {
               hour: "2-digit",
@@ -419,7 +419,7 @@ export function ManutenzioneAdmin() {
           <PowerOff className="h-4 w-4 text-red-600" aria-hidden="true" />
           Ferma Bob adesso
         </h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
           Per quando qualcosa è già andato storto e il sito deve chiudere subito.
           Ha effetto entro dieci secondi su tutte le pagine e su tutte le API.
           Riapre da solo alla scadenza che scegli.
@@ -457,7 +457,7 @@ export function ManutenzioneAdmin() {
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-xs text-bob-ink/50">
+              <p className="mt-1.5 text-xs text-bob-ink/65">
                 Si prolunga e si riapre in un clic. Quello che non si può fare è
                 lasciarlo acceso per dimenticanza.
               </p>
@@ -476,7 +476,7 @@ export function ManutenzioneAdmin() {
                 maxLength={300}
                 data-testid="rapido-motivo"
               />
-              <p className="mt-1 text-xs text-bob-ink/45">
+              <p className="mt-1 text-xs text-bob-ink/65">
                 Lo legge chiunque arrivi sul sito, anche chi non è registrato e
                 anche i motori di ricerca. Niente di interno.
               </p>
@@ -531,10 +531,10 @@ export function ManutenzioneAdmin() {
       {/* --- programmata --- */}
       <section className="card mt-6 p-5" data-testid="programma-manutenzione">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-bob-ink">
-          <CalendarClock className="h-4 w-4 text-bob-ink/40" aria-hidden="true" />
+          <CalendarClock className="h-4 w-4 text-bob-ink/65" aria-hidden="true" />
           Programma una manutenzione
         </h2>
-        <p className="mt-1.5 text-sm text-bob-ink/60">
+        <p className="mt-1.5 text-sm text-bob-ink/70">
           Scegli quando, scrivi cosa vedranno, e decidi con quanto anticipo
           avvisare. Il preavviso è un avviso di servizio vero: finestra al primo
           accesso, poi nella campanella, e si spegne da solo quando il fermo
@@ -615,7 +615,7 @@ export function ManutenzioneAdmin() {
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-bob-ink/45">
+            <p className="mt-1 text-xs text-bob-ink/65">
               La fascia in cima al sito la vedono tutti, registrati o no, da 48
               ore prima. Questa scelta riguarda la finestra al primo accesso,
               che vedono solo gli utenti con un account.
@@ -633,7 +633,7 @@ export function ManutenzioneAdmin() {
                   {motivoPulito}
                 </p>
                 {dettaglioPulito && (
-                  <p className="mt-1.5 whitespace-pre-line text-sm text-bob-ink/60">
+                  <p className="mt-1.5 whitespace-pre-line text-sm text-bob-ink/70">
                     {dettaglioPulito}
                   </p>
                 )}
@@ -666,13 +666,13 @@ export function ManutenzioneAdmin() {
 
       {/* --- elenco --- */}
       <section className="mt-6">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
           Le finestre
         </h2>
         {!caricate ? (
-          <p className="text-sm text-bob-ink/50">Carico…</p>
+          <p className="text-sm text-bob-ink/65">Carico…</p>
         ) : righe.length === 0 ? (
-          <div className="card p-6 text-sm text-bob-ink/55">
+          <div className="card p-6 text-sm text-bob-ink/70">
             Bob non si è mai fermato.
           </div>
         ) : (
@@ -690,17 +690,17 @@ export function ManutenzioneAdmin() {
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-2">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.classe}`}
+                        className={`rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide ${s.classe}`}
                       >
                         {s.testo}
                       </span>
                       {r.immediata && (
-                        <span className="text-[11px] text-bob-ink/45">
+                        <span className="text-2xs text-bob-ink/65">
                           fermo rapido
                         </span>
                       )}
                       {r.avviso_id && (
-                        <span className="text-[11px] text-bob-ink/45">
+                        <span className="text-2xs text-bob-ink/65">
                           con preavviso
                         </span>
                       )}
@@ -708,7 +708,7 @@ export function ManutenzioneAdmin() {
                     <p className="mt-1 line-clamp-2 text-sm text-bob-ink/70">
                       {r.motivo}
                     </p>
-                    <p className="mt-1 text-xs text-bob-ink/45">
+                    <p className="mt-1 text-xs text-bob-ink/65">
                       {leggibile(r.inizio_il)} → {leggibile(r.fine_il)}
                     </p>
                   </div>
@@ -716,7 +716,7 @@ export function ManutenzioneAdmin() {
                     <button
                       type="button"
                       onClick={() => riapri(r)}
-                      className="shrink-0 rounded-xl border border-black/10 px-3 py-1.5 text-xs font-medium text-bob-ink/60 hover:border-emerald-300 hover:text-emerald-700"
+                      className="shrink-0 rounded-xl border border-black/10 px-3 py-1.5 text-xs font-medium text-bob-ink/70 hover:border-emerald-300 hover:text-emerald-700"
                     >
                       Riapri adesso
                     </button>
@@ -725,7 +725,7 @@ export function ManutenzioneAdmin() {
                     <button
                       type="button"
                       onClick={() => annulla(r)}
-                      className="shrink-0 rounded-xl border border-black/10 px-3 py-1.5 text-xs font-medium text-bob-ink/60 hover:border-red-300 hover:text-red-600"
+                      className="shrink-0 rounded-xl border border-black/10 px-3 py-1.5 text-xs font-medium text-bob-ink/70 hover:border-red-300 hover:text-red-600"
                       data-testid={`annulla-${r.id}`}
                     >
                       Annulla

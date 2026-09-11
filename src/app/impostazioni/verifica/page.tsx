@@ -92,7 +92,7 @@ export default function VerificaPage() {
       {/* Stato attuale, in cima e in chiaro: prima bisognava dedurlo. */}
       <div className="card flex flex-wrap items-center justify-between gap-3 p-5">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/50">
+          <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/65">
             Il tuo livello adesso
           </p>
           <div className="mt-1.5">
@@ -182,7 +182,7 @@ export default function VerificaPage() {
             <h3 className="text-sm font-semibold text-bob-ink">
               Documenti
             </h3>
-            <p className="mt-1 text-sm text-bob-ink/55">
+            <p className="mt-1 text-sm text-bob-ink/70">
               Servono solo se ti chiediamo un controllo in più: in quel caso te
               lo scriviamo e ti diciamo cosa caricare.
             </p>

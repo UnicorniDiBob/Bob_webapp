@@ -81,7 +81,7 @@ export function TermsDialog({
             <h2 id="terms-dialog-title" className="text-lg font-bold sm:text-xl">
               Termini del servizio
             </h2>
-            <p className="mt-1 text-xs text-bob-ink/55 sm:text-sm">
+            <p className="mt-1 text-xs text-bob-ink/70 sm:text-sm">
               {isPro ? "Versione per i professionisti" : "Versione per i clienti"}{" "}
               · aggiornati a {TERMS_UPDATED}
             </p>
@@ -99,7 +99,7 @@ export function TermsDialog({
             type="button"
             onClick={onClose}
             aria-label="Chiudi"
-            className="-mr-1 shrink-0 rounded-lg p-2 text-bob-ink/40 transition hover:bg-black/5 hover:text-bob-ink"
+            className="-mr-1 shrink-0 rounded-lg p-2 text-bob-ink/65 transition hover:bg-black/5 hover:text-bob-ink"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>

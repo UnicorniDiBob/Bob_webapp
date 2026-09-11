@@ -206,7 +206,7 @@ export default function PerIProfessionistiPage() {
           <h2 className="text-lg font-semibold text-bob-ink">
             Come funziona per te
           </h2>
-          <p className="mt-1 text-sm text-bob-ink/60">
+          <p className="mt-1 text-sm text-bob-ink/70">
             Dalla registrazione al lavoro chiuso, senza comprare un contatto.
           </p>
           <ol className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -216,7 +216,7 @@ export default function PerIProfessionistiPage() {
                   {s.n}
                 </span>
                 <span className="mt-1 font-medium text-bob-ink">{s.title}</span>
-                <span className="text-sm leading-relaxed text-bob-ink/60">
+                <span className="text-sm leading-relaxed text-bob-ink/70">
                   {s.text}
                 </span>
               </li>
@@ -231,7 +231,7 @@ export default function PerIProfessionistiPage() {
           <h2 className="text-lg font-semibold text-bob-ink">
             Quanto costa, in chiaro
           </h2>
-          <p className="mt-1 text-sm text-bob-ink/60">
+          <p className="mt-1 text-sm text-bob-ink/70">
             Chiediamo ai professionisti prezzi trasparenti: ecco i nostri.
           </p>
 
@@ -242,7 +242,7 @@ export default function PerIProfessionistiPage() {
                 Iscrizione e contatti
               </p>
               <p className="mt-1 text-2xl font-bold text-bob-ink">Gratis</p>
-              <p className="mt-1 text-xs leading-relaxed text-bob-ink/60">
+              <p className="mt-1 text-xs leading-relaxed text-bob-ink/70">
                 Profilo, richieste e messaggi con i clienti: gratuiti oggi e
                 sempre, su qualsiasi piano. Niente lead a pagamento.
               </p>
@@ -253,11 +253,11 @@ export default function PerIProfessionistiPage() {
               </p>
               <p className="mt-1 text-2xl font-bold text-bob-ink">
                 8%
-                <span className="ml-1 text-sm font-medium text-bob-ink/50">
+                <span className="ml-1 text-sm font-medium text-bob-ink/65">
                   solo con Garanzia Bob
                 </span>
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-bob-ink/60">
+              <p className="mt-1 text-xs leading-relaxed text-bob-ink/70">
                 Si applica solo se attivi la Garanzia Bob sul lavoro: pagamento
                 protetto, recensioni verificate, mediazione. Mai obbligatoria.
               </p>
@@ -273,7 +273,7 @@ export default function PerIProfessionistiPage() {
           <h2 className="mt-1 text-xl font-bold text-bob-ink">
             Scegli quanto vuoi che Bob lavori per te
           </h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-bob-ink/60">
+          <p className="mx-auto mt-2 max-w-xl text-sm text-bob-ink/70">
             Il piano riguarda gli strumenti di lavoro, non i contatti: quelli
             non si pagano su nessun piano.
           </p>
@@ -303,7 +303,7 @@ export default function PerIProfessionistiPage() {
               <p className="mt-3 text-3xl font-extrabold text-bob-ink">
                 {p.price}
               </p>
-              <p className="mt-1 text-xs text-bob-ink/55">{p.priceNote}</p>
+              <p className="mt-1 text-xs text-bob-ink/70">{p.priceNote}</p>
               <p className="mt-3 text-sm leading-relaxed text-bob-ink/65">
                 {p.pitch}
               </p>
@@ -326,7 +326,7 @@ export default function PerIProfessionistiPage() {
           ))}
         </div>
 
-        <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-bob-ink/55">
+        <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-bob-ink/70">
           <span className="inline-flex items-center gap-1.5">
             <BobDot /> Add-on Visibility Boost: 15 €/mese, sempre etichettato
             come tale

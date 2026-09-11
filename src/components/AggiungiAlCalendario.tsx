@@ -147,7 +147,7 @@ export function AggiungiAlCalendario({
               </a>
             </div>
 
-            <p className="mt-3 text-xs leading-relaxed text-bob-ink/50">
+            <p className="mt-3 text-xs leading-relaxed text-bob-ink/65">
               Nell&apos;appuntamento finiscono solo titolo, giorno, ora e
               durata: né indirizzo né numero di telefono. Il primo bottone
               scarica un file dal nostro server; il secondo apre Google, che

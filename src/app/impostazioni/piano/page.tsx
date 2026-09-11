@@ -240,7 +240,7 @@ export default function PianoDashboardPage() {
       <div className="card p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/50">
+            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/65">
               Il tuo piano
             </p>
             <p className="mt-1 text-xl font-bold text-bob-ink">{attuale.nome}</p>
@@ -249,13 +249,13 @@ export default function PianoDashboardPage() {
             <p className="text-sm text-bob-ink/70">
               <span className="font-semibold">{etichettaAttuale.attuale}</span>
               {etichettaAttuale.listino && (
-                <span className="ml-1.5 text-bob-ink/40 line-through">
+                <span className="ml-1.5 text-bob-ink/65 line-through">
                   {etichettaAttuale.listino}
                 </span>
               )}
             </p>
             {etichettaAttuale.nota && (
-              <p className="text-xs text-bob-ink/45">{etichettaAttuale.nota}</p>
+              <p className="text-xs text-bob-ink/65">{etichettaAttuale.nota}</p>
             )}
           </div>
         </div>
@@ -272,7 +272,7 @@ export default function PianoDashboardPage() {
         </ul>
 
         {cambiato && (
-          <p className="mt-4 text-xs text-bob-ink/45">
+          <p className="mt-4 text-xs text-bob-ink/65">
             Attivo dal {fmtData(cambiato)}.
           </p>
         )}
@@ -290,7 +290,7 @@ export default function PianoDashboardPage() {
             {fmtData(promo.redeemedAt)}.
             {promo.description ? ` ${promo.description}.` : ""}
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-bob-ink/60">
+          <p className="mt-2 text-sm leading-relaxed text-bob-ink/70">
             {promo.expiresAt ? (
               <>
                 Scade il <strong>{fmtData(promo.expiresAt)}</strong>: da quel
@@ -314,13 +314,13 @@ export default function PianoDashboardPage() {
         <h3 className="text-sm font-semibold text-bob-ink">
           Metodo di pagamento
         </h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
           Non ce n&apos;è ancora bisogno: in questa fase i piani si attivano con
           un codice e non ti chiediamo una carta. Quando apriremo gli
           abbonamenti a pagamento potrai aggiungerla qui, e vedrai le fatture
           nello stesso posto.
         </p>
-        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-2.5 py-1 text-xs font-medium text-bob-ink/55">
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-black/[0.04] px-2.5 py-1 text-xs font-medium text-bob-ink/70">
           In arrivo
         </p>
       </div>
@@ -330,7 +330,7 @@ export default function PianoDashboardPage() {
           sua assenza. */}
       <div className="card p-5">
         <h3 className="text-sm font-semibold text-bob-ink">Gli altri piani</h3>
-        <p className="mt-1 text-sm text-bob-ink/55">
+        <p className="mt-1 text-sm text-bob-ink/70">
           Quello che il tuo codice copre lo attivi da qui, subito. Per il resto,
           scrivici: finché i pagamenti non sono attivi lo facciamo noi.
         </p>
@@ -349,7 +349,7 @@ export default function PianoDashboardPage() {
                 className="flex flex-col rounded-xl border border-black/[0.07] p-4"
               >
                 <p className="font-semibold text-bob-ink">{p.nome}</p>
-                <p className="text-sm text-bob-ink/55">
+                <p className="text-sm text-bob-ink/70">
                   {et.attuale}
                   {et.listino && (
                     <span className="ml-1.5 line-through opacity-60">
@@ -378,7 +378,7 @@ export default function PianoDashboardPage() {
             );
           })}
         </div>
-        <p className="mt-4 text-xs text-bob-ink/45">
+        <p className="mt-4 text-xs text-bob-ink/65">
           Il listino completo, con le funzioni in arrivo, è su{" "}
           <Link
             href="/per-i-professionisti"
@@ -414,7 +414,7 @@ export default function PianoDashboardPage() {
                 <strong>{fmtData(disdetta.effettivaDal)}</strong>: fino a quel
                 giorno non cambia niente, poi passi al piano Free.
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-bob-ink/60">
+              <p className="mt-2 text-sm leading-relaxed text-bob-ink/70">
                 Il profilo resta pubblico e continui a ricevere richieste e
                 messaggi anche dopo. {BADGE_RESTA}
               </p>
@@ -439,12 +439,12 @@ export default function PianoDashboardPage() {
             </p>
           ) : !chiedoConferma ? (
             <>
-              <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+              <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
                 Puoi farlo in qualsiasi momento, senza costi di disdetta e
                 senza penali. Torni al piano Free: il profilo resta pubblico e
                 continui a ricevere richieste e messaggi.
               </p>
-              <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+              <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
                 {effetto.quando}
               </p>
               <button
@@ -479,10 +479,10 @@ export default function PianoDashboardPage() {
                 ))}
               </ul>
 
-              <p className="mt-3 text-sm leading-relaxed text-bob-ink/60">
+              <p className="mt-3 text-sm leading-relaxed text-bob-ink/70">
                 {effetto.quando}
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-bob-ink/60">
+              <p className="mt-2 text-sm leading-relaxed text-bob-ink/70">
                 {BADGE_RESTA}
               </p>
 

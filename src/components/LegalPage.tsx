@@ -22,7 +22,7 @@ export function LegalPage({
           {title}
         </h1>
         {updated && (
-          <p className="mt-2 text-xs text-bob-ink/45">
+          <p className="mt-2 text-xs text-bob-ink/65">
             Ultimo aggiornamento: {updated}
           </p>
         )}

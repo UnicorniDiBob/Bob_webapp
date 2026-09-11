@@ -89,7 +89,7 @@ export function CityWaitlistForm({
         <p className="text-sm font-semibold text-emerald-700">
           Fatto! Ti avviso appena arrivo a {cityName}.
         </p>
-        <p className="mt-1 text-xs text-bob-ink/55">
+        <p className="mt-1 text-xs text-bob-ink/70">
           Nel frattempo, se il problema non aspetta, i professionisti di Milano
           sono già attivi.
         </p>
@@ -153,7 +153,7 @@ export function CityWaitlistForm({
           className="mt-0.5 h-4 w-4 shrink-0 rounded border-black/20 text-bob-indigo focus:ring-bob-indigo/40"
           data-testid="waitlist-marketing"
         />
-        <span className="text-xs leading-snug text-bob-ink/55">
+        <span className="text-xs leading-snug text-bob-ink/70">
           Facoltativo: mandami anche le novità di BOB. Puoi disdire con un clic
           in ogni email.
         </span>
@@ -173,7 +173,7 @@ export function CityWaitlistForm({
           {error}
         </p>
       )}
-      <p className="text-left text-[11px] leading-snug text-bob-ink/45">
+      <p className="text-left text-2xs leading-snug text-bob-ink/65">
         Uso la tua email solo per quello che hai spuntato qui sopra, e la
         conservo al massimo dodici mesi. Dettagli nell&apos;
         <Link href="/privacy" className="underline hover:text-bob-indigo">

@@ -30,7 +30,7 @@ export default async function SupportoPage() {
           la trovi dentro Bob — non serve controllare la posta. Rispondiamo
           entro un giorno lavorativo.
         </p>
-        <p className="mt-2 text-sm text-bob-ink/55">
+        <p className="mt-2 text-sm text-bob-ink/70">
           Se cerchi come funziona qualcosa, molte risposte sono già nelle{" "}
           <Link href="/faq" className="font-medium text-bob-indigo hover:underline">
             domande frequenti
@@ -44,7 +44,7 @@ export default async function SupportoPage() {
       {/* Una cosa che va detta qui e non altrove: se il problema e' urgente e
           riguarda una persona in casa, l'assistenza di un marketplace non e' il
           posto giusto. */}
-      <p className="mt-6 rounded-2xl border border-black/[0.07] bg-white p-4 text-sm leading-relaxed text-bob-ink/60">
+      <p className="mt-6 rounded-2xl border border-black/[0.07] bg-white p-4 text-sm leading-relaxed text-bob-ink/70">
         Se c&apos;è un&apos;emergenza in corso — una perdita d&apos;acqua che
         sta allagando, una fuga di gas, un rischio per qualcuno — non aspettare
         noi: chiama i numeri di emergenza o il pronto intervento del tuo

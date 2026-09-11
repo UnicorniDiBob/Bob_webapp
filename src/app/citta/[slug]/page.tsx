@@ -57,7 +57,7 @@ export default async function CityPage({
           <h1 className="mt-4 text-2xl font-bold text-bob-ink">
             BOB sta arrivando a {city.name}
           </h1>
-          <p className="mt-2 text-sm text-bob-ink/60">
+          <p className="mt-2 text-sm text-bob-ink/70">
             Stiamo verificando i professionisti della zona uno a uno. Lascia la
             tua email: ti avvisiamo appena apriamo.
           </p>
@@ -112,7 +112,7 @@ export default async function CityPage({
           ],
         }}
       />
-      <nav className="mb-4 text-sm text-bob-ink/50" aria-label="breadcrumb">
+      <nav className="mb-4 text-sm text-bob-ink/65" aria-label="breadcrumb">
         <Link href="/citta" className="hover:text-bob-indigo">
           Città
         </Link>
@@ -128,7 +128,7 @@ export default async function CityPage({
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
           Professionisti a {city.name}
         </h1>
-        <p className="mt-2 max-w-xl text-sm text-bob-ink/60">
+        <p className="mt-2 max-w-xl text-sm text-bob-ink/70">
           {pros.length} professionist{pros.length === 1 ? "a" : "i"} con prezzi e
           rating in chiaro. Scegli un servizio o lascia che Bob ti aiuti a capire
           chi contattare.
@@ -137,7 +137,7 @@ export default async function CityPage({
 
       {coveredServices.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
             Servizi disponibili
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -159,7 +159,7 @@ export default async function CityPage({
       )}
 
       <section>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
           Tutti i professionisti
         </h2>
         {pros.length > 0 && (

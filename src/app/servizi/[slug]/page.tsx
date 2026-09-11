@@ -94,7 +94,7 @@ export default async function ServicePage({
           ],
         }}
       />
-      <nav className="mb-4 text-sm text-bob-ink/50" aria-label="breadcrumb">
+      <nav className="mb-4 text-sm text-bob-ink/65" aria-label="breadcrumb">
         <Link href="/servizi" className="hover:text-bob-indigo">
           Servizi
         </Link>
@@ -111,7 +111,7 @@ export default async function ServicePage({
             {service.name}
           </h1>
           {service.description && (
-            <p className="mt-2 max-w-xl text-sm text-bob-ink/60">
+            <p className="mt-2 max-w-xl text-sm text-bob-ink/70">
               {service.description}
             </p>
           )}
@@ -120,7 +120,7 @@ export default async function ServicePage({
 
       {localCities.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
             Scegli la città
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -140,7 +140,7 @@ export default async function ServicePage({
 
       {subservices.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
             Tipi di intervento
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -181,7 +181,7 @@ export default async function ServicePage({
       </section>
 
       <section>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
           {pros.length} professionist{pros.length === 1 ? "a" : "i"} disponibil
           {pros.length === 1 ? "e" : "i"}
         </h2>

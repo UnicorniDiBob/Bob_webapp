@@ -59,12 +59,12 @@ export function DayItinerary({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-bob-ink">Giro del giorno</h3>
-          <p className="truncate text-xs capitalize text-bob-ink/55">
+          <p className="truncate text-xs capitalize text-bob-ink/70">
             {fmtDayLong(day)}
           </p>
         </div>
         {stops.length > 0 && (
-          <span className="shrink-0 rounded-full bg-bob-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-bob-indigo">
+          <span className="shrink-0 rounded-full bg-bob-indigo-50 px-2.5 py-1 text-2xs font-semibold text-bob-indigo">
             {stops.length} {stops.length === 1 ? "tappa" : "tappe"} ·{" "}
             {fmtDuration(totalMinutes)}
           </span>
@@ -72,7 +72,7 @@ export function DayItinerary({
       </div>
 
       {stops.length === 0 ? (
-        <p className="mt-3 text-sm text-bob-ink/50">
+        <p className="mt-3 text-sm text-bob-ink/65">
           Nessun appuntamento in questa giornata.
         </p>
       ) : (
@@ -88,8 +88,8 @@ export function DayItinerary({
                   {/* Tempo fra la tappa precedente e questa */}
                   {gap !== null && (
                     <p
-                      className={`py-1 pl-8 text-[11px] ${
-                        gap < 0 ? "font-semibold text-red-600" : "text-bob-ink/40"
+                      className={`py-1 pl-8 text-2xs ${
+                        gap < 0 ? "font-semibold text-red-600" : "text-bob-ink/65"
                       }`}
                     >
                       {gap < 0
@@ -101,7 +101,7 @@ export function DayItinerary({
                   )}
                   <div className="flex gap-2.5">
                     <span
-                      className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bob-indigo text-[11px] font-bold text-white"
+                      className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bob-indigo text-2xs font-bold text-white"
                       aria-hidden="true"
                     >
                       {i + 1}
@@ -114,7 +114,7 @@ export function DayItinerary({
                       >
                         <p className="text-sm font-semibold tabular-nums text-bob-ink">
                           {fmtHour(new Date(a.starts_at))}
-                          <span className="font-normal text-bob-ink/45">
+                          <span className="font-normal text-bob-ink/65">
                             {" "}
                             · {fmtDuration(a.duration_minutes)}
                           </span>
@@ -124,7 +124,7 @@ export function DayItinerary({
                           {a.title ? ` — ${a.title}` : ""}
                         </p>
                         {label ? (
-                          <p className="flex items-center gap-1 text-xs text-bob-ink/55">
+                          <p className="flex items-center gap-1 text-xs text-bob-ink/70">
                             <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
                             <span className="truncate">{label}</span>
                           </p>
@@ -134,7 +134,7 @@ export function DayItinerary({
                           </p>
                         )}
                         {a.location_notes && (
-                          <p className="flex items-center gap-1 text-xs text-bob-ink/45">
+                          <p className="flex items-center gap-1 text-xs text-bob-ink/65">
                             <Key className="h-3 w-3 shrink-0" aria-hidden="true" />
                             <span className="truncate">{a.location_notes}</span>
                           </p>
@@ -170,7 +170,7 @@ export function DayItinerary({
           )}
 
           {missing > 0 && (
-            <p className="mt-2 text-xs text-bob-ink/45">
+            <p className="mt-2 text-xs text-bob-ink/65">
               {missing === 1
                 ? "1 tappa non ha un indirizzo e resta fuori dal percorso."
                 : `${missing} tappe non hanno un indirizzo e restano fuori dal percorso.`}

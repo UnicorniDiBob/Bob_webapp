@@ -44,7 +44,7 @@ export default async function AdminLayout({
       <aside className="hidden w-56 shrink-0 border-r border-black/5 bg-white lg:block">
         <div className="sticky top-16 p-4">
           <div className="mb-4 px-2">
-            <span className="text-xs font-semibold uppercase tracking-widest text-bob-ink/40">
+            <span className="text-xs font-semibold uppercase tracking-widest text-bob-ink/65">
               Admin
             </span>
           </div>

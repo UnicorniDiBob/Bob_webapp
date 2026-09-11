@@ -52,7 +52,7 @@ export function DeleteUserButton({
             <h2 className="mb-2 text-lg font-semibold text-bob-ink">
               Eliminare {userName}?
             </h2>
-            <p className="mb-4 text-sm text-bob-ink/60">
+            <p className="mb-4 text-sm text-bob-ink/70">
               L&apos;account e tutti i dati collegati (profilo, richieste,
               valutazioni) verranno eliminati definitivamente. Questa azione
               non è reversibile.

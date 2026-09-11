@@ -136,7 +136,7 @@ export function ProPortfolio({
             Piano Pro
           </span>
         </div>
-        <p className="mt-2 text-sm text-bob-ink/60">
+        <p className="mt-2 text-sm text-bob-ink/70">
           Mostra ai clienti le foto dei tuoi lavori conclusi con una
           descrizione: i profili con portfolio ricevono più contatti. Disponibile
           dal piano <strong>Pro</strong> (1 foto) — illimitato con{" "}
@@ -159,7 +159,7 @@ export function ProPortfolio({
           <h2 className="text-lg font-semibold text-bob-ink">
             Portfolio lavori
           </h2>
-          <p className="text-xs text-bob-ink/55">
+          <p className="text-xs text-bob-ink/70">
             Piano {TIER_LABEL[tier]} ·{" "}
             {limit === null
               ? `${items.length} foto (illimitate)`
@@ -175,7 +175,7 @@ export function ProPortfolio({
             {formOpen ? "Annulla" : "+ Aggiungi lavoro"}
           </button>
         ) : (
-          <span className="text-xs text-bob-ink/50">
+          <span className="text-xs text-bob-ink/65">
             Limite raggiunto —{" "}
             <a href="/per-i-professionisti" className="text-bob-indigo underline">
               passa a Business
@@ -229,7 +229,7 @@ export function ProPortfolio({
       {loading ? (
         <div className="mt-4 h-24 animate-pulse rounded-xl bg-black/[0.03]" />
       ) : items.length === 0 ? (
-        <p className="mt-4 text-sm text-bob-ink/50">
+        <p className="mt-4 text-sm text-bob-ink/65">
           Nessuna foto ancora. Aggiungi i tuoi lavori migliori: verranno
           mostrati sul tuo profilo pubblico.
         </p>
@@ -252,7 +252,7 @@ export function ProPortfolio({
                   {item.title}
                 </p>
                 {item.description && (
-                  <p className="mt-0.5 line-clamp-2 text-[11px] text-bob-ink/55">
+                  <p className="mt-0.5 line-clamp-2 text-2xs text-bob-ink/70">
                     {item.description}
                   </p>
                 )}

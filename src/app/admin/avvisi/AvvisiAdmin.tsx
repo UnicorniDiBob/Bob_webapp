@@ -71,7 +71,7 @@ function leggibile(iso: string): string {
 function stato(r: Riga): { testo: string; classe: string } {
   const ora = Date.now();
   if (new Date(r.fine_il).getTime() <= ora) {
-    return { testo: "Finito", classe: "bg-black/5 text-bob-ink/50" };
+    return { testo: "Finito", classe: "bg-black/5 text-bob-ink/65" };
   }
   if (new Date(r.inizio_il).getTime() > ora) {
     return { testo: "Programmato", classe: "bg-amber-50 text-amber-700" };
@@ -179,10 +179,10 @@ export function AvvisiAdmin() {
       <header className="mb-6">
         <span className="section-eyebrow">Admin</span>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-bob-ink">
-          <Megaphone className="h-6 w-6 text-bob-ink/40" aria-hidden="true" />
+          <Megaphone className="h-6 w-6 text-bob-ink/65" aria-hidden="true" />
           Avvisi di servizio
         </h1>
-        <p className="mt-1.5 text-sm text-bob-ink/60">
+        <p className="mt-1.5 text-sm text-bob-ink/70">
           Quello che scrivi qui lo vedono tutti gli utenti registrati: una
           finestra al primo accesso, poi nella campanella, finché non scade.
           Non si può richiamare indietro — si può solo spegnere.
@@ -226,7 +226,7 @@ export function AvvisiAdmin() {
               placeholder="Lunedì dalle 3:00 alle 4:00 il sito non sarà raggiungibile. Le richieste già inviate non si perdono."
               maxLength={2000}
             />
-            <p className="mt-1 text-xs text-bob-ink/45">
+            <p className="mt-1 text-xs text-bob-ink/65">
               {testoPulito.length}/2000 · gli a capo si vedono come li scrivi.
             </p>
           </div>
@@ -254,7 +254,7 @@ export function AvvisiAdmin() {
                     <span className="block text-sm font-medium text-bob-ink">
                       {ETICHETTA_AVVISO[l.valore]}
                     </span>
-                    <span className="block text-xs text-bob-ink/55">
+                    <span className="block text-xs text-bob-ink/70">
                       {l.spiega}
                     </span>
                   </span>
@@ -287,7 +287,7 @@ export function AvvisiAdmin() {
                 value={fine}
                 onChange={(e) => setFine(e.target.value)}
               />
-              <p className="mt-1 text-xs text-bob-ink/45">
+              <p className="mt-1 text-xs text-bob-ink/65">
                 Da qui in poi sparisce da solo, da tutti.
               </p>
             </div>
@@ -300,7 +300,7 @@ export function AvvisiAdmin() {
               <div className="mt-1 rounded-xl border border-black/10 bg-black/[0.015] p-3.5">
                 <p className="flex items-start gap-2 text-sm font-semibold text-bob-ink">
                   <Anteprima
-                    className="mt-0.5 h-4 w-4 shrink-0 text-bob-ink/50"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-bob-ink/65"
                     aria-hidden="true"
                   />
                   <span className="min-w-0">
@@ -334,13 +334,13 @@ export function AvvisiAdmin() {
 
       {/* --- elenco --- */}
       <section className="mt-6">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
           Gli ultimi avvisi
         </h2>
         {!caricate ? (
-          <p className="text-sm text-bob-ink/50">Carico…</p>
+          <p className="text-sm text-bob-ink/65">Carico…</p>
         ) : righe.length === 0 ? (
-          <div className="card p-6 text-sm text-bob-ink/55">
+          <div className="card p-6 text-sm text-bob-ink/70">
             Non ne è ancora stato pubblicato nessuno.
           </div>
         ) : (
@@ -360,18 +360,18 @@ export function AvvisiAdmin() {
                         {r.titolo}
                       </span>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.classe}`}
+                        className={`rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide ${s.classe}`}
                       >
                         {s.testo}
                       </span>
-                      <span className="text-[11px] text-bob-ink/45">
+                      <span className="text-2xs text-bob-ink/65">
                         {ETICHETTA_AVVISO[r.livello]}
                       </span>
                     </p>
                     <p className="mt-1 line-clamp-2 text-sm text-bob-ink/65">
                       {r.testo}
                     </p>
-                    <p className="mt-1 text-xs text-bob-ink/45">
+                    <p className="mt-1 text-xs text-bob-ink/65">
                       {leggibile(r.inizio_il)} → {leggibile(r.fine_il)}
                     </p>
                   </div>
@@ -379,7 +379,7 @@ export function AvvisiAdmin() {
                     <button
                       type="button"
                       onClick={() => spegni(r)}
-                      className="shrink-0 rounded-xl border border-black/10 px-3 py-1.5 text-xs font-medium text-bob-ink/60 hover:border-red-300 hover:text-red-600"
+                      className="shrink-0 rounded-xl border border-black/10 px-3 py-1.5 text-xs font-medium text-bob-ink/70 hover:border-red-300 hover:text-red-600"
                       data-testid={`avviso-spegni-${r.id}`}
                     >
                       Spegni adesso

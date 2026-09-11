@@ -43,7 +43,7 @@ export default function MessaggiPage() {
   return (
     <Suspense
       fallback={
-        <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+        <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
           Carico i messaggi…
         </div>
       }
@@ -487,7 +487,7 @@ function MessaggiInner() {
 
   if (loading) {
     return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+      <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
         Carico i messaggi…
       </div>
     );
@@ -502,7 +502,7 @@ function MessaggiInner() {
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink">
           Le tue conversazioni
         </h1>
-        <p className="mt-1 text-sm text-bob-ink/60">
+        <p className="mt-1 text-sm text-bob-ink/70">
           {myType === "professional"
             ? "Rispondi ai clienti che ti hanno contattato."
             : "Continua a parlare con i professionisti che hai contattato."}
@@ -517,7 +517,7 @@ function MessaggiInner() {
             <MessageCircle className="h-6 w-6" aria-hidden="true" />
           </div>
           <h3 className="font-semibold text-bob-ink">Nessuna conversazione</h3>
-          <p className="max-w-sm text-sm text-bob-ink/60">
+          <p className="max-w-sm text-sm text-bob-ink/70">
             {myType === "professional"
               ? "Quando un cliente ti contatta, la conversazione comparirà qui."
               : "Parla con Bob per trovare un professionista e iniziare una conversazione."}
@@ -551,7 +551,7 @@ function MessaggiInner() {
                     <span className="truncate font-semibold text-bob-ink">
                       {c.counterpartName}
                     </span>
-                    <span className="shrink-0 text-[10px] text-bob-ink/40">
+                    <span className="shrink-0 text-2xs text-bob-ink/65">
                       {fmtTime(c.lastAt).split(",")[0]}
                     </span>
                   </div>
@@ -560,7 +560,7 @@ function MessaggiInner() {
                     {c.cityName ? ` · ${c.cityName}` : ""}
                   </span>
                   {c.lastMessage && (
-                    <span className="truncate text-xs text-bob-ink/55">
+                    <span className="truncate text-xs text-bob-ink/70">
                       {c.lastMessage}
                     </span>
                   )}
@@ -580,7 +580,7 @@ function MessaggiInner() {
                 <div className="flex items-center gap-2 border-b border-black/5 px-4 py-3.5 sm:px-5">
                   <button
                     onClick={() => setMobileThread(false)}
-                    className="shrink-0 rounded-lg p-1.5 text-bob-ink/60 hover:bg-black/[0.04] hover:text-bob-indigo md:hidden"
+                    className="shrink-0 rounded-lg p-1.5 text-bob-ink/70 hover:bg-black/[0.04] hover:text-bob-indigo md:hidden"
                     aria-label="Torna alle conversazioni"
                     data-testid="button-back-to-list"
                   >
@@ -592,7 +592,7 @@ function MessaggiInner() {
                     <p className="truncate font-semibold text-bob-ink">
                       {active.counterpartName}
                     </p>
-                    <p className="truncate text-xs text-bob-ink/55">
+                    <p className="truncate text-xs text-bob-ink/70">
                       {active.serviceName}
                       {active.cityName ? ` · ${active.cityName}` : ""}
                     </p>
@@ -614,9 +614,9 @@ function MessaggiInner() {
                   className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-5 py-4"
                 >
                   {loadingMsgs ? (
-                    <p className="text-center text-sm text-bob-ink/40">Carico…</p>
+                    <p className="text-center text-sm text-bob-ink/65">Carico…</p>
                   ) : messages.length === 0 ? (
-                    <p className="text-center text-sm text-bob-ink/40">
+                    <p className="text-center text-sm text-bob-ink/65">
                       Nessun messaggio ancora. Scrivi il primo.
                     </p>
                   ) : (
@@ -644,8 +644,8 @@ function MessaggiInner() {
                           >
                             <p className="whitespace-pre-line">{m.message}</p>
                             <p
-                              className={`mt-1 text-[10px] ${
-                                mine ? "text-white/60" : "text-bob-ink/40"
+                              className={`mt-1 text-2xs ${
+                                mine ? "text-white/60" : "text-bob-ink/65"
                               }`}
                             >
                               {fmtTime(m.createdAt)}
@@ -702,7 +702,7 @@ function MessaggiInner() {
                 </div>
               </>
             ) : (
-              <div className="flex flex-1 items-center justify-center text-sm text-bob-ink/40">
+              <div className="flex flex-1 items-center justify-center text-sm text-bob-ink/65">
                 Seleziona una conversazione
               </div>
             )}
@@ -731,11 +731,11 @@ function MessaggiInner() {
                 : "Proponi un appuntamento"}
             </h3>
             {replacingApptId && (
-              <p className="mt-1 text-sm text-bob-ink/60">
+              <p className="mt-1 text-sm text-bob-ink/70">
                 La proposta del cliente viene rifiutata e sostituita da questa.
               </p>
             )}
-            <p className="mt-1 text-sm text-bob-ink/60">
+            <p className="mt-1 text-sm text-bob-ink/70">
               Il cliente riceve la proposta in chat e la conferma dalla sua
               area personale.
             </p>

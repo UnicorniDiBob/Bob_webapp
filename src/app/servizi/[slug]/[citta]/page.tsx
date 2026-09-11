@@ -147,7 +147,7 @@ export default async function ServiceCityPage({
         }}
       />
 
-      <nav className="mb-4 text-sm text-bob-ink/50" aria-label="breadcrumb">
+      <nav className="mb-4 text-sm text-bob-ink/65" aria-label="breadcrumb">
         <Link href="/servizi" className="hover:text-bob-indigo">
           Servizi
         </Link>
@@ -167,7 +167,7 @@ export default async function ServiceCityPage({
           <h1 className="text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
             {service.name} a {city.name}
           </h1>
-          <p className="mt-2 max-w-xl text-sm text-bob-ink/60">
+          <p className="mt-2 max-w-xl text-sm text-bob-ink/70">
             {band
               ? `Le tariffe dichiarate a ${city.name} vanno da ${euro(band.min)} a ${euro(band.max)} all'ora. Le vedi sul profilo prima di scrivere: nessun preventivo al buio.`
               : `Professionisti verificati uno a uno a ${city.name}. La tariffa è sul profilo, la vedi prima di scrivere.`}
@@ -178,19 +178,19 @@ export default async function ServiceCityPage({
       {/* Fascia di prezzo in evidenza: il dato vero, non una stima */}
       {band && (
         <section className="mb-8 rounded-2xl border border-black/5 bg-white p-5 sm:p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
             Quanto costa a {city.name}
           </h2>
           <p className="mt-2 text-2xl font-bold text-bob-ink">
             {euro(band.min)}–{euro(band.max)}
-            <span className="ml-1 text-sm font-medium text-bob-ink/50">
+            <span className="ml-1 text-sm font-medium text-bob-ink/65">
               all&apos;ora
             </span>
           </p>
           {/* Il singolare non si ottiene cambiando la desinenza del nome:
               cambiano articolo e verbo. In produzione si leggeva "sulle tariffe
               che i 1 professionista di questa pagina dichiarano". Due frasi. */}
-          <p className="mt-1 text-xs leading-relaxed text-bob-ink/55">
+          <p className="mt-1 text-xs leading-relaxed text-bob-ink/70">
             {pros.length === 1
               ? "Fascia calcolata sulla tariffa che l'unico professionista di questa pagina dichiara sul proprio profilo. Non è una stima: sono i suoi numeri."
               : `Fascia calcolata sulle tariffe che i ${pros.length} professionisti di questa pagina dichiarano sul proprio profilo. Non è una stima: sono i loro numeri.`}
@@ -200,7 +200,7 @@ export default async function ServiceCityPage({
 
       {subservices.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
             Tipi di intervento
           </h2>
           <div className="flex flex-wrap gap-2">
@@ -241,7 +241,7 @@ export default async function ServiceCityPage({
       </section>
 
       <section>
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
           {pros.length} professionist{pros.length === 1 ? "a" : "i"} a {city.name}
         </h2>
         {/* I parametri di posizionamento vivono in una sezione sola
@@ -272,7 +272,7 @@ export default async function ServiceCityPage({
 
       {/* Link interni: la pagina nazionale del servizio e la pagina della città.
           Servono al lettore e passano link equity alle due pagine padre. */}
-      <section className="mt-10 border-t border-black/5 pt-6 text-sm text-bob-ink/60">
+      <section className="mt-10 border-t border-black/5 pt-6 text-sm text-bob-ink/70">
         <p>
           Vedi anche{" "}
           <Link

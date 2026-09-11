@@ -166,7 +166,7 @@ export function AvvisiPopup() {
                   {a.testo}
                 </p>
                 {quando && (
-                  <p className="mt-2 text-xs text-bob-ink/45">{quando}</p>
+                  <p className="mt-2 text-xs text-bob-ink/65">{quando}</p>
                 )}
               </div>
             );
@@ -181,7 +181,7 @@ export function AvvisiPopup() {
         >
           Ho capito
         </button>
-        <p className="mt-2 text-center text-xs text-bob-ink/45">
+        <p className="mt-2 text-center text-xs text-bob-ink/65">
           {daVedere.length === 1 ? "Lo ritrovi" : "Li ritrovi"} nella campanella
           in alto, finché {daVedere.length === 1 ? "vale" : "valgono"}.
         </p>

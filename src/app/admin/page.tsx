@@ -44,7 +44,7 @@ export default async function AdminDashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-bob-ink">Dashboard</h1>
-        <p className="mt-1 text-sm text-bob-ink/55">Panoramica del marketplace BOB.</p>
+        <p className="mt-1 text-sm text-bob-ink/70">Panoramica del marketplace BOB.</p>
       </div>
 
       {/* Coda P.IVA: casi che il controllo automatico non ha confermato */}
@@ -134,7 +134,7 @@ function StatCard({
     <div
       className={`card p-5 ${highlight ? "border-amber-200 bg-amber-50" : ""}`}
     >
-      <p className={`text-xs font-medium ${highlight ? "text-amber-700" : "text-bob-ink/55"}`}>
+      <p className={`text-xs font-medium ${highlight ? "text-amber-700" : "text-bob-ink/70"}`}>
         {label}
       </p>
       <p className={`mt-1 text-3xl font-bold ${highlight ? "text-amber-800" : "text-bob-ink"}`}>
@@ -165,7 +165,7 @@ function QuickLink({
       </div>
       <div>
         <p className="font-semibold text-bob-ink">{title}</p>
-        <p className="mt-0.5 text-xs text-bob-ink/60">{desc}</p>
+        <p className="mt-0.5 text-xs text-bob-ink/70">{desc}</p>
       </div>
     </Link>
   );

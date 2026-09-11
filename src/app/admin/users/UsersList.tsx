@@ -20,7 +20,7 @@ export interface UserListItem {
 }
 
 const ROLE_BADGE: Record<UserRole, string> = {
-  customer: "bg-black/5 text-bob-ink/60",
+  customer: "bg-black/5 text-bob-ink/70",
   professional: "bg-bob-indigo-50 text-bob-indigo",
   admin: "bg-bob-indigo text-white",
   cs: "bg-purple-50 text-purple-700",
@@ -121,7 +121,7 @@ export function UsersList({
               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 roleFilter === f.value
                   ? "bg-bob-indigo text-white"
-                  : "border border-black/10 text-bob-ink/60 hover:bg-black/[0.04]"
+                  : "border border-black/10 text-bob-ink/70 hover:bg-black/[0.04]"
               }`}
               data-testid={`users-filter-${f.value}`}
             >
@@ -136,7 +136,7 @@ export function UsersList({
 
       {/* Lista */}
       {filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-black/10 py-10 text-center text-sm text-bob-ink/40">
+        <div className="rounded-2xl border border-dashed border-black/10 py-10 text-center text-sm text-bob-ink/65">
           Nessun utente trovato
           {query ? ` per “${query}”` : ""}.
         </div>
@@ -161,12 +161,12 @@ export function UsersList({
                     {u.full_name ?? "Nome non impostato"}
                   </span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${ROLE_BADGE[u.role]}`}
+                    className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${ROLE_BADGE[u.role]}`}
                   >
                     {ROLE_LABEL[u.role]}
                   </span>
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs text-bob-ink/50">
+                <div className="mt-0.5 flex flex-wrap gap-x-4 text-xs text-bob-ink/65">
                   {u.phone && (
                     <span className="inline-flex items-center gap-1">
                       <Phone className="h-3.5 w-3.5" aria-hidden="true" />

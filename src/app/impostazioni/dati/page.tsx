@@ -196,7 +196,7 @@ export default function DatiPage() {
             placeholder="+39 …"
             data-testid="dati-telefono"
           />
-          <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/50">
+          <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/65">
             {isPro
               ? "Lo vede solo un cliente che ha già accettato di lavorare con te, mai chi sta guardando il tuo profilo. Senza numero, dopo una prenotazione il cliente non ha come chiamarti."
               : "Lo vede solo il professionista con cui hai deciso di lavorare, dopo che l’hai scelto. Puoi lasciarlo vuoto."}

@@ -153,7 +153,7 @@ export default function IndirizziPage() {
 
       <div className="card p-5 sm:p-6">
         {addresses.length === 0 ? (
-          <p className="text-sm text-bob-ink/55" data-testid="indirizzi-vuoti">
+          <p className="text-sm text-bob-ink/70" data-testid="indirizzi-vuoti">
             Non hai ancora salvato nessun indirizzo. Puoi aggiungerne uno qui
             sotto, oppure lasciarlo per quando servirà: Bob te lo chiede in chat
             al momento giusto.
@@ -167,19 +167,19 @@ export default function IndirizziPage() {
                 data-testid={`address-${a.id}`}
               >
                 <MapPin
-                  className="h-4 w-4 shrink-0 text-bob-ink/40"
+                  className="h-4 w-4 shrink-0 text-bob-ink/65"
                   aria-hidden="true"
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-bob-ink">
                     {a.label}
                     {a.is_default && (
-                      <span className="ml-2 rounded-full bg-bob-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-bob-indigo">
+                      <span className="ml-2 rounded-full bg-bob-indigo-50 px-2 py-0.5 text-2xs font-semibold text-bob-indigo">
                         Predefinito
                       </span>
                     )}
                   </p>
-                  <p className="truncate text-xs text-bob-ink/60">
+                  <p className="truncate text-xs text-bob-ink/70">
                     {a.address_line}
                     {nomeCitta(a.city_slug) ? ` · ${nomeCitta(a.city_slug)}` : ""}
                   </p>
@@ -195,7 +195,7 @@ export default function IndirizziPage() {
                 )}
                 <button
                   onClick={() => elimina(a.id)}
-                  className="rounded-lg px-2 py-1 text-xs text-bob-ink/40 hover:bg-black/5 hover:text-red-600"
+                  className="rounded-lg px-2 py-1 text-xs text-bob-ink/65 hover:bg-black/5 hover:text-red-600"
                   aria-label={`Elimina ${a.label}`}
                   data-testid={`address-delete-${a.id}`}
                 >
@@ -210,7 +210,7 @@ export default function IndirizziPage() {
           onSubmit={aggiungi}
           className="mt-4 rounded-xl bg-bob-indigo-50/50 p-4"
         >
-          <p className="text-xs font-semibold text-bob-ink/60">
+          <p className="text-xs font-semibold text-bob-ink/70">
             Aggiungi un indirizzo
           </p>
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[110px_1fr_150px]">
