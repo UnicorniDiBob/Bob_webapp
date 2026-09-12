@@ -205,33 +205,33 @@ quando la 072 è applicata e verificata, non prima.**
 (nessuna area dichiarata = tutta la città di iscrizione). Il punteggio è in
 SQL, la selezione no: con seicento professionisti va spostata anche quella.
 
-> **Da allineare, e non è nel nostro PR:** la sezione 9 dei termini per i
-> professionisti (`src/components/TermsContent.tsx`, area di Lucio) elenca
-> parametri diversi — «disponibilità dichiarata, reattività nelle risposte,
-> completamento dei lavori sulla piattaforma» — e **non nomina** il criterio
-> che oggi viene prima di tutti, cioè chi dichiara il lavoro cercato. Due
-> dichiarazioni pubbliche che non concordano sono peggio di una dichiarazione
-> breve: l'art. 5 P2B chiede i parametri principali verso i professionisti, e
-> quelli sono questi. Il numero di lavori conclusi, in particolare, non è più
-> una voce a sé: entra come peso delle valutazioni, per non contarlo due volte
-> e per non punire due volte chi ha appena cominciato.
->
-> Testo già pronto da incollare in sezione 9, primo capoverso, così i due
-> documenti dicono la stessa cosa:
->
-> «L'ordine con cui i profili sono presentati ai clienti si decide in due
-> tempi. Primo: se il cliente ha cercato un lavoro preciso, chi ha dichiarato
-> quell'intervento viene presentato prima di chi ha dichiarato solo il
-> mestiere, e nessun altro elemento lo scavalca. Secondo: dentro quel gruppo
-> ordina un punteggio su cento composto da precisione dell'area rispetto alla
-> richiesta (fino a 20), valutazioni ricevute pesate sul loro numero (fino a
-> 25), tempo di prima risposta misurato sulle conversazioni degli ultimi 90
-> giorni (fino a 20), presenza di un prezzo dichiarato (fino a 15),
-> disponibilità con orari pubblicati e prenotazione immediata (fino a 10),
-> livello di verifica raggiunto (fino a 7) e completezza del profilo (fino a
-> 3). Un elemento che non abbiamo ancora misurato vale il valore centrale
-> della sua scala e non sottrae punti. A parità di punteggio l'ordine è
-> sorteggiato con un criterio che cambia una volta al giorno.»
+**Allineato il 12 settembre 2026, e i pesi non si pubblicano più.**
+
+Le due dichiarazioni pubbliche sullo stesso meccanismo — `/come-funziona#ordine`
+verso i clienti (art. 22 c. 4-bis Cod. Cons.) e la sezione 9 dei termini per i
+professionisti (art. 5 Reg. UE 2019/1150) — ora dicono la stessa cosa, nello
+stesso ordine. Prima divergevano: la sezione 9 elencava «completamento dei
+lavori sulla piattaforma», che non è più una voce a sé, non nominava il criterio
+che viene prima di tutti, e non diceva quale parametro pesasse più di quale.
+
+**Decisione: i numeri esatti (20/25/20/15/10/7/3) sono stati tolti da entrambe.**
+La norma chiede «i parametri principali» e «l'importanza relativa di tali
+parametri», non i pesi né la formula: l'importanza relativa si dichiara con
+l'ordine, ed è quello che fanno adesso i due testi. Attenzione a metà della
+frase — un elenco piatto, senza ordine dichiarato, **non** basterebbe: mancherebbe
+l'«importanza relativa».
+
+I pesi restano dove sono sempre stati, in
+`supabase/migrations/072_punteggio_ordinamento.sql`. Il giorno che cambiano,
+cambia l'**ordine** in cui i parametri sono scritti — sulla pagina e nei termini,
+nello stesso commit. Oggi quell'ordine è: valutazione, poi area e tempo di
+risposta a pari merito, poi prezzo, disponibilità, verifica, completezza.
+
+**Resta da decidere a Lucio:** se questa correzione sia una modifica dei termini
+ai sensi dell'art. 3(2) P2B, che vuole un preavviso ai professionisti. È una
+rettifica per rendere accurata una dichiarazione, non un obbligo nuovo — ma
+`TERMS_VERSION` è rimasta a `2026-07-v1` di proposito, e va cambiata solo
+insieme a quella decisione.
 
 ### Dove sono dichiarati, e perché basta un link
 
