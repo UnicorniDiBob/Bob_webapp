@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BadgeCheck, Bot, Euro, HandCoins, type LucideIcon } from "lucide-react";
+import { BobConCariola } from "@/components/BobConCariola";
 import { Faq } from "@/components/Faq";
+import { Rivela } from "@/components/Rivela";
+import { Blocco, Fascia, TestaSezione } from "@/components/sezioni";
 import { BobDot, BobBullet } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -10,24 +12,27 @@ export const metadata: Metadata = {
     "Su BOB non paghi per i contatti: la fee si applica solo a lavoro concluso. Profilo verificato, prezzi in chiaro e clienti che ti scelgono davvero.",
 };
 
-const BENEFITS: { icon: LucideIcon; title: string; text: string }[] = [
+/**
+ * I benefici non hanno piu' un'icona. Erano quattro quadratini arrotondati con
+ * dentro un simbolo di libreria: e' esattamente il segno «costruito in fretta
+ * col preset» che l'audit dell'11 settembre elencava fra le cause del look «da
+ * AI». Il blocco con la riga gialla dice la stessa cosa senza dirla in
+ * stock-icon.
+ */
+const BENEFITS: { title: string; text: string }[] = [
   {
-    icon: HandCoins,
     title: "Niente lead a pagamento",
     text: "Non vendiamo contatti. Paghi una fee solo quando un lavoro si chiude davvero: zero costi a vuoto.",
   },
   {
-    icon: BadgeCheck,
     title: "Profilo verificato",
     text: "Il badge di verifica racconta ai clienti che possono fidarsi. Più trasparenza, più richieste di qualità.",
   },
   {
-    icon: Euro,
     title: "Prezzi in chiaro",
     text: "Mostri le tue tariffe in modo onesto. I clienti arrivano già informati, le trattative sono più semplici.",
   },
   {
-    icon: Bot,
     title: "Bob lavora per te",
     text: "Nel tuo spazio di lavoro: agenda appuntamenti, riassunti AI delle richieste, preventivi e portfolio dei lavori. Bob prepara il materiale, tu decidi.",
   },
@@ -140,193 +145,175 @@ const PRO_FAQ = [
 
 export default function PerIProfessionistiPage() {
   return (
-    <div>
-      {/* Hero */}
-      <section className="bg-bob-indigo text-white">
-        <div className="container-bob py-16 text-center sm:py-20">
-          <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-semibold">
-            Per i professionisti
-          </span>
-          <h1 className="mx-auto mt-4 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">
-            Più lavoro vero, zero contatti comprati
-          </h1>
-          <p className="mx-auto mt-3 max-w-xl text-base text-white/80">
-            BOB ti porta clienti che cercano davvero il tuo servizio. Paghi solo
-            quando concludi un lavoro — non per ricevere un numero di telefono.
-          </p>
-          <div className="mt-6 flex flex-col items-center justify-center gap-2 sm:flex-row">
-            <Link
-              href="/login?mode=signup&role=professional"
-              className="rounded-xl bg-bob-yellow px-6 py-3 text-sm font-semibold text-bob-ink hover:brightness-95"
-              data-testid="cta-registrati-pro"
-            >
-              Registrati come professionista
-            </Link>
-            {/* Prima puntava a /come-funziona, che è la spiegazione per il
-                CLIENTE ("Parla con Bob", "gratis per te"): mandava il
-                professionista nel funnel sbagliato. Ora resta su questa pagina.
-                <a> e non <Link>: con next/link l'ancora sulla stessa pagina non
-                scrolla (il router intercetta il click e la navigazione hash-only
-                resta un no-op — verificato in produzione il 10/08, l'hash
-                cambiava senza muovere la pagina e al secondo tentativo non
-                cambiava nemmeno). L'ancora nativa scrolla, con scroll-mt-24
-                sulla sezione che compensa l'header fisso. */}
-            <a
-              href="#come-funziona"
-              className="rounded-xl border border-white/30 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
-            >
-              Come funziona per te
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Benefici */}
-      <section className="container-bob py-12">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {BENEFITS.map((b) => (
-            <div key={b.title} className="card flex gap-4 p-6">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-bob-indigo-50 text-bob-indigo">
-                <b.icon className="h-6 w-6" aria-hidden="true" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-bob-ink">{b.title}</h2>
-                <p className="mt-1 text-sm leading-relaxed text-bob-ink/65">
-                  {b.text}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Come funziona lato pro — bersaglio della CTA nell'hero */}
-      <section id="come-funziona" className="container-bob scroll-mt-24 pb-12">
-        <div className="rounded-2xl border border-black/5 bg-white p-7">
-          <h2 className="text-lg font-semibold text-bob-ink">
-            Come funziona per te
-          </h2>
-          <p className="mt-1 text-sm text-bob-ink/70">
-            Dalla registrazione al lavoro chiuso, senza comprare un contatto.
-          </p>
-          <ol className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {PRO_STEPS.map((s) => (
-              <li key={s.n} className="flex flex-col gap-1">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-bob-indigo text-sm font-bold text-white">
-                  {s.n}
-                </span>
-                <span className="mt-1 font-medium text-bob-ink">{s.title}</span>
-                <span className="text-sm leading-relaxed text-bob-ink/70">
-                  {s.text}
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* Costi in chiaro: la stessa trasparenza che chiediamo ai professionisti */}
-      <section className="container-bob pb-12">
-        <div className="rounded-2xl border border-black/5 bg-white p-7">
-          <h2 className="text-lg font-semibold text-bob-ink">
-            Quanto costa, in chiaro
-          </h2>
-          <p className="mt-1 text-sm text-bob-ink/70">
-            Chiediamo ai professionisti prezzi trasparenti: ecco i nostri.
-          </p>
-
-          {/* Le due voci che non dipendono dal piano */}
-          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-black/5 p-4">
-              <p className="text-sm font-semibold text-bob-ink">
-                Iscrizione e contatti
-              </p>
-              <p className="mt-1 text-2xl font-bold text-bob-ink">Gratis</p>
-              <p className="mt-1 text-xs leading-relaxed text-bob-ink/70">
-                Profilo, richieste e messaggi con i clienti: gratuiti oggi e
-                sempre, su qualsiasi piano. Niente lead a pagamento.
-              </p>
-            </div>
-            <div className="rounded-xl border border-black/5 p-4">
-              <p className="text-sm font-semibold text-bob-ink">
-                Fee sul lavoro concluso
-              </p>
-              <p className="mt-1 text-2xl font-bold text-bob-ink">
-                8%
-                <span className="ml-1 text-sm font-medium text-bob-ink/65">
-                  solo con Garanzia Bob
-                </span>
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-bob-ink/70">
-                Si applica solo se attivi la Garanzia Bob sul lavoro: pagamento
-                protetto, recensioni verificate, mediazione. Mai obbligatoria.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Piani */}
-      <section className="container-bob pb-12">
-        <div className="text-center">
-          <span className="section-eyebrow">Piani</span>
-          <h2 className="mt-1 text-xl font-bold text-bob-ink">
-            Scegli quanto vuoi che Bob lavori per te
-          </h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-bob-ink/70">
-            Il piano riguarda gli strumenti di lavoro, non i contatti: quelli
-            non si pagano su nessun piano.
-          </p>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {PLANS.map((p) => (
-            <div
-              key={p.name}
-              className={`flex flex-col rounded-2xl border bg-white p-6 ${
-                p.featured
-                  ? "border-bob-indigo shadow-card-hover ring-1 ring-bob-indigo/20"
-                  : "border-black/5"
-              }`}
-              data-testid={`plan-${p.name.toLowerCase()}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-base font-bold text-bob-ink">
-                  Bob {p.name}
-                </h3>
-                {p.featured && (
-                  <span className="rounded-full bg-bob-yellow px-2.5 py-1 text-xs font-semibold text-bob-ink">
-                    Consigliato
-                  </span>
-                )}
-              </div>
-              <p className="mt-3 text-3xl font-extrabold text-bob-ink">
-                {p.price}
-              </p>
-              <p className="mt-1 text-xs text-bob-ink/70">{p.priceNote}</p>
-              <p className="mt-3 text-sm leading-relaxed text-bob-ink/65">
-                {p.pitch}
-              </p>
-              <ul className="mt-4 flex-1 space-y-2 text-sm text-bob-ink/75">
-                {p.features.map((f) => (
-                  <BobBullet key={f}>{f}</BobBullet>
-                ))}
-              </ul>
+    <>
+      {/* ---------- EROE ---------- */}
+      <Fascia sfondo="forte">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.62fr)] lg:gap-16">
+          <div>
+            <span className="section-eyebrow text-bob-yellow">
+              Per i professionisti
+            </span>
+            <h1 className="mt-3 max-w-[16ch] text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">
+              Più lavoro vero, zero contatti comprati
+            </h1>
+            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-white/75">
+              BOB ti porta clienti che cercano davvero il tuo servizio. Paghi
+              solo quando concludi un lavoro — non per ricevere un numero di
+              telefono.
+            </p>
+            <div className="mt-8">
               <Link
                 href="/login?mode=signup&role=professional"
-                className={`mt-6 rounded-xl px-5 py-3 text-center text-sm font-semibold ${
-                  p.featured
-                    ? "bg-bob-indigo text-white hover:brightness-110"
-                    : "border border-black/10 text-bob-ink hover:bg-black/[0.03]"
-                }`}
+                className="inline-block rounded-xl bg-bob-yellow px-6 py-3 text-center text-base font-semibold text-bob-ink hover:brightness-95"
+                data-testid="cta-registrati-pro"
               >
-                {p.cta}
+                Registrati come professionista
               </Link>
             </div>
+          </div>
+
+          <div className="animate-fade-up [animation-delay:80ms]">
+            <BobConCariola />
+          </div>
+        </div>
+      </Fascia>
+
+      {/* ---------- I VANTAGGI ---------- */}
+      <Fascia sfondo="bianca">
+        <TestaSezione
+          occhiello="I vantaggi"
+          titolo="Cosa cambia, per te"
+          allineamento="sinistra"
+          misura="stretta"
+        />
+        {/* items-start e non lo stiramento predefinito della griglia: se i
+            blocchi si allungano tutti all'altezza del più alto, la riga gialla
+            di quello col testo più corto resta con un pezzo vuoto sotto. */}
+        <Rivela ritardo={60}>
+          <div className="mt-10 grid grid-cols-1 items-start gap-8 lg:grid-cols-2 lg:gap-12">
+            {BENEFITS.map((b) => (
+              <Blocco key={b.title} titolo={b.title}>
+                {b.text}
+              </Blocco>
+            ))}
+          </div>
+        </Rivela>
+      </Fascia>
+
+      {/* ---------- COME FUNZIONA, LATO PRO — bersaglio della CTA nell'eroe ---------- */}
+      <Fascia sfondo="tenue" id="come-funziona">
+        <TestaSezione
+          occhiello="Come funziona per te"
+          titolo="Dalla registrazione al lavoro chiuso"
+          sottotitolo="Senza comprare un contatto, in quattro passaggi."
+          allineamento="sinistra"
+        />
+        <ol className="mt-12 grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
+          {PRO_STEPS.map((s, i) => (
+            <Rivela key={s.n} ritardo={i * 80}>
+              <li>
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-bob-indigo text-lg font-bold text-white">
+                  {s.n}
+                </span>
+                <h3 className="mt-4 text-xl font-bold tracking-tight text-bob-ink">
+                  {s.title}
+                </h3>
+                <p className="mt-2 text-base leading-relaxed text-bob-ink/70">
+                  {s.text}
+                </p>
+              </li>
+            </Rivela>
+          ))}
+        </ol>
+      </Fascia>
+
+      {/* ---------- QUANTO COSTA: la stessa trasparenza che chiediamo a loro ---------- */}
+      <Fascia sfondo="forte">
+        <TestaSezione
+          occhiello="I costi"
+          titolo="Quanto costa, in chiaro"
+          sottotitolo="Chiediamo ai professionisti prezzi trasparenti: ecco i nostri."
+          tinta="chiara"
+          allineamento="sinistra"
+          misura="stretta"
+        />
+        <Rivela ritardo={60}>
+          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+            <Cifra
+              titolo="Iscrizione e contatti"
+              cifra="Gratis"
+              testo="Profilo, richieste e messaggi con i clienti: gratuiti oggi e sempre, su qualsiasi piano. Niente lead a pagamento."
+            />
+            <Cifra
+              titolo="Fee sul lavoro concluso"
+              cifra="8%"
+              nota="solo con Garanzia Bob"
+              testo="Si applica solo se attivi la Garanzia Bob sul lavoro: pagamento protetto, recensioni verificate, mediazione. Mai obbligatoria."
+            />
+          </div>
+        </Rivela>
+      </Fascia>
+
+      {/* ---------- I PIANI ---------- */}
+      <Fascia sfondo="bianca">
+        <TestaSezione
+          occhiello="Piani"
+          titolo="Scegli quanto vuoi che Bob lavori per te"
+          sottotitolo="Il piano riguarda gli strumenti di lavoro, non i contatti: quelli non si pagano su nessun piano."
+          allineamento="sinistra"
+        />
+        {/* Qui la scheda resta, ed è l'unico posto della pagina dove se la
+            merita: tre prodotti da confrontare voce per voce sono esattamente
+            il caso per cui la scheda esiste. */}
+        <div className="mt-12 grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+          {PLANS.map((p, i) => (
+            <Rivela key={p.name} ritardo={i * 80} className="h-full">
+              <div
+                className={`flex h-full flex-col rounded-2xl border bg-white p-7 ${
+                  p.featured
+                    ? "border-bob-indigo shadow-card-hover ring-1 ring-bob-indigo/20"
+                    : "border-black/5"
+                }`}
+                data-testid={`plan-${p.name.toLowerCase()}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg font-bold text-bob-ink">
+                    Bob {p.name}
+                  </h3>
+                  {p.featured && (
+                    <span className="rounded-full bg-bob-yellow px-2.5 py-1 text-xs font-semibold text-bob-ink">
+                      Consigliato
+                    </span>
+                  )}
+                </div>
+                <p className="mt-4 text-4xl font-extrabold tracking-tight text-bob-ink">
+                  {p.price}
+                </p>
+                <p className="mt-1 text-sm text-bob-ink/70">{p.priceNote}</p>
+                <p className="mt-4 text-base leading-relaxed text-bob-ink/70">
+                  {p.pitch}
+                </p>
+                <ul className="mt-5 flex-1 space-y-2 text-base text-bob-ink/75">
+                  {p.features.map((f) => (
+                    <BobBullet key={f}>{f}</BobBullet>
+                  ))}
+                </ul>
+                <Link
+                  href="/login?mode=signup&role=professional"
+                  className={`mt-7 rounded-xl px-5 py-3 text-center text-base font-semibold ${
+                    p.featured
+                      ? "bg-bob-indigo text-white hover:brightness-110"
+                      : "border border-black/10 text-bob-ink hover:bg-black/[0.03]"
+                  }`}
+                >
+                  {p.cta}
+                </Link>
+              </div>
+            </Rivela>
           ))}
         </div>
 
-        <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-bob-ink/70">
+        <p className="mt-8 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-sm text-bob-ink/70">
           <span className="inline-flex items-center gap-1.5">
             <BobDot /> Add-on Visibility Boost: 15 €/mese, sempre etichettato
             come tale
@@ -335,15 +322,57 @@ export default function PerIProfessionistiPage() {
             <BobDot /> Cambi o disdici quando vuoi, senza penali
           </span>
         </p>
-      </section>
+      </Fascia>
 
-      {/* FAQ */}
-      <section className="container-bob pb-16">
-        <h2 className="mb-5 text-center text-xl font-bold text-bob-ink">
-          Domande frequenti
-        </h2>
-        <Faq items={PRO_FAQ} />
-      </section>
+      {/* ---------- DOMANDE FREQUENTI ---------- */}
+      <Fascia sfondo="tenue">
+        {/* Questa fascia e' centrata TUTTA, titolo compreso, e per questo
+            funziona: il difetto di /come-funziona era una colonna centrata
+            sotto un titolo allineato a sinistra — due bordi diversi nella
+            stessa fascia. Qui il blocco e' centrato come unita' e si legge
+            come una scelta, non come uno storto. */}
+        <TestaSezione occhiello="Dubbi" titolo="Domande frequenti" />
+        <div className="colonna-lettura mt-10">
+          <Faq items={PRO_FAQ} />
+        </div>
+      </Fascia>
+    </>
+  );
+}
+
+/**
+ * Una cifra in chiaro sulla fascia indaco: riga gialla, etichetta, il numero
+ * grande, la spiegazione.
+ *
+ * Non è un `Blocco`, perché in un `Blocco` la cifra finirebbe dentro il
+ * paragrafo e sparirebbe: qui il numero È il messaggio, e deve leggersi prima
+ * del testo che lo spiega.
+ */
+function Cifra({
+  titolo,
+  cifra,
+  nota,
+  testo,
+}: {
+  titolo: string;
+  cifra: string;
+  nota?: string;
+  testo: string;
+}) {
+  return (
+    <div className="border-l-4 border-bob-yellow pl-6">
+      <p className="text-base font-semibold text-white/75">{titolo}</p>
+      <p className="mt-1 text-4xl font-extrabold tracking-tight">
+        {cifra}
+        {nota && (
+          <span className="ml-2 align-middle text-base font-medium text-white/70">
+            {nota}
+          </span>
+        )}
+      </p>
+      <p className="mt-3 max-w-[46ch] text-base leading-relaxed text-white/75">
+        {testo}
+      </p>
     </div>
   );
 }
