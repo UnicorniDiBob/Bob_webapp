@@ -140,7 +140,7 @@ export default function DashboardPage() {
 
   if (loading || (!user && !loading) || role === "admin" || role === "cs") {
     return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/65" aria-busy="true">
+      <div className="container-app py-16 text-center text-sm text-bob-ink/65" aria-busy="true">
         Carico la tua area personale…
       </div>
     );
@@ -150,7 +150,7 @@ export default function DashboardPage() {
   const nome = fullName?.trim().split(" ")[0];
 
   return (
-    <div className="container-bob py-8 sm:py-10">
+    <div className="container-app py-8 sm:py-10">
       {/* AREA DI LAVORO, non impostazioni (separazione decisa il 19/08).
           Qui sta solo cio' che serve oggi: al professionista le richieste e il
           calendario, al cliente i lavori in corso e la ricerca. La

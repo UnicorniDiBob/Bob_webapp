@@ -43,7 +43,7 @@ export default function MessaggiPage() {
   return (
     <Suspense
       fallback={
-        <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
+        <div className="container-app py-16 text-center text-sm text-bob-ink/65">
           Carico i messaggi…
         </div>
       }
@@ -487,7 +487,7 @@ function MessaggiInner() {
 
   if (loading) {
     return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
+      <div className="container-app py-16 text-center text-sm text-bob-ink/65">
         Carico i messaggi…
       </div>
     );
@@ -496,7 +496,7 @@ function MessaggiInner() {
   const active = conversations.find((c) => keyOf(c) === activeId) ?? null;
 
   return (
-    <div className="container-bob py-8">
+    <div className="container-app py-8">
       <header className="mb-5">
         <span className="section-eyebrow">Messaggi</span>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink">
@@ -636,7 +636,7 @@ function MessaggiInner() {
                           }`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                            className={`max-w-[80%] lg:max-w-[42rem] rounded-2xl px-4 py-2.5 text-sm ${
                               mine
                                 ? "rounded-br-sm bg-bob-indigo text-white"
                                 : "rounded-bl-sm bg-bob-indigo-50 text-bob-ink"
@@ -652,7 +652,7 @@ function MessaggiInner() {
                             </p>
                           </div>
                           {appt && user && (
-                            <div className="max-w-[80%]">
+                            <div className="max-w-[80%] lg:max-w-[42rem]">
                               <AppointmentActions
                                 appointment={appt}
                                 viewer={myType}
