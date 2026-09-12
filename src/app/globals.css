@@ -62,7 +62,55 @@ body {
     @apply mb-1.5 block text-sm font-medium text-bob-ink/80;
   }
 
+  /* Le animazioni allo scorrimento. Vedi src/components/Rivela.tsx.
+     Il contenuto NASCE VISIBILE: senza queste classi si legge tutto. Solo
+     quando il JavaScript e' partito un blocco fuori schermo viene messo in
+     posizione di partenza. Cosi' senza JS, o se l'osservatore non arriva mai,
+     la pagina resta leggibile invece di restare bianca. */
+  .rivela-nascosto {
+    @apply translate-y-6 opacity-0;
+  }
+
+  .rivela-visibile {
+    @apply translate-y-0 opacity-100;
+    transition: opacity 0.6s cubic-bezier(0.22, 0.8, 0.3, 1),
+      transform 0.6s cubic-bezier(0.22, 0.8, 0.3, 1);
+  }
+
   .section-eyebrow {
     @apply text-xs font-semibold uppercase tracking-[0.14em] text-bob-indigo;
+  }
+}
+
+/* Chi ha chiesto meno movimento non lo riceve: niente comparse, niente
+   spostamenti. Il contenuto resta dov'e' e visibile. */
+@media (prefers-reduced-motion: reduce) {
+  .rivela-nascosto,
+  .rivela-visibile {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* L'elenco che scorre nel telefono della fascia della fiducia.
+   Le righe sono duplicate e la corsa si ferma a meta': cosi' il ritorno a capo
+   cade esattamente dove l'elenco ricomincia e non si vede. */
+@keyframes scorri-elenco {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.elenco-scorre {
+  animation: scorri-elenco 18s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .elenco-scorre {
+    animation: none;
   }
 }
