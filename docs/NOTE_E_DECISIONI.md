@@ -59,11 +59,22 @@ scrive un **trigger**, non le route: i livelli si concedono da due posti diversi
 (controllo automatico ed esame umano) e una scadenza dimenticata in uno dei due
 è una verifica eterna che non nota nessuno.
 
-**Quello che ancora NON succede alla scadenza:** il badge non cade. Oggi la
-data esiste, il preavviso esiste, ma nessun lavoro notturno porta la riga in
-Ricontrollo e nessuna pagina pubblica legge `vat_expires_at`. Finché non c'è
-quel pezzo, la finestra promette un declassamento che non avviene: va costruito
-prima del pilota, insieme alla coda Ricontrollo.
+**Alla scadenza il badge cade da solo** (scelta di Lucio del 12/09, opzione A).
+Non contraddice «nessun declassamento automatico»: quella regola parla di una
+decisione DISCREZIONALE su una persona — un esame andato male, una segnalazione
+— che resta umana. Qui non si giudica nessuno: scade una validità dichiarata,
+annunciata 30 giorni e una settimana prima, uguale per tutti e con la data
+scritta sul profilo. È esattamente la forma che il Regolamento P2B (art. 4)
+chiede per una restrizione: motivazione e preavviso.
+
+**Non è ancora costruito.** Oggi la data esiste e il preavviso esiste, ma
+nessuna pagina pubblica legge `vat_expires_at` e nessun giro notturno porta la
+riga in Ricontrollo: la finestra preavvisa di un declassamento che non avviene.
+Servono tre pezzi, in quest'ordine: (1) l'etichetta pubblica considera scaduta
+una verifica scaduta — è una regola di LETTURA, non una scrittura, quindi
+reversibile e senza dati persi; (2) il giro notturno che mette in Ricontrollo
+chi è scaduto, così qualcuno lo rifà; (3) la sezione Ricontrollo in admin. Va
+chiuso prima del pilota.
 
 Resta la regola già scritta: **nessun declassamento automatico**, mai (art. 22
 GDPR). La cessazione della P.IVA non aspetta l'anno: è un evento, e quando lo
