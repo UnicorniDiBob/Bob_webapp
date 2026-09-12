@@ -53,7 +53,7 @@ volta per account (`profiles.scadenza_verifica_vista_al`, che contiene la data
 di scadenza per cui è stata chiusa: al rinnovo si riarma da sola).
 
 **L'orologio parte da adesso per chi è già verificato**, una volta sola: il
-backfill della 075 ha la guardia `vat_expires_at is null`, quindi rigirare la
+backfill della 078 ha la guardia `vat_expires_at is null`, quindi rigirare la
 migrazione non sposta avanti nessuna scadenza. Per le verifiche nuove la data la
 scrive un **trigger**, non le route: i livelli si concedono da due posti diversi
 (controllo automatico ed esame umano) e una scadenza dimenticata in uno dei due
