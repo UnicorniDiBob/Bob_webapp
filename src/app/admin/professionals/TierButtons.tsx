@@ -10,7 +10,7 @@ type SubscriptionTier = "free" | "pro" | "business";
 
 const TIERS: { tier: SubscriptionTier; label: string; active: string }[] = [
   { tier: "free", label: "Free", active: "bg-black/70 text-white" },
-  { tier: "pro", label: "Pro", active: "bg-bob-indigo text-white" },
+  { tier: "pro", label: "Plus", active: "bg-bob-indigo text-white" },
   { tier: "business", label: "Business", active: "bg-emerald-600 text-white" },
 ];
 

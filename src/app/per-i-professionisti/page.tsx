@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BadgeCheck, Bot, Euro, HandCoins, type LucideIcon } from "lucide-react";
 import { Faq } from "@/components/Faq";
-import { BobDot, BobBullet } from "@/components/ui";
+import { BobDot } from "@/components/ui";
+import { TabellaPiani } from "@/components/TabellaPiani";
 
 export const metadata: Metadata = {
   title: "Per i professionisti",
@@ -33,65 +34,6 @@ const BENEFITS: { icon: LucideIcon; title: string; text: string }[] = [
   },
 ];
 
-// Piani di abbonamento. Fonte di verità del listino e delle funzioni incluse:
-// Business Plan §6.2 (flusso di ricavo 1). I prezzi mensili sono quelli pieni;
-// la cifra annuale è lo stesso piano con fatturazione annuale.
-const PLANS: {
-  name: string;
-  price: string;
-  priceNote: string;
-  pitch: string;
-  features: string[];
-  cta: string;
-  featured?: boolean;
-}[] = [
-  {
-    name: "Free",
-    price: "€0",
-    priceNote: "per sempre",
-    pitch: "Esserci, ricevere richieste e parlare con i clienti.",
-    features: [
-      "Profilo pubblico con le tue tariffe",
-      "Messaggi con i clienti, senza intermediari",
-      "Richieste con un tetto mensile",
-      "Nessun costo per i contatti, mai",
-    ],
-    cta: "Inizia gratis",
-  },
-  {
-    name: "Pro",
-    price: "€24",
-    priceNote: "al mese — €19 con fatturazione annuale",
-    pitch: "Gli strumenti per vincere più lavori e chiuderli prima.",
-    featured: true,
-    features: [
-      "Badge verificato sul profilo",
-      "Ranking privilegiato nei risultati",
-      "Richieste illimitate",
-      "Preventivi digitali",
-      "Agenda appuntamenti e prenotazione diretta",
-      "Assistente AI sulle richieste",
-      "Portfolio lavori: 1 foto con descrizione",
-    ],
-    cta: "Scegli Pro",
-  },
-  {
-    name: "Business",
-    price: "€59",
-    priceNote: "al mese — €49 con fatturazione annuale",
-    pitch: "Tutto il Pro, più l'amministrazione e i numeri.",
-    features: [
-      "Tutto quello che c'è nel Pro",
-      "Fatturazione elettronica integrata",
-      "Pagamenti inclusi",
-      "Analytics avanzate sul tuo lavoro",
-      "Supporto prioritario",
-      "Portfolio illimitato con galleria in evidenza",
-    ],
-    cta: "Scegli Business",
-  },
-];
-
 const PRO_STEPS: { n: string; title: string; text: string }[] = [
   {
     n: "1",
@@ -118,7 +60,7 @@ const PRO_STEPS: { n: string; title: string; text: string }[] = [
 const PRO_FAQ = [
   {
     q: "Quanto mi costa essere su BOB?",
-    a: "Iscriverti, ricevere richieste e messaggiare con i clienti è gratis, oggi e sempre: il piano Free non scade. Se vuoi gli strumenti di lavoro ci sono Bob Pro (24 €/mese, 19 € con fatturazione annuale) e Bob Business (59 €/mese, 49 € annuale). L'unica commissione è l'8% sui lavori in cui scegli tu di attivare la Garanzia Bob: mai obbligatoria, mai sui semplici contatti.",
+    a: "Iscriverti, ricevere richieste e messaggiare con i clienti è gratis, oggi e sempre: il piano Free non scade. Se vuoi gli strumenti di lavoro ci sono Bob Plus (24 €/mese, 19 € con fatturazione annuale) e Bob Business (59 €/mese, 49 € annuale). L'unica commissione è l'8% sui lavori in cui scegli tu di attivare la Garanzia Bob: è la stessa su tutti e tre i piani, non aumenta e non diminuisce cambiando abbonamento, e non si paga mai sui semplici contatti.",
   },
   {
     q: "Come ottengo il badge verificato?",
@@ -254,12 +196,14 @@ export default function PerIProfessionistiPage() {
               <p className="mt-1 text-2xl font-bold text-bob-ink">
                 8%
                 <span className="ml-1 text-sm font-medium text-bob-ink/50">
-                  solo con Garanzia Bob
+                  su tutti e tre i piani
                 </span>
               </p>
               <p className="mt-1 text-xs leading-relaxed text-bob-ink/60">
-                Si applica solo se attivi la Garanzia Bob sul lavoro: pagamento
-                protetto, recensioni verificate, mediazione. Mai obbligatoria.
+                La stessa percentuale su Free, Bob Plus e Bob Business: il piano
+                non la cambia. Si applica solo se attivi la Garanzia Bob sul
+                lavoro — pagamento protetto, recensioni verificate, mediazione
+                — e non è mai obbligatoria.
               </p>
             </div>
           </div>
@@ -279,51 +223,11 @@ export default function PerIProfessionistiPage() {
           </p>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {PLANS.map((p) => (
-            <div
-              key={p.name}
-              className={`flex flex-col rounded-2xl border bg-white p-6 ${
-                p.featured
-                  ? "border-bob-indigo shadow-card-hover ring-1 ring-bob-indigo/20"
-                  : "border-black/5"
-              }`}
-              data-testid={`plan-${p.name.toLowerCase()}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="text-base font-bold text-bob-ink">
-                  Bob {p.name}
-                </h3>
-                {p.featured && (
-                  <span className="rounded-full bg-bob-yellow px-2.5 py-1 text-xs font-semibold text-bob-ink">
-                    Consigliato
-                  </span>
-                )}
-              </div>
-              <p className="mt-3 text-3xl font-extrabold text-bob-ink">
-                {p.price}
-              </p>
-              <p className="mt-1 text-xs text-bob-ink/55">{p.priceNote}</p>
-              <p className="mt-3 text-sm leading-relaxed text-bob-ink/65">
-                {p.pitch}
-              </p>
-              <ul className="mt-4 flex-1 space-y-2 text-sm text-bob-ink/75">
-                {p.features.map((f) => (
-                  <BobBullet key={f}>{f}</BobBullet>
-                ))}
-              </ul>
-              <Link
-                href="/login?mode=signup&role=professional"
-                className={`mt-6 rounded-xl px-5 py-3 text-center text-sm font-semibold ${
-                  p.featured
-                    ? "bg-bob-indigo text-white hover:brightness-110"
-                    : "border border-black/10 text-bob-ink hover:bg-black/[0.03]"
-                }`}
-              >
-                {p.cta}
-              </Link>
-            </div>
-          ))}
+        <div className="mt-6">
+          <TabellaPiani
+            evidenzia="pro"
+            ctaHref="/login?mode=signup&role=professional"
+          />
         </div>
 
         <p className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-xs text-bob-ink/55">

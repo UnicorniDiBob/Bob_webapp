@@ -314,7 +314,7 @@ export default function InstantBookingConfig({
 
       {!canUse && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          {"La prenotazione diretta è inclusa nel piano Bob Pro. Passa a Pro per attivarla."}
+          {"La prenotazione diretta è inclusa nel piano Bob Plus. Passa a Bob Plus per attivarla."}
         </div>
       )}
 

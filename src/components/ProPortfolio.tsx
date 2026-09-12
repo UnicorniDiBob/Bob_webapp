@@ -14,7 +14,7 @@ import {
 
 const TIER_LABEL: Record<SubscriptionTier, string> = {
   free: "Free",
-  pro: "Pro",
+  pro: "Plus",
   business: "Business",
 };
 

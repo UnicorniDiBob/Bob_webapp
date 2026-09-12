@@ -20,7 +20,7 @@
 //
 // Adesso sa fare tutte e due, e quale applicare lo decide un DATO:
 //   · il piano non costa niente a chi ce l'ha (oggi: tutti, perche' i piani si
-//     attivano con un codice) -> effetto SUBITO. Tenere qualcuno su Bob Pro
+//     attivano con un codice) -> effetto SUBITO. Tenere qualcuno su Bob Plus
 //     tre settimane «fino alla fine del periodo» quando non ha mai pagato
 //     niente e' una finzione che lui vede benissimo;
 //   · il piano lo paga -> effetto alla fine del mese di abbonamento in corso,
@@ -145,7 +145,7 @@ export function effettoDisdetta(
 
 /**
  * Cosa smette di funzionare tornando a Free. Si ricava dai piani, cosi' il
- * giorno che a Bob Pro si aggiunge una funzione questa lista la segue da sola
+ * giorno che a Bob Plus si aggiunge una funzione questa lista la segue da sola
  * invece di restare indietro (e' lo stesso motivo per cui PIANI vive in
  * `piani.ts` e non dentro le pagine).
  */
