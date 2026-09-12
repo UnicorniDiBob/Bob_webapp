@@ -24,7 +24,7 @@ export default async function ServicesPage() {
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
           Di cosa hai bisogno?
         </h1>
-        <p className="mt-2 max-w-xl text-sm text-bob-ink/60">
+        <p className="mt-2 max-w-xl text-sm text-bob-ink/70">
           Scegli un servizio per vedere chi lo offre, con prezzi e rating in
           chiaro. Non sai da dove partire? Raccontalo a Bob.
         </p>
@@ -48,7 +48,7 @@ export default async function ServicesPage() {
                 {/* Nessun "presto disponibile": una card senza professionisti
                     non annuncia il proprio vuoto, la riga sparisce. */}
                 {n > 0 && (
-                  <p className="text-xs text-bob-ink/55">
+                  <p className="text-xs text-bob-ink/70">
                     {n} professionist{n === 1 ? "a" : "i"}
                   </p>
                 )}

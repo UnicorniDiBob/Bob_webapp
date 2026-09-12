@@ -14,7 +14,7 @@ export default function NotFound() {
         <h1 className="mt-1 text-2xl font-bold text-bob-ink sm:text-3xl">
           Questa pagina non esiste
         </h1>
-        <p className="mx-auto mt-2 max-w-sm text-sm text-bob-ink/60">
+        <p className="mx-auto mt-2 max-w-sm text-sm text-bob-ink/70">
           Forse il link è cambiato. Torna alla home e lascia che Bob ti aiuti a
           trovare quello che cerchi.
         </p>

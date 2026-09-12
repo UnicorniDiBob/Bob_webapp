@@ -94,7 +94,7 @@ function StatusTimeline({
       : 0;
 
   return (
-    <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px]">
+    <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-2xs">
       {steps.map((s, i) => (
         <span key={s} className="flex items-center gap-1.5">
           {i > 0 && <span className="text-bob-ink/20">—</span>}
@@ -390,7 +390,7 @@ export function CustomerHome() {
         text: "Hai proposto un nuovo orario",
         sub: `${dow} ${day} alle ${time} · in attesa di ${proName(a.professional_id)}`,
         node: (
-          <span className="shrink-0 text-sm text-bob-ink/45">In attesa ⏳</span>
+          <span className="shrink-0 text-sm text-bob-ink/65">In attesa ⏳</span>
         ),
       });
       continue;
@@ -420,7 +420,7 @@ export function CustomerHome() {
           <button
             onClick={() => respondToAppointment(a, false)}
             disabled={respondingAppt === a.id}
-            className="text-sm font-medium text-bob-ink/50 hover:text-red-600 hover:underline"
+            className="text-sm font-medium text-bob-ink/65 hover:text-red-600 hover:underline"
             data-testid={`appt-decline-${a.id}`}
           >
             Rifiuta
@@ -495,7 +495,7 @@ export function CustomerHome() {
           <MessageCircle className="h-6 w-6" aria-hidden="true" />
         </div>
         <h3 className="font-semibold text-bob-ink">Nessuna richiesta ancora</h3>
-        <p className="max-w-sm text-sm text-bob-ink/60">
+        <p className="max-w-sm text-sm text-bob-ink/70">
           Racconta a Bob il tuo problema: capisce di cosa hai bisogno e ti
           mette in contatto con i professionisti giusti.
         </p>
@@ -526,7 +526,7 @@ export function CustomerHome() {
               >
                 <span className="min-w-0 text-sm">
                   <span className="font-semibold text-bob-ink">{t.text}</span>
-                  <span className="text-bob-ink/55"> · {t.sub}</span>
+                  <span className="text-bob-ink/70"> · {t.sub}</span>
                 </span>
                 {t.node}
               </li>
@@ -538,12 +538,12 @@ export function CustomerHome() {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
         {/* ---- 2. Lavori in corso ---- */}
         <section className="card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
             Lavori in corso
           </h2>
           {openRequests.length === 0 ? (
             <div className="mt-4 rounded-xl border border-dashed border-bob-indigo/25 bg-bob-indigo-50/40 p-4 text-center">
-              <p className="text-sm text-bob-ink/60">
+              <p className="text-sm text-bob-ink/70">
                 Nessun lavoro in corso.{" "}
                 <Link href="/#bob" className="font-medium text-bob-indigo hover:underline">
                   Parla con Bob
@@ -566,20 +566,20 @@ export function CustomerHome() {
                         <p className="truncate text-sm font-semibold text-bob-ink">
                           {r.service?.name ?? "Richiesta"}
                           {r.city?.name ? (
-                            <span className="font-normal text-bob-ink/50">
+                            <span className="font-normal text-bob-ink/65">
                               {" "}
                               · {r.city.name}
                             </span>
                           ) : null}
                         </p>
                         {r.problem_description && (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-bob-ink/55">
+                          <p className="mt-0.5 line-clamp-1 text-xs text-bob-ink/70">
                             {r.problem_description}
                           </p>
                         )}
                       </div>
                       {n > 0 && (
-                        <span className="shrink-0 rounded-full bg-bob-indigo px-2 py-0.5 text-[11px] font-bold text-white">
+                        <span className="shrink-0 rounded-full bg-bob-indigo px-2 py-0.5 text-2xs font-bold text-white">
                           {n > 9 ? "9+" : n} nuov{n === 1 ? "o" : "i"}
                         </span>
                       )}
@@ -591,7 +591,7 @@ export function CustomerHome() {
                     />
                     {r.pros.length > 1 ? (
                       <div className="mt-2.5 flex flex-col gap-1.5 border-t border-black/5 pt-2.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-bob-ink/40">
+                        <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
                           Confronta le risposte
                         </p>
                         {r.pros.map((p) => {
@@ -604,7 +604,7 @@ export function CustomerHome() {
                               <span className="min-w-0 truncate text-xs font-medium text-bob-ink">
                                 {p.name}
                                 {un > 0 && (
-                                  <span className="ml-2 rounded-full bg-bob-indigo px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                  <span className="ml-2 rounded-full bg-bob-indigo px-1.5 py-0.5 text-2xs font-bold text-white">
                                     {un}
                                   </span>
                                 )}
@@ -621,7 +621,7 @@ export function CustomerHome() {
                         <button
                           onClick={() => setConfirmClose(r.id)}
                           disabled={closing === r.id}
-                          className="mt-1 self-start text-xs font-medium text-bob-ink/50 hover:text-bob-indigo hover:underline"
+                          className="mt-1 self-start text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline"
                         >
                           {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
                         </button>
@@ -639,7 +639,7 @@ export function CustomerHome() {
                         <button
                           onClick={() => setConfirmClose(r.id)}
                           disabled={closing === r.id}
-                          className="text-xs font-medium text-bob-ink/50 hover:text-bob-indigo hover:underline"
+                          className="text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline"
                         >
                           {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
                         </button>
@@ -654,12 +654,12 @@ export function CustomerHome() {
 
         {/* ---- 3. Prossimi appuntamenti ---- */}
         <section className="card p-5">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
             <Calendar className="h-4 w-4" aria-hidden="true" />
             Prossimi appuntamenti
           </h2>
           {appointments.length === 0 ? (
-            <p className="mt-4 text-sm text-bob-ink/50">
+            <p className="mt-4 text-sm text-bob-ink/65">
               Nessun appuntamento in programma. Quando un professionista te ne
               propone uno, lo trovi qui.
             </p>
@@ -684,7 +684,7 @@ export function CustomerHome() {
                         }`}
                       >
                         <span
-                          className={`block text-[10px] font-medium ${
+                          className={`block text-2xs font-medium ${
                             proposed ? "text-amber-700" : "text-bob-indigo"
                           }`}
                         >
@@ -703,14 +703,14 @@ export function CustomerHome() {
                       <p className="truncate text-sm font-semibold text-bob-ink">
                         {a.title || req?.service?.name || "Appuntamento"}
                       </p>
-                      <p className="truncate text-xs text-bob-ink/55">
+                      <p className="truncate text-xs text-bob-ink/70">
                         {time} · {proName(a.professional_id)}
                         {proposed ? " · da confermare" : ""}
                       </p>
                     </div>
                     {proposed &&
                       (a.proposed_by === "customer" ? (
-                        <span className="shrink-0 text-[11px] text-bob-ink/40">
+                        <span className="shrink-0 text-2xs text-bob-ink/65">
                           In attesa ⏳
                         </span>
                       ) : (
@@ -731,13 +731,13 @@ export function CustomerHome() {
           {/* ---- 4. I tuoi professionisti ---- */}
           {trustedPros.length > 0 && (
             <>
-              <h2 className="mt-6 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+              <h2 className="mt-6 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
                 I tuoi professionisti
               </h2>
               <ul className="mt-3 flex flex-col gap-2">
                 {trustedPros.slice(0, 5).map((p) => (
                   <li key={p.id} className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bob-indigo-50 text-[11px] font-bold text-bob-indigo">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bob-indigo-50 text-2xs font-bold text-bob-indigo">
                       {p.name
                         .split(" ")
                         .slice(0, 2)
@@ -773,12 +773,12 @@ export function CustomerHome() {
             className="flex w-full items-center justify-between text-left"
             data-testid="toggle-history"
           >
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
               Storico · {closedRequests.length} lavor
               {closedRequests.length === 1 ? "o" : "i"} conclus
               {closedRequests.length === 1 ? "o" : "i"}
             </h2>
-            <span className="text-bob-ink/40">{showHistory ? "▲" : "▼"}</span>
+            <span className="text-bob-ink/65">{showHistory ? "▲" : "▼"}</span>
           </button>
           {showHistory && (
             <ul className="mt-3 flex flex-col divide-y divide-black/5">
@@ -791,13 +791,13 @@ export function CustomerHome() {
                     <p className="text-sm font-medium text-bob-ink">
                       {r.service?.name ?? "Richiesta"}
                       {r.pros[0] ? (
-                        <span className="font-normal text-bob-ink/50">
+                        <span className="font-normal text-bob-ink/65">
                           {" "}
                           · {r.pros[0].name}
                         </span>
                       ) : null}
                     </p>
-                    <p className="text-xs text-bob-ink/45">{fmtDate(r.created_at)}</p>
+                    <p className="text-xs text-bob-ink/65">{fmtDate(r.created_at)}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <Link
@@ -843,20 +843,20 @@ export function CustomerHome() {
             <h3 className="text-lg font-bold text-bob-ink">
               Proponi un altro orario
             </h3>
-            <p className="mt-1 text-sm text-bob-ink/60">
+            <p className="mt-1 text-sm text-bob-ink/70">
               Questi sono gli orari liberi di{" "}
               {proName(slotPickerFor.professional_id)} nei prossimi giorni:
               scegline uno e glielo propongo io.
             </p>
             {slotsLoading ? (
-              <p className="mt-5 text-sm text-bob-ink/50">
+              <p className="mt-5 text-sm text-bob-ink/65">
                 Controllo le disponibilità…
               </p>
             ) : !orariConfermati ? (
               /* Vedi /api/pro/slots: «nessuno slot» e «orari mai dichiarati»
                  sono due cose diverse e al cliente vanno dette diverse. */
               <p
-                className="mt-5 text-sm text-bob-ink/60"
+                className="mt-5 text-sm text-bob-ink/70"
                 data-testid="slot-orari-mancanti"
               >
                 {proName(slotPickerFor.professional_id)} non ha ancora indicato
@@ -864,7 +864,7 @@ export function CustomerHome() {
                 scrivi in chat e proponi tu quando ti andrebbe bene.
               </p>
             ) : slots.length === 0 ? (
-              <p className="mt-5 text-sm text-bob-ink/60">
+              <p className="mt-5 text-sm text-bob-ink/70">
                 Non ci sono slot liberi nei prossimi 7 giorni: scrivigli in
                 chat e trovate un orario insieme.
               </p>
@@ -884,7 +884,7 @@ export function CustomerHome() {
                   <div className="mt-4 flex flex-col gap-3">
                     {Array.from(byDay.entries()).map(([day, daySlots]) => (
                       <div key={day}>
-                        <p className="text-xs font-semibold capitalize text-bob-ink/55">
+                        <p className="text-xs font-semibold capitalize text-bob-ink/70">
                           {day}
                         </p>
                         <div className="mt-1.5 flex flex-wrap gap-1.5">

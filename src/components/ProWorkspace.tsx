@@ -149,7 +149,7 @@ export function ProWorkspace({
         <h3 className="font-semibold text-bob-ink">
           Completa l&apos;iscrizione per iniziare
         </h3>
-        <p className="max-w-sm text-sm text-bob-ink/60">
+        <p className="max-w-sm text-sm text-bob-ink/70">
           Scegli il piano e racconta cosa offri, in che città lavori e le tue
           tariffe: bastano due minuti. La verifica della partita IVA, se il tuo
           piano la include, la fai da solo subito dopo.
@@ -197,7 +197,7 @@ export function ProWorkspace({
                   <span className="font-semibold text-bob-ink">
                     {a.customer_name}
                   </span>
-                  <span className="text-bob-ink/55">
+                  <span className="text-bob-ink/70">
                     {" "}
                     · {a.title ?? "Appuntamento"} ·{" "}
                     {new Date(a.starts_at).toLocaleString("it-IT", {
@@ -219,7 +219,7 @@ export function ProWorkspace({
                   </button>
                   <button
                     onClick={() => respondToCustomerProposal(a, false)}
-                    className="text-sm font-medium text-bob-ink/50 hover:text-red-600 hover:underline"
+                    className="text-sm font-medium text-bob-ink/65 hover:text-red-600 hover:underline"
                   >
                     Rifiuta
                   </button>
@@ -303,7 +303,7 @@ export function ProWorkspace({
               Prossimi appuntamenti
             </h3>
             {upcoming.length === 0 ? (
-              <p className="text-sm text-bob-ink/50">
+              <p className="text-sm text-bob-ink/65">
                 Nessun appuntamento in programma.
               </p>
             ) : (
@@ -322,13 +322,13 @@ export function ProWorkspace({
                         <p className="truncate text-sm font-medium text-bob-ink">
                           {a.customer_name}
                         </p>
-                        <p className="truncate text-xs text-bob-ink/55">
+                        <p className="truncate text-xs text-bob-ink/70">
                           {a.title ?? "Appuntamento"}
                         </p>
                         <p className="mt-0.5 text-xs tabular-nums text-bob-indigo">
                           {fmtDay(new Date(a.starts_at))} · {fmtRange(a)}
                         </p>
-                        <p className="text-[11px] text-bob-ink/45">
+                        <p className="text-2xs text-bob-ink/65">
                           {fmtDuration(a.duration_minutes)}
                         </p>
                       </div>
@@ -349,7 +349,7 @@ export function ProWorkspace({
               <div className="min-w-0">
                 <h3 className="truncate font-semibold text-bob-ink">{name}</h3>
                 {profile.headline && (
-                  <p className="truncate text-xs text-bob-ink/60">
+                  <p className="truncate text-xs text-bob-ink/70">
                     {profile.headline}
                   </p>
                 )}
@@ -444,7 +444,7 @@ function KpiCard({
     >
       <p
         className={`text-xs font-medium ${
-          accent ? "text-white/70" : "text-bob-ink/55"
+          accent ? "text-white/70" : "text-bob-ink/70"
         }`}
       >
         {label}
@@ -458,8 +458,8 @@ function KpiCard({
       </p>
       {hint && (
         <p
-          className={`mt-0.5 text-[11px] ${
-            accent ? "text-white/60" : "text-bob-ink/45"
+          className={`mt-0.5 text-2xs ${
+            accent ? "text-white/60" : "text-bob-ink/65"
           }`}
         >
           {hint}

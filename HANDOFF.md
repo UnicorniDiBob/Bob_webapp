@@ -1,114 +1,260 @@
-# Passaggio di consegne — 8 settembre 2026 (André, con Claude)
+# Passaggio di consegne — 12 settembre 2026 (André, con Claude)
 
-> Sostituisce quello del 5 settembre sera. HANDOFF.md si sovrascrive a ogni
-> sessione, **ma quello che è a metà si porta avanti, non si butta**: le voci
-> ancora aperte di Lucio e quelle vecchie stanno in fondo, nelle loro sezioni.
+> Sostituisce quello dell'11 settembre e ne porta avanti tutte le voci ancora
+> aperte, nelle sezioni in fondo. HANDOFF.md si sovrascrive a ogni sessione,
+> **ma quello che è a metà si porta avanti, non si butta**. Scritto e mergiato
+> lo stesso giorno.
 
-## Cosa è andato in produzione (4-6 settembre, ricerca)
+## Cosa è andato in produzione (12 settembre — larghezza chiusa, Bob ha una faccia)
 
-La ricerca per parola chiave esiste e qualcuno la chiama. Prima c'era solo lo
-scorrimento dell'elenco e la chat con Bob.
+Niente Supabase, niente migrazioni, nessun advisor da rilanciare. Solo
+interfaccia e un componente nuovo.
 
-- **Migrazioni 067-070, applicate su Supabase** (file nel PR prima, come da
-  regola). 067 vocabolario: `search_terms`, **491 termini** — 15 mestieri, 105
-  interventi generati dal catalogo, 371 sinonimi. 068 risolutore:
-  `search_resolve(frase, limite)` con quattro modi di riconoscimento (esatto,
-  contenuto, prefisso, trigrammi) e una soglia di certezza a 0.80. 069 ordine
-  per specificità: chi dichiara *quel* lavoro batte chi dichiara solo il
-  mestiere. 070 una verità sulle offerte.
-- **Casella di ricerca su `/professionisti`** (PR #38): suggerimenti dal
-  server con pausa di 150 ms, Invio porta all'elenco filtrato con una
-  targhetta rimovibile, l'URL si canonicalizza da sé (`service`, `city`).
-  Sopra 0.80 dice «Stai cercando», sotto «Forse cercavi» con le alternative:
-  **le bande di fiducia adesso sono rispettate dall'interfaccia.**
-- **Chi fa proprio quel lavoro viene prima** (PR #39), e chi non lo ha
-  dichiarato lo dice nella scheda. Provato con un caso truccato: un pro
-  migliore su verifica, voto e prezzo resta **dietro** a chi ha dichiarato
-  l'intervento, e ci resta anche con `&sort=prezzo`.
-- **I parametri di ordinamento sono pubblicati** (PR #26): sezione
-  `/come-funziona#ordine`, raggiunta da un link sotto l'elenco. Art. 22 co.
-  4-bis Cod. Consumo chiede «direttamente e facilmente accessibile dalla
-  pagina dei risultati»: un link dai risultati basta, la sezione a sé no.
-- **`docs/RICERCA.md`**: come funziona, i pesi, cosa si registra e cosa no,
-  e il ragionamento legale. Da leggere prima di toccare l'ordinamento.
-- **Una verità sugli interventi: `professional_services`.**
-  `professionals.subservice_slugs` è deprecata con un commento in colonna, la
-  070 ha travasato le dichiarazioni mancanti. Stato vero oggi: **13 righe, 12
-  con l'intervento preciso, 5 pro su 6 con almeno un intervento** — ma **8
-  righe su 13 non hanno prezzo**, perché la 070 non se li è inventati.
-- **`toCard` legge tutte le offerte, non la prima riga che capita** (d1bc1c2):
-  prima Milano Clean Squad diceva «Tariffa su richiesta» pur avendo 20-28 €.
+- **Blocco B chiuso: una larghezza sola, 1600px, su ogni pagina.**
+  `container-bob` è `100rem` e vale per tutto — pubblico e applicazione. In rem
+  e non in px, così cresce se qualcuno ha alzato il testo nelle impostazioni del
+  browser.
+- **Due strade abbandonate, tutte e due mie**, e vale la pena sapere perché per
+  non ripercorrerle:
+  - *Il doppio livello* (1120 per il sito, 1600 per l'applicazione) costringeva
+    a notare che una pagina è diversa dall'altra. Via `container-app`, via
+    `src/lib/layout.ts`, via la logica sul percorso in `Header`, `ProBanner` e
+    `CancellazioneBanner`. **`Footer` è tornato componente server.**
+  - *La scala tipografica sul viewport* (`clamp` sulla base in `html`) era
+    peggio: si rompeva dove il codice è in px — il calendario sarebbe diventato
+    **più** affollato, non meno — e scavalcava la scala che l'utente ha già
+    scelto nel sistema operativo.
+- **Una regola nuova, che era una correzione vera.** Il contenitore decide la
+  **cornice** e dipende solo dalla pagina; la misura di lettura si applica al
+  **contenuto dentro**, mai al contenitore. `/notifiche` e `/supporto`
+  scrivevano `container-bob max-w-2xl` e stringevano la cornice a 672px
+  trascinandosi dietro intestazione e piede: passando dalla dashboard alle
+  notifiche la pagina saltava da 1600 a 672. Ora usano `.colonna-lettura` su un
+  blocco interno.
+- **Il calendario è stato guardato dal vivo e regge**: con le etichette a 11px e
+  l'ora a 64px un appuntamento da mezz'ora tiene le sue righe. Era l'unico punto
+  aperto del blocco A. **Blocco A chiuso.**
+- **Bob ha una faccia.** `src/components/Bob.tsx`: testa grande in proporzione
+  da cartone, salopette sopra la camicia, scarponi di cuoio. Deciso guardando
+  cinque stili e quattro tenute. Il ragionamento sta in
+  `claude/MASCOT_bob_12set.md`.
 
-## Cosa è a metà
+## Cosa è a metà — mio (12 settembre)
 
-- **Il modulo per il professionista: «quali di questi lavori fai?».** Non
-  esiste. È la voce che vale più di tutte adesso, perché l'ordinamento poggia
-  su quella dichiarazione e le 6 righe di oggi le ho messe a mano con la 070.
-  Finché non c'è, il vantaggio va a chi è stato compilato, non a chi lavora.
-- **I pesi sono pubblicati ma non sono ancora un punteggio in SQL.** Chi
-  dichiara il lavoro cercato viene prima perché il JavaScript lo raggruppa,
-  non perché prende più punti. `getProfessionals` continua a caricare tutti i
-  professionisti e a filtrare in memoria: va portato in SQL, e i pesi con lui.
-- **Slot sponsorizzati**: non costruiti. Quando si fanno, nello **stesso
-  commit** va sostituita la frase «Nessuna posizione è a pagamento» in
-  `/come-funziona#ordine` — sostituita, non cancellata — e la targhetta
-  «Sponsorizzato» va **dentro** l'elenco (all. I punto 11-bis, pratica
-  sleale in sé se non si dichiara lì). Massimo uno slot nei primi tre e uno a
-  metà elenco.
-- **Registro delle ricerche a vuoto**: da fare, sarà la **072** (la 071 è di
-  Lucio). Senza `user_id`, cifre rimosse, 60 caratteri, 12 mesi.
-- **`drop column subservice_slugs`**: 072 o 073, solo dopo che nessun codice
-  la legge più.
-- **Verifica dal vivo del pezzo B** (casella di ricerca su www.meetonda.com,
-  desktop e 390px): non fatta, rinviata da me.
+- **`Bob.tsx` è in `main` ma non lo usa nessuna pagina.** Entra in scena quando
+  si costruisce la home. È voluto, ma è anche la situazione da tenere d'occhio:
+  un componente che nessuno usa marcisce in fretta.
+- **La home nuova esiste solo come mock, non come codice.** La direzione è
+  decisa e non è la larghezza: lo schermo si riempie **di contenuto** — fasce a
+  tutta larghezza che si alternano (chiara, grigia, indaco piena, gialla),
+  illustrazioni grandi, animazioni allo scorrimento. Da fare: riscrivere
+  `src/app/page.tsx`, il footer nuovo, le animazioni. **Non è una serata.**
+- **Le scene attorno a Bob vivono solo nel mock**: il telefono del passo 1, le
+  schede del passo 2, il fumetto del passo 3, il telefono della sezione app.
+  Vanno portate nel repo insieme alla home.
+- **Il footer a quattro colonne** (Esplora, Supporto, Professionisti, Bob
+  Italia) esiste solo nel mock. Quattro voci puntano a pagine **che non
+  esistono**: *Requisiti minimi*, *Lavora con noi*, *Blog*, *Contatti stampa*.
+  O si creano o si tolgono dal footer — non si spediscono link morti.
+- **Le altre tre tenute di Bob** (camicia e cintura, alta visibilità, polo e
+  grembiule) sono disegnate ma non sono nel repo. Servono quando si faranno le
+  sezioni per mestiere: il grembiule racconta le pulizie meglio del gilet.
+- **La palette del marchio resta indaco e giallo.** Ne sono state guardate sei.
+  Se un giorno si cambia, non è la mascotte: sono i pulsanti, i chip, il logo,
+  il calendario, l'anteprima sui social. **Va deciso prima del pilota, non
+  dopo.**
 
 ## Cosa ho applicato in produzione che l'altro deve sapere
 
-- **067, 068, 069, 070 applicate su Supabase.** Advisor di sicurezza
-  rilanciati dopo, puliti: le estensioni `pg_trgm` e `unaccent` stanno nello
-  schema `extensions`, non in `public`, le funzioni hanno `search_path`
-  fissato, RLS su `search_terms` (lettura pubblica, scrittura admin).
-- **Trappola da conoscere prima di rigiocare la 067**: un replay della 067
-  *dopo* la 068 riporta il trigger di normalizzazione alla versione senza
-  `tokens`, e i termini nuovi restano senza token — invisibili a tutto tranne
-  la corrispondenza per parola. Riprodotto: 74 termini su 150. La 069
-  installa un **trigger separato** che il replay non può disfare, e lo ripara
-  con un `update`. In produzione oggi: **491 termini, 0 senza token.**
-- **La 071 è mergiata e deployata, ma NON è applicata su Supabase.**
-  `avvisi_servizio` non c'è, `profiles.avvisi_visti_al` non c'è. Le pagine
-  pubbliche stanno in piedi perché `leggiAvvisiInCorso` fa `if (error) return
-  []`: la funzione è online e silenziosamente morta, nessun avviso arriverà
-  mai. **Non l'ho toccata: è di Lucio, la applica lui** — poi advisor.
-- **`.gitignore`**: aggiunta `/Claude outputs/`, la cartella degli screenshot
-  delle verifiche dal vivo. Non è un deliverable, non va nel repo.
-- Replay `001 → 070` dai soli file del repo: **0 errori**. L'impronta a otto
-  righe **non è ancora stata confrontata con la produzione** — resta il passo
-  a mano con `scripts/schema_fingerprint.sql`, aperto dal 5 settembre.
+- **Niente su Supabase oggi.** Solo deploy Vercel da `main`.
+- **`container-bob` è l'unico contenitore.** Chi scrive una pagina nuova usa
+  quello e basta: `container-app` e `src/lib/layout.ts` **non esistono più**. Se
+  li trovi citati in un documento, il documento è vecchio.
+- **Per stringere il testo si usa `.colonna-lettura`** su un blocco interno, mai
+  `max-w-*` sul contenitore. Il perché è scritto in `globals.css` accanto alla
+  classe.
+- **`Bob.tsx` è un server component**: niente `useId`, niente `<defs>`/`<use>`
+  (gli id lì dentro sono globali al documento e due Bob nella stessa pagina
+  collidono), niente JavaScript spedito al browser. Le braccia stanno fuori dal
+  corpo apposta: una posa nuova è una rotazione, non un disegno nuovo.
 
-## Cosa è a metà — portato avanti dal 5 settembre (Lucio)
+## Cosa è a metà — portato avanti dall'11 settembre (André)
 
-- **Applicare la 071**, e poi **rilanciare gli advisor di sicurezza**.
-- **Verifica dal vivo su www.meetonda.com, desktop e 390px**: da fare per le
-  sei correzioni del 5 mattina e per i tre rami mergiati la sera.
-- **1 professionista su 6 ha gli orari salvati.** Da quando
-  `/api/pro/slots` legge `professional_availability`, gli altri 5 non mostrano
-  nessuno slot: comportamento giusto, ma il cliente deve scrivere in chat.
-  Vanno chiesti, o messi a mano da admin.
-- **Gli avvisi non li vede chi non è loggato.** Volutamente: la policy di
-  lettura è `to authenticated`. Una fascia pubblica sarebbe un'altra cosa.
-- **`appointments.customer_name`** è il nome di una persona in testo libero,
-  14 righe senza legame a nessun account: nessuna cancellazione, nessuna
-  conservazione. E **la cancellazione account non tocca `appointments`**:
-  `customer_id` ha `on delete set null`, la riga resta con dentro il nome.
+- **Il calendario non è mai stato guardato dal vivo.** È dietro il login, che
+  la sessione di lavoro non aveva. È l'unico punto a rischio di tutto il blocco
+  A: **11px dentro un blocco da mezz'ora**. Se due righe non entrano, si alza
+  ancora `HOUR_PX_WEEK` in `src/lib/calendar.ts` o si riportano le etichette a
+  10px lasciando tutto il resto — una riga in entrambi i casi. **Da fare al
+  primo login.**
+- **Il blocco B dell'audit — la larghezza — è il prossimo, e ha una scadenza
+  vera.** Oggi `container-bob` è 1120px fissi e serve sia le pagine pubbliche
+  sia la dashboard: su uno schermo da 1840px **720px sono margine vuoto, il 39%
+  dello schermo**, e il calendario ne riceve 676. I margini sono più larghi del
+  calendario. Serve un `container-app` largo per dashboard, messaggi e
+  impostazioni, lasciando `container-bob` a 1120 per le pagine pubbliche, dove
+  è giusto. **Ogni schermata costruita da qui a gennaio nasce dentro il guscio
+  attuale**: fatto adesso, quello che viene dopo nasce giusto; fatto a
+  dicembre, si rifà quello che c'è in mezzo.
+- **Il blocco C — le modali che diventano pagine — è il costoso.**
+  `InstantBookingDialog` sono 667 righe dentro `max-w-lg` (512px);
+  `QuoteDialog`, `RequestDialog` e `AppointmentDialog` stanno fra 320 e 345
+  righe dentro 448px. Una modale va bene per «sei sicuro?», non per un flusso
+  di lavoro senza URL e senza tasto indietro. Tocca routing e struttura: 1–2
+  settimane, e **non deve atterrare nelle ultime 4–6 settimane prima del
+  pilota**.
+- **Restano 6 `font-mono`** che cadono sul mono di sistema. Schibsted non ha un
+  monospaziato; l'abbinamento naturale è IBM Plex Mono o JetBrains Mono. Non
+  urgente, ma è l'ultimo pezzo di tipografia non scelta.
 
-## Cosa è a metà — portato avanti dal 28 agosto-2 settembre
+## Applicato in produzione l'11 settembre — resta valido
 
-Nessuna di queste è chiusa.
+- **Niente su Supabase oggi.** Nessuna migrazione, nessun oggetto nuovo,
+  nessun advisor da rilanciare. Solo un deploy Vercel da `main`.
+- **Ho toccato 18 file dell'area di Lucio** — tutto `src/app/admin/**` più
+  `src/components/admin/CatalogInstantEditor.tsx` — e questo **strappa la
+  regola** «un'edit nell'area dell'altro va nel suo PR». L'ho fatto lo stesso
+  perché era una sostituzione meccanica e globale, non una modifica funzionale:
+  lo stesso passaggio di `text-bob-ink/45` → `/65` su tutto il progetto.
+  Lasciare fuori l'admin avrebbe significato un admin con contrasti diversi dal
+  resto del sito e una seconda passata da fare dopo. **Ma la regola è stata
+  attraversata e va detto, non nascosto**: Lucio, se preferisci che l'admin
+  torni com'era, è un `git revert` selettivo su quei 18 file.
+- **La scala è globale da adesso.** Qualunque componente nuovo scritto da qui
+  in avanti eredita 13/15/17 invece di 12/14/16, e i grigi hanno un pavimento a
+  `/65`. Se qualcosa sembra «troppo grande» rispetto a com'era, non è il
+  componente: è il token, e si discute in `tailwind.config.ts`.
+- **`text-2xs` (11px) esiste e va usato solo per i dati fitti**, cioè il
+  calendario. Non è una nuova taglia generica: se serve testo piccolo altrove,
+  quasi sempre la risposta giusta è `text-xs`.
 
-- **La chat non passa `zone` a `/api/match`** — codice di André.
+## Cosa è a metà — portato avanti dal 10 settembre (André)
+
+- **La scheda non mostra la tariffa.** La 077 da' i punti a chi dichiara un
+  prezzo in qualunque forma, ma la scheda pubblica stampa solo la forbice:
+  quelle tre tariffe orarie il cliente non le vede ancora. Il punteggio premia
+  la dichiarazione — il buco e' nostro, non del professionista — ma la frase
+  «un preventivo che non c'e' non ti aiuta a decidere» su
+  `/come-funziona#ordine` e' mantenuta a meta' finche' la scheda non la scrive.
+  E' la voce vecchia «tariffa nell'unita' del mestiere», e da oggi ha un motivo
+  in piu' per essere chiusa: e' interfaccia, non punteggio.
+- **La selezione di chi entra in elenco è ancora in JavaScript e in memoria.**
+  Il punteggio è in SQL, il filtro no: con seicento professionisti va spostato
+  anche quello.
+- **`ordinaSenzaPunteggio` si può togliere** ora che la 072 è applicata. Non
+  l'ho fatto: una rete di sicurezza si smonta con calma, non lo stesso giorno.
+- **Slot sponsorizzati**: non costruiti. Quando si fanno, nello **stesso
+  commit** va sostituita la frase «Nessuna posizione è a pagamento» in
+  `/come-funziona#ordine` — sostituita, non cancellata — e la targhetta
+  «Sponsorizzato» va **dentro** l'elenco (all. I punto 11-bis).
+- **Registro delle ricerche a vuoto**: dalla **078** (la 076 e' dei doppioni,
+  la 077 e' andata al prezzo). Attenzione: `search_events`
+  **esiste già** dalla 026 e registra gli slug, non la frase digitata né il
+  fatto che non abbia trovato niente. È un paio di colonne, non una tabella.
+- **`drop column subservice_slugs`**: solo dopo che nessun codice la legge più.
+- **La sezione 9 dei ToS pro elenca parametri che non sono più quelli** e non
+  nomina il criterio che oggi viene primo. Il testo pronto da incollare è in
+  `docs/RICERCA.md` §4. È un file dell'area di Lucio: va nel suo PR, e insieme
+  all'apertura dei pagamenti, col preavviso art. 3 P2B.
+
+## Applicato in produzione nei giorni scorsi — resta valido
+
+- **072, 075 e 077 applicate su Supabase**, advisor rilanciati dopo ognuna:
+  pulito tranne `Leaked Password Protection`. La 077 sostituisce la stessa
+  funzione, quindi non aggiunge oggetti nuovi — e l'ho verificato invece di
+  darlo per scontato.
+- **Roba nuova che gira da sola**: un cron alle 04:10 UTC
+  (`aggiorna-segnali-professionisti`, traccia in `system_job_runs` — se un
+  giorno non compare, non è girato) e un **trigger su `request_messages`** che
+  a ogni risposta di un professionista riscrive la sua riga in
+  `professional_signals`. È l'unica cosa che scrive quella tabella: nessuna
+  policy di scrittura per nessun ruolo, di proposito.
+- **Quello che ho applicato è il file meno la cornice** `begin;`/`commit;`: lo
+  strumento di migrazione apre la sua transazione e una annidata litiga. Tutto
+  il resto è identico al file in `main`.
+- **Numeri riconciliati con Lucio**: appuntamenti con un nome in chiaro e
+  nessun account **22, con 16 nomi distinti**; righe di offerta senza forbice
+  **8, di cui 3 con una tariffa** — quindi senza *nessun* prezzo sono 5. Su
+  entrambi i conteggi ora siamo d'accordo, verificati sul database.
+- **Numerazione: la 075 sono i segnali e la 077 e' il prezzo. La 076 resta
+  libera per i doppioni del catalogo**, che e' di Lucio: un numero prenotato
+  resta prenotato anche se il file non c'e' ancora. Sotto la storia di come si
+  era rotta.
+- **Numerazione: la 075 sono i segnali, non i doppioni del catalogo.** Il
+  handoff del 9 la prenotava a parole per i doppioni; nessun file era stato
+  scritto, quindi non è andato perso niente — ma **i doppioni, il registro
+  delle ricerche a vuoto e il `drop column` partono dalla 076**. Lezione: un
+  numero di migrazione si prende dalla storia applicata **e dai rami spinti**,
+  non da un documento non mergiato.
+- **L'impronta a otto righe non è ancora stata confrontata con la produzione**
+  (`scripts/schema_fingerprint.sql`): aperta dal 5 settembre, ora con quattro
+  migrazioni in più addosso.
+
+## Cosa è a metà — portato avanti dal 9 settembre (Lucio)
+
+Nessuna di queste è chiusa. La sua PR #46 (conto alla rovescia, avviso sulla
+pagina di accesso, `reset_account_prova.sql` in git) **è mergiata**: quella
+voce non c'è più.
+
+- **Durante un fermo l'iscrizione è nascosta, non spenta.** `/login` è anche la
+  pagina di registrazione, e ogni iscrizione consuma una delle 2 email/ora del
+  mailer di Supabase — il tetto di tutto il progetto. La #46 toglie il modulo
+  dalla pagina, ma `signUp` parte dal browser e va dritta a Supabase: l'unico
+  modo di spegnerlo davvero è «disable signups» nelle impostazioni Auth, che
+  però blocca anche noi. Contro l'iscrizione per sbaglio basta; come barriera
+  dura no, e va saputo prima del pilota.
+- **Il 503 non è ancora provato in produzione con traffico vero.** Il fermo
+  rapido funziona (provato dal vivo), ma nei log non c'è nessun 503 servito.
+  Si prova in un modo solo: fermare Bob davvero, per quindici minuti, con
+  qualcuno che guarda.
+- **Il modulo «quali di questi lavori fai?» non esiste ancora.** Le proposte
+  sono scritte — `claude/PROPOSTE_questionario_pro_09set.md`, tre opzioni,
+  consigliata la B (caselle più forbice di prezzo) — e va deciso dove vive:
+  onboarding **e** impostazioni, con `ready_at` che non si accende finché non
+  c'è almeno un intervento dichiarato. **È la voce che vale più di tutte**:
+  l'ordinamento poggia su quella dichiarazione, e le righe di oggi le ho messe
+  a mano con la 070.
+- **Prima del modulo vanno chiusi i doppioni del catalogo (ora dalla 076).** Il
+  catalogo è stato seminato due volte, 8 voci il 3 giugno e 112 l'8 luglio con
+  la 014: dove il nome nuovo era diverso dal vecchio sono rimaste **entrambe**.
+  Sono otto, sei hanno un gemello quasi identico, e **sette su otto hanno già
+  un professionista attaccato**. Il vocabolario della 067 è generato dal
+  catalogo, gemelli compresi: chi cerca «imbiancatura» e chi cerca
+  «tinteggiatura» finisce su due elenchi diversi. Un modulo costruito su questa
+  lista fa scegliere fra due caselle identiche e ci mette dentro la
+  dichiarazione del pro per sempre. Quadro completo nell'artifact «Catalogo dei
+  lavori di Bob». **Nota utile: un controllo sui nomi identici dentro lo stesso
+  mestiere trova zero** — sono gemelli di significato, non di stringa, ed è per
+  questo che nessuno se n'era accorto.
+- **I ToS pro, al momento dei pagamenti.** L'art. 3 pubblicato non nomina la
+  data della disdetta, quindi oggi non contraddice niente; la bozza 4.3 sì.
+  Vanno allineati **insieme all'apertura dei pagamenti e non dopo**, e
+  modificare i termini verso utenti business richiede il **preavviso dell'art.
+  3 P2B, minimo 15 giorni**. Nello stesso giro va allineata la sezione 9
+  sull'ordinamento (testo pronto in `docs/RICERCA.md` §4).
+- **Verifica dal vivo delle sei correzioni del 5 mattina e dei rami del 5
+  sera**: quella della ricerca e dell'ordinamento è fatta, questa no.
+- **Un errore da non ripetere** (suo, tenuto qui perché serve): una finestra di
+  manutenzione di prova messa contando che il codice non fosse in produzione, e
+  la PR mergiata tredici secondi dopo. Una riga di prova va messa con una
+  finestra nel futuro, o non messa quando un merge è in gioco.
+
+## Cosa è a metà — portato avanti dal 28 agosto-5 settembre
+
+- **1 professionista su 6 ha gli orari salvati.** Gli altri cinque non mostrano
+  nessuno slot: comportamento giusto, ma il cliente deve scrivere in chat. E da
+  oggi quell'assenza costa punti nel ranking (5 su 10, il centro): vanno
+  chiesti.
+- **Gli avvisi non li vede chi non è loggato**, volutamente: la policy della
+  071 è `to authenticated`. La fascia della 073 invece arriva a tutti.
+- **La cancellazione account non tocca `appointments`**: `customer_id` ha
+  `on delete set null`, la riga resta con dentro il nome in chiaro.
+- **La chat non passa `zone` a `/api/match`**: i parametri sono solo `city`,
+  `service`, `maxPrice`. Codice mio.
 - **28 zone nostre contro 88 nuclei ufficiali**: decisione di prodotto aperta.
 - **Tariffa nell'unità del mestiere e costi accessori**: colonne in database,
-  nessuna interfaccia. La pagina azienda dice ancora «€/h» fisso.
+  nessuna interfaccia. La pagina azienda dice ancora «€/h» fisso. Dalla 077 il
+  punteggio la conta, quindi resta solo il lato che il cliente vede — ed è il
+  lato che manca.
 - **Il worker maplibre non viene emesso nel bundle di Next.**
 - **`Leaked Password Protection` da accendere prima del pilota** (vuole il
   piano Pro): l'unico rilievo che gli advisor continuano a dare.
@@ -120,4 +266,4 @@ Nessuna di queste è chiusa.
   `http://localhost:3000/auth/conferma` ai Redirect URLs.
 - **Il clone locale tende a restare indietro**: `git fetch origin` all'inizio
   di ogni sessione, e per i numeri di migrazione guardare la storia applicata
-  su Supabase, non solo i file.
+  su Supabase **e i rami spinti**, non solo i file di `main`.

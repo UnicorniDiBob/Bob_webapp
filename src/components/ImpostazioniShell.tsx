@@ -90,7 +90,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
             «Cerca un professionista» (05/09). */}
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-bob-ink/55 transition hover:text-bob-indigo md:hidden"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo md:hidden"
           data-testid="link-torna-al-lavoro"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -99,7 +99,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
           Impostazioni
         </h1>
-        <p className="mt-1.5 text-sm text-bob-ink/60">
+        <p className="mt-1.5 text-sm text-bob-ink/70">
           {isPro
             ? "Il tuo account, il tuo profilo pubblico e come lavori."
             : "Il tuo account e le tue preferenze."}
@@ -150,7 +150,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
                   data-testid={`nav-desktop-${v.href.split("/").pop()}`}
                 >
                   <span className="block text-sm font-semibold">{v.label}</span>
-                  <span className="mt-0.5 block text-xs leading-snug text-bob-ink/45">
+                  <span className="mt-0.5 block text-xs leading-snug text-bob-ink/65">
                     {v.hint}
                   </span>
                 </Link>
@@ -180,7 +180,7 @@ export function SectionHeader({
         {title}
       </h2>
       {children && (
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/60">
+        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
           {children}
         </p>
       )}

@@ -253,7 +253,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
 
   if (caricando) {
     return (
-      <p className="flex items-center gap-2 text-sm text-bob-ink/50">
+      <p className="flex items-center gap-2 text-sm text-bob-ink/65">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Carico la mappa…
       </p>
     );
@@ -312,7 +312,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
             ))}
           </select>
           {maxScope && scopeAmmessi.length < SCOPE_ORDINE.length && (
-            <p className="mt-1 text-xs text-bob-ink/45">
+            <p className="mt-1 text-xs text-bob-ink/65">
               Per il tuo mestiere l&apos;area più larga possibile è
               «{SCOPE_LABEL[maxScope].toLowerCase()}»: i clienti cercano vicino,
               e una promessa più larga non ti porta lavoro.
@@ -370,7 +370,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
               className="mt-2 w-full"
               data-testid="range-raggio"
             />
-            <p className="mt-1 text-xs text-bob-ink/45">
+            <p className="mt-1 text-xs text-bob-ink/65">
               {modo === "circle"
                 ? "Trascina il perno o clicca sulla mappa per spostare il centro. Tocca un quartiere per scegliere a mano."
                 : "Stai scegliendo i quartieri a mano: il cerchio non comanda più."}
@@ -389,7 +389,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
                     dentro
                       ? "border-bob-indigo bg-bob-indigo/10 text-bob-indigo"
-                      : "border-black/10 text-bob-ink/60 hover:border-black/30"
+                      : "border-black/10 text-bob-ink/70 hover:border-black/30"
                   }`}
                 >
                   {z.label}
@@ -397,7 +397,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
               );
             })}
             {zone.length === 0 && (
-              <p className="text-sm text-bob-ink/50">
+              <p className="text-sm text-bob-ink/65">
                 Per questa città non abbiamo ancora i quartieri: intanto puoi
                 scegliere un&apos;area più larga qui sopra.
               </p>
@@ -406,13 +406,13 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
         </>
       ) : (
         <div className="card flex items-start gap-3 p-4">
-          <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-bob-ink/40" aria-hidden="true" />
+          <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-bob-ink/65" aria-hidden="true" />
           <div>
             <p className="text-sm font-semibold text-bob-ink">
               {SCOPE_LABEL[scope]}
               {scope !== "national" && cittaScelta ? ` — ${cittaScelta.name}` : ""}
             </p>
-            <p className="mt-1 text-sm text-bob-ink/55">
+            <p className="mt-1 text-sm text-bob-ink/70">
               Con un&apos;area così larga non serve disegnare niente: ti
               proponiamo per ogni richiesta che ci arriva da qui.
             </p>
@@ -439,7 +439,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
       {gettoni.length > 0 && cittaScelta && (
         <div className="card p-4">
           <h4 className="text-sm font-semibold text-bob-ink">Provalo</h4>
-          <p className="mt-1 text-xs text-bob-ink/50">
+          <p className="mt-1 text-xs text-bob-ink/65">
             Il confronto è lo stesso che fa la ricerca: i gettoni della tua area
             pubblicata contro quelli della richiesta. Non è una simulazione
             scritta a parte.
@@ -504,7 +504,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
       </div>
 
       {gettoni.length > 0 && (
-        <p className="text-xs text-bob-ink/40">
+        <p className="text-xs text-bob-ink/65">
           Come ti vede la ricerca: {gettoni.length}{" "}
           {gettoni.length === 1 ? "area pubblicata" : "aree pubblicate"}. Il
           centro del cerchio e il raggio non escono da qui.

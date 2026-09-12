@@ -116,7 +116,7 @@ export function CancellazioneAccount({
 
       <div className="mt-4">
         <label className="label-bob" htmlFor="cnc-motivo">
-          Perché te ne vai? <span className="font-normal text-bob-ink/45">— facoltativo</span>
+          Perché te ne vai? <span className="font-normal text-bob-ink/65">— facoltativo</span>
         </label>
         <select
           id="cnc-motivo"
@@ -132,7 +132,7 @@ export function CancellazioneAccount({
             </option>
           ))}
         </select>
-        <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/50">
+        <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/65">
           Serve a noi per capire cosa non funziona, e non è una condizione:
           l&apos;account si chiude anche se lasci questo campo vuoto.
         </p>
@@ -142,7 +142,7 @@ export function CancellazioneAccount({
         <div className="mt-3">
           <label className="label-bob" htmlFor="cnc-nota">
             Vuoi aggiungere qualcosa?{" "}
-            <span className="font-normal text-bob-ink/45">— facoltativo</span>
+            <span className="font-normal text-bob-ink/65">— facoltativo</span>
           </label>
           <textarea
             id="cnc-nota"
@@ -153,7 +153,7 @@ export function CancellazioneAccount({
             className="input-bob resize-none"
             data-testid="cancellazione-nota"
           />
-          <p className="mt-1.5 text-xs text-bob-ink/50">
+          <p className="mt-1.5 text-xs text-bob-ink/65">
             Questa nota viene cancellata insieme all&apos;account: la leggiamo
             in questi giorni, non la conserviamo.
           </p>
@@ -174,7 +174,7 @@ export function CancellazioneAccount({
           autoComplete="current-password"
           data-testid="cancellazione-password"
         />
-        <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/50">
+        <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/65">
           La chiediamo per essere sicuri che sia tu: è l&apos;unica cosa che
           impedisce a chi trovasse il tuo telefono sbloccato di chiudere il tuo
           account.

@@ -17,7 +17,11 @@ const config: Config = {
         },
       },
       fontFamily: {
+        // Schibsted Grotesk, caricato da next/font in src/app/layout.tsx.
+        // Quello che segue e' la scorta per i pochi millisecondi prima che il
+        // file sia pronto, e per il caso in cui non arrivi affatto.
         sans: [
+          "var(--font-schibsted)",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
@@ -36,7 +40,38 @@ const config: Config = {
         "card-hover": "0 2px 4px rgba(30,27,75,0.06), 0 16px 40px rgba(30,27,75,0.12)",
       },
       maxWidth: {
-        container: "1120px",
+        // UNA LARGHEZZA SOLA, per ogni pagina del sito.
+        //
+        // Non cambia fra pagine pubbliche e pagine applicazione: una cornice
+        // che si muove da una pagina all'altra si nota, e da' l'impressione
+        // che il sito sia fatto a pezzi.
+        //
+        // 100rem = 1600px con la base normale. In rem e non in px cosi' chi ha
+        // alzato la dimensione del testo nelle impostazioni del browser vede
+        // crescere anche la cornice, invece di ritrovarsi il testo grande in un
+        // contenitore stretto.
+        //
+        // Il vuoto ai lati su un monitor grande NON si risolve allargando
+        // ancora: si risolve mettendo nella pagina qualcosa da guardare.
+        container: "100rem",
+      },
+      // La scala tipografica.
+      //
+      // Non e' un ritocco estetico: l'87% delle utility di dimensione del
+      // progetto (820 su 942) erano text-sm o text-xs, cioe' 14px o meno, e
+      // la dimensione piu' frequente sullo schermo era 12px. Alzare qui i
+      // token vale piu' di 500 sostituzioni sparse nei componenti, si rivede
+      // in un file solo e si annulla in una riga.
+      //
+      // I valori grandi (2xl in su) restano quelli di Tailwind: il problema
+      // non erano i titoli.
+      fontSize: {
+        "2xs": ["0.6875rem", { lineHeight: "0.875rem" }], //  11px - solo dati fitti (calendario)
+        xs: ["0.8125rem", { lineHeight: "1.125rem" }],    //  13px - era 12
+        sm: ["0.9375rem", { lineHeight: "1.375rem" }],    //  15px - era 14
+        base: ["1.0625rem", { lineHeight: "1.625rem" }],  //  17px - era 16
+        lg: ["1.1875rem", { lineHeight: "1.75rem" }],     //  19px - era 18
+        xl: ["1.3125rem", { lineHeight: "1.875rem" }],    //  21px - era 20
       },
       keyframes: {
         "fade-up": {

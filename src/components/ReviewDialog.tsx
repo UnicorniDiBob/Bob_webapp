@@ -103,7 +103,7 @@ export function ReviewDialog({
             <h2 className="text-lg font-bold text-bob-ink">
               Grazie per la recensione!
             </h2>
-            <p className="mt-1 text-sm text-bob-ink/60">
+            <p className="mt-1 text-sm text-bob-ink/70">
               La tua valutazione aiuta gli altri clienti a scegliere e premia il
               lavoro ben fatto.
             </p>
@@ -120,7 +120,7 @@ export function ReviewDialog({
             <h2 className="text-lg font-bold text-bob-ink">
               Com&apos;è andato il lavoro?
             </h2>
-            <p className="mt-0.5 text-sm text-bob-ink/60">
+            <p className="mt-0.5 text-sm text-bob-ink/70">
               La recensione sarà pubblica sul profilo del professionista.
             </p>
 

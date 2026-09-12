@@ -75,7 +75,7 @@ export function StatoProfiloCard({
           <button
             type="button"
             onClick={() => setRiaperto(false)}
-            className="-mt-1 rounded-lg p-1.5 text-bob-ink/40 transition hover:bg-black/5 hover:text-bob-indigo"
+            className="-mt-1 rounded-lg p-1.5 text-bob-ink/65 transition hover:bg-black/5 hover:text-bob-indigo"
             title="Richiudi: resta il pallino"
             aria-label="Richiudi lo stato del profilo"
             data-testid="button-richiudi-stato"
@@ -86,7 +86,7 @@ export function StatoProfiloCard({
         <button
           type="button"
           onClick={rileggi}
-          className="-mr-1 -mt-1 rounded-lg p-1.5 text-bob-ink/40 transition hover:bg-black/5 hover:text-bob-indigo"
+          className="-mr-1 -mt-1 rounded-lg p-1.5 text-bob-ink/65 transition hover:bg-black/5 hover:text-bob-indigo"
           title="Ricontrolla adesso"
           aria-label="Ricontrolla adesso"
           data-testid="button-ricontrolla-stato"
@@ -97,14 +97,14 @@ export function StatoProfiloCard({
       </div>
 
       {esito.fase === "carico" && (
-        <p className="mt-3 flex items-center gap-2 text-sm text-bob-ink/50">
+        <p className="mt-3 flex items-center gap-2 text-sm text-bob-ink/65">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           Controllo…
         </p>
       )}
 
       {esito.fase === "irraggiungibile" && (
-        <p className="mt-3 text-sm text-bob-ink/60">
+        <p className="mt-3 text-sm text-bob-ink/70">
           Non riesco a controllare adesso.{" "}
           <button
             type="button"
@@ -130,7 +130,7 @@ export function StatoProfiloCard({
                 ? "Compari nelle ricerche"
                 : "Non compari in nessuna ricerca"}
               {esito.stato.readyAt && (
-                <span className="font-normal text-bob-ink/45">
+                <span className="font-normal text-bob-ink/65">
                   {" "}
                   dal{" "}
                   {new Date(esito.stato.readyAt).toLocaleDateString("it-IT", {
@@ -165,7 +165,7 @@ export function StatoProfiloCard({
             </div>
           )}
 
-          <p className="mt-2 pl-4 text-xs text-bob-ink/55">
+          <p className="mt-2 pl-4 text-xs text-bob-ink/70">
             {esito.stato.mancanti === 0
               ? "Non manca niente."
               : esito.stato.compare
@@ -190,11 +190,11 @@ export function StatoProfiloCard({
                   {v.fatto && <Check className="h-3 w-3" />}
                 </span>
                 {v.fatto ? (
-                  <span className="text-bob-ink/45">{v.titolo}</span>
+                  <span className="text-bob-ink/65">{v.titolo}</span>
                 ) : (
                   <span className="text-bob-ink">
                     <span className="font-medium">{v.titolo}</span>
-                    <span className="text-bob-ink/55"> — {v.conseguenza} </span>
+                    <span className="text-bob-ink/70"> — {v.conseguenza} </span>
                     <Link
                       href={v.href}
                       className="whitespace-nowrap font-medium text-bob-indigo hover:underline"
@@ -212,7 +212,7 @@ export function StatoProfiloCard({
               risparmia la domanda «ma chi lo decide?». Dice due cose diverse
               perche' due cose diverse sono: lo stato lo tiene il server, la
               lista qui sopra e' un controllo fatto adesso. */}
-          <p className="mt-3 border-t border-black/5 pt-3 text-[11px] leading-relaxed text-bob-ink/40">
+          <p className="mt-3 border-t border-black/5 pt-3 text-2xs leading-relaxed text-bob-ink/65">
             {esito.stato.readyAt
               ? "Non è un interruttore: lo stato è salvato sul tuo profilo e si accende da solo quando dichiari cosa fai. Le righe qui sopra sono controllate adesso, alle "
               : "Non è un interruttore e non lo decidiamo a mano: dipende da cosa hai dichiarato. Controllo fatto adesso, alle "}

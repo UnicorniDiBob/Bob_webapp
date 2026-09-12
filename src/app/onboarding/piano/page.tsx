@@ -158,7 +158,7 @@ export default function PianoPage() {
 
   if (checking) {
     return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/50">
+      <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
         Carico…
       </div>
     );
@@ -172,7 +172,7 @@ export default function PianoPage() {
         <div className="mb-8 text-center">
           <LogoMark className="mx-auto mb-3" />
           <h1 className="text-2xl font-bold text-bob-ink">Scegli il tuo piano</h1>
-          <p className="mt-1 text-sm text-bob-ink/55">
+          <p className="mt-1 text-sm text-bob-ink/70">
             Puoi cambiare in ogni momento. Il piano Free non scade.
           </p>
         </div>
@@ -190,7 +190,7 @@ export default function PianoPage() {
               <h2 className="text-sm font-semibold text-bob-ink">
                 {conSconto ? "Il tuo codice è attivo" : "Hai un codice?"}
               </h2>
-              <p className="mt-1 text-sm text-bob-ink/60">
+              <p className="mt-1 text-sm text-bob-ink/70">
                 {conSconto
                   ? `Con ${codici.join(", ")} i prezzi qui sotto sono già i tuoi. Scegli il piano che ti serve: nessuno te lo assegna al posto tuo.`
                   : "Inseriscilo adesso: sconta i piani qui sotto, e poi scegli tu quello che vuoi."}
@@ -235,15 +235,15 @@ export default function PianoPage() {
                     {et.attuale}
                   </span>
                   {et.listino && (
-                    <span className="text-sm text-bob-ink/40 line-through">
+                    <span className="text-sm text-bob-ink/65 line-through">
                       {et.listino}
                     </span>
                   )}
                 </div>
                 {et.nota && (
-                  <p className="mt-0.5 text-xs text-bob-ink/50">{et.nota}</p>
+                  <p className="mt-0.5 text-xs text-bob-ink/65">{et.nota}</p>
                 )}
-                <p className="mt-2 text-sm leading-snug text-bob-ink/65">
+                <p className="mt-2 text-sm leading-snug text-bob-ink/70">
                   {p.sintesi}
                 </p>
                 <ul className="mt-4 flex-1 space-y-2">
@@ -301,14 +301,14 @@ export default function PianoPage() {
           <div className="card mx-auto mt-6 max-w-lg p-6">
             <div className="flex items-start gap-3">
               <Lock
-                className="mt-0.5 h-5 w-5 shrink-0 text-bob-ink/40"
+                className="mt-0.5 h-5 w-5 shrink-0 text-bob-ink/65"
                 aria-hidden="true"
               />
               <div>
                 <h3 className="font-semibold text-bob-ink">
                   Pagamenti temporaneamente non attivi
                 </h3>
-                <p className="mt-1 text-sm text-bob-ink/60">
+                <p className="mt-1 text-sm text-bob-ink/70">
                   Stiamo completando l&apos;integrazione dei pagamenti:{" "}
                   {pianoById(daPagare).nome} costa{" "}
                   {etichettaPrezzo(pianoById(daPagare), sconti).attuale} al mese

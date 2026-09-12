@@ -98,7 +98,7 @@ export default async function AdminAnalisiPage() {
         <h1 className="text-2xl font-bold tracking-tight text-bob-ink">
           Analisi
         </h1>
-        <p className="mt-1 text-sm text-bob-ink/55">
+        <p className="mt-1 text-sm text-bob-ink/70">
           Indicatori del marketplace, filtrabili per periodo, area geografica,
           categoria e fascia d&apos;età. Esporta in Excel in ogni momento con i
           filtri correnti.

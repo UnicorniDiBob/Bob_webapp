@@ -96,7 +96,7 @@ export function NotificaVoce({
           {n.testo}
         </p>
 
-        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-bob-ink/45">
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-bob-ink/65">
           {n.mittente && <span>{n.mittente}</span>}
           {n.mittente && n.quando && <span aria-hidden="true">·</span>}
           {n.quando && <span>{quandoLeggibile(n.quando)}</span>}

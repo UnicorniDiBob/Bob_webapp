@@ -88,7 +88,7 @@ export default async function ProfessionalDetailPage({
 
   return (
     <div className="container-bob py-10 pb-28 lg:pb-10">
-      <nav className="mb-4 text-sm text-bob-ink/50" aria-label="breadcrumb">
+      <nav className="mb-4 text-sm text-bob-ink/65" aria-label="breadcrumb">
         <Link href="/professionisti" className="hover:text-bob-indigo">
           Professionisti
         </Link>
@@ -140,7 +140,7 @@ export default async function ProfessionalDetailPage({
             {/* La riga dei dati. Il badge porta già dentro di sé la data del
                 riscontro e, nel tooltip, cosa attesta e cosa no: il paragrafo
                 che lo ripeteva a parole è stato tolto. */}
-            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-black/5 pt-4 text-sm text-bob-ink/60">
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-black/5 pt-4 text-sm text-bob-ink/70">
               <Stars value={p.avgRating} count={p.nRatings} size="md" />
               <VerificationLevelBadge
                 level={p.verificationLevel}
@@ -164,7 +164,7 @@ export default async function ProfessionalDetailPage({
           {/* Lavori conclusi: solo se ce ne sono (piani Pro/Business). */}
           {portfolio.length > 0 && (
             <section className="card p-6">
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
                 Lavori ({portfolio.length})
               </h2>
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -196,7 +196,7 @@ export default async function ProfessionalDetailPage({
               «ancora nessuna» è già nella riga dei dati qui sopra. */}
           {reviews.length > 0 && (
             <section className="card p-6">
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-bob-ink/55">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
                 Recensioni ({reviews.length})
               </h2>
               <ul className="flex flex-col gap-4">
@@ -208,7 +208,7 @@ export default async function ProfessionalDetailPage({
                   >
                     <div className="flex items-center justify-between">
                       <Stars value={r.score} />
-                      <span className="text-xs text-bob-ink/45">
+                      <span className="text-xs text-bob-ink/65">
                         {fmtDate(r.created_at)}
                       </span>
                     </div>
@@ -229,14 +229,14 @@ export default async function ProfessionalDetailPage({
             professionalName={p.displayName}
           />
           <div className="card p-6">
-            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/50">
+            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/65">
               Costo indicativo
             </p>
             <div className="mt-1.5 text-2xl">
               <PriceTag min={p.minPrice} max={p.maxPrice} />
             </div>
             {p.priceNote && (
-              <p className="mt-1 line-clamp-2 text-xs text-bob-ink/55">
+              <p className="mt-1 line-clamp-2 text-xs text-bob-ink/70">
                 {p.priceNote}
               </p>
             )}
@@ -248,7 +248,7 @@ export default async function ProfessionalDetailPage({
                 label={`Contatta ${primoNome}`}
               />
             </div>
-            <p className="mt-3 text-center text-xs text-bob-ink/45">
+            <p className="mt-3 text-center text-xs text-bob-ink/65">
               Scrivere è gratis: la fee solo a lavoro concluso.
             </p>
           </div>

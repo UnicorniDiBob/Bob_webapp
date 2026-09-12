@@ -76,10 +76,10 @@ function EventRow({ e, proName }: { e: VerificationEvent; proName?: string }) {
     <li className="border-l-2 border-black/5 py-1.5 pl-3 text-xs">
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-semibold text-bob-ink/80">{EVENT_LABEL[e.event]}</span>
-        {proName && <span className="text-bob-ink/50">· {proName}</span>}
-        <span className="text-bob-ink/40">{fmtDateTime(e.created_at)}</span>
+        {proName && <span className="text-bob-ink/65">· {proName}</span>}
+        <span className="text-bob-ink/65">{fmtDateTime(e.created_at)}</span>
       </div>
-      <div className="mt-0.5 text-bob-ink/55">
+      <div className="mt-0.5 text-bob-ink/70">
         {e.actor_name ? (
           <>
             Firmato da <span className="font-medium text-bob-ink/75">{e.actor_name}</span>
@@ -90,7 +90,7 @@ function EventRow({ e, proName }: { e: VerificationEvent; proName?: string }) {
         )}
         {e.from_level && e.to_level ? ` · ${e.from_level} → ${e.to_level}` : ""}
       </div>
-      {e.note && <p className="mt-0.5 text-bob-ink/60">{e.note}</p>}
+      {e.note && <p className="mt-0.5 text-bob-ink/70">{e.note}</p>}
     </li>
   );
 }
@@ -320,7 +320,7 @@ export default async function AdminProfessionalsPage() {
         <h1 className="text-2xl font-bold tracking-tight text-bob-ink">
           Verifica professionisti
         </h1>
-        <p className="mt-1 text-sm text-bob-ink/55">
+        <p className="mt-1 text-sm text-bob-ink/70">
           Esamina i profili e aggiorna il loro stato di verifica.
         </p>
       </div>
@@ -335,13 +335,13 @@ export default async function AdminProfessionalsPage() {
             className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
               openCases.length > 0
                 ? "bg-amber-50 text-amber-700"
-                : "bg-black/5 text-bob-ink/50"
+                : "bg-black/5 text-bob-ink/65"
             }`}
           >
             {openCases.length}
           </span>
         </div>
-        <p className="mb-4 text-sm text-bob-ink/55">
+        <p className="mb-4 text-sm text-bob-ink/70">
           Casi che il controllo automatico non ha confermato. Non sono rifiuti:
           chi non lavora con l&apos;estero spesso non è iscritto al VIES, quindi
           decide una persona. La motivazione che scrivi la legge il
@@ -349,7 +349,7 @@ export default async function AdminProfessionalsPage() {
         </p>
 
         {openCases.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/40">
+          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
             Nessun caso da esaminare.
           </div>
         ) : (
@@ -373,7 +373,7 @@ export default async function AdminProfessionalsPage() {
 
         {grantedCases.length > 0 && (
           <details className="mt-3">
-            <summary className="cursor-pointer text-sm font-medium text-bob-ink/60 hover:text-bob-indigo">
+            <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
               Livelli attivi ({grantedCases.length}) — da qui si revoca, con
               motivazione
             </summary>
@@ -398,7 +398,7 @@ export default async function AdminProfessionalsPage() {
 
         {closedCases.length > 0 && (
           <details className="mt-3">
-            <summary className="cursor-pointer text-sm font-medium text-bob-ink/60 hover:text-bob-indigo">
+            <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
               Casi respinti ({closedCases.length})
             </summary>
             <div className="mt-3 flex flex-col gap-3">
@@ -424,14 +424,14 @@ export default async function AdminProfessionalsPage() {
       {/* Registro completo: chiuso di default, ma sempre qui sotto. */}
       {events.length > 0 && (
         <details className="mt-4" data-testid="vat-registro">
-          <summary className="cursor-pointer text-sm font-medium text-bob-ink/60 hover:text-bob-indigo">
+          <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
             Registro delle verifiche — ultimi {events.length} movimenti
             {typeof totaleMovimenti === "number" && totaleMovimenti > events.length
               ? ` su ${totaleMovimenti}`
               : ""}
             , con la firma di chi li ha fatti
           </summary>
-          <p className="mt-2 text-xs text-bob-ink/45">
+          <p className="mt-2 text-xs text-bob-ink/65">
             Si scrive solo in aggiunta: nessuna riga può essere modificata o
             cancellata, nemmeno da un amministratore. È quello che lo rende una
             prova di cosa è stato fatto e da chi. Lo vedono tutti gli account
@@ -464,10 +464,10 @@ export default async function AdminProfessionalsPage() {
                 {list.length}
               </span>
             </div>
-            <p className="mb-4 text-sm text-bob-ink/55">{config.description}</p>
+            <p className="mb-4 text-sm text-bob-ink/70">{config.description}</p>
 
             {list.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/40">
+              <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
                 Nessun professionista in questa categoria.
               </div>
             ) : (
@@ -489,13 +489,13 @@ export default async function AdminProfessionalsPage() {
                               {profile?.full_name ?? "Professionista"}
                             </h3>
                             <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${config.badge}`}
+                              className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${config.badge}`}
                             >
                               {config.label}
                             </span>
                           </div>
 
-                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-bob-ink/55">
+                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-bob-ink/70">
                             {svc?.services?.name && (
                               <span className="inline-flex items-center gap-1">
                                 <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
@@ -539,7 +539,7 @@ export default async function AdminProfessionalsPage() {
                             </p>
                           )}
                           {pro.bio && (
-                            <p className="mt-1 line-clamp-2 text-xs text-bob-ink/50">
+                            <p className="mt-1 line-clamp-2 text-xs text-bob-ink/65">
                               {pro.bio}
                             </p>
                           )}
@@ -635,17 +635,17 @@ function VatCaseCard({
         <h3 className="font-semibold text-bob-ink">{name}</h3>
         {state && (
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${REVIEW_BADGE[state]}`}
+            className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${REVIEW_BADGE[state]}`}
           >
             {REVIEW_LABEL[state]}
           </span>
         )}
-        <span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-bob-ink/60">
+        <span className="rounded-full bg-black/5 px-2 py-0.5 text-2xs font-semibold text-bob-ink/70">
           Livello attuale: {VERIFICATION_LABEL[row.level]}
         </span>
       </div>
 
-      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-bob-ink/55">
+      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-bob-ink/70">
         {svc?.services?.name && (
           <span className="inline-flex items-center gap-1">
             <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
@@ -672,13 +672,13 @@ function VatCaseCard({
 
       <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
         <div className="flex gap-2">
-          <dt className="text-bob-ink/50">Partita IVA dichiarata:</dt>
+          <dt className="text-bob-ink/65">Partita IVA dichiarata:</dt>
           <dd className="font-mono font-semibold text-bob-ink">
             {row.vat_number ?? "—"}
           </dd>
         </div>
         <div className="flex gap-2">
-          <dt className="text-bob-ink/50">Esito automatico:</dt>
+          <dt className="text-bob-ink/65">Esito automatico:</dt>
           <dd className="text-bob-ink">
             {row.vat_active === true
               ? "confermata"
@@ -688,12 +688,12 @@ function VatCaseCard({
           </dd>
         </div>
         <div className="flex gap-2 sm:col-span-2">
-          <dt className="text-bob-ink/50">Intestazione dal registro:</dt>
+          <dt className="text-bob-ink/65">Intestazione dal registro:</dt>
           <dd className="text-bob-ink">{row.vat_holder_name ?? "non disponibile"}</dd>
         </div>
         {row.vat_match_source === "declared_name" && (
           <div className="flex gap-2 sm:col-span-2">
-            <dt className="text-bob-ink/50">Attribuita in base a:</dt>
+            <dt className="text-bob-ink/65">Attribuita in base a:</dt>
             <dd className="font-medium text-amber-700">
               ragione sociale dichiarata dal professionista — da ricontrollare a
               campione
@@ -702,7 +702,7 @@ function VatCaseCard({
         )}
         {row.declared_business_name && (
           <div className="flex gap-2 sm:col-span-2">
-            <dt className="text-bob-ink/50">Ragione sociale dichiarata:</dt>
+            <dt className="text-bob-ink/65">Ragione sociale dichiarata:</dt>
             <dd className="text-bob-ink">{row.declared_business_name}</dd>
           </div>
         )}
@@ -744,7 +744,7 @@ function VatCaseCard({
           {row.vat_reviewed_at ? ` (${fmtDate(row.vat_reviewed_at)})` : ""}:{" "}
           {row.vat_review_note}
           {row.vat_reviewed_by_name && (
-            <span className="mt-0.5 block text-bob-ink/50">
+            <span className="mt-0.5 block text-bob-ink/65">
               Decisione firmata da{" "}
               <span className="font-medium text-bob-ink/75">
                 {row.vat_reviewed_by_name}
@@ -779,7 +779,7 @@ function VatCaseCard({
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-[10px] text-bob-ink/40">
+          <p className="mt-1 text-2xs text-bob-ink/65">
             I link scadono dopo un&apos;ora: sono firmati, non pubblici.
           </p>
         </div>
@@ -787,7 +787,7 @@ function VatCaseCard({
 
       {storico.length > 0 && (
         <details className="mt-2">
-          <summary className="cursor-pointer text-xs font-medium text-bob-ink/50 hover:text-bob-indigo">
+          <summary className="cursor-pointer text-xs font-medium text-bob-ink/65 hover:text-bob-indigo">
             Storico dei controlli ({storico.length}) — chi ha fatto cosa
           </summary>
           <ul className="mt-2 space-y-1">

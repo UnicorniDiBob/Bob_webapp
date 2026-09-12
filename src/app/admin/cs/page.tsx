@@ -105,7 +105,7 @@ export default function AdminTeamPage() {
         <h1 className="text-2xl font-bold tracking-tight text-bob-ink">
           Team
         </h1>
-        <p className="mt-1 text-sm text-bob-ink/55">
+        <p className="mt-1 text-sm text-bob-ink/70">
           Invita e gestisci gli account interni (admin e customer service).
           Questa pagina è visibile solo all&apos;admin.
         </p>
@@ -119,7 +119,7 @@ export default function AdminTeamPage() {
         {loading ? (
           <div className="h-20 animate-pulse rounded-2xl bg-black/[0.03]" />
         ) : staff.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/40">
+          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
             Nessun membro ancora. Invita qualcuno qui sotto.
           </div>
         ) : (
@@ -133,12 +133,12 @@ export default function AdminTeamPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-bob-ink">{s.fullName}</p>
                     {s.invitePending && (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-semibold text-amber-700">
                         Invito in sospeso
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-bob-ink/50">
+                  <p className="text-xs text-bob-ink/65">
                     {s.email ?? "—"} · Creato {fmtDate(s.createdAt)}
                   </p>
                 </div>
@@ -198,7 +198,7 @@ export default function AdminTeamPage() {
                   }`}
                 >
                   <span className="font-semibold text-bob-ink">Customer Service</span>
-                  <p className="mt-0.5 text-xs text-bob-ink/50">
+                  <p className="mt-0.5 text-xs text-bob-ink/65">
                     Vede verifiche e utenti, può modificare i profili. Non può
                     invitare o eliminare.
                   </p>
@@ -213,7 +213,7 @@ export default function AdminTeamPage() {
                   }`}
                 >
                   <span className="font-semibold text-bob-ink">Admin</span>
-                  <p className="mt-0.5 text-xs text-bob-ink/50">
+                  <p className="mt-0.5 text-xs text-bob-ink/65">
                     Accesso completo: gestisce team, elimina utenti, tutte le
                     funzioni della dashboard.
                   </p>

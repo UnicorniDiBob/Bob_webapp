@@ -42,7 +42,7 @@ export default function FaqPage() {
       </div>
 
       <div className="mt-10 text-center">
-        <p className="text-sm text-bob-ink/60">Non hai trovato la risposta?</p>
+        <p className="text-sm text-bob-ink/70">Non hai trovato la risposta?</p>
         <Link
           href="/"
           className="mt-2 inline-block btn-primary px-6 py-3"

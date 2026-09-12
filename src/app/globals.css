@@ -19,8 +19,19 @@ body {
 }
 
 @layer components {
+  /* La cornice, uguale su ogni pagina del sito. Il tetto e' in rem, quindi
+     cresce insieme alla base: in pratica morde solo sugli schermi ultralarghi.
+     Il respiro ai bordi aumenta sugli schermi grandi, se no a tutta larghezza
+     il contenuto sembra incollato al vetro. */
   .container-bob {
-    @apply mx-auto w-full max-w-container px-5 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-container px-5 sm:px-6 lg:px-8 2xl:px-12;
+  }
+
+  /* La misura di lettura. Va sul CONTENUTO, mai sul contenitore: stringere il
+     contenitore sposta anche intestazione e piede, e la pagina "salta" rispetto
+     a quella da cui arrivi. La cornice non si tocca mai. */
+  .colonna-lettura {
+    @apply mx-auto w-full max-w-2xl;
   }
 
   .btn-primary {
@@ -44,14 +55,101 @@ body {
   }
 
   .input-bob {
-    @apply w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-bob-ink outline-none transition placeholder:text-bob-ink/40 focus:border-bob-indigo/50 focus:ring-2 focus:ring-bob-indigo/15;
+    @apply w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-base text-bob-ink outline-none transition placeholder:text-bob-ink/65 focus:border-bob-indigo/50 focus:ring-2 focus:ring-bob-indigo/15;
   }
 
   .label-bob {
     @apply mb-1.5 block text-sm font-medium text-bob-ink/80;
   }
 
+  /* Le animazioni allo scorrimento. Vedi src/components/Rivela.tsx.
+     Il contenuto NASCE VISIBILE: senza queste classi si legge tutto. Solo
+     quando il JavaScript e' partito un blocco fuori schermo viene messo in
+     posizione di partenza. Cosi' senza JS, o se l'osservatore non arriva mai,
+     la pagina resta leggibile invece di restare bianca. */
+  .rivela-nascosto {
+    @apply translate-y-6 opacity-0;
+  }
+
+  .rivela-visibile {
+    @apply translate-y-0 opacity-100;
+    transition: opacity 0.6s cubic-bezier(0.22, 0.8, 0.3, 1),
+      transform 0.6s cubic-bezier(0.22, 0.8, 0.3, 1);
+  }
+
   .section-eyebrow {
     @apply text-xs font-semibold uppercase tracking-[0.14em] text-bob-indigo;
+  }
+}
+
+/* Chi ha chiesto meno movimento non lo riceve: niente comparse, niente
+   spostamenti. Il contenuto resta dov'e' e visibile. */
+@media (prefers-reduced-motion: reduce) {
+  .rivela-nascosto,
+  .rivela-visibile {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* L'elenco che scorre nel telefono della fascia della fiducia.
+   Le righe sono duplicate e la corsa si ferma a meta': cosi' il ritorno a capo
+   cade esattamente dove l'elenco ricomincia e non si vede. */
+@keyframes scorri-elenco {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+
+.elenco-scorre {
+  animation: scorri-elenco 18s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .elenco-scorre {
+    animation: none;
+  }
+}
+
+/* Le banconote che piovono nella cariola, nell'eroe di /per-i-professionisti.
+   La banconota parte sopra il bordo del cassone, scende ruotando e sparisce
+   appena dentro: la dissolvenza finale e' quello che la fa sembrare "entrata"
+   invece di "scomparsa", e la rotazione e' quello che la fa sembrare un foglio
+   invece di un sasso. Ogni banconota ha il suo ritardo, scritto in linea nel
+   componente, se no cadono tutte insieme come un blocco unico. */
+@keyframes cade-banconota {
+  0% {
+    transform: translateY(-62px) rotate(-16deg);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  /* Finisce SOTTO il bordo del cassone, non sopra: cosi' sparisce dietro la
+     sponda invece di dissolversi a mezz'aria. Prima si vedeva la banconota
+     attraversare la cariola e svanirci dentro, che e' peggio di non animarla. */
+  100% {
+    transform: translateY(14px) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+.banconota-cade {
+  animation: cade-banconota 2.8s ease-in infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Ferme e visibili sopra la cariola: il disegno racconta la stessa cosa
+     senza che niente si muova. */
+  .banconota-cade {
+    animation: none;
+    opacity: 1;
   }
 }

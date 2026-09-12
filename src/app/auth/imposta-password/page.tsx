@@ -86,7 +86,7 @@ export default function ImpostaPasswordPage() {
         </h1>
 
         {status === "checking" && (
-          <p className="mt-4 text-sm text-bob-ink/55">Verifico il link…</p>
+          <p className="mt-4 text-sm text-bob-ink/70">Verifico il link…</p>
         )}
 
         {status === "invalid" && (
@@ -104,7 +104,7 @@ export default function ImpostaPasswordPage() {
 
         {status === "ready" && (
           <>
-            <p className="mb-6 text-sm text-bob-ink/55">
+            <p className="mb-6 text-sm text-bob-ink/70">
               Imposta la password per attivare il tuo account.
             </p>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">

@@ -151,7 +151,7 @@ export function ProCalendar({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-bob-ink">Calendario</h2>
-          <p className="truncate text-xs capitalize text-bob-ink/55">
+          <p className="truncate text-xs capitalize text-bob-ink/70">
             {periodLabel}
           </p>
         </div>
@@ -164,7 +164,7 @@ export function ProCalendar({
               className={`px-2.5 py-1.5 text-xs font-medium transition ${
                 view === "week"
                   ? "bg-bob-indigo text-white"
-                  : "text-bob-ink/60 hover:bg-black/[0.03]"
+                  : "text-bob-ink/70 hover:bg-black/[0.03]"
               }`}
               aria-pressed={view === "week"}
               data-testid="cal-view-week"
@@ -176,7 +176,7 @@ export function ProCalendar({
               className={`px-2.5 py-1.5 text-xs font-medium transition ${
                 view === "day"
                   ? "bg-bob-indigo text-white"
-                  : "text-bob-ink/60 hover:bg-black/[0.03]"
+                  : "text-bob-ink/70 hover:bg-black/[0.03]"
               }`}
               aria-pressed={view === "day"}
               data-testid="cal-view-day"
@@ -239,7 +239,7 @@ export function ProCalendar({
                   }`}
                   aria-label={`Apri ${fmtDay(d)} in vista giorno`}
                 >
-                  <span className="block text-[10px] font-medium uppercase tracking-wide text-bob-ink/45">
+                  <span className="block text-2xs font-medium uppercase tracking-wide text-bob-ink/65">
                     {DAY_LABELS[weekdayIndex(d)]}
                   </span>
                   <span
@@ -265,7 +265,7 @@ export function ProCalendar({
               {hours.map((h, i) => (
                 <div
                   key={h}
-                  className="absolute right-1.5 text-[10px] font-medium tabular-nums text-bob-ink/40"
+                  className="absolute right-1.5 text-2xs font-medium tabular-nums text-bob-ink/65"
                   style={{
                     top: i * hourPx,
                     transform: i === 0 ? "none" : "translateY(-50%)",
@@ -316,7 +316,7 @@ export function ProCalendar({
                           Math.floor(absMin / 60)
                         ).padStart(2, "0")}:${String(absMin % 60).padStart(2, "0")}`}
                       >
-                        <span className="pointer-events-none hidden text-[10px] font-semibold text-bob-indigo group-hover:inline">
+                        <span className="pointer-events-none hidden text-2xs font-semibold text-bob-indigo group-hover:inline">
                           +
                         </span>
                       </button>
@@ -381,7 +381,7 @@ export function ProCalendar({
                         />
                         <span className="min-w-0 flex-1 px-1.5 py-0.5 leading-tight">
                           <span
-                            className={`block truncate text-[10px] font-bold tabular-nums ${
+                            className={`block truncate text-2xs font-bold tabular-nums ${
                               dim ? "line-through" : ""
                             }`}
                           >
@@ -399,23 +399,23 @@ export function ProCalendar({
                             )}
                           </span>
                           {height >= 30 && (
-                            <span className="block truncate text-[11px] font-medium">
+                            <span className="block truncate text-2xs font-medium">
                               {a.customer_name}
                             </span>
                           )}
                           {height >= 62 && a.title && (
-                            <span className="block truncate text-[10px] opacity-70">
+                            <span className="block truncate text-2xs opacity-70">
                               {a.title}
                             </span>
                           )}
                           {height >= 78 && a.location_address && (
-                            <span className="flex items-center gap-1 text-[10px] opacity-70">
+                            <span className="flex items-center gap-1 text-2xs opacity-70">
                               <MapPin className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
                               <span className="truncate">{a.location_address}</span>
                             </span>
                           )}
                           {height >= 96 && a.price != null && (
-                            <span className="block truncate text-[10px] font-semibold opacity-80">
+                            <span className="block truncate text-2xs font-semibold opacity-80">
                               € {a.price}
                             </span>
                           )}
@@ -433,7 +433,7 @@ export function ProCalendar({
       {/* Legenda + orario completo */}
       {!loading && (
         <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-bob-ink/50">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-bob-ink/65">
             <LegendDot className="bg-bob-indigo" label="Confermato" />
             <LegendDot className="bg-amber-400" label="Da confermare" />
             <LegendDot className="bg-emerald-500" label="Completato" />
@@ -441,7 +441,7 @@ export function ProCalendar({
           </div>
           <button
             onClick={() => setFullDay((v) => !v)}
-            className="text-[11px] font-medium text-bob-indigo hover:underline"
+            className="text-2xs font-medium text-bob-indigo hover:underline"
             data-testid="cal-toggle-fullday"
           >
             {fullDay ? "Mostra orario di lavoro" : "Mostra tutte le 24 ore"}

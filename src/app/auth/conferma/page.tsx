@@ -102,7 +102,7 @@ export default function ConfermaEmailPage() {
           <LogoMark className="mx-auto mb-4" />
 
           {stato === "verifica" && (
-            <p className="text-sm text-bob-ink/50">Un istante…</p>
+            <p className="text-sm text-bob-ink/65">Un istante…</p>
           )}
 
           {stato !== "verifica" && stato !== "link-scaduto" && (
@@ -119,7 +119,7 @@ export default function ConfermaEmailPage() {
 
           {stato === "con-sessione" && (
             <>
-              <p className="mt-2 text-sm text-bob-ink/60">
+              <p className="mt-2 text-sm text-bob-ink/70">
                 {ruolo === "professional"
                   ? "Il tuo indirizzo è verificato. Ora scegliamo il piano e prepariamo il profilo: ci vogliono due minuti."
                   : "Il tuo indirizzo è verificato. Puoi iniziare a usare BOB."}
@@ -137,7 +137,7 @@ export default function ConfermaEmailPage() {
 
           {stato === "senza-sessione" && (
             <>
-              <p className="mt-2 text-sm text-bob-ink/60">
+              <p className="mt-2 text-sm text-bob-ink/70">
                 Il tuo indirizzo è verificato. Da questo dispositivo serve
                 accedere: se ti sei iscritto da un altro browser, quella scheda
                 va avanti da sola.
@@ -153,7 +153,7 @@ export default function ConfermaEmailPage() {
               <h1 className="text-xl font-bold text-bob-ink">
                 Questo link non è più valido
               </h1>
-              <p className="mt-2 text-sm text-bob-ink/60">
+              <p className="mt-2 text-sm text-bob-ink/70">
                 I link di conferma scadono, e valgono una volta sola. Prova ad
                 accedere: se l&apos;indirizzo risulta già confermato entri senza
                 altri passaggi, altrimenti te ne mandiamo un altro.

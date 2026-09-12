@@ -75,7 +75,7 @@ export function NotificheCampanella() {
         className={`relative rounded-xl p-2.5 transition ${
           aperta
             ? "bg-bob-indigo-50 text-bob-indigo"
-            : "text-bob-ink/55 hover:bg-bob-indigo-50 hover:text-bob-indigo"
+            : "text-bob-ink/70 hover:bg-bob-indigo-50 hover:text-bob-indigo"
         }`}
         data-testid="button-notifiche"
         data-tour="notifiche"
@@ -83,7 +83,7 @@ export function NotificheCampanella() {
         <Bell className="h-5 w-5" aria-hidden="true" />
         {daContare > 0 && (
           <span
-            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-bob-indigo px-1 text-[10px] font-bold leading-none text-white"
+            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-bob-indigo px-1 text-2xs font-bold leading-none text-white"
             data-testid="badge-notifiche"
           >
             {daContare > 9 ? "9+" : daContare}
@@ -100,11 +100,11 @@ export function NotificheCampanella() {
         >
           <div className="flex items-baseline justify-between border-b border-black/5 px-4 py-3">
             <p className="text-sm font-bold text-bob-ink">Notifiche</p>
-            <p className="text-xs text-bob-ink/45">Account e profilo</p>
+            <p className="text-xs text-bob-ink/65">Account e profilo</p>
           </div>
 
           {!caricate ? (
-            <p className="px-4 py-6 text-center text-sm text-bob-ink/50">
+            <p className="px-4 py-6 text-center text-sm text-bob-ink/65">
               Controllo…
             </p>
           ) : notifiche.length === 0 ? (
@@ -112,7 +112,7 @@ export function NotificheCampanella() {
               <p className="text-sm font-medium text-bob-ink/70">
                 Non c&apos;è niente da leggere.
               </p>
-              <p className="mt-1 text-xs text-bob-ink/45">
+              <p className="mt-1 text-xs text-bob-ink/65">
                 Qui finiscono le nostre comunicazioni: verifica, risposte
                 dell&apos;assistenza, stato del tuo profilo. I messaggi dei
                 clienti stanno in Messaggi.

@@ -37,16 +37,38 @@ export function LogoMark({
 }
 
 // Wordmark BOB: maiuscolo, peso 900, con puntino accent giallo.
-export function Logo({ className = "" }: { className?: string }) {
+//
+// La tinta e' un parametro e non una classe passata da fuori: `className` non
+// puo' scavalcare `text-bob-indigo` in modo prevedibile, perche' due utility
+// Tailwind hanno la stessa specificita' e vince quella che capita dopo nel CSS
+// generato, non quella scritta dopo nella stringa. Sul piede scuro serviva
+// bianco, e "speriamo che vinca" non e' un modo di scegliere un colore.
+export function Logo({
+  className = "",
+  tinta = "scura",
+  dimensione = "normale",
+}: {
+  className?: string;
+  /** `scura` sui fondi chiari, `chiara` sui fondi scuri (il piede). */
+  tinta?: "scura" | "chiara";
+  /** `grande` nell'intestazione, dove il marchio deve pesare. */
+  dimensione?: "normale" | "grande";
+}) {
+  const colore = tinta === "chiara" ? "text-white" : "text-bob-indigo";
+  const corpo = dimensione === "grande" ? "text-3xl sm:text-[2rem]" : "text-2xl";
+  const punto =
+    dimensione === "grande"
+      ? "ml-1 h-2.5 w-2.5"
+      : "ml-0.5 h-2 w-2";
   return (
     <span
-      className={`inline-flex items-baseline font-sans text-2xl font-black tracking-tight text-bob-indigo ${className}`}
+      className={`inline-flex items-baseline font-sans font-black tracking-tight ${corpo} ${colore} ${className}`}
       aria-label="BOB"
     >
       BOB
       <span
         aria-hidden
-        className="ml-0.5 inline-block h-2 w-2 translate-y-[1px] rounded-full bg-bob-yellow"
+        className={`inline-block translate-y-[1px] rounded-full bg-bob-yellow ${punto}`}
       />
     </span>
   );

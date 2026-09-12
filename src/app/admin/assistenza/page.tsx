@@ -36,7 +36,7 @@ export default async function AdminAssistenzaPage() {
         <h1 className="text-xl font-bold tracking-tight text-bob-ink">
           Assistenza
         </h1>
-        <p className="mt-1 text-sm text-bob-ink/60">
+        <p className="mt-1 text-sm text-bob-ink/70">
           {aperti.length === 0
             ? "Nessuna richiesta aperta."
             : `${aperti.length} richiest${aperti.length === 1 ? "a" : "e"} da lavorare, la più vecchia per prima.`}

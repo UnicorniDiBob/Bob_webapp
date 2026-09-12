@@ -45,7 +45,7 @@ export function TierButtons({
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-bob-ink/40">
+      <span className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
         Piano
       </span>
       <div className="flex overflow-hidden rounded-xl border border-black/10">
@@ -57,7 +57,7 @@ export function TierButtons({
             className={`px-3 py-1.5 text-xs font-semibold transition disabled:opacity-40 ${
               t.tier === current
                 ? t.active
-                : "bg-white text-bob-ink/55 hover:bg-black/[0.04]"
+                : "bg-white text-bob-ink/70 hover:bg-black/[0.04]"
             }`}
             data-testid={`tier-btn-${t.tier}-${proId}`}
           >

@@ -955,7 +955,7 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
               className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
                 tab === t.value
                   ? "bg-bob-indigo text-white shadow-sm"
-                  : "text-bob-ink/60 hover:bg-black/[0.04] hover:text-bob-ink"
+                  : "text-bob-ink/70 hover:bg-black/[0.04] hover:text-bob-ink"
               }`}
               data-testid={`analisi-tab-${t.value}`}
             >
@@ -978,7 +978,7 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
           <div className="flex items-center gap-2.5">
             <span className="text-sm font-semibold text-bob-ink">Filtri</span>
             {activeFilterCount > 0 && (
-              <span className="rounded-full bg-bob-indigo px-2 py-0.5 text-[10px] font-bold text-white">
+              <span className="rounded-full bg-bob-indigo px-2 py-0.5 text-2xs font-bold text-white">
                 {activeFilterCount} personalizzat{activeFilterCount === 1 ? "o" : "i"}
               </span>
             )}
@@ -1147,7 +1147,7 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
       {/* Intestazione indicatore */}
       <div>
         <h2 className="text-lg font-bold text-bob-ink">{currentTab.title}</h2>
-        <p className="mt-0.5 text-sm text-bob-ink/55">{currentTab.desc}</p>
+        <p className="mt-0.5 text-sm text-bob-ink/70">{currentTab.desc}</p>
       </div>
 
       {/* Contenuto indicatore */}
@@ -1216,7 +1216,7 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
               </ResponsiveContainer>
             </ChartCard>
           ) : (
-            <div className="rounded-2xl border border-dashed border-black/10 py-10 text-center text-sm text-bob-ink/40">
+            <div className="rounded-2xl border border-dashed border-black/10 py-10 text-center text-sm text-bob-ink/65">
               Nessuna ricerca registrata con i filtri correnti.
             </div>
           )}
@@ -1360,7 +1360,7 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
               </ResponsiveContainer>
             </ChartCard>
           ) : (
-            <div className="rounded-2xl border border-dashed border-black/10 py-10 text-center text-sm text-bob-ink/40">
+            <div className="rounded-2xl border border-dashed border-black/10 py-10 text-center text-sm text-bob-ink/65">
               Nessun cambio di abbonamento registrato nel periodo selezionato.
             </div>
           )}
@@ -1387,8 +1387,8 @@ function StatCard({
   return (
     <div className={`card p-5 ${highlight ? "border-bob-indigo/20 bg-bob-indigo-50" : ""}`}>
       <p
-        className={`text-[11px] font-semibold uppercase tracking-wide ${
-          highlight ? "text-bob-indigo/70" : "text-bob-ink/45"
+        className={`text-2xs font-semibold uppercase tracking-wide ${
+          highlight ? "text-bob-indigo/70" : "text-bob-ink/65"
         }`}
       >
         {label}
@@ -1414,5 +1414,5 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 }
 
 function FootNote({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs leading-relaxed text-bob-ink/45">{children}</p>;
+  return <p className="text-xs leading-relaxed text-bob-ink/65">{children}</p>;
 }

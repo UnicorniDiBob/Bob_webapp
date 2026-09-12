@@ -141,7 +141,7 @@ export default function DashboardPage() {
 
   if (loading || (!user && !loading) || role === "admin" || role === "cs") {
     return (
-      <div className="container-bob py-16 text-center text-sm text-bob-ink/50" aria-busy="true">
+      <div className="container-bob py-16 text-center text-sm text-bob-ink/65" aria-busy="true">
         Carico la tua area personale…
       </div>
     );
@@ -165,7 +165,7 @@ export default function DashboardPage() {
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
             {nome ? `Ciao ${nome}` : "Ciao"}
           </h1>
-          <p className="mt-1.5 text-sm text-bob-ink/60">
+          <p className="mt-1.5 text-sm text-bob-ink/70">
             {isPro
               ? "Le richieste che ti riguardano e la tua giornata."
               : "Il punto della situazione sui tuoi lavori."}
@@ -228,14 +228,14 @@ export default function DashboardPage() {
             {proProfile && <ScadenzaVerificaPopup professionalId={proProfile.id} />}
 
             {proProfile && (
-              <p className="text-center text-xs text-bob-ink/40">
+              <p className="text-center text-xs text-bob-ink/65">
                 <button
                   type="button"
                   onClick={() => {
                     setRiprendiGuida(false);
                     setGuidaAperta(true);
                   }}
-                  className="font-medium text-bob-ink/50 underline-offset-2 transition hover:text-bob-indigo hover:underline"
+                  className="font-medium text-bob-ink/65 underline-offset-2 transition hover:text-bob-indigo hover:underline"
                   data-testid="button-rivedi-guida"
                 >
                   Rivedi la guida

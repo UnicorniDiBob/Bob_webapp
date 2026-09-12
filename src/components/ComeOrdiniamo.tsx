@@ -28,7 +28,7 @@ export function ComeOrdiniamo({ className = "" }: { className?: string }) {
   return (
     <Link
       href="/come-funziona#ordine"
-      className={`text-xs text-bob-ink/50 underline-offset-2 hover:text-bob-ink/75 hover:underline ${className}`}
+      className={`text-xs text-bob-ink/65 underline-offset-2 hover:text-bob-ink/75 hover:underline ${className}`}
       data-testid="link-come-ordiniamo"
     >
       Come ordiniamo i risultati

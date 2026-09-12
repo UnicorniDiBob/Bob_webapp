@@ -447,7 +447,7 @@ export default function AziendaPage() {
           <div>
             <label className="label-bob" htmlFor="az-service">
               Servizio principale{" "}
-              <span className="font-normal text-bob-ink/45">
+              <span className="font-normal text-bob-ink/65">
                 {"\u2014 senza, non compari nelle ricerche"}
               </span>
             </label>
@@ -517,7 +517,7 @@ export default function AziendaPage() {
             className={`input-bob ${campoRotto === "attivita" ? ANELLO : ""}`}
             data-testid="profile-business-name"
           />
-          <p className="mt-1 text-xs text-bob-ink/50">
+          <p className="mt-1 text-xs text-bob-ink/65">
             È il titolo della tua scheda. Il tuo nome e cognome restano dati
             nostri: non compaiono in pubblico.
           </p>
@@ -612,7 +612,7 @@ export default function AziendaPage() {
               aria-label="Tariffa minima oraria"
               data-testid="profile-min-price"
             />
-            <span className="text-bob-ink/40">–</span>
+            <span className="text-bob-ink/65">–</span>
             <input
               type="number"
               min={0}
@@ -633,7 +633,7 @@ export default function AziendaPage() {
             aria-label="Nota sul prezzo"
             data-testid="profile-price-note"
           />
-          <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/45">
+          <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/65">
             I clienti su BOB scelgono chi è trasparente: una forbice onesta
             porta richieste più in linea con le tue tariffe.
           </p>
@@ -687,7 +687,7 @@ export default function AziendaPage() {
 
         {nonSalvato && !saving && (
           <p
-            className="text-sm text-bob-ink/55"
+            className="text-sm text-bob-ink/70"
             data-testid="profile-non-salvato"
           >
             {"Ci sono modifiche non salvate."}

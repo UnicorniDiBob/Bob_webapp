@@ -206,13 +206,13 @@ export function VatReviewActions({
         Motivazione (la legge il professionista)
       </label>
       <div className="mt-1 flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-bob-ink/45">Parti da:</span>
+        <span className="text-xs text-bob-ink/65">Parti da:</span>
         {modelli.map((m) => (
           <button
             key={m.etichetta}
             type="button"
             onClick={() => setNote(m.testo)}
-            className="rounded-lg border border-black/10 px-2 py-1 text-[11px] font-medium text-bob-ink/60 transition hover:border-bob-indigo/30 hover:text-bob-indigo"
+            className="rounded-lg border border-black/10 px-2 py-1 text-2xs font-medium text-bob-ink/70 transition hover:border-bob-indigo/30 hover:text-bob-indigo"
             data-testid={`vat-template-${proId}`}
           >
             {m.etichetta}

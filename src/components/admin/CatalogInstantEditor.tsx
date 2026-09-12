@@ -148,7 +148,7 @@ function SubEditor({ sub }: { sub: EditorSubservice }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <span className="font-semibold text-bob-ink">{sub.name}</span>
-          <span className="ml-2 text-xs text-bob-ink/40">{sub.slug}</span>
+          <span className="ml-2 text-xs text-bob-ink/65">{sub.slug}</span>
         </div>
         <label className="inline-flex cursor-pointer items-center gap-2">
           <input
@@ -159,7 +159,7 @@ function SubEditor({ sub }: { sub: EditorSubservice }) {
             data-testid={`catalog-eligible-${sub.slug}`}
           />
           <span className="relative h-5 w-9 rounded-full bg-black/15 transition-colors peer-checked:bg-bob-indigo after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4" />
-          <span className="text-xs text-bob-ink/60">
+          <span className="text-xs text-bob-ink/70">
             {eligible ? "Idoneo" : "Non idoneo"}
           </span>
         </label>
@@ -225,7 +225,7 @@ function SubEditor({ sub }: { sub: EditorSubservice }) {
                   className="input-bob sm:col-span-2"
                   aria-label="Unità campo"
                 />
-                <label className="flex items-center gap-1 text-xs text-bob-ink/60 sm:col-span-1">
+                <label className="flex items-center gap-1 text-xs text-bob-ink/70 sm:col-span-1">
                   <input
                     type="checkbox"
                     checked={r.required}
@@ -233,7 +233,7 @@ function SubEditor({ sub }: { sub: EditorSubservice }) {
                   />
                   obbl.
                 </label>
-                <label className="flex items-center gap-1 text-xs text-bob-ink/60 sm:col-span-1">
+                <label className="flex items-center gap-1 text-xs text-bob-ink/70 sm:col-span-1">
                   <input
                     type="radio"
                     name={`billable-${sub.id}`}
@@ -268,7 +268,7 @@ function SubEditor({ sub }: { sub: EditorSubservice }) {
             >
               + Aggiungi campo
             </button>
-            <p className="text-xs text-bob-ink/45">
+            <p className="text-xs text-bob-ink/65">
               {"Il pallino € indica il campo fatturabile: è quello moltiplicato per la tariffa del pro. Deve essercene esattamente uno."}
             </p>
           </div>
@@ -334,7 +334,7 @@ export default function CatalogInstantEditor({
             ))}
           </select>
         </div>
-        <span className="text-sm text-bob-ink/50">
+        <span className="text-sm text-bob-ink/65">
           {eligibleCount} servizi idonei in totale
         </span>
       </div>

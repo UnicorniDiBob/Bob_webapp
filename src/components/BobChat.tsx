@@ -771,7 +771,7 @@ export function BobChat({
             {/* Art. 50 Reg. UE 2024/1689 (AI Act), applicabile dal 2 ago 2026:
                 chi scrive deve sapere di parlare con un sistema di IA. */}
             <span
-              className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-white"
+              className="rounded-full bg-white/20 px-1.5 py-0.5 text-2xs font-bold uppercase leading-none tracking-wide text-white"
               title="Bob e' un assistente basato su intelligenza artificiale"
             >
               AI
@@ -824,7 +824,7 @@ export function BobChat({
 
         {thinking && (
           <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm bg-bob-indigo-50 px-4 py-3 text-sm text-bob-ink/60">
+            <div className="rounded-2xl rounded-bl-sm bg-bob-indigo-50 px-4 py-3 text-sm text-bob-ink/70">
               <span className="inline-flex gap-1">
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-bob-indigo/50 [animation-delay:-0.2s]" />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-bob-indigo/50 [animation-delay:-0.1s]" />
@@ -840,7 +840,7 @@ export function BobChat({
             className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
             data-testid="brief-recap"
           >
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-bob-ink/40">
+            <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
               Ecco cosa ho capito
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -897,7 +897,7 @@ export function BobChat({
                   className={`chip text-xs ${
                     brief.severity === sev
                       ? "bg-bob-indigo text-white"
-                      : "text-bob-ink/50 hover:bg-bob-indigo-100"
+                      : "text-bob-ink/65 hover:bg-bob-indigo-100"
                   }`}
                   data-testid={`chip-severity-${sev}`}
                 >
@@ -906,7 +906,7 @@ export function BobChat({
               ))}
             </div>
             {brief.photos.length > 0 && brief.photos[0].aiCaption && (
-              <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/50">
+              <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/65">
                 <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
                 <span>{brief.photos[0].aiCaption}</span>
               </p>
@@ -976,7 +976,7 @@ export function BobChat({
                         <p className="truncate font-semibold text-bob-ink">
                           {p.displayName}
                         </p>
-                        <p className="truncate text-xs text-bob-ink/60">
+                        <p className="truncate text-xs text-bob-ink/70">
                           {p.headline}
                         </p>
                       </div>
@@ -992,7 +992,7 @@ export function BobChat({
                     />
                   </div>
                   {whyThisPro(p) && (
-                    <p className="mt-1.5 text-[11px] text-bob-ink/45">
+                    <p className="mt-1.5 text-2xs text-bob-ink/65">
                       {whyThisPro(p)}
                     </p>
                   )}
@@ -1031,7 +1031,7 @@ export function BobChat({
 
         {step === "results" && !loadingResults && results.length === 0 && (
           <div className="rounded-2xl border border-dashed border-bob-indigo/30 bg-bob-indigo-50/50 p-4 text-center">
-            <p className="text-xs text-bob-ink/60">
+            <p className="text-xs text-bob-ink/70">
               Sfoglia tutti i{" "}
               <Link href="/professionisti" className="underline">
                 professionisti disponibili
@@ -1077,7 +1077,7 @@ export function BobChat({
             >
               Scegli tu il servizio
             </button>
-            <p className="text-center text-xs text-bob-ink/45">
+            <p className="text-center text-xs text-bob-ink/65">
               Sei un professionista?{" "}
               <Link
                 href="/per-i-professionisti"
@@ -1100,12 +1100,12 @@ export function BobChat({
                   alt="Anteprima foto"
                   className="h-12 w-12 rounded-lg object-cover"
                 />
-                <p className="flex-1 text-xs text-bob-ink/60">
+                <p className="flex-1 text-xs text-bob-ink/70">
                   Foto pronta: aggiungi due parole o invia direttamente.
                 </p>
                 <button
                   onClick={() => setPendingPhoto(null)}
-                  className="rounded-lg px-2 py-1 text-xs text-bob-ink/50 hover:bg-white"
+                  className="rounded-lg px-2 py-1 text-xs text-bob-ink/65 hover:bg-white"
                   aria-label="Rimuovi foto"
                   data-testid="button-remove-photo"
                 >
@@ -1201,7 +1201,7 @@ export function BobChat({
                 >
                   {c.name}
                   {c.status !== "active" && (
-                    <span className="ml-1 text-[10px] text-bob-ink/40">soon</span>
+                    <span className="ml-1 text-2xs text-bob-ink/65">soon</span>
                   )}
                 </button>
               ))}

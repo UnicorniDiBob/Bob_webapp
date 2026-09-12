@@ -272,7 +272,7 @@ export function TourAncorato({
       >
         <div className="mb-3 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/40">
+            <p className="text-xs font-semibold uppercase tracking-wide text-bob-ink/65">
               {ultimo ? "Ultimo passo" : `Passo ${i + 1} di ${passi.length}`}
             </p>
             <div className="mt-2 flex gap-1.5">
@@ -297,7 +297,7 @@ export function TourAncorato({
           <button
             type="button"
             onClick={() => onEsci(true)}
-            className="-mr-1 -mt-1 rounded-lg p-1 text-bob-ink/40 transition hover:bg-black/5 hover:text-bob-ink"
+            className="-mr-1 -mt-1 rounded-lg p-1 text-bob-ink/65 transition hover:bg-black/5 hover:text-bob-ink"
             aria-label="Chiudi la guida"
             data-testid="button-chiudi-guida"
           >
@@ -315,7 +315,7 @@ export function TourAncorato({
           <button
             type="button"
             onClick={() => (i === 0 ? onEsci(true) : setI(i - 1))}
-            className="text-sm font-medium text-bob-ink/50 transition hover:text-bob-ink"
+            className="text-sm font-medium text-bob-ink/65 transition hover:text-bob-ink"
             data-testid="button-indietro-guida"
           >
             {i === 0 ? "Salta" : "Indietro"}
@@ -325,7 +325,7 @@ export function TourAncorato({
               <button
                 type="button"
                 onClick={() => (ultimo ? onEsci(true) : setI(i + 1))}
-                className="text-sm font-medium text-bob-ink/50 transition hover:text-bob-ink"
+                className="text-sm font-medium text-bob-ink/65 transition hover:text-bob-ink"
                 data-testid="button-piu-tardi-guida"
               >
                 Più tardi

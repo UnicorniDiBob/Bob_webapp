@@ -257,12 +257,48 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
 
       {isPro && (
         <LegalSection title="9. Come vengono ordinati i risultati">
+          {/* QUESTO TESTO DEVE DIRE LA STESSA COSA DI /come-funziona#ordine.
+              Sono le due dichiarazioni pubbliche sullo stesso meccanismo: una
+              verso i clienti (art. 22 c. 4-bis Cod. Cons.), una verso i
+              professionisti (art. 5 Reg. UE 2019/1150). Se divergono, una delle
+              due dichiara il falso — e per sei mesi e' stato cosi': qui si
+              elencava «completamento dei lavori sulla piattaforma», che non e'
+              piu' una voce a se' (entra nel peso delle valutazioni), non si
+              nominava il criterio che viene prima di tutti, e soprattutto non
+              si diceva quale parametro pesi piu' di quale. L'art. 5 chiede i
+              parametri principali E le ragioni della loro importanza relativa:
+              un elenco piatto e' meta' dell'obbligo.
+
+              I pesi esatti stanno in supabase/migrations/072_punteggio_ordinamento.sql
+              e non sono pubblicati, ne' qui ne' sulla pagina: la norma chiede
+              l'importanza relativa, non la formula. Se quei pesi cambiano,
+              cambia l'ordine in cui i parametri sono scritti — qui e sulla
+              pagina, nello stesso commit. */}
           <p>
-            L&apos;ordine con cui i profili sono presentati ai clienti dipende
-            principalmente da: compatibilità con la richiesta (categoria e
-            zona), disponibilità dichiarata, livello di verifica raggiunto,
-            reattività nelle risposte, completamento dei lavori sulla
-            piattaforma, valutazioni ricevute e completezza del profilo.
+            L&apos;ordine con cui i profili sono presentati ai clienti si decide
+            in due tempi. <strong>Primo</strong>: se il cliente ha cercato un
+            lavoro preciso, chi ha dichiarato quell&apos;intervento viene
+            presentato prima di chi ha dichiarato solo il mestiere, e nessun
+            altro elemento lo scavalca.
+          </p>
+          <p>
+            <strong>Secondo</strong>: dentro quel gruppo ordina un punteggio.
+            Questi sono i parametri che lo compongono, <strong>in ordine di
+            peso</strong>, dal più importante al meno: le valutazioni ricevute,
+            pesate sul loro numero; la precisione dell&apos;area rispetto alla
+            richiesta e il tempo di prima risposta misurato sulle conversazioni
+            degli ultimi 90 giorni, che pesano uguale fra loro; la presenza di un
+            prezzo dichiarato; la disponibilità, intesa come orari pubblicati e
+            prenotazione immediata; il livello di verifica raggiunto; la
+            completezza del profilo.
+          </p>
+          <p>
+            Un elemento che non abbiamo ancora misurato vale il valore centrale
+            della sua scala e non sottrae punti: chi è appena arrivato non parte
+            ultimo per il solo fatto di essere appena arrivato. A parità di
+            punteggio l&apos;ordine è sorteggiato con un criterio che cambia una
+            volta al giorno. Non incidono sull&apos;ordine la cronologia di
+            ricerca del cliente né alcuna profilazione.
           </p>
           <p>
             Eventuali strumenti di visibilità a pagamento possono incidere sul
@@ -368,7 +404,7 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
             {COMPANY.contactEmail}
           </a>
         </p>
-        <p className="text-xs text-bob-ink/45">
+        <p className="text-xs text-bob-ink/65">
           Termini per {isPro ? "i professionisti" : "i clienti"} · versione{" "}
           {TERMS_VERSION} · ultimo aggiornamento: {TERMS_UPDATED}.
         </p>

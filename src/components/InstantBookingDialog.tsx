@@ -288,13 +288,13 @@ export default function InstantBookingDialog({
             const dslots = slotsByDate.get(keyOf(day)) ?? [];
             return (
               <div key={keyOf(day)} className="min-w-0">
-                <div className="text-center text-[10px] font-semibold uppercase text-bob-ink/45">
+                <div className="text-center text-2xs font-semibold uppercase text-bob-ink/65">
                   {WD_LABELS[i]}
                   <div className="text-xs text-bob-ink/70">{day.getDate()}</div>
                 </div>
                 <div className="mt-1 flex flex-col gap-1">
                   {dslots.length === 0 ? (
-                    <span className="text-center text-[10px] text-bob-ink/25">
+                    <span className="text-center text-2xs text-bob-ink/25">
                       —
                     </span>
                   ) : (
@@ -302,7 +302,7 @@ export default function InstantBookingDialog({
                       <button
                         key={iso}
                         onClick={() => setSelectedIso(iso)}
-                        className={`rounded-md px-0.5 py-1 text-[11px] leading-tight ${
+                        className={`rounded-md px-0.5 py-1 text-2xs leading-tight ${
                           selectedIso === iso
                             ? "bg-bob-indigo text-white"
                             : "bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100"
@@ -335,11 +335,11 @@ export default function InstantBookingDialog({
             <h2 className="text-lg font-bold text-bob-ink">
               Prenota — {service.subserviceName}
             </h2>
-            <p className="text-sm text-bob-ink/55">con {professionalName}</p>
+            <p className="text-sm text-bob-ink/70">con {professionalName}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-bob-ink/40 hover:text-bob-ink"
+            className="text-bob-ink/65 hover:text-bob-ink"
             aria-label="Chiudi"
           >
             ✕
@@ -347,7 +347,7 @@ export default function InstantBookingDialog({
         </div>
 
         {loading ? (
-          <p className="text-sm text-bob-ink/50">Carico…</p>
+          <p className="text-sm text-bob-ink/65">Carico…</p>
         ) : !user ? (
           <div className="space-y-3">
             <p className="text-sm text-bob-ink/70">
@@ -411,7 +411,7 @@ export default function InstantBookingDialog({
                           <span className="font-medium text-bob-ink">
                             {a.label}
                           </span>
-                          <span className="block truncate text-bob-ink/60">
+                          <span className="block truncate text-bob-ink/70">
                             {a.address_line}
                             {a.city_slug ? `, ${cityName(a.city_slug)}` : ""}
                           </span>
@@ -471,7 +471,7 @@ export default function InstantBookingDialog({
                   maxLength={300}
                   data-testid="booking-access-notes"
                 />
-                <p className="text-xs text-bob-ink/45">
+                <p className="text-xs text-bob-ink/65">
                   L&apos;indirizzo viene condiviso solo con il professionista che
                   stai prenotando.
                 </p>
@@ -541,14 +541,14 @@ export default function InstantBookingDialog({
                 <>
                   Totale stimato:{" "}
                   <strong>{price.toLocaleString("it-IT")}€</strong>{" "}
-                  <span className="text-bob-ink/55">
+                  <span className="text-bob-ink/70">
                     ({service.rate_amount.toLocaleString("it-IT")}€ /{" "}
                     {RATE_UNIT_LABELS[service.rate_unit]}, minimo{" "}
                     {service.min_units})
                   </span>
                 </>
               ) : (
-                <span className="text-bob-ink/55">
+                <span className="text-bob-ink/70">
                   Inserisci la quantità per vedere il totale.
                 </span>
               )}
@@ -562,9 +562,9 @@ export default function InstantBookingDialog({
         ) : step === "slot" ? (
           <div className="space-y-4">
             {slotsLoading ? (
-              <p className="text-sm text-bob-ink/50">Carico gli orari liberi…</p>
+              <p className="text-sm text-bob-ink/65">Carico gli orari liberi…</p>
             ) : slots.length === 0 ? (
-              <p className="text-sm text-bob-ink/60">
+              <p className="text-sm text-bob-ink/70">
                 Nessuno slot libero al momento. Riprova più tardi o contatta{" "}
                 {professionalName} per un preventivo.
               </p>
@@ -595,7 +595,7 @@ export default function InstantBookingDialog({
               )}
             </div>
             {service.cancellation_window_hours != null && (
-              <p className="text-xs text-bob-ink/50">
+              <p className="text-xs text-bob-ink/65">
                 Cancellazione gratuita fino a {service.cancellation_window_hours}{" "}
                 ore prima.
               </p>
@@ -617,7 +617,7 @@ export default function InstantBookingDialog({
                 {busy ? "Prenoto…" : "Conferma prenotazione"}
               </button>
             </div>
-            <p className="text-center text-xs text-bob-ink/45">
+            <p className="text-center text-xs text-bob-ink/65">
               Anteprima: nessun pagamento richiesto in questa fase.
             </p>
           </div>
@@ -637,7 +637,7 @@ export default function InstantBookingDialog({
                   <strong>{result.price.toLocaleString("it-IT")}€</strong>
                 </p>
                 {result.cancellationWindowHours != null && (
-                  <p className="text-xs text-bob-ink/50">
+                  <p className="text-xs text-bob-ink/65">
                     Cancellazione gratuita fino a{" "}
                     {result.cancellationWindowHours} ore prima.
                   </p>
@@ -650,7 +650,7 @@ export default function InstantBookingDialog({
                   {result.contact.phone ? ` · ${result.contact.phone}` : ""}
                 </p>
                 {!result.contact.phone && (
-                  <p className="mt-0.5 text-xs text-bob-ink/45">
+                  <p className="mt-0.5 text-xs text-bob-ink/65">
                     Trovi la prenotazione anche nella tua area personale.
                   </p>
                 )}

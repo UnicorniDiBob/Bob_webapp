@@ -112,7 +112,7 @@ impossibile rispondere a un professionista che chiede perché è settimo.
 | area: zona / città / provincia / regione / macro / Italia | 20 / 15 / 8 / 4 / 3 / 2 | chi è vicino serve meglio; chi copre l'Italia deve comparire, non vincere |
 | valutazione | fino a 25 | vedi sotto |
 | tempo di risposta **misurato** | fino a 20 | ≤30 min 20, ≤2 h 16, ≤8 h 12, ≤24 h 8, ≤72 h 4, oltre 0 |
-| prezzo **dichiarato** | 15 sul lavoro cercato, 10 su qualcosa che offre | un prezzo che non c'è non fa decidere nessuno |
+| prezzo **dichiarato**, in qualunque forma | 15 sul lavoro cercato, 10 su qualcosa che offre | un prezzo che non c'è non fa decidere nessuno |
 | disponibilità | 10 con orari + prenotazione immediata, 7 con orari | disponibilità vera, non una promessa |
 | verifica | verificato 7, in corso 3 | M4 dice che il livello deve pesare in modo visibile |
 | completezza della scheda | fino a 3 | presentazione, nome dell'attività, almeno un lavoro dichiarato |
@@ -125,6 +125,19 @@ formula da sola distribuiva **meno di un punto su venticinque**, cioè non
 distingueva nessuno. Con 14 valutazioni in tutta la piattaforma questa voce
 resta comunque quasi piatta: è giusto che lo sia, e si sveglia da sé quando le
 recensioni arrivano.
+
+**Prezzo vuol dire prezzo, non forbice** (mig. 077). Contano la forbice, il
+solo massimo e la **tariffa nell'unità del mestiere** (`rate_amount`, per
+esempio 20 €/ora): `coalesce(min_price, max_price, rate_amount)`. Fino alla 077
+la voce guardava solo `min_price`, e tre righe con la tariffa oraria contavano
+come «senza prezzo» — chi aveva risposto nel modo giusto per il suo mestiere
+prendeva meno punti di chi aveva risposto nel modo che ci aspettavamo noi.
+Verificato in produzione: su una ricerca di «pulizie ordinarie» quel
+professionista passa da 10 a 15 punti, nessun altro cambia. **Resta aperto il
+lato interfaccia**: la scheda mostra la forbice, quindi quelle tariffe il
+cliente ancora non le vede. Il punteggio premia la dichiarazione — il buco è
+nostro, non suo — ma la frase «un preventivo che non c'è non ti aiuta a
+decidere» è mantenuta a metà finché la scheda non scrive la tariffa.
 
 **Quello che non sappiamo non toglie punti.** Tempo di risposta non ancora
 misurato: 10 su 20, il centro. Orari non dichiarati: 5 su 10. Nessuna
@@ -150,12 +163,36 @@ comportamento del singolo cliente, cronologia delle sue ricerche, qualunque
 profilazione, qualunque pagamento. Il ranking è uguale per tutti.
 
 **Dove è calcolato.** `public.professionals_score(ids, città, zona, intervento)`
-(mig. 072), `security definer` con `search_path` fissato: due degli addendi —
-le valutazioni e il tempo di risposta — stanno in tabelle che il browser di un
-cliente non può leggere, e la funzione ne fa uscire solo aggregati per
-professionista, mai un messaggio e mai un cliente. Restituisce **le singole
-voci** e non solo il totale, perché a un professionista che chiede perché è
-settimo si risponde con gli addendi.
+(mig. 072, riscritta dalla 075), `security invoker` con `search_path` fissato.
+Restituisce **le singole voci** e non solo il totale, perché a un
+professionista che chiede perché è settimo si risponde con gli addendi.
+
+La 072 era nata `security definer`, perché il tempo di risposta si calcola su
+`request_messages`, che un visitatore non può leggere — e non deve. Gli advisor
+l'hanno segnalata due volte (lint 0028 e 0029) e avevano ragione: una funzione
+`definer` chiamabile da chiunque è una porta che va guardata, non spiegata.
+La **075** separa le due cose invece di conviverci:
+
+- `public.professional_signals` — una riga per professionista con la **mediana
+  dei minuti di prima risposta** e su quante conversazioni è calcolata.
+  Lettura pubblica di proposito: è un parametro di ordinamento dichiarato, e
+  pubblicarlo come dato è più onesto che calcolarlo di nascosto. Nessuna policy
+  di scrittura per nessun ruolo — un professionista che potesse scrivere il
+  proprio tempo di risposta lo renderebbe una dichiarazione, cioè esattamente
+  quello che volevamo evitare. `on delete cascade`: la riga muore con lui.
+- `public.aggiorna_segnali_professionisti(ids)` — il calcolo, in un posto solo,
+  `definer` ma con `execute` revocato a `public`, `anon` e `authenticated`
+  (stesso schema della 074): la chiamano il trigger e il cron, non il browser.
+- un trigger su `request_messages` aggiorna il professionista **appena
+  risponde**, e il lavoro notturno `aggiorna-segnali-professionisti` (04:10
+  UTC, traccia in `system_job_runs`) ripassa tutti — la finestra dei 90 giorni
+  è mobile, e senza il giro chi smette di rispondere terrebbe per sempre la
+  mediana buona dell'ultima volta.
+
+Tutte le altre tabelle che il punteggio consulta — `professionals`, `cities`,
+`ratings`, `professional_services`, `professional_coverage_public`,
+`professional_availability` — hanno già una policy di lettura pubblica, quindi
+da qui in poi il punteggio non tocca più niente di privato.
 
 `getProfessionals` conserva la catena di spareggi vecchia come rete di
 sicurezza (`ordinaSenzaPunteggio`) e la usa solo se la funzione non risponde:
@@ -168,33 +205,33 @@ quando la 072 è applicata e verificata, non prima.**
 (nessuna area dichiarata = tutta la città di iscrizione). Il punteggio è in
 SQL, la selezione no: con seicento professionisti va spostata anche quella.
 
-> **Da allineare, e non è nel nostro PR:** la sezione 9 dei termini per i
-> professionisti (`src/components/TermsContent.tsx`, area di Lucio) elenca
-> parametri diversi — «disponibilità dichiarata, reattività nelle risposte,
-> completamento dei lavori sulla piattaforma» — e **non nomina** il criterio
-> che oggi viene prima di tutti, cioè chi dichiara il lavoro cercato. Due
-> dichiarazioni pubbliche che non concordano sono peggio di una dichiarazione
-> breve: l'art. 5 P2B chiede i parametri principali verso i professionisti, e
-> quelli sono questi. Il numero di lavori conclusi, in particolare, non è più
-> una voce a sé: entra come peso delle valutazioni, per non contarlo due volte
-> e per non punire due volte chi ha appena cominciato.
->
-> Testo già pronto da incollare in sezione 9, primo capoverso, così i due
-> documenti dicono la stessa cosa:
->
-> «L'ordine con cui i profili sono presentati ai clienti si decide in due
-> tempi. Primo: se il cliente ha cercato un lavoro preciso, chi ha dichiarato
-> quell'intervento viene presentato prima di chi ha dichiarato solo il
-> mestiere, e nessun altro elemento lo scavalca. Secondo: dentro quel gruppo
-> ordina un punteggio su cento composto da precisione dell'area rispetto alla
-> richiesta (fino a 20), valutazioni ricevute pesate sul loro numero (fino a
-> 25), tempo di prima risposta misurato sulle conversazioni degli ultimi 90
-> giorni (fino a 20), presenza di un prezzo dichiarato (fino a 15),
-> disponibilità con orari pubblicati e prenotazione immediata (fino a 10),
-> livello di verifica raggiunto (fino a 7) e completezza del profilo (fino a
-> 3). Un elemento che non abbiamo ancora misurato vale il valore centrale
-> della sua scala e non sottrae punti. A parità di punteggio l'ordine è
-> sorteggiato con un criterio che cambia una volta al giorno.»
+**Allineato il 12 settembre 2026, e i pesi non si pubblicano più.**
+
+Le due dichiarazioni pubbliche sullo stesso meccanismo — `/come-funziona#ordine`
+verso i clienti (art. 22 c. 4-bis Cod. Cons.) e la sezione 9 dei termini per i
+professionisti (art. 5 Reg. UE 2019/1150) — ora dicono la stessa cosa, nello
+stesso ordine. Prima divergevano: la sezione 9 elencava «completamento dei
+lavori sulla piattaforma», che non è più una voce a sé, non nominava il criterio
+che viene prima di tutti, e non diceva quale parametro pesasse più di quale.
+
+**Decisione: i numeri esatti (20/25/20/15/10/7/3) sono stati tolti da entrambe.**
+La norma chiede «i parametri principali» e «l'importanza relativa di tali
+parametri», non i pesi né la formula: l'importanza relativa si dichiara con
+l'ordine, ed è quello che fanno adesso i due testi. Attenzione a metà della
+frase — un elenco piatto, senza ordine dichiarato, **non** basterebbe: mancherebbe
+l'«importanza relativa».
+
+I pesi restano dove sono sempre stati, in
+`supabase/migrations/072_punteggio_ordinamento.sql`. Il giorno che cambiano,
+cambia l'**ordine** in cui i parametri sono scritti — sulla pagina e nei termini,
+nello stesso commit. Oggi quell'ordine è: valutazione, poi area e tempo di
+risposta a pari merito, poi prezzo, disponibilità, verifica, completezza.
+
+**Resta da decidere a Lucio:** se questa correzione sia una modifica dei termini
+ai sensi dell'art. 3(2) P2B, che vuole un preavviso ai professionisti. È una
+rettifica per rendere accurata una dichiarazione, non un obbligo nuovo — ma
+`TERMS_VERSION` è rimasta a `2026-07-v1` di proposito, e va cambiata solo
+insieme a quella decisione.
 
 ### Dove sono dichiarati, e perché basta un link
 
@@ -386,7 +423,9 @@ non-«Altro» coperti); risolutore con bande e ordinamento per specificità;
 preciso, 5 pro su 6); la casella di ricerca su `/professionisti`, con i
 suggerimenti mentre si scrive, la pastiglia che mostra come ha capito e le tre
 bande rispettate; **il punteggio di merito 0-100 della 072**, con le due fasi
-di §4 e gli addendi in chiaro; la richiesta che ricorda **quale** lavoro era
+di §4 e gli addendi in chiaro, `security invoker` dalla 075 e con il tempo di
+risposta in una tabella pubblica sua (`professional_signals`), aggiornata da un
+trigger e da un giro notturno; la richiesta che ricorda **quale** lavoro era
 (`requests.subservice_id`, scritto dalla ricerca e dal brief di Bob).
 
 **Non c'è**: la selezione di chi entra in elenco, ancora in JavaScript e in

@@ -11,11 +11,18 @@ import { useNotifiche } from "./NotificheProvider";
 import { VERIFICATION_LABEL } from "@/lib/vat";
 import { BadgeCheck } from "lucide-react";
 
+// Quattro voci e non di piu', decise con André il 12 settembre. Prima erano
+// quattro diverse (Come funziona, Città, Servizi, Professionisti) e mescolavano
+// due pubblici: chi cerca un servizio e chi lavora.
+//
+// «Città» esce dalla barra: adesso vive nel piede e nella sitemap. È la voce
+// che serviva meno finché il pilota è una città sola.
 const NAV = [
-  { href: "/come-funziona", label: "Come funziona" },
-  { href: "/citta", label: "Città" },
   { href: "/servizi", label: "Servizi" },
-  { href: "/professionisti", label: "Professionisti" },
+  { href: "/per-i-professionisti", label: "Per i professionisti" },
+  // «Aiuto» punta all'assistenza esistente. Quella vera — parlare con Bob dei
+  // problemi della piattaforma, non dei servizi — è un lavoro a sé.
+  { href: "/supporto", label: "Aiuto" },
 ];
 
 export function Header() {
@@ -33,9 +40,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/85 backdrop-blur-md">
-      <div className="container-bob flex h-16 items-center justify-between gap-4">
+      <div className="container-bob flex h-20 items-center justify-between gap-4">
         <Link href="/" className="flex items-center" data-testid="link-home">
-          <Logo />
+          <Logo dimensione="grande" />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -46,7 +53,7 @@ export function Header() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                className={`rounded-lg px-3 py-2 text-base font-medium transition ${
                   active
                     ? "text-bob-indigo"
                     : "text-bob-ink/70 hover:text-bob-indigo"
@@ -121,7 +128,7 @@ export function Header() {
                   ingranaggi diversi nello stesso header si confondono. */}
               <Link
                 href="/impostazioni/dati"
-                className="rounded-xl p-2.5 text-bob-ink/55 transition hover:bg-bob-indigo-50 hover:text-bob-indigo"
+                className="rounded-xl p-2.5 text-bob-ink/70 transition hover:bg-bob-indigo-50 hover:text-bob-indigo"
                 aria-label="Impostazioni del tuo account"
                 title="Impostazioni"
                 data-testid="link-impostazioni"
@@ -221,7 +228,7 @@ export function Header() {
                       <Bell className="h-4 w-4" aria-hidden="true" />
                       Notifiche
                       {daContare > 0 && (
-                        <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-bob-indigo px-1 text-[10px] font-bold leading-none text-white">
+                        <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-bob-indigo px-1 text-2xs font-bold leading-none text-white">
                           {daContare > 9 ? "9+" : daContare}
                         </span>
                       )}
