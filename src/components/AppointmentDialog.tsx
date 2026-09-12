@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ProCalendar } from "@/components/ProCalendar";
 import {
   createAppointment,
   updateAppointment,
@@ -19,12 +20,19 @@ function toLocalInput(iso?: string): string {
 
 export function AppointmentDialog({
   professionalId,
+  appointments = [],
   existing,
   defaultDate,
   onClose,
   onSaved,
 }: {
   professionalId: string;
+  /**
+   * Gli appuntamenti che il pro ha gia'. Servono a far vedere QUI dentro il
+   * calendario vero mentre si sceglie l'ora: senza, fissare un appuntamento
+   * significa ricordarsi a memoria la propria settimana.
+   */
+  appointments?: Appointment[];
   existing?: Appointment | null;
   defaultDate?: Date;
   onClose: () => void;
@@ -129,7 +137,7 @@ export function AppointmentDialog({
           "grande" (toolbar nascoste), quindi con le toolbar visibili il fondo
           del riquadro — e i pulsanti — finivano tagliati sotto la barra. */}
       <div
-        className="flex max-h-[88dvh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl bg-white shadow-card-hover"
+        className="flex max-h-[88dvh] w-full max-w-2xl animate-fade-up flex-col overflow-hidden rounded-2xl bg-white shadow-card-hover"
         onClick={(e) => e.stopPropagation()}
         data-testid="appointment-dialog"
       >
@@ -169,6 +177,37 @@ export function AppointmentDialog({
               data-testid="input-title"
             />
           </div>
+          {/* IL CALENDARIO VERO, QUI DENTRO (12/09, segnalato da Lucio).
+              Prima si fissava un appuntamento scrivendo una data in un campo,
+              senza vedere la propria settimana: la cosa piu' importante per
+              decidere — «quel giorno a quell'ora sono libero?» — era l'unica
+              che non c'era, e stava nella pagina sotto, coperta dalla finestra.
+              Adesso si sceglie cliccando lo spazio vuoto: il campo qui sotto
+              resta, e si aggiorna da solo. Chi preferisce scrivere, scrive. */}
+          <div>
+            <label className="label-bob">Scegli dal tuo calendario</label>
+            <div className="rounded-xl border border-black/[0.07] p-2 sm:p-3">
+              <ProCalendar
+                appointments={appointments}
+                loading={false}
+                onCreateAt={(start) => setStartsAt(toLocalInput(start.toISOString()))}
+                onSelect={() => {}}
+                selectedId={existing?.id ?? null}
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-bob-ink/65" data-testid="slot-scelto">
+              {startsAt
+                ? `Scelto: ${new Date(startsAt).toLocaleString("it-IT", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}`
+                : "Clicca uno spazio libero nel calendario, oppure scrivi data e ora qui sotto."}
+            </p>
+          </div>
+
           {/* 2/3 + 1/3: il controllo datetime-local di iOS ha una larghezza
               minima intrinseca larga ("30.07.2026, 10:00"), in due colonne
               uguali sbordava sopra la durata. min-w-0 su ogni cella è
