@@ -7,6 +7,42 @@
 > **ma quello che è a metà si porta avanti, non si butta**. Scritto e mergiato
 > lo stesso giorno.
 
+## Cosa ho fatto — Lucio (12 settembre, tarda sera)
+
+Ramo **`feat/calendario-tutto-schermo-orari-liberi`**, 1 commit, **non
+mergiato e non in produzione**. Nessuna migrazione.
+
+- **Il calendario dentro la proposta in chat.** `/messaggi` → «Proponi un
+  appuntamento» ora monta `ProCalendar`: il dialog passa da `max-w-sm` a
+  `max-w-3xl` con testa e piede fissi e corpo scrollabile, e il click su uno
+  spazio libero riempie data e ora. Gli appuntamenti si leggono con `select("*")`
+  e da 120 giorni indietro, se no mese e anno sarebbero vuoti.
+- **Tasto a tutto schermo** (`cal-fullscreen`): pannello in `createPortal` su
+  `document.body`, `z-[70]`, Esc per uscire, `body` bloccato mentre è aperto.
+  Non usa l'API fullscreen del browser — su iOS non funziona sugli elementi
+  normali. Con l'espansione cambiano le misure: celle del mese a
+  `calc((100vh - 15rem) / righe)` (104px da ridotto, erano 76), giorni dell'anno
+  da `h-5` a `h-8`, griglia ore a `calc(100vh - 12rem)`, sei appuntamenti per
+  cella invece di due.
+- **Le quattro viste in un pannello apribile** al posto dei quattro bottoni, con
+  scorciatoie **D / W / M / Y** (disattivate dentro input, textarea, select e
+  contenteditable).
+- **Durata libera, in ore + minuti**, al posto della tendina 30/60/90/120 — sia
+  nella proposta in chat sia in `AppointmentDialog`, dove sparisce anche il
+  minimo di 15 minuti. Un orario **fuori dalle fasce dichiarate** è un avviso
+  ambra, non più un blocco; la guardia sulla doppia prenotazione resta un blocco.
+
+### Quello che è a metà
+
+- **`npm run build` non l'ho eseguito.** Il clone è stato lavorato attraverso il
+  ponte del desktop: la build di Next va in `SIGBUS` sul filesystem montato, e
+  **fallisce allo stesso modo su `main` pulito**, quindi non è il codice. Passati
+  invece `npx tsc --noEmit` e `npm run lint`, entrambi puliti. **La build va
+  rifatta in locale prima del merge**, e comunque la fa la CI sulla PR.
+- **Nessuna verifica live.** Non ho potuto avviare `npm run dev` (stesso motivo).
+  Restano da guardare con gli occhi: il calendario dentro il dialog a 390px, il
+  pannello a tutto schermo su desktop, e la vista mese espansa con un mese pieno.
+
 ## Cosa ho fatto — Lucio (12 settembre, sera)
 
 Tutto sul ramo **`feat/piani-plus-matrice`**, 15 commit, mergiato con `main` di

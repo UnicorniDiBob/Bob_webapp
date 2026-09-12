@@ -1,6 +1,13 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, MessageCircle } from "lucide-react";
@@ -19,7 +26,12 @@ import {
   markConversationRead,
   sendMessage,
 } from "@/lib/messages";
-import type { ChatMessage, ConversationSummary } from "@/lib/supabase/types";
+import type {
+  Appointment,
+  ChatMessage,
+  ConversationSummary,
+} from "@/lib/supabase/types";
+import { ProCalendar } from "@/components/ProCalendar";
 import {
   AppointmentActions,
   type ThreadAppointment,
@@ -91,7 +103,14 @@ function MessaggiInner() {
   const [proposeOpen, setProposeOpen] = useState(false);
   const [apptDate, setApptDate] = useState("");
   const [apptTime, setApptTime] = useState("09:00");
-  const [apptDuration, setApptDuration] = useState(60);
+  // DURATA LIBERA, IN DUE CAMPI (12/09, Lucio). Prima era una tendina con
+  // quattro voci — 30, 60, 90, 120 — e un lavoro da venti minuti o da tre ore
+  // non si poteva proporre: il pro sceglieva la voce meno sbagliata e il
+  // calendario del cliente ne usciva falso. Adesso ore e minuti sono due
+  // campi e la durata e' la loro somma: niente elenco da indovinare.
+  const [durataOre, setDurataOre] = useState(1);
+  const [durataMin, setDurataMin] = useState(0);
+  const apptDuration = durataOre * 60 + durataMin;
   const [apptTitle, setApptTitle] = useState("");
   const [apptSaving, setApptSaving] = useState(false);
   const [apptErr, setApptErr] = useState<string | null>(null);
@@ -109,6 +128,10 @@ function MessaggiInner() {
   const [myBusy, setMyBusy] = useState<
     { start: number; end: number }[]
   >([]);
+  /** Gli appuntamenti del pro, per farglieli vedere mentre propone. */
+  const [myAppts, setMyAppts] = useState<Appointment[]>([]);
+  /** Le fasce dichiarate: servono all'avviso «fuori orario», non a un blocco. */
+  const [finestreOrari, setFinestreOrari] = useState<AvailabilityWindow[]>([]);
 
   const myType: "customer" | "professional" =
     role === "professional" ? "professional" : "customer";
@@ -178,13 +201,17 @@ function MessaggiInner() {
       const supabase = createClient();
       const [{ data: appts }, { data: avail, error: availErr }] =
         await Promise.all([
+          // Si legge la riga intera, non tre colonne: il calendario qui
+          // dentro mostra nome, titolo e luogo come quello della scrivania.
+          // E si parte da quattro mesi fa, se no la vista mese e la vista
+          // anno sarebbero vuote proprio dove servono a decidere.
           supabase
             .from("appointments")
-            .select("starts_at, duration_minutes, status")
+            .select("*")
             .eq("professional_id", myProId)
             .gte(
               "starts_at",
-              new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+              new Date(Date.now() - 120 * 24 * 3600 * 1000).toISOString()
             ),
           supabase
             .from("professional_availability")
@@ -192,13 +219,9 @@ function MessaggiInner() {
             .eq("professional_id", myProId),
         ]);
 
-      const busy = busyFromAppointments(
-        (appts ?? []) as {
-          starts_at: string;
-          duration_minutes: number;
-          status: string;
-        }[]
-      );
+      const rows = (appts ?? []) as Appointment[];
+      setMyAppts(rows);
+      const busy = busyFromAppointments(rows);
       setMyBusy(busy);
 
       // Una lettura fallita non e' «non hai orari»: non si accusa il pro di
@@ -207,6 +230,7 @@ function MessaggiInner() {
       if (availErr) {
         setOrariMiei(null);
         setQuickSlots([]);
+        setFinestreOrari([]);
         return;
       }
 
@@ -220,6 +244,7 @@ function MessaggiInner() {
         end: w.end_time.slice(0, 5),
       }));
 
+      setFinestreOrari(windows);
       setOrariMiei(windows.length > 0);
       setQuickSlots(
         windows.length === 0
@@ -246,12 +271,35 @@ function MessaggiInner() {
     setApptErr(null);
   }
 
+  // FUORI DALLE FASCE DICHIARATE E' UN AVVISO, NON UN MURO (12/09, Lucio).
+  // Le fasce in professional_availability servono a far scegliere bene il
+  // cliente; non devono impedire al pro di fissare il sabato mattina che si e'
+  // gia' accordato a voce. Se l'orario cade fuori glielo si dice, e si manda
+  // lo stesso. Con zero fasce salvate non c'e' niente da cui essere fuori.
+  const fuoriOrario = useMemo(() => {
+    if (!apptDate || finestreOrari.length === 0) return false;
+    const inizio = new Date(`${apptDate}T${apptTime}:00`);
+    if (isNaN(inizio.getTime())) return false;
+    const da = inizio.getHours() * 60 + inizio.getMinutes();
+    const a = da + apptDuration;
+    return !finestreOrari.some((w) => {
+      if (w.weekday !== inizio.getDay()) return false;
+      const [h1, m1] = w.start.split(":").map(Number);
+      const [h2, m2] = w.end.split(":").map(Number);
+      return da >= h1 * 60 + m1 && a <= h2 * 60 + m2;
+    });
+  }, [apptDate, apptTime, apptDuration, finestreOrari]);
+
   async function proposeAppointment() {
     if (!user || !myProId || !activeR || !apptDate || apptSaving) return;
     setApptErr(null);
     const startsAt = new Date(`${apptDate}T${apptTime}:00`);
     if (isNaN(startsAt.getTime()) || startsAt.getTime() < Date.now()) {
       setApptErr("Scegli una data futura.");
+      return;
+    }
+    if (apptDuration <= 0) {
+      setApptErr("Metti una durata: anche solo dieci minuti, ma non zero.");
       return;
     }
     // Guardia doppia prenotazione: l'orario scelto non deve sovrapporsi
@@ -721,24 +769,28 @@ function MessaggiInner() {
           }}
         >
           <div
-            className="card w-full max-w-sm p-6"
+            className="card flex max-h-[94vh] w-full max-w-3xl flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             data-testid="dialog-propose-appointment"
           >
-            <h3 className="text-lg font-bold text-bob-ink">
-              {replacingApptId
-                ? "Proponi un altro orario"
-                : "Proponi un appuntamento"}
-            </h3>
-            {replacingApptId && (
+            <div className="shrink-0 border-b border-black/5 px-5 py-4 sm:px-6">
+              <h3 className="text-lg font-bold text-bob-ink">
+                {replacingApptId
+                  ? "Proponi un altro orario"
+                  : "Proponi un appuntamento"}
+              </h3>
+              {replacingApptId && (
+                <p className="mt-1 text-sm text-bob-ink/70">
+                  La proposta del cliente viene rifiutata e sostituita da questa.
+                </p>
+              )}
               <p className="mt-1 text-sm text-bob-ink/70">
-                La proposta del cliente viene rifiutata e sostituita da questa.
+                Il cliente riceve la proposta in chat e la conferma dalla sua
+                area personale.
               </p>
-            )}
-            <p className="mt-1 text-sm text-bob-ink/70">
-              Il cliente riceve la proposta in chat e la conferma dalla sua
-              area personale.
-            </p>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5 pt-1 sm:px-6">
             {orariMiei === false && (
               <div
                 className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
@@ -790,8 +842,44 @@ function MessaggiInner() {
                 </div>
               </div>
             )}
+            {/* IL CALENDARIO VERO, ANCHE QUI (12/09, Lucio). Fissare un
+                appuntamento scrivendo una data in due campi, senza vedere la
+                propria settimana, vuol dire decidere al buio: la domanda
+                «quel giorno a quell'ora sono libero?» e' l'unica che conta e
+                era l'unica che mancava. Adesso si clicca lo spazio vuoto e i
+                campi qui sotto si riempiono da soli; chi preferisce scrivere,
+                scrive. */}
+            <div className="mt-4">
+              <p className="label-bob">Il tuo calendario</p>
+              <div className="rounded-xl border border-black/[0.07] p-2 sm:p-3">
+                <ProCalendar
+                  appointments={myAppts}
+                  loading={false}
+                  onCreateAt={(start) => pickQuickSlot(start)}
+                  onSelect={() => {}}
+                  selectedId={null}
+                />
+              </div>
+              <p
+                className="mt-1.5 text-xs text-bob-ink/65"
+                data-testid="propose-slot-scelto"
+              >
+                {apptDate
+                  ? `Scelto: ${new Date(
+                      `${apptDate}T${apptTime}:00`
+                    ).toLocaleString("it-IT", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}`
+                  : "Clicca uno spazio libero nel calendario, oppure scrivi data e ora qui sotto."}
+              </p>
+            </div>
+
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div>
+              <div className="min-w-0">
                 <label className="label-bob" htmlFor="appt-date">Data</label>
                 <input
                   id="appt-date"
@@ -802,7 +890,7 @@ function MessaggiInner() {
                   data-testid="input-appt-date"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="label-bob" htmlFor="appt-time">Ora</label>
                 <input
                   id="appt-time"
@@ -813,21 +901,57 @@ function MessaggiInner() {
                   data-testid="input-appt-time"
                 />
               </div>
-              <div>
-                <label className="label-bob" htmlFor="appt-duration">Durata</label>
-                <select
-                  id="appt-duration"
-                  value={apptDuration}
-                  onChange={(e) => setApptDuration(Number(e.target.value))}
-                  className="input-bob mt-1.5"
-                >
-                  <option value={30}>30 minuti</option>
-                  <option value={60}>1 ora</option>
-                  <option value={90}>1 ora e mezza</option>
-                  <option value={120}>2 ore</option>
-                </select>
+              <div className="min-w-0">
+                <span className="label-bob">Durata</span>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <input
+                    id="appt-ore"
+                    type="number"
+                    min={0}
+                    max={24}
+                    inputMode="numeric"
+                    value={durataOre}
+                    onChange={(e) =>
+                      setDurataOre(
+                        Math.max(0, Math.min(24, Number(e.target.value) || 0))
+                      )
+                    }
+                    className="input-bob min-w-0 flex-1 px-2 text-center"
+                    aria-label="Durata: ore"
+                    data-testid="input-appt-ore"
+                  />
+                  <label
+                    htmlFor="appt-ore"
+                    className="shrink-0 text-xs text-bob-ink/65"
+                  >
+                    ore
+                  </label>
+                  <input
+                    id="appt-minuti"
+                    type="number"
+                    min={0}
+                    max={59}
+                    step={5}
+                    inputMode="numeric"
+                    value={durataMin}
+                    onChange={(e) =>
+                      setDurataMin(
+                        Math.max(0, Math.min(59, Number(e.target.value) || 0))
+                      )
+                    }
+                    className="input-bob min-w-0 flex-1 px-2 text-center"
+                    aria-label="Durata: minuti"
+                    data-testid="input-appt-minuti"
+                  />
+                  <label
+                    htmlFor="appt-minuti"
+                    className="shrink-0 text-xs text-bob-ink/65"
+                  >
+                    min
+                  </label>
+                </div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="label-bob" htmlFor="appt-title">Titolo (opzionale)</label>
                 <input
                   id="appt-title"
@@ -838,8 +962,20 @@ function MessaggiInner() {
                 />
               </div>
             </div>
+            {fuoriOrario && (
+              <div
+                className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+                data-testid="propose-fuori-orario"
+              >
+                Questo orario cade fuori dalle fasce che hai dichiarato. Puoi
+                proporlo lo stesso — decidi tu — ma il cliente non lo troverà
+                mai fra gli orari che gli mostriamo da solo.
+              </div>
+            )}
             {apptErr && <p className="mt-2 text-xs text-red-600">{apptErr}</p>}
-            <div className="mt-5 flex gap-2">
+            </div>
+
+            <div className="flex shrink-0 gap-2 border-t border-black/5 px-5 py-4 sm:px-6">
               <button
                 onClick={() => setProposeOpen(false)}
                 className="btn-secondary flex-1 py-2.5"
@@ -848,7 +984,7 @@ function MessaggiInner() {
               </button>
               <button
                 onClick={proposeAppointment}
-                disabled={apptSaving || !apptDate}
+                disabled={apptSaving || !apptDate || apptDuration <= 0}
                 className="btn-primary flex-1 py-2.5"
                 data-testid="button-appt-send"
               >

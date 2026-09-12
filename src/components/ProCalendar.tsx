@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Appointment } from "@/lib/supabase/types";
-import { MapPin } from "lucide-react";
+import { Check, ChevronDown, MapPin, Maximize2, Minimize2 } from "lucide-react";
 import {
   DAY_LABELS,
   HOUR_PX_DAY,
@@ -34,8 +35,26 @@ export type CalView = "week" | "day" | "month" | "year";
 /** Granularità dei click sulle zone vuote: mezz'ora. */
 const SLOT_MINUTES = 30;
 
-/** Altezza massima della griglia scrollabile. */
+/** Altezza massima della griglia scrollabile, quando non e' a tutto schermo. */
 const VIEWPORT_PX = 560;
+
+// LE VISTE IN UN PANNELLO, NON IN QUATTRO BOTTONI (12/09, Lucio). Quattro
+// bottoni sempre accesi si prendevano la riga intera e su mobile la mandavano
+// a capo sopra le frecce. Un bottone solo dice dove sei — «Mese ▾» — e il
+// pannello dice dove puoi andare, con accanto la lettera che ci porta da
+// tastiera: si cambia vista senza staccare le mani.
+const VISTE: { v: CalView; etichetta: string; tasto: string }[] = [
+  { v: "day", etichetta: "Giorno", tasto: "D" },
+  { v: "week", etichetta: "Settimana", tasto: "W" },
+  { v: "month", etichetta: "Mese", tasto: "M" },
+  { v: "year", etichetta: "Anno", tasto: "Y" },
+];
+const ETICHETTA_VISTA: Record<CalView, string> = {
+  day: "Giorno",
+  week: "Settimana",
+  month: "Mese",
+  year: "Anno",
+};
 
 export function ProCalendar({
   appointments,
@@ -64,6 +83,13 @@ export function ProCalendar({
   const [view, setView] = useState<CalView>("week");
   const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()));
   const [fullDay, setFullDay] = useState(false);
+  // A TUTTO SCHERMO (12/09, Lucio). In una colonna da 320px il mese e' un
+  // francobollo: per guardare quattro settimane intere serve la finestra
+  // tutta, anche da PC. Non usa l'API fullscreen del browser — su iOS non
+  // funziona sugli elementi normali — ma un pannello che copre la finestra.
+  const [espanso, setEspanso] = useState(false);
+  const [menuVista, setMenuVista] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState<Date>(() => new Date());
   const scrollRef = useRef<HTMLDivElement>(null);
   const didAutoScroll = useRef(false);
@@ -79,6 +105,56 @@ export function ProCalendar({
     onViewChange?.(view);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
+
+  // Il pannello delle viste si chiude cliccando fuori.
+  useEffect(() => {
+    if (!menuVista) return;
+    const fuori = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuVista(false);
+    };
+    document.addEventListener("mousedown", fuori);
+    return () => document.removeEventListener("mousedown", fuori);
+  }, [menuVista]);
+
+  // D, W, M, Y cambiano vista; Esc chiude prima il pannello, poi il tutto
+  // schermo. Mai mentre si scrive: dentro un campo la «m» e' una lettera.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Escape") {
+        if (menuVista) setMenuVista(false);
+        else if (espanso) setEspanso(false);
+        return;
+      }
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName))
+      )
+        return;
+      const scelta = VISTE.find(
+        (x) => x.tasto.toLowerCase() === e.key.toLowerCase()
+      );
+      if (scelta) {
+        e.preventDefault();
+        setView(scelta.v);
+        setMenuVista(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuVista, espanso]);
+
+  // Con il calendario a tutto schermo la pagina sotto non deve scorrere.
+  useEffect(() => {
+    if (!espanso) return;
+    const prima = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prima;
+    };
+  }, [espanso]);
 
   // Linea "adesso": aggiornata ogni minuto.
   useEffect(() => {
@@ -216,6 +292,17 @@ export function ProCalendar({
 
   const isCurrentPeriod = days.some((d) => sameDay(d, new Date()));
 
+  // LE MISURE CAMBIANO COL TUTTO SCHERMO. Mese e anno non sono agende, sono
+  // mappe: se le celle restano quelle della colonna stretta, allargare la
+  // finestra non serve a niente — piu' bianco intorno e gli stessi quadratini.
+  const righeMese = Math.max(1, Math.round(monthCells.length / 7));
+  const altezzaCellaMese = espanso
+    ? `calc((100vh - 15rem) / ${righeMese})`
+    : 104;
+  const altezzaGriglia = espanso ? "calc(100vh - 12rem)" : VIEWPORT_PX;
+  const cellaAnno = espanso ? "h-8 text-xs" : "h-6 text-[11px]";
+  const quantiNelGiorno = espanso ? 6 : 3;
+
   function handleSlotClick(day: Date, minutesFromWindowStart: number) {
     const d = new Date(day);
     const abs = startHour * 60 + minutesFromWindowStart;
@@ -223,7 +310,7 @@ export function ProCalendar({
     onCreateAt(d);
   }
 
-  return (
+  const contenuto = (
     <div data-testid="pro-calendar">
       {/* Barra strumenti */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -235,33 +322,65 @@ export function ProCalendar({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Le quattro viste, dalla piu' stretta alla piu' larga: e' l'ordine
-              in cui si zooma, e l'unico che non costringe a cercare. */}
-          <div className="flex overflow-hidden rounded-lg border border-black/10">
-            {(
-              [
-                ["day", "Giorno"],
-                ["week", "Settimana"],
-                ["month", "Mese"],
-                ["year", "Anno"],
-              ] as [CalView, string][]
-            ).map(([v, etichetta], i) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={`px-2.5 py-1.5 text-xs font-medium transition ${
-                  i > 0 ? "border-l border-black/10" : ""
-                } ${
-                  view === v
-                    ? "bg-bob-indigo text-white"
-                    : "text-bob-ink/70 hover:bg-black/[0.03]"
+          {/* Un bottone dice dove sei, il pannello dice dove puoi andare.
+              L'ordine resta dal piu' stretto al piu' largo: e' il verso in cui
+              si zooma, e l'unico che non costringe a cercare. */}
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuVista((v) => !v)}
+              className="flex items-center gap-1.5 rounded-lg border border-black/10 bg-black/[0.04] px-3 py-1.5 text-xs font-medium text-bob-ink transition hover:bg-black/[0.08]"
+              aria-haspopup="listbox"
+              aria-expanded={menuVista}
+              data-testid="cal-view-menu"
+            >
+              {ETICHETTA_VISTA[view]}
+              <ChevronDown
+                className={`h-3.5 w-3.5 opacity-60 transition ${
+                  menuVista ? "rotate-180" : ""
                 }`}
-                aria-pressed={view === v}
-                data-testid={`cal-view-${v}`}
+                aria-hidden="true"
+              />
+            </button>
+            {menuVista && (
+              <div
+                role="listbox"
+                aria-label="Vista del calendario"
+                className="absolute right-0 z-40 mt-1.5 w-52 overflow-hidden rounded-xl border border-black/10 bg-white py-1 shadow-card"
+                data-testid="cal-view-panel"
               >
-                {etichetta}
-              </button>
-            ))}
+                {VISTE.map(({ v, etichetta, tasto }) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="option"
+                    aria-selected={view === v}
+                    onClick={() => {
+                      setView(v);
+                      setMenuVista(false);
+                    }}
+                    className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm transition hover:bg-black/[0.04] ${
+                      view === v
+                        ? "font-semibold text-bob-indigo"
+                        : "text-bob-ink"
+                    }`}
+                    data-testid={`cal-view-${v}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {view === v ? (
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                      ) : (
+                        <span className="w-3.5" aria-hidden="true" />
+                      )}
+                      {etichetta}
+                    </span>
+                    <span className="text-xs font-medium tabular-nums text-bob-ink/40">
+                      {tasto}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <button
@@ -300,6 +419,21 @@ export function ProCalendar({
           >
             ›
           </button>
+          <button
+            onClick={() => setEspanso((v) => !v)}
+            className="rounded-lg border border-black/10 px-2.5 py-1.5 text-bob-ink/70 transition hover:bg-black/[0.03]"
+            aria-label={
+              espanso ? "Riduci il calendario" : "Calendario a tutto schermo"
+            }
+            title={espanso ? "Riduci (Esc)" : "A tutto schermo"}
+            data-testid="cal-fullscreen"
+          >
+            {espanso ? (
+              <Minimize2 className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Maximize2 className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
         </div>
       </div>
 
@@ -307,7 +441,9 @@ export function ProCalendar({
         <div className="h-64 animate-pulse rounded-xl bg-black/[0.03]" />
       ) : view === "year" ? (
         <div
-          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+          className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${
+            espanso ? "gap-4" : "gap-3"
+          }`}
           data-testid="cal-year"
         >
           {mesiDellAnno.map((m) => (
@@ -321,7 +457,9 @@ export function ProCalendar({
                   setAnchor(startOfDay(m));
                   setView("month");
                 }}
-                className="mb-1 w-full text-left text-xs font-semibold capitalize text-bob-ink transition hover:text-bob-indigo"
+                className={`mb-1 w-full text-left font-semibold capitalize text-bob-ink transition hover:text-bob-indigo ${
+                  espanso ? "text-sm" : "text-xs"
+                }`}
               >
                 {m.toLocaleDateString("it-IT", { month: "long" })}
               </button>
@@ -333,7 +471,13 @@ export function ProCalendar({
                     : 0;
                   const oggi = dentro && sameDay(d, now);
                   if (!dentro) {
-                    return <span key={i} className="h-5" aria-hidden="true" />;
+                    return (
+                      <span
+                        key={i}
+                        className={espanso ? "h-8" : "h-6"}
+                        aria-hidden="true"
+                      />
+                    );
                   }
                   return (
                     <button
@@ -348,7 +492,7 @@ export function ProCalendar({
                           ? fmtDayLong(d)
                           : `${fmtDayLong(d)}: ${quanti} appuntamenti`
                       }
-                      className={`flex h-5 items-center justify-center rounded text-[10px] tabular-nums transition ${
+                      className={`flex ${cellaAnno} items-center justify-center rounded tabular-nums transition ${
                         oggi
                           ? "bg-bob-indigo font-bold text-white"
                           : quanti > 0
@@ -392,7 +536,8 @@ export function ProCalendar({
                     setAnchor(startOfDay(d));
                     setView("day");
                   }}
-                  className={`min-h-[76px] border-b border-l border-black/[0.06] p-1 text-left align-top transition first:border-l-0 hover:bg-bob-indigo-50/50 ${
+                  style={{ minHeight: altezzaCellaMese }}
+                  className={`border-b border-l border-black/[0.06] p-1 text-left align-top transition first:border-l-0 hover:bg-bob-indigo-50/50 ${
                     delMese ? "bg-white" : "bg-black/[0.015]"
                   }`}
                   aria-label={`${fmtDayLong(d)}: ${
@@ -414,7 +559,7 @@ export function ProCalendar({
                     {d.getDate()}
                   </span>
                   <span className="mt-0.5 flex flex-col gap-0.5">
-                    {delGiorno.slice(0, 2).map((a) => (
+                    {delGiorno.slice(0, quantiNelGiorno).map((a) => (
                       <span
                         key={a.id}
                         className="truncate rounded bg-bob-indigo-50 px-1 py-0.5 text-[10px] leading-tight text-bob-indigo"
@@ -426,9 +571,9 @@ export function ProCalendar({
                         {a.customer_name}
                       </span>
                     ))}
-                    {delGiorno.length > 2 && (
+                    {delGiorno.length > quantiNelGiorno && (
                       <span className="px-1 text-[10px] text-bob-ink/65">
-                        +{delGiorno.length - 2}
+                        +{delGiorno.length - quantiNelGiorno}
                       </span>
                     )}
                   </span>
@@ -441,7 +586,7 @@ export function ProCalendar({
         <div
           ref={scrollRef}
           className="relative overflow-y-auto overscroll-contain rounded-xl border border-black/[0.07]"
-          style={{ maxHeight: VIEWPORT_PX }}
+          style={{ maxHeight: altezzaGriglia }}
         >
           {/* Intestazione giorni: resta visibile durante lo scroll */}
           <div className="sticky top-0 z-30 flex border-b border-black/[0.07] bg-white/95 backdrop-blur-sm">
@@ -672,6 +817,20 @@ export function ProCalendar({
         </div>
       )}
     </div>
+  );
+
+  // Fuori dal flusso della pagina solo quando serve: cosi' la colonna di
+  // fianco, gli altri pannelli e la barra in alto restano sotto, e Esc
+  // riporta tutto com'era.
+  if (!espanso) return contenuto;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[70] overflow-y-auto overscroll-contain bg-white p-4 sm:p-6"
+      data-testid="cal-fullscreen-overlay"
+    >
+      {contenuto}
+    </div>,
+    document.body
   );
 }
 
