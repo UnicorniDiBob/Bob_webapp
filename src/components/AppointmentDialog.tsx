@@ -43,7 +43,15 @@ export function AppointmentDialog({
   const [startsAt, setStartsAt] = useState(
     toLocalInput(existing?.starts_at ?? defaultDate?.toISOString())
   );
-  const [duration, setDuration] = useState(existing?.duration_minutes ?? 60);
+  // La durata in due campi, come nella proposta in chat: una sola forma per
+  // la stessa cosa in tutta l'app, e nessun minimo inventato (era 15).
+  const [durataOre, setDurataOre] = useState(
+    Math.floor((existing?.duration_minutes ?? 60) / 60)
+  );
+  const [durataMin, setDurataMin] = useState(
+    (existing?.duration_minutes ?? 60) % 60
+  );
+  const duration = durataOre * 60 + durataMin;
   const [price, setPrice] = useState<string>(
     existing?.price != null ? String(existing.price) : ""
   );
@@ -213,8 +221,8 @@ export function AppointmentDialog({
               uguali sbordava sopra la durata. min-w-0 su ogni cella è
               necessario: un elemento di griglia ha min-width:auto e senza
               questo non si restringe mai sotto il proprio contenuto. */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2 min-w-0">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-w-0">
               <label className="label-bob">Data e ora</label>
               <input
                 type="datetime-local"
@@ -225,16 +233,42 @@ export function AppointmentDialog({
               />
             </div>
             <div className="min-w-0">
-              <label className="label-bob">Durata (min)</label>
-              <input
-                type="number"
-                min={15}
-                step={15}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                className="input-bob"
-                data-testid="input-duration"
-              />
+              <span className="label-bob">Durata</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={0}
+                  max={24}
+                  inputMode="numeric"
+                  value={durataOre}
+                  onChange={(e) =>
+                    setDurataOre(
+                      Math.max(0, Math.min(24, Number(e.target.value) || 0))
+                    )
+                  }
+                  className="input-bob min-w-0 flex-1 px-2 text-center"
+                  aria-label="Durata: ore"
+                  data-testid="input-duration"
+                />
+                <span className="shrink-0 text-xs text-bob-ink/65">h</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  step={5}
+                  inputMode="numeric"
+                  value={durataMin}
+                  onChange={(e) =>
+                    setDurataMin(
+                      Math.max(0, Math.min(59, Number(e.target.value) || 0))
+                    )
+                  }
+                  className="input-bob min-w-0 flex-1 px-2 text-center"
+                  aria-label="Durata: minuti"
+                  data-testid="input-duration-min"
+                />
+                <span className="shrink-0 text-xs text-bob-ink/65">min</span>
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
