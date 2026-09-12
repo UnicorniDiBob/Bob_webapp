@@ -32,16 +32,36 @@ mergiato e non in produzione**. Nessuna migrazione.
   minimo di 15 minuti. Un orario **fuori dalle fasce dichiarate** è un avviso
   ambra, non più un blocco; la guardia sulla doppia prenotazione resta un blocco.
 
+### Chiuso: mergiato, deployato, verificato dal vivo
+
+PR **#67 mergiata**, `main` a `ded5373`, deploy di produzione **READY**. La build
+l'ha fatta la CI: dal ponte del desktop non era eseguibile (Next va in `SIGBUS`
+sul filesystem montato, e **fallisce identico su `main` pulito**, quindi non era
+il codice). In locale erano passati `npx tsc --noEmit` e `npm run lint`.
+
+Verificato su www.meetonda.com con un account pro, a 1440px e a 390px:
+
+- pannello delle viste con le quattro voci e le lettere D/W/M/Y; la scorciatoia
+  da tastiera cambia vista e non scatta dentro i campi;
+- tutto schermo: pannello `fixed inset-0` a `z-70` figlio di `<body>`, copre
+  tutta la finestra, `body` bloccato mentre è aperto e ripristinato all'uscita,
+  Esc chiude e la vista scelta resta;
+- mese a 1440: griglia 1334px, colonna di fianco sparita, celle 190×104 —
+  espanso 199×132, il mese intero sta nella pagina; anno espanso: 12 mesi
+  visibili tutti insieme;
+- dialog «Proponi un appuntamento»: 768px, calendario dentro, click su uno
+  spazio libero riempie data e ora («Scelto: lunedì 14 settembre alle ore 09:00»);
+- durata libera: 0h20 accettata, 2h20 accettata, 0h00 disabilita l'invio;
+- fuori fascia: 05:00 di lunedì mostra l'avviso ambra **e lascia l'invio attivo**;
+  09:00 non lo mostra;
+- a 390px: dialog 358px con margini da 16, nessuno scorrimento orizzontale, barra
+  del calendario su una riga sola, mese a tutto schermo leggibile.
+
+Console pulita (un solo 401 di refresh auth, pre-login, non correlato).
+
 ### Quello che è a metà
 
-- **`npm run build` non l'ho eseguito.** Il clone è stato lavorato attraverso il
-  ponte del desktop: la build di Next va in `SIGBUS` sul filesystem montato, e
-  **fallisce allo stesso modo su `main` pulito**, quindi non è il codice. Passati
-  invece `npx tsc --noEmit` e `npm run lint`, entrambi puliti. **La build va
-  rifatta in locale prima del merge**, e comunque la fa la CI sulla PR.
-- **Nessuna verifica live.** Non ho potuto avviare `npm run dev` (stesso motivo).
-  Restano da guardare con gli occhi: il calendario dentro il dialog a 390px, il
-  pannello a tutto schermo su desktop, e la vista mese espansa con un mese pieno.
+- Niente, su questo pezzo.
 
 ## Cosa ho fatto — Lucio (12 settembre, sera)
 
