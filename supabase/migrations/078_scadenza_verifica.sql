@@ -1,4 +1,4 @@
--- 075 — La verifica scade dopo un anno (decisione di Lucio, 12/09/2026)
+-- 078 — La verifica scade dopo un anno (decisione di Lucio, 12/09/2026)
 --
 -- PERCHE'. Un badge che attesta un controllo fatto una volta e valido per
 -- sempre smette di attestare qualcosa: la partita IVA di un anno fa puo'

@@ -13,7 +13,7 @@
 //    qualcosa va detta in faccia una volta, non lasciata in una lista.
 //
 // UNA VOLTA SOLA, E PER ACCOUNT. Lo stato «vista» sta su
-// profiles.scadenza_verifica_vista_al (migrazione 075) e non in localStorage,
+// profiles.scadenza_verifica_vista_al (migrazione 078) e non in localStorage,
 // altrimenti la stessa finestra ricompare su telefono, portatile e tablet.
 // Contiene la DATA DI SCADENZA per cui e' stata chiusa: se la verifica si
 // rinnova il valore non coincide piu' e la finestra torna disponibile da sola,

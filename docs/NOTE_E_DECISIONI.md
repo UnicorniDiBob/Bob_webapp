@@ -44,7 +44,7 @@ documenti né un controllo. Quindi:
   **Ricontrollo**, separata dalla coda delle prime verifiche: sono due lavori
   diversi e mescolarli li nasconde entrambi.
 
-**Il preavviso è a due tempi** (migrazione 075, scritta il 12/09): a **30 giorni**
+**Il preavviso è a due tempi** (migrazione 078, scritta il 12/09): a **30 giorni**
 una notifica nella campanella — c'è tempo, si dice dove si leggono le cose da
 fare — e nell'**ultima settimana lavorativa** una finestra sull'area di lavoro,
 perché lì la posta in gioco cambia: alla scadenza il profilo torna «Iscritto» e
