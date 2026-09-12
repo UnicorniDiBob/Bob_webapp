@@ -12,9 +12,13 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 al professionista quando chiede la verifica, salvo imprevisti. Va scritto nei
 ToS pro ("SLA di esame") e mostrato al pro mentre aspetta: il silenzio, su una
 cosa che ha pagato e che lo tiene fuori dalle ricerche, è la parte che fa male.
-Durante l'attesa una **barretta di avanzamento discreta**, che si riempie man
-mano e **sparisce quando è piena**. Serve un timestamp per riga di coda,
-altrimenti l'SLA è una promessa che nessuno misura.
+Durante l'attesa una **barretta di avanzamento discreta** (fatta il 12/09): la
+riempiono i **passi della pratica** — ricevuta, controllo automatico, esame di
+una persona, esito — non il tempo e non la coda. Il tempo la riempirebbe anche
+quando non è successo niente, e a barra piena senza risposta la promessa si
+vedrebbe rotta da sola. Sparisce a verifica ottenuta. Manca ancora il
+**timestamp di ingresso in coda**: finché non c'è, la data attesa si conta da
+`vat_checked_at` e l'SLA non è misurato da nessuno.
 
 **Scadenza della verifica: ANNUALE** (chiude 10.4, che proponeva 6 mesi). Il
 ricontrollo è automatico dove l'automatismo arriva (VIES); quello che
@@ -38,14 +42,28 @@ serve una colonna con il **motivo** (non un booleano) e, per il Regolamento P2B
 art. 4, motivazione scritta e preavviso. È una migrazione e una decisione, non
 una riga di copy.
 
-**Area di lavoro: le nuove richieste vanno in una sezione propria.** Con dieci
-richieste aperte il calendario finisce sotto chilometri di scroll. Insieme a
-questo: poter **cancellare le chat dei lavori conclusi** e impostare un tempo di
-cancellazione automatica. Vincolo da rispettare (DATA_COMPLIANCE §5): le chat
-legate a una transazione si conservano fino alla prescrizione, quindi quello che
-il professionista cancella è **la sua vista**, non la prova; l'erasure vera
-segue la regola di retention. Va scritto prima di costruirlo, altrimenti
-promettiamo una cancellazione che non possiamo fare.
+**Area di lavoro: le richieste hanno un ciclo, e si vede.** Con dieci richieste
+aperte il calendario finisce sotto chilometri di scroll. Tre posti, non uno:
+
+1. **Richieste** — quelle nuove, non ancora prese in carico. Sezione propria,
+   con la bozza di risposta. Da qui il pro la **trasferisce nella chat**: è
+   quel gesto, non un campo nascosto, che accende il lavoro.
+2. **In corso** — le chat dei lavori aperti.
+3. **Conclusi** — ci finiscono **da sole** quando il lavoro viene segnato come
+   finito. Nessun archivio a mano.
+
+Deve essere intuitivo: un tasto per stato, il numero accanto, e la stessa
+parola in dashboard e in pagina. Dipende da una cosa già aperta: la macchina a
+stati di `request_professionals`, che oggi non viene mai aggiornata dopo
+l'insert (per questo una richiesta già risposta resta in cima per sempre).
+
+**Le chat: il pro le cancella, noi le conserviamo.** Il professionista deve
+poter cancellare una chat conclusa e poter impostare un tempo di cancellazione
+automatica. Quello che cancella è **la sua vista**: i messaggi di un lavoro con
+la Garanzia Bob ci servono come prova in caso di contestazione e si conservano
+fino alla prescrizione (DATA_COMPLIANCE §5), poi li porta via la retention. Va
+scritto così anche a video — «non la vedi più tu» è una promessa che possiamo
+mantenere, «è sparita» no — e va messa una riga nel registro dei trattamenti.
 
 ---
 

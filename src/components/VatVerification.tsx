@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { VerificationLevelBadge } from "@/components/ui";
+import { AvanzamentoVerifica } from "@/components/AvanzamentoVerifica";
 import {
   vatValidationError,
   normalizeVat,
@@ -200,6 +201,15 @@ export default function VatVerification({
           </p>
         </div>
       )}
+
+      {/* L'avanzamento sta SOPRA il riquadro giallo: e' la risposta alla
+          domanda che uno si fa per prima («a che punto e'?»), il riquadro
+          spiega. Sparisce da solo a verifica ottenuta. */}
+      <AvanzamentoVerifica
+        review={review}
+        verificato={verified}
+        controllatoIl={row?.vat_checked_at ?? null}
+      />
 
       {review === "pending" && !verified && (
         <div

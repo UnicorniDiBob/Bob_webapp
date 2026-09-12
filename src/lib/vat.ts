@@ -14,6 +14,15 @@
 export type VerificationLevel = "none" | "vat_verified" | "documents_verified";
 
 /** Etichette mostrate agli utenti. Unico punto in cui vivono i nomi commerciali. */
+/**
+ * SLA DICHIARATO DELLA CODA DI VERIFICA: 5 giorni lavorativi (12/09, Lucio).
+ * Sta qui perche' la stessa cifra va detta al professionista mentre aspetta,
+ * nei ToS pro («SLA di esame») e in assistenza: tre copie divergono, una no.
+ * Oggi e' una promessa NON misurata - la coda non ha un timestamp di ingresso
+ * e nessuno confronta il dichiarato col fatto.
+ */
+export const SLA_VERIFICA_GIORNI_LAVORATIVI = 5;
+
 export const VERIFICATION_LABEL: Record<VerificationLevel, string> = {
   none: "Iscritto",
   vat_verified: "Pro",
