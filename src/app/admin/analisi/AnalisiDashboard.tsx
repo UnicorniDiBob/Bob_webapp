@@ -230,7 +230,7 @@ const VERIFICATION_LABEL: Record<ProfessionalRow["verification_status"], string>
 
 const TIER_LABEL: Record<string, string> = {
   free: "Free",
-  pro: "Pro",
+  pro: "Plus",
   business: "Business",
 };
 
@@ -598,7 +598,7 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
 
     const chartData = [
       { tier: "Free", Professionisti: free },
-      { tier: "Pro", Professionisti: pro },
+      { tier: "Plus", Professionisti: pro },
       { tier: "Business", Professionisti: business },
     ];
 
@@ -829,7 +829,7 @@ export function AnalisiDashboard({ data }: { data: AnalisiRawData }) {
         summary.push(
           ["Professionisti", rows.length],
           ["Free", conversionResult.free],
-          ["Pro", conversionResult.pro],
+          ["Plus", conversionResult.pro],
           ["Business", conversionResult.business],
           ["% non-Free", `${conversionResult.nonFreePct.toFixed(1)}%`]
         );

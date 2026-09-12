@@ -13,11 +13,128 @@
 /** Livelli di verifica: valori tecnici del DB (migration 029). */
 export type VerificationLevel = "none" | "vat_verified" | "documents_verified";
 
-/** Etichette mostrate agli utenti. Unico punto in cui vivono i nomi commerciali. */
+/**
+ * SLA DICHIARATO DELLA CODA DI VERIFICA: 5 giorni lavorativi (12/09, Lucio).
+ * Sta qui perche' la stessa cifra va detta al professionista mentre aspetta,
+ * nei ToS pro («SLA di esame») e in assistenza: tre copie divergono, una no.
+ * Oggi e' una promessa NON misurata - la coda non ha un timestamp di ingresso
+ * e nessuno confronta il dichiarato col fatto.
+ */
+export const SLA_VERIFICA_GIORNI_LAVORATIVI = 5;
+
+// ---------------------------------------------------------------------------
+// La scadenza della verifica (12/09, Lucio — chiude 10.4)
+// ---------------------------------------------------------------------------
+// UN ANNO. Il costo del ricontrollo non e' il controllo, e' l'esame umano: il
+// VIES risponde solo per la minoranza iscritta agli scambi intra-UE, e per
+// tutti gli altri un esito negativo non e' un segnale, e' la normalita'.
+// Ripassarlo piu' spesso produce rumore, non controlli.
+//
+// LA DATA NON DECLASSA NESSUNO DA SOLA: alla scadenza la riga va in
+// «Ricontrollo» e decide una persona (art. 22 GDPR). Il preavviso esiste anche
+// per il Regolamento P2B art. 4, che per ogni restrizione del servizio vuole
+// motivazione e preavviso — e perdere l'etichetta lo e'.
+
+/** Quanto vale una verifica prima del ricontrollo. */
+export const VALIDITA_VERIFICA_MESI = 12;
+
+/** Da quanti giorni prima lo diciamo nella campanella. */
+export const PREAVVISO_SCADENZA_GIORNI = 30;
+
+/** Da quanti giorni LAVORATIVI prima si mette davanti la finestra. */
+export const PREAVVISO_FINESTRA_GIORNI_LAVORATIVI = 5;
+
+export type FaseScadenza =
+  | "valida"
+  | "preavviso"
+  | "ultima-settimana"
+  | "scaduta";
+
+export interface StatoScadenza {
+  fase: FaseScadenza;
+  scadeIl: Date;
+  /** Giorni solari mancanti. Negativi se e' gia' scaduta. */
+  giorni: number;
+  /** Giorni lavorativi mancanti (sabato e domenica esclusi, festivi no). */
+  giorniLavorativi: number;
+}
+
+const GIORNO_MS = 86_400_000;
+
+/** Giorni lavorativi fra due date: sabato e domenica esclusi, festivi no. */
+export function giorniLavorativiTra(da: Date, a: Date): number {
+  if (a <= da) return 0;
+  const cursore = new Date(da);
+  cursore.setHours(0, 0, 0, 0);
+  const fine = new Date(a);
+  fine.setHours(0, 0, 0, 0);
+  let n = 0;
+  while (cursore < fine) {
+    cursore.setDate(cursore.getDate() + 1);
+    const g = cursore.getDay();
+    if (g !== 0 && g !== 6) n += 1;
+  }
+  return n;
+}
+
+/**
+ * A che punto e' la validita' di una verifica.
+ * null quando non c'e' nessuna scadenza da seguire (nessun livello attivo).
+ */
+export function statoScadenza(
+  scadenza: string | null,
+  adesso: Date = new Date()
+): StatoScadenza | null {
+  if (!scadenza) return null;
+  const scadeIl = new Date(scadenza);
+  if (Number.isNaN(scadeIl.getTime())) return null;
+
+  const giorni = Math.ceil((scadeIl.getTime() - adesso.getTime()) / GIORNO_MS);
+  const giorniLavorativi = giorniLavorativiTra(adesso, scadeIl);
+
+  const fase: FaseScadenza =
+    giorni < 0
+      ? "scaduta"
+      : giorniLavorativi <= PREAVVISO_FINESTRA_GIORNI_LAVORATIVI
+        ? "ultima-settimana"
+        : giorni <= PREAVVISO_SCADENZA_GIORNI
+          ? "preavviso"
+          : "valida";
+
+  return { fase, scadeIl, giorni, giorniLavorativi };
+}
+
+/**
+ * Etichette mostrate agli utenti. Unico punto in cui vivono i nomi.
+ *
+ * «VERIFICATO» E BASTA (12/09, scelta di Lucio). Si chiamavano "Pro" e "Pro+",
+ * cioe' come i piani a pagamento: un professionista col piano Free non poteva
+ * avere il badge "Pro", e uno col piano Plus si vedeva scritto "Pro" addosso.
+ * Due scale diverse con gli stessi nomi si spiegano male a noi e malissimo a
+ * un cliente, che davanti a "Pro" non sa se ha comprato qualcosa o se e' stato
+ * controllato. Il cliente ha bisogno di sapere UNA cosa: questo profilo e'
+ * stato verificato, e quando.
+ *
+ * I due livelli restano distinti nel database e nel lavoro dello staff (il
+ * secondo attesta anche un esame documentale): cambia solo cosa si legge
+ * fuori. Cosa sia stato controllato lo dice VERIFICATION_MEANING, nel
+ * dettaglio del badge.
+ */
 export const VERIFICATION_LABEL: Record<VerificationLevel, string> = {
-  none: "Iscritto",
-  vat_verified: "Pro",
-  documents_verified: "Pro+",
+  none: "Non verificato",
+  vat_verified: "Verificato",
+  documents_verified: "Verificato",
+};
+
+/**
+ * Le stesse etichette, ma per lo STAFF. Fuori i due livelli si leggono uguali
+ * — al cliente interessa una cosa sola — ma chi lavora la coda deve sapere se
+ * dietro c'e' anche un esame documentale, altrimenti non puo' decidere.
+ */
+export const VERIFICATION_LABEL_STAFF: Record<VerificationLevel, string> = {
+  none: "Nessuno",
+  vat_verified: "Verificato (P.IVA)",
+  documents_verified: "Verificato (documenti)",
 };
 
 /** Descrizione sintetica di cosa attesta ciascun livello (per tooltip e UI). */
@@ -46,7 +163,56 @@ export const VERIFICATION_CAVEAT: Record<VerificationLevel, string> = {
  * Stato dell'esame umano sui casi che il VIES non conferma (migration 034).
  * null in DB = niente in sospeso.
  */
-export type VatReviewState = "pending" | "docs_requested" | "rejected";
+export type VatReviewState =
+  | "pending"
+  | "docs_requested"
+  | "rejected"
+  /** Era verificato e va riguardato: scadenza o segnale sulla P.IVA (079). */
+  | "recheck";
+
+/**
+ * Perche' una verifica e' finita in ricontrollo. E' un dato e non una frase
+ * perche' decide tre cose: l'ordine della coda (una cessazione non aspetta una
+ * scadenza), cosa scriviamo al professionista, e la motivazione scritta che il
+ * Regolamento P2B (art. 4) pretende se poi il livello cade davvero.
+ */
+export type MotivoRicontrollo =
+  /** E' passato l'anno: il controllo va rifatto, non c'e' niente di storto. */
+  | "scadenza"
+  /** Il riscontro dice che la partita IVA non risulta piu' attiva. */
+  | "cessazione"
+  /** Liquidazione, concordato, amministrazione straordinaria nel nome. */
+  | "procedura"
+  /** L'intestazione non corrisponde piu' al profilo. */
+  | "intestazione";
+
+/** Come lo legge il professionista: prima riga della notifica e del riquadro. */
+export const MOTIVO_RICONTROLLO_TITOLO: Record<MotivoRicontrollo, string> = {
+  scadenza: "Stiamo rifacendo il controllo della tua partita IVA",
+  cessazione: "La tua partita IVA non risulta piu' attiva",
+  procedura: "Il registro segnala una procedura sulla tua impresa",
+  intestazione: "L'intestazione della partita IVA non corrisponde al profilo",
+};
+
+/** Cosa succede adesso, detto al professionista senza girarci intorno. */
+export const MOTIVO_RICONTROLLO_TESTO: Record<MotivoRicontrollo, string> = {
+  scadenza:
+    "La verifica vale un anno ed e' arrivata a scadenza. Lo rifacciamo noi: nella maggior parte dei casi non ti chiediamo niente. Il badge resta finche' non abbiamo finito.",
+  cessazione:
+    "Il controllo dice che la partita IVA con cui sei verificato non risulta piu' attiva. Puo' essere un dato del registro non aggiornato, o un numero cambiato: prima di toccare il badge lo guarda una persona. Se hai cambiato partita IVA, inseriscila qui.",
+  procedura:
+    "Nella denominazione risulta una procedura in corso (per esempio una liquidazione). Non e' un rifiuto e non tocca il badge da solo: lo guarda una persona, e se il dato e' vecchio si chiude li'.",
+  intestazione:
+    "Il nome a cui risulta intestata la partita IVA non corrisponde piu' a quello del profilo. Lo guarda una persona: se hai cambiato ragione sociale, aggiornala nel profilo.",
+};
+
+/** Come lo legge lo staff nella coda. */
+export const MOTIVO_RICONTROLLO_STAFF: Record<MotivoRicontrollo, string> = {
+  scadenza: "Scadenza annuale",
+  cessazione: "P.IVA non piu' attiva",
+  procedura: "Procedura nella denominazione",
+  intestazione: "Intestazione non corrispondente",
+};
 
 /** Peso per ordinare o confrontare i livelli (più alto = più verificato). */
 export function verificationLevelWeight(level: VerificationLevel): number {

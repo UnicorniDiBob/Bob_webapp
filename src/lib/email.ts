@@ -222,7 +222,7 @@ export function buildEmail(
           "Il numero della partita IVA non è visibile ai clienti: vedono solo l'etichetta e la data."
         );
       cta = "Vedi il tuo profilo";
-      text = `${hi}\nAbbiamo riscontrato la tua partita IVA: il tuo profilo ora mostra l'etichetta Pro con la data del controllo.\n${
+      text = `${hi}\nAbbiamo riscontrato la tua partita IVA: il tuo profilo ora mostra l'etichetta «Verificato» con la data del controllo.\n${
         ctx.preview ?? ""
       }\n${href}`;
       break;

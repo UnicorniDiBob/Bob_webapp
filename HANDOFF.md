@@ -1,11 +1,70 @@
-# Passaggio di consegne — 12 settembre 2026 (André, con Claude)
+# Passaggio di consegne — 12 settembre 2026, sera (Lucio, con Claude)
 
 > Sostituisce quello dell'11 settembre e ne porta avanti tutte le voci ancora
 > aperte, nelle sezioni in fondo. HANDOFF.md si sovrascrive a ogni sessione,
 > **ma quello che è a metà si porta avanti, non si butta**. Scritto e mergiato
 > lo stesso giorno.
 
-## Cosa è andato in produzione (12 settembre — larghezza chiusa, Bob ha una faccia)
+## Cosa ho fatto — Lucio (12 settembre, sera)
+
+Tutto sul ramo **`feat/piani-plus-matrice`**, 15 commit, mergiato con `main` di
+oggi pomeriggio (il clone locale era rimasto 42 commit indietro). **In
+produzione non ho messo niente, e nessuna migrazione è applicata.**
+
+- **Il listino è una matrice sola** (`src/lib/piani.ts`): ogni funzione è una
+  riga con tre stati — c'è / non c'è / in arrivo — e gli elenchi puntati delle
+  pagine si generano da lì. `/per-i-professionisti` mostra la tabella dentro il
+  kit nuovo, al posto delle tre schede. Il piano **«Bob Pro» si chiama «Bob
+  Plus»**: cambia solo l'etichetta, l'id nel database resta `pro`.
+- **Il badge di verifica dice «Verificato» e basta**, non più «Pro»/«Pro+»: i
+  due livelli restano distinti dentro, lo staff ha `VERIFICATION_LABEL_STAFF`.
+- **La verifica dura un anno** (`078_scadenza_verifica.sql`): data, trigger che
+  la scrive quando si concede un livello, backfill una tantum per chi è già
+  verificato. Preavviso a 30 giorni nella campanella e finestra nell'ultima
+  settimana lavorativa. **Alla scadenza il badge cade da solo** — decisione di
+  Lucio, è una scadenza dichiarata e preavvisata, non un giudizio.
+- **Il ricontrollo ha una coda sua** (`079_ricontrollo_verifica.sql`): stato
+  `recheck` + motivo (scadenza | cessazione | procedura | intestazione), sezione
+  **Ricontrollo** in admin sopra la coda delle prime richieste, e il giro
+  notturno che rinnova da solo chi il VIES conferma ancora e apre un caso quando
+  un numero che prima confermava non lo conferma più. Chi era stato verificato a
+  mano non viene richiamato: per lui il VIES non dice niente di utile.
+- **SLA della coda dichiarato a 5 giorni lavorativi** (`SLA_VERIFICA_GIORNI_LAVORATIVI`),
+  con la barretta di stato nella pagina della verifica: ricevuta → in gestione →
+  esito, più «documenti richiesti».
+- **Area di lavoro**: lo stato del profilo si richiude in un pallino verde sopra
+  il calendario quando non manca niente; calendario con quattro viste (Giorno,
+  Settimana, Mese, Anno) e l'anno sempre scritto; mese e anno prendono tutta la
+  pagina; la finestra «nuovo appuntamento» contiene il calendario vero, si
+  sceglie cliccando lo spazio libero.
+
+## Cosa è a metà — Lucio (12 settembre, sera)
+
+- **Le due migrazioni 078 e 079 non sono applicate.** Vanno su Supabase insieme
+  al deploy del ramo: finché non ci sono, la campanella tace sulla scadenza (c'è
+  una guardia apposta) e la coda Ricontrollo resta vuota.
+- **Il calendario nel piano Free.** La tabella lo toglie al Free, il prodotto lo
+  dà ancora a tutti. È l'unico punto dove la pagina dice una cosa e l'app ne fa
+  un'altra: vale anche per recensioni e risalto nei risultati.
+- **Alla scadenza il badge non cade ancora davvero**: mancano la regola di
+  lettura sull'etichetta pubblica e il giro che porta le righe scadute in
+  Ricontrollo.
+- **Quanto può restare aperto un caso di cessazione** col badge acceso: non
+  deciso. Oggi dipende da quanto ci mette qualcuno a guardarlo.
+- **L'SLA non è misurato**: manca il timestamp di ingresso in coda, la regola di
+  escalation e la riga nei ToS pro.
+- **Richieste → In corso → Conclusi** e la cancellazione delle chat concluse:
+  scritte in `docs/NOTE_E_DECISIONI.md`, non costruite. Dipendono dalla macchina
+  a stati di `request_professionals`, che non viene mai aggiornata dopo
+  l'inserimento.
+- **«Prossimi appuntamenti» e «Impegni del giorno»** sono tornati nella colonna
+  di destra dopo una prova senza: se si decide di toglierne uno, sta in git.
+
+## Cosa ho applicato in produzione che l'altro deve sapere — Lucio
+
+**Niente.** Nessun push, nessun deploy, nessuna migrazione applicata.
+
+## Portato avanti dal 12 settembre, mattina (André) — andato in produzione
 
 Niente Supabase, niente migrazioni, nessun advisor da rilanciare. Solo
 interfaccia e un componente nuovo.
@@ -39,7 +98,7 @@ interfaccia e un componente nuovo.
   cinque stili e quattro tenute. Il ragionamento sta in
   `claude/MASCOT_bob_12set.md`.
 
-## Cosa è a metà — mio (12 settembre)
+## Cosa è a metà — André (12 settembre, mattina)
 
 - **`Bob.tsx` è in `main` ma non lo usa nessuna pagina.** Entra in scena quando
   si costruisce la home. È voluto, ma è anche la situazione da tenere d'occhio:
@@ -64,7 +123,7 @@ interfaccia e un componente nuovo.
   il calendario, l'anteprima sui social. **Va deciso prima del pilota, non
   dopo.**
 
-## Cosa ho applicato in produzione che l'altro deve sapere
+## Applicato in produzione da André il 12 settembre — resta valido
 
 - **Niente su Supabase oggi.** Solo deploy Vercel da `main`.
 - **`container-bob` è l'unico contenitore.** Chi scrive una pagina nuova usa

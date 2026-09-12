@@ -1,4 +1,7 @@
-// Ritentativo notturno delle verifiche rimaste senza risposta (blocco 10, 10.5).
+// Il giro notturno della verifica: due passate, blocco 10.
+//
+//  1. RITENTATIVO (10.5) delle richieste rimaste senza risposta dal VIES.
+//  2. RICONTROLLO ANNUALE (079) delle verifiche in scadenza.
 //
 // GET /api/cron/verifica-piva  — la chiama Vercel una volta al giorno.
 //
@@ -87,6 +90,182 @@ async function registraGiro(
   }
 }
 
+/** Quante verifiche in scadenza guardare per giro. */
+const MAX_RICONTROLLI = 50;
+/** Quanti giorni prima della scadenza il ricontrollo puo' partire. */
+const ANTICIPO_GIORNI = 7;
+
+/**
+ * RICONTROLLO ANNUALE (079).
+ *
+ * Chi e' stato verificato DAL VIES si puo' ricontrollare da soli: se il
+ * registro conferma ancora, la scadenza si sposta di un anno e nessuno tocca
+ * niente. Se invece il VIES adesso NON conferma un numero che prima
+ * confermava, quello e' un segnale vero — non il rumore di fondo — e il caso
+ * va a una persona.
+ *
+ * Chi e' stato verificato da una PERSONA non si richiama affatto: il VIES
+ * risponde solo per chi e' iscritto agli scambi intra-UE, cioe' la minoranza,
+ * e per tutti gli altri un "non risulta" non vuol dire niente. Chiamarlo lo
+ * stesso produrrebbe una coda di falsi allarmi. Quelle righe entrano in
+ * ricontrollo per scadenza e le rifa' una persona.
+ *
+ * Qui NON si declassa nessuno: il livello resta, cambia solo lo stato.
+ */
+async function ricontrollaScadute(admin: SupabaseClient) {
+  const soglia = new Date(
+    Date.now() + ANTICIPO_GIORNI * 24 * 3600 * 1000
+  ).toISOString();
+
+  const { data, error } = await admin
+    .from("professional_verification")
+    .select(
+      "professional_id, vat_number, declared_business_name, vat_check_source, vat_expires_at"
+    )
+    .in("level", ["vat_verified", "documents_verified"])
+    .is("vat_review_state", null)
+    .not("vat_expires_at", "is", null)
+    .lte("vat_expires_at", soglia)
+    .order("vat_expires_at", { ascending: true })
+    .limit(MAX_RICONTROLLI);
+
+  if (error || !data || data.length === 0) {
+    return { guardate: 0, rinnovate: 0, inRicontrollo: 0 };
+  }
+
+  const righe = data as {
+    professional_id: string;
+    vat_number: string | null;
+    declared_business_name: string | null;
+    vat_check_source: string | null;
+    vat_expires_at: string | null;
+  }[];
+
+  let rinnovate = 0;
+  let inRicontrollo = 0;
+
+  const apriRicontrollo = async (
+    id: string,
+    motivo: string,
+    nota: string,
+    evento: string
+  ) => {
+    const adesso = new Date().toISOString();
+    await admin
+      .from("professional_verification")
+      .update({
+        vat_review_state: "recheck",
+        recheck_reason: motivo,
+        recheck_opened_at: adesso,
+        updated_at: adesso,
+      })
+      .eq("professional_id", id);
+    await admin.from("verification_events").insert({
+      professional_id: id,
+      event: evento,
+      note: nota,
+      actor_name: "Ricontrollo automatico",
+      actor_role: "system",
+    });
+    inRicontrollo++;
+  };
+
+  for (const r of righe) {
+    // Verificato da una persona, o senza numero da richiamare: il VIES qui non
+    // aggiunge informazione. Va a una persona, con il motivo "scadenza".
+    if (r.vat_check_source !== "vies" || !r.vat_number) {
+      await apriRicontrollo(
+        r.professional_id,
+        "scadenza",
+        "Verifica arrivata a scadenza. Il riscontro originale non veniva dal VIES, quindi il controllo automatico non puo' rifarlo: lo rifa' una persona.",
+        "vat_recheck_opened"
+      );
+      continue;
+    }
+
+    const esito = await checkVatOnVies(r.vat_number);
+    const adesso = new Date().toISOString();
+
+    // Servizio giu': non e' un segnale. Si riprova domani, la riga resta
+    // com'e' (la scadenza e' gia' passata o sta per passare: un giorno in piu'
+    // non cambia niente, un falso allarme si').
+    if (esito.status === "unavailable") {
+      await attendi(PAUSA_MS);
+      continue;
+    }
+
+    const snap = esito.snapshot;
+    const procedura = procedureFlagInName(snap.name);
+    const match = matchRegistryName(snap.name, {
+      profileName: null,
+      declaredName: r.declared_business_name,
+    });
+
+    if (esito.status === "confirmed" && !procedura) {
+      // Conferma piena: la scadenza si sposta di un anno e non disturbiamo
+      // nessuno. L'intestazione che non torna piu' non rinnova da sola.
+      if (match) {
+        const nuova = new Date();
+        nuova.setFullYear(nuova.getFullYear() + 1);
+        await admin
+          .from("professional_verification")
+          .update({
+            vat_active: true,
+            vat_holder_name: snap.name,
+            vat_checked_at: snap.requestDate ?? adesso,
+            vat_check_payload: snap,
+            vat_expires_at: nuova.toISOString(),
+            updated_at: adesso,
+          })
+          .eq("professional_id", r.professional_id);
+        await admin.from("verification_events").insert({
+          professional_id: r.professional_id,
+          event: "vat_check_ok",
+          note: `Ricontrollo annuale: il VIES conferma ancora la partita IVA, intestata a "${snap.name}". Verifica valida per un altro anno.`,
+          actor_name: "Ricontrollo automatico",
+          actor_role: "system",
+        });
+        rinnovate++;
+        await attendi(PAUSA_MS);
+        continue;
+      }
+      await apriRicontrollo(
+        r.professional_id,
+        "intestazione",
+        `Ricontrollo annuale: partita IVA ancora valida ma intestata a "${
+          snap.name ?? "intestatario non restituito"
+        }", che non corrisponde piu'. Decide una persona.`,
+        "vat_recheck_opened"
+      );
+      await attendi(PAUSA_MS);
+      continue;
+    }
+
+    if (esito.status === "confirmed" && procedura) {
+      await apriRicontrollo(
+        r.professional_id,
+        "procedura",
+        `Ricontrollo annuale: partita IVA attiva ma la denominazione "${snap.name}" segnala una procedura in corso (${procedura}). Decide una persona.`,
+        "vat_recheck_opened"
+      );
+      await attendi(PAUSA_MS);
+      continue;
+    }
+
+    // Il VIES aveva confermato questo numero e adesso non lo conferma piu':
+    // questo si' che e' un segnale. Non declassiamo: apriamo il caso.
+    await apriRicontrollo(
+      r.professional_id,
+      "cessazione",
+      "Ricontrollo annuale: il VIES aveva confermato questa partita IVA e adesso non la conferma piu'. Possibile cessazione: da guardare a mano prima di toccare il livello.",
+      "vat_recheck_opened"
+    );
+    await attendi(PAUSA_MS);
+  }
+
+  return { guardate: righe.length, rinnovate, inRicontrollo };
+}
+
 export async function GET(request: Request) {
   const inizioGiro = new Date().toISOString();
   const secret = process.env.CRON_SECRET;
@@ -109,6 +288,12 @@ export async function GET(request: Request) {
     );
   }
   const admin = createServiceClient(url, serviceKey);
+
+  // PRIMA il ricontrollo annuale, e prima anche dell'uscita a vuoto qui sotto:
+  // le notti in cui non c'e' niente in coda sono la maggioranza, ed e'
+  // esattamente in quelle che le verifiche scadute vanno guardate. Se sta
+  // dopo il return, gira quasi mai.
+  const ric = await ricontrollaScadute(admin);
 
   // I casi da riprendere sono quelli in cui il controllo non è mai avvenuto:
   // vat_check_source resta null solo nel ramo "servizio irraggiungibile".
@@ -154,12 +339,18 @@ export async function GET(request: Request) {
     await registraGiro(admin, {
       started_at: inizioGiro,
       ok: true,
-      outcome: { esaminati: 0 },
+      outcome: {
+        esaminati: 0,
+        scadenze_guardate: ric.guardate,
+        rinnovate: ric.rinnovate,
+        in_ricontrollo: ric.inRicontrollo,
+      },
     });
     return NextResponse.json({
       ok: true,
       esaminati: 0,
-      nota: "Niente in attesa di un ritentativo: nessuna chiamata effettuata.",
+      ricontrollo: ric,
+      nota: "Niente in attesa di un ritentativo.",
     });
   }
 
@@ -301,11 +492,30 @@ export async function GET(request: Request) {
     await attendi(PAUSA_MS);
   }
 
+  // La riga si scrive SEMPRE, anche quando il giro ha lavorato: mancava, e
+  // senza di lei dal database non si distingue un giro pieno da un giro che
+  // non e' partito — che e' il buco in cui era rimasto nascosto per settimane
+  // un CRON_SECRET mancante.
+  await registraGiro(admin, {
+    started_at: inizioGiro,
+    ok: true,
+    outcome: {
+      esaminati: casi.length,
+      confermati,
+      da_esaminare: daEsaminare,
+      ancora_giu: ancoraGiu,
+      scadenze_guardate: ric.guardate,
+      rinnovate: ric.rinnovate,
+      in_ricontrollo: ric.inRicontrollo,
+    },
+  });
+
   return NextResponse.json({
     ok: true,
     esaminati: casi.length,
     confermati,
     daEsaminare,
     ancoraGiu,
+    ricontrollo: ric,
   });
 }

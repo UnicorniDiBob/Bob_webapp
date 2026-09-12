@@ -6,6 +6,147 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 
 ---
 
+## 2026-09-12 · Verifica, stato del profilo, area di lavoro (decisioni di Lucio)
+
+**SLA della coda di verifica: 5 giorni lavorativi.** È il tempo che dichiariamo
+al professionista quando chiede la verifica, salvo imprevisti. Va scritto nei
+ToS pro ("SLA di esame") e mostrato al pro mentre aspetta: il silenzio, su una
+cosa che ha pagato e che lo tiene fuori dalle ricerche, è la parte che fa male.
+Durante l'attesa una **barretta discreta** (fatta il 12/09) che dice **lo stato
+della richiesta e basta**: ricevuta → in gestione → esito, più il caso
+«documenti richiesti». Non i passi interni della lavorazione — al pro non serve
+sapere quale archivio abbiamo interrogato, e raccontarglielo promette un
+meccanismo invece di uno stato — e **nessun conto alla rovescia**: i 5 giorni si
+leggono come promessa, non come cifra che scorre. Sparisce ad approvazione
+ottenuta; se la richiesta non è accolta resta, piena, perché «non accolta» è uno
+stato che va letto. Manca ancora il **timestamp di ingresso in coda**: finché
+non c'è, l'SLA non lo misura nessuno — e un countdown a video sarebbe una cifra
+inventata.
+
+**Scadenza della verifica: ANNUALE** (chiude 10.4, che proponeva 6 mesi).
+
+Sul ricontrollo automatico va corretta un'idea sbagliata, perché ritorna ogni
+volta che si parla di frequenza: **ripassare il VIES spesso non serve a niente.**
+Il VIES risponde solo per chi è iscritto agli scambi intra-UE, che tra gli
+artigiani è la minoranza; per tutti gli altri un esito negativo **non è un
+segnale**, è la normalità, e non può far partire niente — né una richiesta di
+documenti né un controllo. Quindi:
+
+- Il ricontrollo automatico ha senso **solo per chi è stato verificato DAL
+  VIES**, e solo come **cambio di stato**: da confermato a non più confermato.
+  Lì sì che vuol dire qualcosa, e costa centesimi.
+- Per tutti gli altri — la maggioranza, verificata da una persona — non esiste
+  oggi nessun ricontrollo gratuito. Vale l'anno, e il lavoro si taglia in due
+  modi onesti: **a campione** invece che su tutti, e **su evento** (una
+  segnalazione, una contestazione, un dato che cambia). Il ricontrollo di massa
+  automatico arriva solo col gradino 3 a pagamento (Openapi), non prima.
+- Quello che l'automatismo non chiude finisce in una sezione admin dedicata,
+  **Ricontrollo**, separata dalla coda delle prime verifiche: sono due lavori
+  diversi e mescolarli li nasconde entrambi.
+
+**Il preavviso è a due tempi** (migrazione 078, scritta il 12/09): a **30 giorni**
+una notifica nella campanella — c'è tempo, si dice dove si leggono le cose da
+fare — e nell'**ultima settimana lavorativa** una finestra sull'area di lavoro,
+perché lì la posta in gioco cambia: alla scadenza il profilo torna «Iscritto» e
+perde l'etichetta che i clienti guardano per prima. La finestra si chiude una
+volta per account (`profiles.scadenza_verifica_vista_al`, che contiene la data
+di scadenza per cui è stata chiusa: al rinnovo si riarma da sola).
+
+**L'orologio parte da adesso per chi è già verificato**, una volta sola: il
+backfill della 078 ha la guardia `vat_expires_at is null`, quindi rigirare la
+migrazione non sposta avanti nessuna scadenza. Per le verifiche nuove la data la
+scrive un **trigger**, non le route: i livelli si concedono da due posti diversi
+(controllo automatico ed esame umano) e una scadenza dimenticata in uno dei due
+è una verifica eterna che non nota nessuno.
+
+**Alla scadenza il badge cade da solo** (scelta di Lucio del 12/09, opzione A).
+Non contraddice «nessun declassamento automatico»: quella regola parla di una
+decisione DISCREZIONALE su una persona — un esame andato male, una segnalazione
+— che resta umana. Qui non si giudica nessuno: scade una validità dichiarata,
+annunciata 30 giorni e una settimana prima, uguale per tutti e con la data
+scritta sul profilo. È esattamente la forma che il Regolamento P2B (art. 4)
+chiede per una restrizione: motivazione e preavviso.
+
+**Non è ancora costruito.** Oggi la data esiste e il preavviso esiste, ma
+nessuna pagina pubblica legge `vat_expires_at` e nessun giro notturno porta la
+riga in Ricontrollo: la finestra preavvisa di un declassamento che non avviene.
+Servono tre pezzi, in quest'ordine: (1) l'etichetta pubblica considera scaduta
+una verifica scaduta — è una regola di LETTURA, non una scrittura, quindi
+reversibile e senza dati persi; (2) il giro notturno che mette in Ricontrollo
+chi è scaduto, così qualcuno lo rifà; (3) la sezione Ricontrollo in admin. Va
+chiuso prima del pilota.
+
+Resta la regola già scritta: **nessun declassamento automatico**, mai (art. 22
+GDPR). La cessazione della P.IVA non aspetta l'anno: è un evento, e quando lo
+vediamo va in Ricontrollo subito.
+
+**Il badge dice «Verificato» e basta** (12/09). I livelli si chiamavano «Pro» e
+«Pro+», cioè come i piani: un professionista sul piano Free non poteva avere il
+badge «Pro», e uno sul piano Plus si vedeva scritto «Pro» addosso. Due scale con
+gli stessi nomi. Fuori adesso si legge **Verificato** per entrambi i livelli, con
+la data; dentro restano distinti e lo staff ha le sue etichette
+(`VERIFICATION_LABEL_STAFF`), perché chi lavora la coda deve sapere se c'è anche
+un esame documentale. Questo chiude anche, di fatto, la domanda «livello Pro+:
+attivare o rimuovere»: il livello resta, ma non ha più un nome commerciale.
+
+**La cessazione della P.IVA ha un posto dove finire** (migrazione 079). Stato
+nuovo `recheck` con un **motivo** che è un dato, non una frase — scadenza,
+cessazione, procedura, intestazione — perché decide l'ordine della coda, le
+parole che scriviamo al professionista e la motivazione scritta che il P2B
+(art. 4) pretende se poi il livello cade davvero. Il giro notturno fa la
+distinzione che conta: chi è stato verificato **dal VIES** si ricontrolla da
+solo (se il registro conferma ancora, la scadenza si sposta di un anno e non
+disturbiamo nessuno; se **non** conferma più un numero che prima confermava,
+quello è un segnale vero e apre un caso); chi è stato verificato **da una
+persona** non viene nemmeno richiamato, perché per lui un «non risulta» del VIES
+non vuol dire niente — va in ricontrollo per scadenza e lo rifà una persona.
+**Qui non si declassa nessuno**: il livello resta intatto finché non decide un
+umano.
+
+**Resta da decidere una cosa sola su questo**: quanto può restare aperto un caso
+di cessazione con il badge ancora acceso. Oggi resta aperto finché qualcuno non
+lo guarda — cioè dipende dalla coda, che è esattamente il modo in cui un badge
+diventa falso senza che nessuno l'abbia deciso.
+
+**Lo stato del profilo sparisce quando è a posto** (fatto il 12/09). Il riquadro
+«Il tuo profilo» resta aperto solo se manca qualcosa o se non compari; a giro
+completo resta un pallino verde, col testo al passaggio del cursore, e si
+riapre con un clic. Di conseguenza **è stata tolta la notifica «Il tuo profilo è
+nelle ricerche»**: era di livello «fatto» e ripeteva uno stato permanente, cioè
+insegnava a non aprire la campanella.
+
+**«Bloccato da un admin» oggi non esiste.** Le uniche due ragioni per cui un
+profilo non compare sono: spento (da lui o per cancellazione account) e nessun
+servizio dichiarato. Un blocco deciso da noi è una **restrizione del servizio**:
+serve una colonna con il **motivo** (non un booleano) e, per il Regolamento P2B
+art. 4, motivazione scritta e preavviso. È una migrazione e una decisione, non
+una riga di copy.
+
+**Area di lavoro: le richieste hanno un ciclo, e si vede.** Con dieci richieste
+aperte il calendario finisce sotto chilometri di scroll. Tre posti, non uno:
+
+1. **Richieste** — quelle nuove, non ancora prese in carico. Sezione propria,
+   con la bozza di risposta. Da qui il pro la **trasferisce nella chat**: è
+   quel gesto, non un campo nascosto, che accende il lavoro.
+2. **In corso** — le chat dei lavori aperti.
+3. **Conclusi** — ci finiscono **da sole** quando il lavoro viene segnato come
+   finito. Nessun archivio a mano.
+
+Deve essere intuitivo: un tasto per stato, il numero accanto, e la stessa
+parola in dashboard e in pagina. Dipende da una cosa già aperta: la macchina a
+stati di `request_professionals`, che oggi non viene mai aggiornata dopo
+l'insert (per questo una richiesta già risposta resta in cima per sempre).
+
+**Le chat: il pro le cancella, noi le conserviamo.** Il professionista deve
+poter cancellare una chat conclusa e poter impostare un tempo di cancellazione
+automatica. Quello che cancella è **la sua vista**: i messaggi di un lavoro con
+la Garanzia Bob ci servono come prova in caso di contestazione e si conservano
+fino alla prescrizione (DATA_COMPLIANCE §5), poi li porta via la retention. Va
+scritto così anche a video — «non la vedi più tu» è una promessa che possiamo
+mantenere, «è sparita» no — e va messa una riga nel registro dei trattamenti.
+
+---
+
 ## 2026-08-03 · 10.x — Blocco 10 in produzione: cosa è cambiato nelle regole
 
 Il blocco 10 è passato da motore a funzione visibile. Le tre cose che vale la

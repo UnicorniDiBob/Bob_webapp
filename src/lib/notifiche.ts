@@ -47,6 +47,12 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leggiAvvisiInCorso } from "@/lib/avvisi";
+import {
+  MOTIVO_RICONTROLLO_TESTO,
+  MOTIVO_RICONTROLLO_TITOLO,
+  statoScadenza,
+  type MotivoRicontrollo,
+} from "@/lib/vat";
 
 export type LivelloNotifica = "azione" | "avviso" | "fatto";
 
@@ -90,6 +96,16 @@ export interface FattiVisibilita {
  * Il motivo per cui NON compare, in una frase che si puo' leggere ad alta
  * voce. null quando compare.
  */
+/** «3 ottobre 2026» — la stessa forma che usano la finestra e la card. */
+function dataBreve(d: Date): string {
+  return d.toLocaleDateString("it-IT", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Rome",
+  });
+}
+
 export function motivoInvisibile(f: FattiVisibilita): string | null {
   if (f.disattivato) {
     return "il tuo profilo è spento: l'hai disattivato tu, oppure è in corso la cancellazione dell'account";
@@ -242,7 +258,7 @@ export async function caricaNotifiche(
       .eq("professional_id", rigaPro.id),
     supabase
       .from("professional_verification")
-      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name")
+      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, vat_expires_at, recheck_reason")
       .eq("professional_id", rigaPro.id)
       .maybeSingle(),
   ]);
@@ -266,25 +282,16 @@ export async function caricaNotifiche(
         azione: fatti.disattivato ? "Riaccendi il profilo" : "Dichiara cosa fai",
         quando: null,
       });
-    } else if (rigaPro.ready_at) {
-      out.push({
-        id: "profilo-visibile",
-        livello: "fatto",
-        titolo: "Il tuo profilo è nelle ricerche",
-        testo: `Da${
-          rigaPro.ready_at
-            ? "l " +
-              new Date(rigaPro.ready_at).toLocaleDateString("it-IT", {
-                day: "numeric",
-                month: "long",
-              })
-            : "desso"
-        } i clienti possono trovarti. Zone e orari non ti nascondono: cambiano quante richieste ricevi e a che ora ti proponiamo.`,
-        href: "/dashboard",
-        azione: "Vedi il tuo profilo",
-        quando: rigaPro.ready_at,
-      });
     }
+    // NIENTE NOTIFICA «COMPARI NELLE RICERCHE» (12/09, scelta di Lucio).
+    // Qui c'era una notifica di livello «fatto» che ripeteva, a ogni giro di
+    // campanella, uno stato PERMANENTE: sei visibile. Una notifica che non
+    // chiede niente e non cambia mai insegna a non aprire la campanella, e
+    // quando poi ci finisce dentro una cosa da fare non la guarda nessuno.
+    // La risposta a «mi vedono?» adesso sta dove serve, sull'area di lavoro:
+    // il pallino verde di StatoProfiloCard, che al passaggio del cursore dice
+    // se compari. Resta invece la notifica «I clienti non ti trovano», perche'
+    // quella chiede un'azione.
   }
 
   // 4. La verifica della partita IVA. Stessi quattro stati del vecchio
@@ -299,7 +306,16 @@ export async function caricaNotifiche(
         vat_review_note: string | null;
         vat_reviewed_at: string | null;
         vat_reviewed_by_name: string | null;
+        vat_expires_at: string | null;
+        recheck_reason: string | null;
       } | null);
+  // Se la lettura della verifica fallisce non sappiamo niente, e tacere e'
+  // meglio che sbagliare: senza questa riga un errore qualsiasi sulla query
+  // (una colonna non ancora migrata, la rete) faceva diventare il livello
+  // "none" e faceva partire «Il tuo profilo non e' verificato» addosso a chi
+  // e' verificato da mesi.
+  if (verifica.error) return ordina(out);
+
   const livelloVerifica = v?.level ?? "none";
   const stato = v?.vat_review_state ?? null;
 
@@ -329,6 +345,24 @@ export async function caricaNotifiche(
       quando: v?.vat_reviewed_at ?? null,
       mittente: v?.vat_reviewed_by_name ?? "Staff Bob",
     });
+  } else if (stato === "recheck") {
+    // RICONTROLLO (079). Il badge ce l'ha ancora e non glielo stiamo togliendo:
+    // va detto nella prima riga, perche' la paura, leggendo «ricontrollo», e'
+    // esattamente quella. Il motivo decide le parole: una scadenza annuale e
+    // una possibile cessazione non si raccontano allo stesso modo.
+    const motivo = (v?.recheck_reason ?? "scadenza") as MotivoRicontrollo;
+    const titolo = MOTIVO_RICONTROLLO_TITOLO[motivo] ?? MOTIVO_RICONTROLLO_TITOLO.scadenza;
+    const testo = MOTIVO_RICONTROLLO_TESTO[motivo] ?? MOTIVO_RICONTROLLO_TESTO.scadenza;
+    out.push({
+      id: `verifica:ricontrollo:${motivo}`,
+      livello: motivo === "scadenza" ? "avviso" : "azione",
+      titolo,
+      testo,
+      href: "/impostazioni/verifica",
+      azione: "Vedi la tua verifica",
+      quando: null,
+      mittente: "Assistenza Bob",
+    });
   } else if (stato === "pending") {
     out.push({
       id: "verifica:in-esame",
@@ -341,6 +375,38 @@ export async function caricaNotifiche(
       quando: null,
       mittente: "Assistenza Bob",
     });
+  } else if (livelloVerifica !== "none") {
+    // LA SCADENZA (12/09). La verifica dura un anno: a 30 giorni dalla fine lo
+    // diciamo qui, dove si leggono le cose da fare. L'ultima settimana ha
+    // invece una finestra sua sull'area di lavoro — la posta in gioco cambia,
+    // e cambia il posto. Niente notifica prima dei 30 giorni: una scadenza
+    // annunciata con mesi di anticipo e' rumore che insegna a ignorare il
+    // resto.
+    const sc = statoScadenza(v?.vat_expires_at ?? null);
+    if (sc && sc.fase === "scaduta") {
+      out.push({
+        id: `verifica:scaduta:${v?.vat_expires_at ?? ""}`,
+        livello: "azione",
+        titolo: "La tua verifica è scaduta",
+        testo: `Era valida fino al ${dataBreve(sc.scadeIl)}. Il controllo va rifatto: aprila e ripresenta la partita IVA, ci pensiamo noi. Finché non è fatto, il profilo vale come non verificato.`,
+        href: "/impostazioni/verifica",
+        azione: "Rifai la verifica",
+        quando: v?.vat_expires_at ?? null,
+      });
+    } else if (sc && (sc.fase === "preavviso" || sc.fase === "ultima-settimana")) {
+      out.push({
+        id: `verifica:in-scadenza:${v?.vat_expires_at ?? ""}`,
+        livello: sc.fase === "ultima-settimana" ? "azione" : "avviso",
+        titolo:
+          sc.giorni <= 1
+            ? "La tua verifica scade domani"
+            : `La tua verifica scade fra ${sc.giorni} giorni`,
+        testo: `Vale fino al ${dataBreve(sc.scadeIl)}. Dopo quella data il profilo torna «Iscritto» e i clienti non vedono più l'etichetta. Il ricontrollo lo facciamo noi: se ci serve un documento te lo chiediamo qui.`,
+        href: "/impostazioni/verifica",
+        azione: "Vedi la tua verifica",
+        quando: v?.vat_expires_at ?? null,
+      });
+    }
   } else if (livelloVerifica === "none") {
     // L'invito alla verifica vale solo per chi ha un piano che la include:
     // spingerla a un Free e' un vicolo cieco (decisione del 14/08). Il piano
@@ -357,7 +423,7 @@ export async function caricaNotifiche(
         livello: "azione",
         titolo: "Il tuo profilo non è verificato",
         testo:
-          "Comunicando la partita IVA i clienti vedono l'etichetta Pro con la data del controllo: è il primo segnale di fiducia che guardano prima di scriverti. È inclusa nel tuo piano, bastano il numero e pochi secondi, e il numero non è mai visibile ai clienti.",
+          "Comunicando la partita IVA i clienti vedono l'etichetta «Verificato» con la data del controllo: è il primo segnale di fiducia che guardano prima di scriverti. È inclusa nel tuo piano, bastano il numero e pochi secondi, e il numero non è mai visibile ai clienti.",
         href: "/impostazioni/verifica",
         azione: "Verifica ora",
         quando: null,

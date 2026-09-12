@@ -89,7 +89,7 @@ export function UpgradeNeeded({
   return (
     <div className="card p-6" data-testid="upgrade-needed">
       <p className="text-sm font-semibold text-bob-ink">
-        {what} è incluso in Bob Pro e Bob Business
+        {what} è incluso in Bob Plus e Bob Business
       </p>
       {children && (
         <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">

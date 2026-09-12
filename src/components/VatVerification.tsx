@@ -17,9 +17,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { VerificationLevelBadge } from "@/components/ui";
+import { AvanzamentoVerifica } from "@/components/AvanzamentoVerifica";
 import {
   vatValidationError,
   normalizeVat,
+  MOTIVO_RICONTROLLO_TESTO,
+  MOTIVO_RICONTROLLO_TITOLO,
   VERIFICATION_LABEL,
   type VerificationLevel,
   type VatReviewState,
@@ -33,6 +36,7 @@ interface VerificationRow {
   vat_holder_name: string | null;
   vat_review_state: VatReviewState | null;
   vat_review_note: string | null;
+  recheck_reason: string | null;
   declared_business_name: string | null;
 }
 
@@ -84,7 +88,7 @@ export default function VatVerification({
     const { data } = await supabase
       .from("professional_verification")
       .select(
-        "level, vat_checked_at, vat_holder_name, vat_review_state, vat_review_note, declared_business_name"
+        "level, vat_checked_at, vat_holder_name, vat_review_state, vat_review_note, recheck_reason, declared_business_name"
       )
       .eq("professional_id", professionalId)
       .maybeSingle();
@@ -201,6 +205,11 @@ export default function VatVerification({
         </div>
       )}
 
+      {/* L'avanzamento sta SOPRA il riquadro giallo: e' la risposta alla
+          domanda che uno si fa per prima («a che punto e'?»), il riquadro
+          spiega. Sparisce da solo a verifica ottenuta. */}
+      <AvanzamentoVerifica review={review} verificato={verified} />
+
       {review === "pending" && !verified && (
         <div
           className="rounded-xl bg-amber-50 px-3 py-2.5 text-sm text-amber-800"
@@ -214,6 +223,30 @@ export default function VatVerification({
             non serve fare altro. Se ti accorgi di aver sbagliato una cifra,
             puoi correggerla qui sotto.
           </p>
+        </div>
+      )}
+
+      {/* RICONTROLLO (079): il badge c'e' ancora. La prima cosa da dire e'
+          proprio quella, perche' e' la domanda che uno si fa leggendo la
+          parola. */}
+      {review === "recheck" && (
+        <div
+          className="rounded-xl bg-orange-50 px-3 py-2.5 text-sm text-orange-900"
+          data-testid="vat-recheck-box"
+        >
+          <p className="font-semibold">
+            {MOTIVO_RICONTROLLO_TITOLO[
+              (row?.recheck_reason ?? "scadenza") as keyof typeof MOTIVO_RICONTROLLO_TITOLO
+            ] ?? MOTIVO_RICONTROLLO_TITOLO.scadenza}
+          </p>
+          <p className="mt-0.5 text-orange-800">
+            {MOTIVO_RICONTROLLO_TESTO[
+              (row?.recheck_reason ?? "scadenza") as keyof typeof MOTIVO_RICONTROLLO_TESTO
+            ] ?? MOTIVO_RICONTROLLO_TESTO.scadenza}
+          </p>
+          {row?.vat_review_note && (
+            <p className="mt-1 text-orange-800">{row.vat_review_note}</p>
+          )}
         </div>
       )}
 

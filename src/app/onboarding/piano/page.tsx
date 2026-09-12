@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Check, Lock, TicketPercent } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
+import { TabellaPiani } from "@/components/TabellaPiani";
 import {
   NESSUNO_SCONTO,
   PIANI,
@@ -242,6 +243,9 @@ export default function PianoPage() {
                 {et.nota && (
                   <p className="mt-0.5 text-xs text-bob-ink/65">{et.nota}</p>
                 )}
+                <p className="mt-2 text-sm leading-snug text-bob-ink/70">
+                  {p.sintesi}
+                </p>
                 <ul className="mt-4 flex-1 space-y-2">
                   {p.punti.map((punto) => (
                     <li
@@ -278,6 +282,17 @@ export default function PianoPage() {
               </div>
             );
           })}
+        </div>
+
+        {/* Il confronto completo, sotto alle tre carte. Le carte dicono cosa
+            AGGIUNGE un piano rispetto al precedente; la tabella risponde alla
+            domanda opposta, che e' quella che si fa chi sceglie: questa cosa,
+            nel piano che sto per prendere, ce l'ho o no? */}
+        <div className="mt-8">
+          <h2 className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.14em] text-bob-indigo">
+            Il confronto, riga per riga
+          </h2>
+          <TabellaPiani sconti={sconti} />
         </div>
 
         {/* Il pannello del pagamento appare solo per un piano che costa

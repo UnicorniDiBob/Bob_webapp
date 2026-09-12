@@ -9,10 +9,20 @@
 // venisse — sembrava un semaforo acceso da noi. Adesso sta in pagina, sempre,
 // e dichiara di cosa e' fatta.
 //
+// QUANDO NON MANCA PIU' NIENTE, SPARISCE (12/09, scelta di Lucio).
+// Un riquadro che dice «tutto a posto» tutti i giorni e' rumore: occupa la
+// cima della colonna, si legge una volta e poi si smette di guardarlo — e con
+// lui si smette di guardare il posto dove un giorno comparira' un problema.
+// A giro completo resta un pallino verde: ci passi sopra il cursore e dice se
+// compari nelle ricerche, ci clicchi e il riquadro torna intero. Se invece
+// qualcosa manca, o non compari, il riquadro sta aperto da solo: il silenzio
+// vale solo quando la risposta e' «si'».
+//
 // La regola e la provenienza stanno in useStatoProfilo: qui si disegna.
 
+import { useState } from "react";
 import Link from "next/link";
-import { Check, Loader2, RotateCw } from "lucide-react";
+import { Check, ChevronUp, Loader2, RotateCw } from "lucide-react";
 import { useStatoProfilo } from "@/lib/useStatoProfilo";
 
 export function StatoProfiloCard({
@@ -23,11 +33,56 @@ export function StatoProfiloCard({
   userId: string;
 }) {
   const { esito, rileggi } = useStatoProfilo(professionalId, userId);
+  // Riaperto a mano dal pallino. Non si salva da nessuna parte: si ricava
+  // dallo stato, quindi non puo' restare indietro rispetto ai fatti.
+  const [riaperto, setRiaperto] = useState(false);
+
+  const aPosto =
+    esito.fase === "letto" && esito.stato.compare && esito.stato.mancanti === 0;
+
+  if (aPosto && !riaperto) {
+    const dal = esito.stato.readyAt
+      ? ` dal ${new Date(esito.stato.readyAt).toLocaleDateString("it-IT", {
+          day: "numeric",
+          month: "long",
+        })}`
+      : "";
+    return (
+      <div className="flex justify-end" data-tour="stato">
+        <button
+          type="button"
+          onClick={() => setRiaperto(true)}
+          title={`Compari nelle ricerche${dal}. Clicca per vedere il profilo.`}
+          aria-label={`Compari nelle ricerche${dal}. Apri lo stato del profilo.`}
+          className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-black/[0.04]"
+          data-testid="stato-profilo-pallino"
+        >
+          <span
+            className="h-2.5 w-2.5 rounded-full bg-emerald-500"
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="card p-5" data-tour="stato" data-testid="stato-profilo">
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-bob-ink">Il tuo profilo</h3>
+        <div className="flex items-center gap-0.5">
+        {aPosto && (
+          <button
+            type="button"
+            onClick={() => setRiaperto(false)}
+            className="-mt-1 rounded-lg p-1.5 text-bob-ink/65 transition hover:bg-black/5 hover:text-bob-indigo"
+            title="Richiudi: resta il pallino"
+            aria-label="Richiudi lo stato del profilo"
+            data-testid="button-richiudi-stato"
+          >
+            <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           onClick={rileggi}
@@ -38,6 +93,7 @@ export function StatoProfiloCard({
         >
           <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
+        </div>
       </div>
 
       {esito.fase === "carico" && (
