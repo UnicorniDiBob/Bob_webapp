@@ -1,5 +1,7 @@
 # Passaggio di consegne — 12 settembre 2026, sera (Lucio, con Claude)
 
+> Aggiornato dopo il merge della PR #65 e l'applicazione delle migrazioni.
+
 > Sostituisce quello dell'11 settembre e ne porta avanti tutte le voci ancora
 > aperte, nelle sezioni in fondo. HANDOFF.md si sovrascrive a ogni sessione,
 > **ma quello che è a metà si porta avanti, non si butta**. Scritto e mergiato
@@ -40,9 +42,6 @@ produzione non ho messo niente, e nessuna migrazione è applicata.**
 
 ## Cosa è a metà — Lucio (12 settembre, sera)
 
-- **Le due migrazioni 078 e 079 non sono applicate.** Vanno su Supabase insieme
-  al deploy del ramo: finché non ci sono, la campanella tace sulla scadenza (c'è
-  una guardia apposta) e la coda Ricontrollo resta vuota.
 - **Il calendario nel piano Free.** La tabella lo toglie al Free, il prodotto lo
   dà ancora a tutti. È l'unico punto dove la pagina dice una cosa e l'app ne fa
   un'altra: vale anche per recensioni e risalto nei risultati.
@@ -62,7 +61,37 @@ produzione non ho messo niente, e nessuna migrazione è applicata.**
 
 ## Cosa ho applicato in produzione che l'altro deve sapere — Lucio
 
-**Niente.** Nessun push, nessun deploy, nessuna migrazione applicata.
+- **PR #65 mergiata**, `main` a `03fb047`, Vercel ha già deployato: su
+  www.meetonda.com i piani si chiamano Free / **Bob Plus** / Bob Business e
+  `/per-i-professionisti` mostra la tabella riga per riga. Verificato dall'esterno.
+- **Migrazioni 078 e 079 applicate** su Supabase, in quest'ordine, dopo il merge.
+  Controllato dopo: le quattro colonne esistono
+  (`professional_verification.vat_expires_at`, `recheck_reason`,
+  `recheck_opened_at`, `profiles.scadenza_verifica_vista_al`), il trigger
+  `trg_set_verification_expiry` è installato, e il backfill ha dato una scadenza
+  all'unico professionista verificato: **12 settembre 2027**. Da quella data in
+  poi il ricontrollo tocca a noi.
+- **Advisor di sicurezza rilanciati dopo le due migrazioni: nessun finding
+  nuovo.** Resta solo la leaked password protection disattivata, che chiede il
+  piano Pro di Supabase ed è già segnata nel Piano.
+
+### La lezione di stasera, che vale più delle righe qui sopra
+
+Fra il merge e l'applicazione delle migrazioni c'è stata una finestra in cui il
+codice in produzione chiedeva colonne che nel database non esistevano ancora, e
+non è passata inosservata: `/impostazioni/verifica` diceva **«Non verificato» a
+un professionista verificato** (la select falliva e la riga tornava vuota) e la
+coda partita IVA in admin risultava **vuota** per lo stesso motivo. Le due
+guardie che avevo messo — la campanella che tace se la lettura fallisce — hanno
+retto; le due pagine no.
+
+La regola scritta dice «il file della migrazione sta nella PR **prima** che la
+migrazione sia applicata», e l'abbiamo rispettata. Quello che manca alla regola
+è la seconda metà: **fra il merge e l'applicazione non deve passare tempo**, e
+se passa va messo in conto che quelle pagine sono rotte. Il modo per non
+rischiarlo è applicare la migrazione **prima** di mergiare il codice che la usa,
+quando è retrocompatibile — e queste due lo erano: aggiungono colonne, non ne
+tolgono.
 
 ## Portato avanti dal 12 settembre, mattina (André) — andato in produzione
 
