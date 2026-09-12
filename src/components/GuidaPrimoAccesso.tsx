@@ -191,7 +191,7 @@ export default function GuidaPrimoAccesso({
         ancora: "stato",
         titolo: "E questo dice se i clienti ti trovano",
         testo:
-          "Risponde a una domanda sola: compari nelle ricerche? Si accende da sola quando hai dichiarato di cosa ti occupi.",
+          "Risponde a una domanda sola: compari nelle ricerche? Si accende da sola quando hai dichiarato di cosa ti occupi. Quando non manca piu' niente si richiude in un pallino verde sopra il calendario: ci passi sopra il cursore per leggerlo, ci clicchi per riaprirlo.",
       },
     ],
     [nome]
@@ -264,7 +264,7 @@ export default function GuidaPrimoAccesso({
         ancora: "stato",
         titolo: "Ci sei: i clienti ti trovano",
         testo:
-          "Non manca niente. Le richieste della tua zona arrivano nel primo riquadro della pagina, e questo resta a dirti come stai messo.",
+          "Non manca niente. Le richieste della tua zona arrivano nel primo riquadro della pagina, e di questo riquadro resta solo un pallino verde sopra il calendario: finche' e' verde non devi farci niente, e se un giorno smetti di comparire si riapre da solo.",
         contenuto: <Riepilogo voci={stato.voci} />,
       };
     }

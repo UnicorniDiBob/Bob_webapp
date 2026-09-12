@@ -14,6 +14,7 @@ import {
   fmtDay,
   fmtDayLong,
   fmtHour,
+  fmtMonthYear,
   hourBounds,
   layoutDay,
   locationLabel,
@@ -23,7 +24,11 @@ import {
   weekdayIndex,
 } from "@/lib/calendar";
 
-type CalView = "week" | "day";
+// MESE (12/09, chiesto da Lucio). Settimana e giorno rispondono a «cosa
+// faccio adesso»; il mese risponde a «com'e' messo il mese», che e' la
+// domanda di chi deve promettere una data a un cliente. Non ha le ore: e'
+// una mappa, non un'agenda — si clicca un giorno e si scende nel giorno.
+type CalView = "week" | "day" | "month";
 
 /** Granularità dei click sulle zone vuote: mezz'ora. */
 const SLOT_MINUTES = 30;
@@ -74,6 +79,33 @@ export function ProCalendar({
     const ws = startOfWeek(anchor);
     return Array.from({ length: 7 }, (_, i) => addDays(ws, i));
   }, [view, anchor]);
+
+  // La griglia del mese: parte dal lunedi' della settimana in cui cade il
+  // primo del mese e arriva alla domenica di quella in cui cade l'ultimo, cosi'
+  // le colonne restano allineate ai giorni della settimana.
+  const monthCells = useMemo(() => {
+    const primo = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const ultimo = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+    const dal = startOfWeek(primo);
+    const al = addDays(startOfWeek(ultimo), 6);
+    const out: Date[] = [];
+    for (let d = dal; d <= al; d = addDays(d, 1)) out.push(d);
+    return out;
+  }, [anchor]);
+
+  /** Appuntamenti per giorno, calcolati una volta per tutto il mese. */
+  const perGiorno = useMemo(() => {
+    const m = new Map<string, Appointment[]>();
+    for (const a of appointments) {
+      const k = startOfDay(new Date(a.starts_at)).toDateString();
+      const l = m.get(k);
+      if (l) l.push(a);
+      else m.set(k, [a]);
+    }
+    for (const l of m.values())
+      l.sort((x, y) => x.starts_at.localeCompare(y.starts_at));
+    return m;
+  }, [appointments]);
 
   const { startHour, endHour } = useMemo(
     () => hourBounds(appointments, days, fullDay),
@@ -127,14 +159,29 @@ export function ProCalendar({
   const goToday = useCallback(() => setAnchor(startOfDay(new Date())), []);
   const step = useCallback(
     (dir: 1 | -1) =>
-      setAnchor((d) => addDays(d, dir * (view === "day" ? 1 : 7))),
+      setAnchor((d) => {
+        if (view === "month") {
+          const x = new Date(d);
+          x.setDate(1);
+          x.setMonth(x.getMonth() + dir);
+          return startOfDay(x);
+        }
+        return addDays(d, dir * (view === "day" ? 1 : 7));
+      }),
     [view]
   );
 
+  // L'ANNO C'E' SEMPRE (12/09). Diceva «7 Set – 13 Set»: in un calendario di
+  // lavoro, dove si guardano anche mesi avanti, l'anno che manca e' un modo
+  // per sbagliare una promessa a un cliente.
   const periodLabel =
-    view === "day"
-      ? fmtDayLong(anchor)
-      : `${fmtDay(days[0])} – ${fmtDay(days[days.length - 1])}`;
+    view === "month"
+      ? fmtMonthYear(anchor)
+      : view === "day"
+        ? `${fmtDayLong(anchor)} ${anchor.getFullYear()}`
+        : `${fmtDay(days[0])} – ${fmtDay(days[days.length - 1])} ${days[
+            days.length - 1
+          ].getFullYear()}`;
 
   const isCurrentPeriod = days.some((d) => sameDay(d, new Date()));
 
@@ -183,12 +230,30 @@ export function ProCalendar({
             >
               Giorno
             </button>
+            <button
+              onClick={() => setView("month")}
+              className={`border-l border-black/10 px-2.5 py-1.5 text-xs font-medium transition ${
+                view === "month"
+                  ? "bg-bob-indigo text-white"
+                  : "text-bob-ink/70 hover:bg-black/[0.03]"
+              }`}
+              aria-pressed={view === "month"}
+              data-testid="cal-view-month"
+            >
+              Mese
+            </button>
           </div>
 
           <button
             onClick={() => step(-1)}
             className="rounded-lg border border-black/10 px-2.5 py-1.5 text-sm hover:bg-black/[0.03]"
-            aria-label={view === "day" ? "Giorno precedente" : "Settimana precedente"}
+            aria-label={
+              view === "day"
+                ? "Giorno precedente"
+                : view === "month"
+                  ? "Mese precedente"
+                  : "Settimana precedente"
+            }
             data-testid="cal-prev"
           >
             ‹
@@ -204,7 +269,13 @@ export function ProCalendar({
           <button
             onClick={() => step(1)}
             className="rounded-lg border border-black/10 px-2.5 py-1.5 text-sm hover:bg-black/[0.03]"
-            aria-label={view === "day" ? "Giorno successivo" : "Settimana successiva"}
+            aria-label={
+              view === "day"
+                ? "Giorno successivo"
+                : view === "month"
+                  ? "Mese successivo"
+                  : "Settimana successiva"
+            }
             data-testid="cal-next"
           >
             ›
@@ -214,6 +285,79 @@ export function ProCalendar({
 
       {loading ? (
         <div className="h-64 animate-pulse rounded-xl bg-black/[0.03]" />
+      ) : view === "month" ? (
+        <div
+          className="overflow-hidden rounded-xl border border-black/[0.07]"
+          data-testid="cal-month"
+        >
+          <div className="grid grid-cols-7 border-b border-black/[0.06] bg-black/[0.02]">
+            {DAY_LABELS.map((l) => (
+              <div
+                key={l}
+                className="px-1 py-1.5 text-center text-[11px] font-semibold text-bob-ink/65"
+              >
+                {l}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7">
+            {monthCells.map((d) => {
+              const delMese = d.getMonth() === anchor.getMonth();
+              const oggi = sameDay(d, now);
+              const delGiorno = perGiorno.get(d.toDateString()) ?? [];
+              return (
+                <button
+                  key={d.toISOString()}
+                  type="button"
+                  onClick={() => {
+                    setAnchor(startOfDay(d));
+                    setView("day");
+                  }}
+                  className={`min-h-[76px] border-b border-l border-black/[0.06] p-1 text-left align-top transition first:border-l-0 hover:bg-bob-indigo-50/50 ${
+                    delMese ? "bg-white" : "bg-black/[0.015]"
+                  }`}
+                  aria-label={`${fmtDayLong(d)}: ${
+                    delGiorno.length === 0
+                      ? "nessun appuntamento"
+                      : `${delGiorno.length} appuntamenti`
+                  }`}
+                  data-testid={`cal-month-day-${d.getDate()}`}
+                >
+                  <span
+                    className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[11px] font-semibold tabular-nums ${
+                      oggi
+                        ? "bg-bob-indigo text-white"
+                        : delMese
+                          ? "text-bob-ink"
+                          : "text-bob-ink/40"
+                    }`}
+                  >
+                    {d.getDate()}
+                  </span>
+                  <span className="mt-0.5 flex flex-col gap-0.5">
+                    {delGiorno.slice(0, 2).map((a) => (
+                      <span
+                        key={a.id}
+                        className="truncate rounded bg-bob-indigo-50 px-1 py-0.5 text-[10px] leading-tight text-bob-indigo"
+                      >
+                        {new Date(a.starts_at).toLocaleTimeString("it-IT", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}{" "}
+                        {a.customer_name}
+                      </span>
+                    ))}
+                    {delGiorno.length > 2 && (
+                      <span className="px-1 text-[10px] text-bob-ink/65">
+                        +{delGiorno.length - 2}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       ) : (
         <div
           ref={scrollRef}
