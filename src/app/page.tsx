@@ -28,7 +28,7 @@ export default async function HomePage() {
     <>
       {/* 2. HERO con Bob concierge */}
       <section id="bob" className="relative overflow-hidden border-b border-black/5 bg-gradient-to-b from-bob-indigo-50/70 to-transparent scroll-mt-20">
-        <div className="container-bob grid grid-cols-1 items-center gap-10 py-12 lg:grid-cols-2 lg:py-20">
+        <div className="container-bob grid grid-cols-1 items-center gap-10 py-12 lg:grid-cols-2 lg:gap-16 lg:py-20">
           <div className="animate-fade-up">
             <span className="chip mb-4">Gratis per chi cerca un professionista</span>
             <h1 className="text-3xl font-extrabold leading-[1.1] tracking-tight text-bob-ink sm:text-4xl lg:text-[2.75rem]">
@@ -38,7 +38,7 @@ export default async function HomePage() {
                 Ti aiuto a capire chi contattare.
               </span>
             </h1>
-            <p className="mt-4 max-w-md text-base leading-relaxed text-bob-ink/65">
+            <p className="mt-4 max-w-lg text-base leading-relaxed text-bob-ink/65">
               Sono Bob, il concierge dei servizi locali. Più chiarezza su
               prezzo, disponibilità e qualità — e nessuna fee per usarmi come
               cliente.

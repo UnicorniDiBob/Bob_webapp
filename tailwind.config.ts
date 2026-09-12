@@ -40,7 +40,13 @@ const config: Config = {
         "card-hover": "0 2px 4px rgba(30,27,75,0.06), 0 16px 40px rgba(30,27,75,0.12)",
       },
       maxWidth: {
-        container: "1120px",
+        // Le pagine pubbliche. 1280 e non 1120: il testo di queste pagine non
+        // usa mai la larghezza del contenitore — si limita da solo (l'eroe a
+        // max-w-lg, i sottotitoli a max-w-xl, le pagine legali a max-w-3xl).
+        // Quello che sta nel contenitore sono griglie di schede, e quelle lo
+        // spazio lo usano. L'argomento "le righe lunghe si leggono peggio"
+        // qui non si applica, perche' le righe non si allungano.
+        container: "1280px",
         // Le pagine applicazione. Fluido fino a qui: su un portatile da 1512px
         // usa tutto, su un monitor grande si ferma prima che le righe della
         // chat e delle tabelle diventino illeggibili.
