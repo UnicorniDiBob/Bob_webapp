@@ -139,6 +139,7 @@ export function Bob({
   posa = "neutro",
   alt,
   className = "",
+  gradiBraccioDestro,
 }: {
   posa?: PosaBob;
   /**
@@ -148,6 +149,11 @@ export function Bob({
    */
   alt?: string;
   className?: string;
+  /**
+   * Forza l'angolo del braccio destro, scavalcando quello della posa.
+   * Serve a chi anima Bob fotogramma per fotogramma — vedi BobCheSaluta.
+   */
+  gradiBraccioDestro?: number;
 }) {
   const accessibilita = alt
     ? { role: "img" as const, "aria-label": alt }
@@ -158,7 +164,7 @@ export function Bob({
       <Corpo />
       <BraccioSinistro />
       {posa === "telefono" && <Telefono />}
-      <BraccioDestro gradi={ANGOLO_BRACCIO[posa]} />
+      <BraccioDestro gradi={gradiBraccioDestro ?? ANGOLO_BRACCIO[posa]} />
     </svg>
   );
 }

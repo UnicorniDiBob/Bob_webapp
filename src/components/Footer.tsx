@@ -2,21 +2,40 @@ import Link from "next/link";
 import { Logo } from "./Logo";
 import { COMPANY } from "@/lib/company";
 
+/**
+ * Il piede del sito.
+ *
+ * QUATTRO COLONNE, deciso con André il 12 settembre: Esplora, Supporto,
+ * Professionisti, Bob Italia. Prima erano tre e mescolate — "Per chi lavora"
+ * conteneva anche un paragrafo sulla trasparenza, "Legale" conteneva anche
+ * "Chi siamo", che legale non e'.
+ *
+ * SOLO ROTTE CHE ESISTONO. Ogni voce qui sotto punta a una pagina vera. Le
+ * colonne che sembrerebbero piu' ricche con "Blog", "Lavora con noi" o
+ * "Requisiti minimi" restano magre finche' quelle pagine non ci sono: un piede
+ * che porta a un 404 costa piu' fiducia di quanta ne dia un elenco lungo.
+ *
+ * FONDO SCURO: chiude la pagina. La home e' costruita su fasce che si
+ * alternano, e senza un fondo che la chiuda l'ultima sezione sembra tagliata.
+ */
 export function Footer() {
+  // Niente margine sopra il piede: la home finisce con una fascia colorata a
+  // tutta larghezza, e uno spazio qui mostrerebbe il fondo della pagina come
+  // una striscia chiara fra le due. Le fasce si toccano.
   return (
-    <footer className="mt-20 border-t border-black/5 bg-white">
-      <div className="container-bob grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="sm:col-span-2 lg:col-span-2">
-          <Logo />
-          <p className="mt-3 max-w-xs text-sm text-bob-ink/70">
+    <footer className="bg-bob-ink text-white">
+      <div className="container-bob grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.6fr_repeat(4,minmax(0,1fr))] lg:gap-12">
+        <div>
+          <Logo tinta="chiara" />
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-white/65">
             Ciao, sono Bob. Ti aiuto a capire il tuo problema e a trovare il
             professionista giusto, con prezzi chiari e zero attrito.
           </p>
-          <p className="mt-3 text-sm text-bob-ink/70">
+          <p className="mt-4 text-sm text-white/65">
             Scrivici:{" "}
             <a
               href={`mailto:${COMPANY.contactEmail}`}
-              className="text-bob-indigo hover:underline"
+              className="text-bob-yellow hover:underline"
               data-testid="link-contact-email"
             >
               {COMPANY.contactEmail}
@@ -24,51 +43,66 @@ export function Footer() {
           </p>
         </div>
 
-        <div>
-          <h4 className="mb-3 text-sm font-semibold text-bob-ink">Esplora</h4>
-          <ul className="space-y-2 text-sm text-bob-ink/70">
-            <li><Link href="/servizi" className="hover:text-bob-indigo">Servizi</Link></li>
-            <li><Link href="/citta" className="hover:text-bob-indigo">Città</Link></li>
-            <li><Link href="/professionisti" className="hover:text-bob-indigo">Professionisti</Link></li>
-            <li><Link href="/come-funziona" className="hover:text-bob-indigo">Come funziona</Link></li>
-            <li><Link href="/faq" className="hover:text-bob-indigo">FAQ</Link></li>
-            <li><Link href="/supporto" className="hover:text-bob-indigo">Assistenza</Link></li>
-          </ul>
-        </div>
+        <Colonna titolo="Esplora">
+          <Voce href="/servizi">Servizi</Voce>
+          <Voce href="/citta">Città</Voce>
+          <Voce href="/professionisti">Professionisti</Voce>
+          <Voce href="/come-funziona">Come funziona</Voce>
+        </Colonna>
 
-        <div>
-          <h4 className="mb-3 text-sm font-semibold text-bob-ink">Per chi lavora</h4>
-          <ul className="space-y-2 text-sm text-bob-ink/70">
-            <li><Link href="/per-i-professionisti" className="hover:text-bob-indigo">Diventa professionista</Link></li>
-            <li><Link href="/login" className="hover:text-bob-indigo">Accedi</Link></li>
-          </ul>
-          <h4 className="mb-3 mt-6 text-sm font-semibold text-bob-ink">Trasparenza</h4>
-          <p className="text-sm text-bob-ink/70">
-            Nessun lead a pagamento. La fee si applica solo quando un lavoro si
-            chiude davvero.
-          </p>
-        </div>
+        <Colonna titolo="Supporto">
+          <Voce href="/supporto">Assistenza</Voce>
+          <Voce href="/faq">Domande frequenti</Voce>
+          <Voce href="/privacy">Privacy</Voce>
+          <Voce href="/cookie-policy">Cookie policy</Voce>
+          <Voce href="/termini">Termini del servizio</Voce>
+        </Colonna>
 
-        <div>
-          <h4 className="mb-3 text-sm font-semibold text-bob-ink">Legale</h4>
-          <ul className="space-y-2 text-sm text-bob-ink/70">
-            <li><Link href="/chi-siamo" className="hover:text-bob-indigo">Chi siamo</Link></li>
-            <li><Link href="/privacy" className="hover:text-bob-indigo">Privacy</Link></li>
-            <li><Link href="/cookie-policy" className="hover:text-bob-indigo">Cookie policy</Link></li>
-            <li><Link href="/termini" className="hover:text-bob-indigo">Termini del servizio</Link></li>
-          </ul>
-        </div>
+        <Colonna titolo="Professionisti">
+          <Voce href="/per-i-professionisti">Come funziona per chi lavora</Voce>
+          <Voce href="/login">Iscriviti come professionista</Voce>
+          <Voce href="/termini/professionisti">Termini per i professionisti</Voce>
+        </Colonna>
+
+        <Colonna titolo="Bob Italia">
+          <Voce href="/chi-siamo">Chi siamo</Voce>
+        </Colonna>
       </div>
 
-      <div className="border-t border-black/5">
-        <div className="container-bob flex flex-col items-center justify-between gap-2 py-5 text-xs text-bob-ink/65 sm:flex-row">
+      <div className="border-t border-white/10">
+        <div className="container-bob flex flex-col items-center justify-between gap-2 py-6 text-xs text-white/50 sm:flex-row">
           <span>
             © {new Date().getFullYear()} BOB — {COMPANY.legalName} · P.IVA{" "}
             {COMPANY.vat}
           </span>
-          <span>Servizi locali a Milano, Roma e Torino</span>
+          <span>Nessuna posizione in elenco è a pagamento</span>
         </div>
       </div>
     </footer>
+  );
+}
+
+function Colonna({
+  titolo,
+  children,
+}: {
+  titolo: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <h4 className="mb-4 text-sm font-bold text-white">{titolo}</h4>
+      <ul className="flex flex-col gap-3 text-sm">{children}</ul>
+    </div>
+  );
+}
+
+function Voce({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <li>
+      <Link href={href} className="text-white/65 transition hover:text-bob-yellow">
+        {children}
+      </Link>
+    </li>
   );
 }
