@@ -12,7 +12,14 @@ import { Bob } from "./Bob";
  * che si adatta alla colonna, e su un telefono si rimpicciolisce tutta insieme.
  */
 
-function Cerchio({
+/**
+ * Il tondo su cui poggiano le scene.
+ *
+ * Esportato perche' serve anche fuori da qui: su una fascia scura Bob ha la
+ * salopette dello stesso indaco del fondo, e senza un tondo chiaro dietro si
+ * perde nello sfondo. E' il suo mestiere, dare un fondo a Bob.
+ */
+export function Cerchio({
   tinta,
   appoggio = "bg-black/[0.06]",
   children,
@@ -149,5 +156,65 @@ export function Bilancia({
       <path d="M6 46h37c0 10-8 16-18.5 16S6 56 6 46z" fill="#fbbf24" />
       <path d="M77 46h37c0 10-8 16-18.5 16S77 56 77 46z" fill="#fbbf24" />
     </svg>
+  );
+}
+
+/** Quali attrezzi sa tenere Bob. */
+export type TipoAttrezzo =
+  | "chiave"
+  | "pennello"
+  | "scatolone"
+  | "cacciavite";
+
+/**
+ * Gli attrezzi che Bob puo' tenere in mano, disegnati attorno alla sua mano
+ * destra, che nel viewBox sta a (135.5, 206).
+ *
+ * STANNO QUI E NON DENTRO LA SCALA. La scala e' il primo posto che li ha
+ * usati, non il loro proprietario: un attrezzo serve ovunque Bob faccia un
+ * mestiere, e l'eroe della pagina per i professionisti e' il secondo posto.
+ *
+ * Partono da x=140 e non da 135: il corpo arriva a x=134, e un attrezzo
+ * disegnato sulla mano finirebbe per meta' dietro la camicia. A 140 la mano ne
+ * copre il manico — sembra impugnato — e il resto si vede.
+ *
+ * Niente testo: le misure scalano, le parole no.
+ */
+export function Attrezzo({ tipo }: { tipo: TipoAttrezzo }) {
+  if (tipo === "chiave") {
+    return (
+      <g transform="rotate(12 150 210)">
+        <rect x="144" y="196" width="13" height="56" rx="6.5" fill="#8f98ad" />
+        <path
+          d="M150.5 168a16 16 0 1 1 0 32 16 16 0 0 1 0-32zm0 9a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"
+          fill="#8f98ad"
+        />
+      </g>
+    );
+  }
+  if (tipo === "pennello") {
+    return (
+      <g transform="rotate(-10 150 210)">
+        <rect x="145" y="174" width="11" height="42" rx="5.5" fill="#c8a179" />
+        <rect x="141" y="214" width="19" height="11" rx="2.5" fill="#8f98ad" />
+        <path d="M141 225h19v20a9.5 9.5 0 0 1-19 0z" fill="#3730a3" />
+      </g>
+    );
+  }
+  if (tipo === "scatolone") {
+    return (
+      <g>
+        <rect x="138" y="190" width="56" height="48" rx="5" fill="#c8a179" />
+        <rect x="138" y="207" width="56" height="9" fill="#a8845c" />
+        <rect x="161" y="190" width="9" height="48" fill="#a8845c" />
+      </g>
+    );
+  }
+  return (
+    <g transform="rotate(20 150 210)">
+      <rect x="143" y="166" width="15" height="34" rx="7" fill="#fbbf24" />
+      <rect x="147" y="198" width="7" height="48" rx="3" fill="#8f98ad" />
+      <rect x="145" y="196" width="11" height="7" rx="2" fill="#eaa50c" />
+    </g>
   );
 }

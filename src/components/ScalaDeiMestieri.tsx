@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { Bob } from "./Bob";
+import { Attrezzo, type TipoAttrezzo } from "./SceneBob";
 
 /**
  * Una scala di legno con sopra quattro Bob di schiena, ognuno con un attrezzo
@@ -46,14 +47,12 @@ import { Bob } from "./Bob";
  * solo rumore su una comunicazione che la legge vuole chiara.
  */
 
-type Attrezzo = "chiave" | "pennello" | "scatolone" | "cacciavite";
-
 type Mestiere = {
   /** Dove sta sulla scala, in percentuale dell'altezza. */
   alto: number;
   /** Con quale mano lavora. */
   mano: "dx" | "sx";
-  attrezzo: Attrezzo;
+  attrezzo: TipoAttrezzo;
   /** L'angolo a riposo del braccio che lavora, in gradi. */
   base: number;
   /** Di quanti gradi oscilla attorno al riposo. */
@@ -157,7 +156,7 @@ function BobAlLavoro({
   mestiere: Mestiere;
   angolo: number;
 }) {
-  const ferro = <Ferro tipo={mestiere.attrezzo} />;
+  const ferro = <Attrezzo tipo={mestiere.attrezzo} />;
   if (mestiere.mano === "sx") {
     return (
       <Bob
@@ -181,54 +180,5 @@ function BobAlLavoro({
       gradiBraccioDestro={angolo}
       attrezzoDestro={ferro}
     />
-  );
-}
-
-/**
- * Gli attrezzi, disegnati attorno alla mano destra di Bob, che nel suo viewBox
- * sta a (135.5, 206).
- *
- * Partono da x=140 e non da 135: il corpo arriva a x=134, e un attrezzo
- * disegnato sulla mano finirebbe per meta' dietro la camicia. A 140 la mano ne
- * copre il manico — sembra impugnato — e il resto si vede.
- *
- * Niente testo: le misure scalano, le parole no.
- */
-function Ferro({ tipo }: { tipo: Attrezzo }) {
-  if (tipo === "chiave") {
-    return (
-      <g transform="rotate(12 150 210)">
-        <rect x="144" y="196" width="13" height="56" rx="6.5" fill="#8f98ad" />
-        <path
-          d="M150.5 168a16 16 0 1 1 0 32 16 16 0 0 1 0-32zm0 9a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"
-          fill="#8f98ad"
-        />
-      </g>
-    );
-  }
-  if (tipo === "pennello") {
-    return (
-      <g transform="rotate(-10 150 210)">
-        <rect x="145" y="174" width="11" height="42" rx="5.5" fill="#c8a179" />
-        <rect x="141" y="214" width="19" height="11" rx="2.5" fill="#8f98ad" />
-        <path d="M141 225h19v20a9.5 9.5 0 0 1-19 0z" fill="#3730a3" />
-      </g>
-    );
-  }
-  if (tipo === "scatolone") {
-    return (
-      <g>
-        <rect x="138" y="190" width="56" height="48" rx="5" fill="#c8a179" />
-        <rect x="138" y="207" width="56" height="9" fill="#a8845c" />
-        <rect x="161" y="190" width="9" height="48" fill="#a8845c" />
-      </g>
-    );
-  }
-  return (
-    <g transform="rotate(20 150 210)">
-      <rect x="143" y="166" width="15" height="34" rx="7" fill="#fbbf24" />
-      <rect x="147" y="198" width="7" height="48" rx="3" fill="#8f98ad" />
-      <rect x="145" y="196" width="11" height="7" rx="2" fill="#eaa50c" />
-    </g>
   );
 }
