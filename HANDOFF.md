@@ -1,58 +1,84 @@
-# Passaggio di consegne — 11 settembre 2026 (André, con Claude)
+# Passaggio di consegne — 12 settembre 2026 (André, con Claude)
 
-> Sostituisce quello del 10 settembre sera (PR #53) e ne porta avanti tutte le
-> voci ancora aperte, nelle sezioni in fondo. HANDOFF.md si sovrascrive a ogni
-> sessione, **ma quello che è a metà si porta avanti, non si butta**.
->
-> Scritto e mergiato lo stesso giorno, come dice la regola imparata a caro
-> prezzo il 9 e il 10.
+> Sostituisce quello dell'11 settembre e ne porta avanti tutte le voci ancora
+> aperte, nelle sezioni in fondo. HANDOFF.md si sovrascrive a ogni sessione,
+> **ma quello che è a metà si porta avanti, non si butta**. Scritto e mergiato
+> lo stesso giorno.
 
-## Cosa è andato in produzione (11 settembre — Bob ha un carattere)
+## Cosa è andato in produzione (12 settembre — larghezza chiusa, Bob ha una faccia)
 
-Giornata su una cosa sola: il **blocco A** dell'audit design
-(`claude/AUDIT_design_11set.md`). Nessuna migrazione, nessun tocco a Supabase,
-nessuna modifica funzionale. Solo interfaccia.
+Niente Supabase, niente migrazioni, nessun advisor da rilanciare. Solo
+interfaccia e un componente nuovo.
 
-- **Il carattere.** Prima `fontFamily.sans` era lo stack di sistema, cioè
-  nessuna scelta mai fatta: `document.fonts` sulla home restituiva un array
-  vuoto. Ora è **Schibsted Grotesk** (Bakken & Bæck, SIL Open Font 1.1),
-  variabile 400–900 — deciso da André e Lucio guardando otto candidati resi
-  dentro le schermate vere di Bob, non su una specimen page.
-- **Caricato con `next/font/google`, non con un `<link>` a Google.** I file si
-  scaricano alla build e si servono da `/_next/static/media/*.woff2`, cioè dal
-  nostro dominio: il browser dell'utente non parla mai con Google, quindi non
-  c'è un trasferimento di IP verso gli USA da mettere nell'informativa. La
-  classe va su `<html>` e non su `<body>` perché il preflight di Tailwind mette
-  `font-family` proprio lì.
-- **La scala tipografica cambiata nel config, non nei componenti.** L'87% delle
-  utility di dimensione (820 su 942) stava a 14px o meno, e la dimensione più
-  frequente sullo schermo era 12px. Invece di 537 sostituzioni a mano, i token
-  cambiano significato in `tailwind.config.ts`: `xs` 12→13, `sm` 14→15, `base`
-  16→17, `lg` 18→19, `xl` 20→21, più un nuovo `2xs` da 11px per i dati fitti.
-  Da `2xl` in su restano i valori di Tailwind. **Un file invece di centinaia, e
-  si annulla in una riga** — se la scala non convince, si torna indietro senza
-  toccare nessun componente.
-- **I 56 `text-[10px]` e `text-[11px]`** scavalcavano la scala: ora passano per
-  `2xs`. Non esistono più dimensioni fuori sistema.
-- **475 grigi portati sopra la soglia di contrasto.** Misurati su `#fafafb`:
-  `/40`=2.43, `/45`=2.78, `/50`=3.19, `/55`=3.69, `/60`=4.29, contro una soglia
-  AA di 4.50. **Nessuno passava.** Mappati su `/65` (5.02) e `/70` (5.91)
-  conservando l'ordine di intensità.
-- **Il calendario ha più aria**: `HOUR_PX_WEEK` 56→64, `HOUR_PX_DAY` 72→80,
-  perché con le etichette a 11px invece di 10 un appuntamento da mezz'ora non
-  teneva più due righe.
-- **Verifica dal vivo FATTA** su www.meetonda.com dopo il deploy, desktop e
-  390px: font `__Schibsted_Grotesk_7aaf8b` attivo e auto-ospitato; dimensioni
-  in pagina 13/15/16/17/24/30 — **il 12px non esiste più**; **81 testi
-  controllati, zero sotto AA, contrasto peggiore 4.89**; a 390px `scrollWidth`
-  esatto 390, nessun overflow.
-- **Nota di metodo, perché l'errore è facile da rifare**: il primo giro di
-  misura del contrasto dava 9 falsi positivi a 1.16:1. Erano i chip con
-  `bg-black/5`. Risalire al primo sfondo non trasparente **non basta** — vanno
-  composti tutti gli strati semitrasparenti fino a quello opaco, altrimenti un
-  5% di nero viene letto come nero pieno.
+- **Blocco B chiuso: una larghezza sola, 1600px, su ogni pagina.**
+  `container-bob` è `100rem` e vale per tutto — pubblico e applicazione. In rem
+  e non in px, così cresce se qualcuno ha alzato il testo nelle impostazioni del
+  browser.
+- **Due strade abbandonate, tutte e due mie**, e vale la pena sapere perché per
+  non ripercorrerle:
+  - *Il doppio livello* (1120 per il sito, 1600 per l'applicazione) costringeva
+    a notare che una pagina è diversa dall'altra. Via `container-app`, via
+    `src/lib/layout.ts`, via la logica sul percorso in `Header`, `ProBanner` e
+    `CancellazioneBanner`. **`Footer` è tornato componente server.**
+  - *La scala tipografica sul viewport* (`clamp` sulla base in `html`) era
+    peggio: si rompeva dove il codice è in px — il calendario sarebbe diventato
+    **più** affollato, non meno — e scavalcava la scala che l'utente ha già
+    scelto nel sistema operativo.
+- **Una regola nuova, che era una correzione vera.** Il contenitore decide la
+  **cornice** e dipende solo dalla pagina; la misura di lettura si applica al
+  **contenuto dentro**, mai al contenitore. `/notifiche` e `/supporto`
+  scrivevano `container-bob max-w-2xl` e stringevano la cornice a 672px
+  trascinandosi dietro intestazione e piede: passando dalla dashboard alle
+  notifiche la pagina saltava da 1600 a 672. Ora usano `.colonna-lettura` su un
+  blocco interno.
+- **Il calendario è stato guardato dal vivo e regge**: con le etichette a 11px e
+  l'ora a 64px un appuntamento da mezz'ora tiene le sue righe. Era l'unico punto
+  aperto del blocco A. **Blocco A chiuso.**
+- **Bob ha una faccia.** `src/components/Bob.tsx`: testa grande in proporzione
+  da cartone, salopette sopra la camicia, scarponi di cuoio. Deciso guardando
+  cinque stili e quattro tenute. Il ragionamento sta in
+  `claude/MASCOT_bob_12set.md`.
 
-## Cosa è a metà — mio (11 settembre)
+## Cosa è a metà — mio (12 settembre)
+
+- **`Bob.tsx` è in `main` ma non lo usa nessuna pagina.** Entra in scena quando
+  si costruisce la home. È voluto, ma è anche la situazione da tenere d'occhio:
+  un componente che nessuno usa marcisce in fretta.
+- **La home nuova esiste solo come mock, non come codice.** La direzione è
+  decisa e non è la larghezza: lo schermo si riempie **di contenuto** — fasce a
+  tutta larghezza che si alternano (chiara, grigia, indaco piena, gialla),
+  illustrazioni grandi, animazioni allo scorrimento. Da fare: riscrivere
+  `src/app/page.tsx`, il footer nuovo, le animazioni. **Non è una serata.**
+- **Le scene attorno a Bob vivono solo nel mock**: il telefono del passo 1, le
+  schede del passo 2, il fumetto del passo 3, il telefono della sezione app.
+  Vanno portate nel repo insieme alla home.
+- **Il footer a quattro colonne** (Esplora, Supporto, Professionisti, Bob
+  Italia) esiste solo nel mock. Quattro voci puntano a pagine **che non
+  esistono**: *Requisiti minimi*, *Lavora con noi*, *Blog*, *Contatti stampa*.
+  O si creano o si tolgono dal footer — non si spediscono link morti.
+- **Le altre tre tenute di Bob** (camicia e cintura, alta visibilità, polo e
+  grembiule) sono disegnate ma non sono nel repo. Servono quando si faranno le
+  sezioni per mestiere: il grembiule racconta le pulizie meglio del gilet.
+- **La palette del marchio resta indaco e giallo.** Ne sono state guardate sei.
+  Se un giorno si cambia, non è la mascotte: sono i pulsanti, i chip, il logo,
+  il calendario, l'anteprima sui social. **Va deciso prima del pilota, non
+  dopo.**
+
+## Cosa ho applicato in produzione che l'altro deve sapere
+
+- **Niente su Supabase oggi.** Solo deploy Vercel da `main`.
+- **`container-bob` è l'unico contenitore.** Chi scrive una pagina nuova usa
+  quello e basta: `container-app` e `src/lib/layout.ts` **non esistono più**. Se
+  li trovi citati in un documento, il documento è vecchio.
+- **Per stringere il testo si usa `.colonna-lettura`** su un blocco interno, mai
+  `max-w-*` sul contenitore. Il perché è scritto in `globals.css` accanto alla
+  classe.
+- **`Bob.tsx` è un server component**: niente `useId`, niente `<defs>`/`<use>`
+  (gli id lì dentro sono globali al documento e due Bob nella stessa pagina
+  collidono), niente JavaScript spedito al browser. Le braccia stanno fuori dal
+  corpo apposta: una posa nuova è una rotazione, non un disegno nuovo.
+
+## Cosa è a metà — portato avanti dall'11 settembre (André)
 
 - **Il calendario non è mai stato guardato dal vivo.** È dietro il login, che
   la sessione di lavoro non aveva. È l'unico punto a rischio di tutto il blocco
@@ -80,7 +106,7 @@ nessuna modifica funzionale. Solo interfaccia.
   monospaziato; l'abbinamento naturale è IBM Plex Mono o JetBrains Mono. Non
   urgente, ma è l'ultimo pezzo di tipografia non scelta.
 
-## Cosa ho applicato in produzione che l'altro deve sapere
+## Applicato in produzione l'11 settembre — resta valido
 
 - **Niente su Supabase oggi.** Nessuna migrazione, nessun oggetto nuovo,
   nessun advisor da rilanciare. Solo un deploy Vercel da `main`.
