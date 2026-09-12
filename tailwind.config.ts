@@ -40,11 +40,20 @@ const config: Config = {
         "card-hover": "0 2px 4px rgba(30,27,75,0.06), 0 16px 40px rgba(30,27,75,0.12)",
       },
       maxWidth: {
-        container: "1120px",
-        // Le pagine applicazione. Fluido fino a qui: su un portatile da 1512px
-        // usa tutto, su un monitor grande si ferma prima che le righe della
-        // chat e delle tabelle diventino illeggibili.
-        app: "1600px",
+        // UNA LARGHEZZA SOLA, per ogni pagina del sito.
+        //
+        // Non cambia fra pagine pubbliche e pagine applicazione: una cornice
+        // che si muove da una pagina all'altra si nota, e da' l'impressione
+        // che il sito sia fatto a pezzi.
+        //
+        // 100rem = 1600px con la base normale. In rem e non in px cosi' chi ha
+        // alzato la dimensione del testo nelle impostazioni del browser vede
+        // crescere anche la cornice, invece di ritrovarsi il testo grande in un
+        // contenitore stretto.
+        //
+        // Il vuoto ai lati su un monitor grande NON si risolve allargando
+        // ancora: si risolve mettendo nella pagina qualcosa da guardare.
+        container: "100rem",
       },
       // La scala tipografica.
       //

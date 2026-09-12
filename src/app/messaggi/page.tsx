@@ -43,7 +43,7 @@ export default function MessaggiPage() {
   return (
     <Suspense
       fallback={
-        <div className="container-app py-16 text-center text-sm text-bob-ink/65">
+        <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
           Carico i messaggi…
         </div>
       }
@@ -487,7 +487,7 @@ function MessaggiInner() {
 
   if (loading) {
     return (
-      <div className="container-app py-16 text-center text-sm text-bob-ink/65">
+      <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
         Carico i messaggi…
       </div>
     );
@@ -496,7 +496,7 @@ function MessaggiInner() {
   const active = conversations.find((c) => keyOf(c) === activeId) ?? null;
 
   return (
-    <div className="container-app py-8">
+    <div className="container-bob py-8">
       <header className="mb-5">
         <span className="section-eyebrow">Messaggi</span>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink">

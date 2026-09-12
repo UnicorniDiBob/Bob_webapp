@@ -50,72 +50,74 @@ export default function NotifichePage() {
   }
 
   return (
-    <div className="container-bob max-w-2xl py-8 sm:py-10">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <span className="section-eyebrow">Notifiche di servizio</span>
-          <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-bob-ink">
-            <Bell className="h-6 w-6 text-bob-ink/65" aria-hidden="true" />
-            Cosa ti abbiamo detto
-          </h1>
-          <p className="mt-1.5 text-sm text-bob-ink/70">
-            Verifica, risposte dell&apos;assistenza, stato del tuo profilo e
-            del tuo account. I messaggi dei clienti stanno in{" "}
-            <Link
-              href="/messaggi"
-              className="font-medium text-bob-indigo hover:underline"
-            >
-              Messaggi
-            </Link>
-            .
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => ricarica()}
-          className="btn-ghost inline-flex items-center gap-1.5 text-sm"
-          data-testid="button-ricarica-notifiche"
-        >
-          <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
-          Ricontrolla
-        </button>
-      </header>
+    <div className="container-bob py-8 sm:py-10">
+      <div className="colonna-lettura">
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <span className="section-eyebrow">Notifiche di servizio</span>
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-bob-ink">
+              <Bell className="h-6 w-6 text-bob-ink/65" aria-hidden="true" />
+              Cosa ti abbiamo detto
+            </h1>
+            <p className="mt-1.5 text-sm text-bob-ink/70">
+              Verifica, risposte dell&apos;assistenza, stato del tuo profilo e
+              del tuo account. I messaggi dei clienti stanno in{" "}
+              <Link
+                href="/messaggi"
+                className="font-medium text-bob-indigo hover:underline"
+              >
+                Messaggi
+              </Link>
+              .
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => ricarica()}
+            className="btn-ghost inline-flex items-center gap-1.5 text-sm"
+            data-testid="button-ricarica-notifiche"
+          >
+            <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+            Ricontrolla
+          </button>
+        </header>
 
-      {!caricate ? (
-        <div className="card p-6 text-center text-sm text-bob-ink/65">
-          Controllo…
-        </div>
-      ) : notifiche.length === 0 ? (
-        <div className="card p-8 text-center">
-          <p className="text-base font-semibold text-bob-ink">
-            Non c&apos;è niente da leggere.
-          </p>
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-bob-ink/70">
-            Quando avremo qualcosa da dirti — una verifica da completare, una
-            risposta dell&apos;assistenza, un problema sul tuo profilo — lo
-            trovi qui, e la campanella nell&apos;intestazione si accende.
-          </p>
-        </div>
-      ) : (
-        <ul
-          className="card divide-y divide-black/5 overflow-hidden p-0"
-          data-testid="elenco-notifiche"
-        >
-          {notifiche.map((n) => (
-            <NotificaVoce
-              key={n.id}
-              n={n}
-              nuova={daVedere(n, visteAllApertura)}
-            />
-          ))}
-        </ul>
-      )}
+        {!caricate ? (
+          <div className="card p-6 text-center text-sm text-bob-ink/65">
+            Controllo…
+          </div>
+        ) : notifiche.length === 0 ? (
+          <div className="card p-8 text-center">
+            <p className="text-base font-semibold text-bob-ink">
+              Non c&apos;è niente da leggere.
+            </p>
+            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-bob-ink/70">
+              Quando avremo qualcosa da dirti — una verifica da completare, una
+              risposta dell&apos;assistenza, un problema sul tuo profilo — lo
+              trovi qui, e la campanella nell&apos;intestazione si accende.
+            </p>
+          </div>
+        ) : (
+          <ul
+            className="card divide-y divide-black/5 overflow-hidden p-0"
+            data-testid="elenco-notifiche"
+          >
+            {notifiche.map((n) => (
+              <NotificaVoce
+                key={n.id}
+                n={n}
+                nuova={daVedere(n, visteAllApertura)}
+              />
+            ))}
+          </ul>
+        )}
 
-      <p className="mt-4 text-center text-xs leading-relaxed text-bob-ink/65">
-        Queste notifiche si calcolano dal tuo account ogni volta che apri la
-        pagina: non sono una copia salvata da qualche parte, quindi spariscono
-        da sole quando la cosa che le ha fatte nascere è risolta.
-      </p>
+        <p className="mt-4 text-center text-xs leading-relaxed text-bob-ink/65">
+          Queste notifiche si calcolano dal tuo account ogni volta che apri la
+          pagina: non sono una copia salvata da qualche parte, quindi spariscono
+          da sole quando la cosa che le ha fatte nascere è risolta.
+        </p>
+      </div>
     </div>
   );
 }

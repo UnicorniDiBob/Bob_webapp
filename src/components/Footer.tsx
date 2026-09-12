@@ -1,20 +1,11 @@
-// Client per una ragione sola: il piede deve sapere su che pagina si trova,
-// per allinearsi alla larghezza del contenuto sopra (vedi src/lib/layout.ts).
-// E' contenuto statico, quindi il costo e' qualche riga di JS e nient'altro.
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { classeContenitore } from "@/lib/layout";
 import { Logo } from "./Logo";
 import { COMPANY } from "@/lib/company";
 
 export function Footer() {
-  const cont = classeContenitore(usePathname());
-
   return (
     <footer className="mt-20 border-t border-black/5 bg-white">
-      <div className={`${cont} grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5`}>
+      <div className="container-bob grid grid-cols-1 gap-8 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div className="sm:col-span-2 lg:col-span-2">
           <Logo />
           <p className="mt-3 max-w-xs text-sm text-bob-ink/70">
@@ -70,7 +61,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-black/5">
-        <div className={`${cont} flex flex-col items-center justify-between gap-2 py-5 text-xs text-bob-ink/65 sm:flex-row`}>
+        <div className="container-bob flex flex-col items-center justify-between gap-2 py-5 text-xs text-bob-ink/65 sm:flex-row">
           <span>
             © {new Date().getFullYear()} BOB — {COMPANY.legalName} · P.IVA{" "}
             {COMPANY.vat}
