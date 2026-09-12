@@ -9,8 +9,24 @@
  * Sta in un modulo suo perche' lo consultano anche l'intestazione e il piede,
  * che vivono nel layout e non sanno da soli su che pagina si trovano. Se un
  * giorno una rotta cambia famiglia, si cambia qui e basta.
+ *
+ * LA REGOLA, perche' e' gia' stata sbagliata due volte:
+ *
+ *   Il contenitore decide la CORNICE, e dipende solo da pubblico/applicazione.
+ *   La misura di lettura si applica al CONTENUTO dentro, mai al contenitore.
+ *
+ * `/notifiche` e `/supporto` scrivevano `container-bob max-w-2xl`: stringevano
+ * la cornice a 672px, e con lei si spostavano intestazione e piede. Passando
+ * dalla dashboard alle notifiche la pagina saltava da 1600 a 672. Per stringere
+ * il testo si usa `.colonna-lettura` su un blocco interno: la cornice resta
+ * ferma e si muove solo la colonna.
  */
-export const ROTTE_APP = ["/dashboard", "/messaggi", "/impostazioni"] as const;
+export const ROTTE_APP = [
+  "/dashboard",
+  "/messaggi",
+  "/impostazioni",
+  "/notifiche",
+] as const;
 
 export function isRottaApp(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
