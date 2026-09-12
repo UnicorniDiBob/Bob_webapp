@@ -114,3 +114,42 @@ body {
     animation: none;
   }
 }
+
+/* Le banconote che piovono nella cariola, nell'eroe di /per-i-professionisti.
+   La banconota parte sopra il bordo del cassone, scende ruotando e sparisce
+   appena dentro: la dissolvenza finale e' quello che la fa sembrare "entrata"
+   invece di "scomparsa", e la rotazione e' quello che la fa sembrare un foglio
+   invece di un sasso. Ogni banconota ha il suo ritardo, scritto in linea nel
+   componente, se no cadono tutte insieme come un blocco unico. */
+@keyframes cade-banconota {
+  0% {
+    transform: translateY(-62px) rotate(-16deg);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  72% {
+    opacity: 1;
+  }
+  /* Finisce SOTTO il bordo del cassone, non sopra: cosi' sparisce dietro la
+     sponda invece di dissolversi a mezz'aria. Prima si vedeva la banconota
+     attraversare la cariola e svanirci dentro, che e' peggio di non animarla. */
+  100% {
+    transform: translateY(14px) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+.banconota-cade {
+  animation: cade-banconota 2.8s ease-in infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Ferme e visibili sopra la cariola: il disegno racconta la stessa cosa
+     senza che niente si muova. */
+  .banconota-cade {
+    animation: none;
+    opacity: 1;
+  }
+}

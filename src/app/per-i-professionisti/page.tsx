@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bob } from "@/components/Bob";
+import { BobConCariola } from "@/components/BobConCariola";
 import { Faq } from "@/components/Faq";
 import { Rivela } from "@/components/Rivela";
-import { Attrezzo, Cerchio } from "@/components/SceneBob";
 import { Blocco, Fascia, TestaSezione } from "@/components/sezioni";
 import { BobDot, BobBullet } from "@/components/ui";
 
@@ -162,46 +161,19 @@ export default function PerIProfessionistiPage() {
               solo quando concludi un lavoro — non per ricevere un numero di
               telefono.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8">
               <Link
                 href="/login?mode=signup&role=professional"
-                className="rounded-xl bg-bob-yellow px-6 py-3 text-center text-base font-semibold text-bob-ink hover:brightness-95"
+                className="inline-block rounded-xl bg-bob-yellow px-6 py-3 text-center text-base font-semibold text-bob-ink hover:brightness-95"
                 data-testid="cta-registrati-pro"
               >
                 Registrati come professionista
               </Link>
-              {/* Prima puntava a /come-funziona, che è la spiegazione per il
-                  CLIENTE ("Parla con Bob", "gratis per te"): mandava il
-                  professionista nel funnel sbagliato. Ora resta su questa
-                  pagina.
-                  <a> e non <Link>: con next/link l'ancora sulla stessa pagina
-                  non scrolla (il router intercetta il click e la navigazione
-                  hash-only resta un no-op — verificato in produzione il 10/08,
-                  l'hash cambiava senza muovere la pagina e al secondo
-                  tentativo non cambiava nemmeno). L'ancora nativa scrolla, con
-                  lo scroll-margin che `Fascia` mette quando le si dà un id. */}
-              <a
-                href="#come-funziona"
-                className="rounded-xl border border-white/30 px-6 py-3 text-center text-base font-semibold text-white hover:bg-white/10"
-              >
-                Come funziona per te
-              </a>
             </div>
           </div>
 
-          {/* Bob col tondo chiaro dietro: la sua salopette è lo stesso indaco
-              della fascia, e senza fondo si perderebbe nello sfondo. */}
           <div className="animate-fade-up [animation-delay:80ms]">
-            <Cerchio tinta="bg-bob-indigo-100" appoggio="bg-white/25">
-              <Bob
-                posa="neutro"
-                gradiBraccioDestro={-28}
-                attrezzoDestro={<Attrezzo tipo="chiave" />}
-                fuoriBordo
-                alt="Bob, con la chiave inglese in mano"
-                className="absolute bottom-[7%] left-1/2 w-[62%] -translate-x-1/2"
-              />
-            </Cerchio>
+            <BobConCariola />
           </div>
         </div>
       </Fascia>
@@ -354,16 +326,13 @@ export default function PerIProfessionistiPage() {
 
       {/* ---------- DOMANDE FREQUENTI ---------- */}
       <Fascia sfondo="tenue">
-        <TestaSezione
-          occhiello="Dubbi"
-          titolo="Domande frequenti"
-          allineamento="sinistra"
-        />
-        {/* `max-w-2xl` senza `mx-auto`: la colonna di lettura parte dal bordo
-            del contenitore come tutto il resto della pagina. Centrata sarebbe
-            matematicamente al centro e visivamente storta rispetto ai titoli
-            sopra — lo stesso errore fatto e corretto su /come-funziona. */}
-        <div className="mt-10 w-full max-w-2xl">
+        {/* Questa fascia e' centrata TUTTA, titolo compreso, e per questo
+            funziona: il difetto di /come-funziona era una colonna centrata
+            sotto un titolo allineato a sinistra — due bordi diversi nella
+            stessa fascia. Qui il blocco e' centrato come unita' e si legge
+            come una scelta, non come uno storto. */}
+        <TestaSezione occhiello="Dubbi" titolo="Domande frequenti" />
+        <div className="colonna-lettura mt-10">
           <Faq items={PRO_FAQ} />
         </div>
       </Fascia>
