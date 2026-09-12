@@ -44,6 +44,27 @@ documenti né un controllo. Quindi:
   **Ricontrollo**, separata dalla coda delle prime verifiche: sono due lavori
   diversi e mescolarli li nasconde entrambi.
 
+**Il preavviso è a due tempi** (migrazione 075, scritta il 12/09): a **30 giorni**
+una notifica nella campanella — c'è tempo, si dice dove si leggono le cose da
+fare — e nell'**ultima settimana lavorativa** una finestra sull'area di lavoro,
+perché lì la posta in gioco cambia: alla scadenza il profilo torna «Iscritto» e
+perde l'etichetta che i clienti guardano per prima. La finestra si chiude una
+volta per account (`profiles.scadenza_verifica_vista_al`, che contiene la data
+di scadenza per cui è stata chiusa: al rinnovo si riarma da sola).
+
+**L'orologio parte da adesso per chi è già verificato**, una volta sola: il
+backfill della 075 ha la guardia `vat_expires_at is null`, quindi rigirare la
+migrazione non sposta avanti nessuna scadenza. Per le verifiche nuove la data la
+scrive un **trigger**, non le route: i livelli si concedono da due posti diversi
+(controllo automatico ed esame umano) e una scadenza dimenticata in uno dei due
+è una verifica eterna che non nota nessuno.
+
+**Quello che ancora NON succede alla scadenza:** il badge non cade. Oggi la
+data esiste, il preavviso esiste, ma nessun lavoro notturno porta la riga in
+Ricontrollo e nessuna pagina pubblica legge `vat_expires_at`. Finché non c'è
+quel pezzo, la finestra promette un declassamento che non avviene: va costruito
+prima del pilota, insieme alla coda Ricontrollo.
+
 Resta la regola già scritta: **nessun declassamento automatico**, mai (art. 22
 GDPR). La cessazione della P.IVA non aspetta l'anno: è un evento, e quando lo
 vediamo va in Ricontrollo subito.

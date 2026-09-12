@@ -13,7 +13,6 @@
 /** Livelli di verifica: valori tecnici del DB (migration 029). */
 export type VerificationLevel = "none" | "vat_verified" | "documents_verified";
 
-/** Etichette mostrate agli utenti. Unico punto in cui vivono i nomi commerciali. */
 /**
  * SLA DICHIARATO DELLA CODA DI VERIFICA: 5 giorni lavorativi (12/09, Lucio).
  * Sta qui perche' la stessa cifra va detta al professionista mentre aspetta,
@@ -23,6 +22,89 @@ export type VerificationLevel = "none" | "vat_verified" | "documents_verified";
  */
 export const SLA_VERIFICA_GIORNI_LAVORATIVI = 5;
 
+// ---------------------------------------------------------------------------
+// La scadenza della verifica (12/09, Lucio — chiude 10.4)
+// ---------------------------------------------------------------------------
+// UN ANNO. Il costo del ricontrollo non e' il controllo, e' l'esame umano: il
+// VIES risponde solo per la minoranza iscritta agli scambi intra-UE, e per
+// tutti gli altri un esito negativo non e' un segnale, e' la normalita'.
+// Ripassarlo piu' spesso produce rumore, non controlli.
+//
+// LA DATA NON DECLASSA NESSUNO DA SOLA: alla scadenza la riga va in
+// «Ricontrollo» e decide una persona (art. 22 GDPR). Il preavviso esiste anche
+// per il Regolamento P2B art. 4, che per ogni restrizione del servizio vuole
+// motivazione e preavviso — e perdere l'etichetta lo e'.
+
+/** Quanto vale una verifica prima del ricontrollo. */
+export const VALIDITA_VERIFICA_MESI = 12;
+
+/** Da quanti giorni prima lo diciamo nella campanella. */
+export const PREAVVISO_SCADENZA_GIORNI = 30;
+
+/** Da quanti giorni LAVORATIVI prima si mette davanti la finestra. */
+export const PREAVVISO_FINESTRA_GIORNI_LAVORATIVI = 5;
+
+export type FaseScadenza =
+  | "valida"
+  | "preavviso"
+  | "ultima-settimana"
+  | "scaduta";
+
+export interface StatoScadenza {
+  fase: FaseScadenza;
+  scadeIl: Date;
+  /** Giorni solari mancanti. Negativi se e' gia' scaduta. */
+  giorni: number;
+  /** Giorni lavorativi mancanti (sabato e domenica esclusi, festivi no). */
+  giorniLavorativi: number;
+}
+
+const GIORNO_MS = 86_400_000;
+
+/** Giorni lavorativi fra due date: sabato e domenica esclusi, festivi no. */
+export function giorniLavorativiTra(da: Date, a: Date): number {
+  if (a <= da) return 0;
+  const cursore = new Date(da);
+  cursore.setHours(0, 0, 0, 0);
+  const fine = new Date(a);
+  fine.setHours(0, 0, 0, 0);
+  let n = 0;
+  while (cursore < fine) {
+    cursore.setDate(cursore.getDate() + 1);
+    const g = cursore.getDay();
+    if (g !== 0 && g !== 6) n += 1;
+  }
+  return n;
+}
+
+/**
+ * A che punto e' la validita' di una verifica.
+ * null quando non c'e' nessuna scadenza da seguire (nessun livello attivo).
+ */
+export function statoScadenza(
+  scadenza: string | null,
+  adesso: Date = new Date()
+): StatoScadenza | null {
+  if (!scadenza) return null;
+  const scadeIl = new Date(scadenza);
+  if (Number.isNaN(scadeIl.getTime())) return null;
+
+  const giorni = Math.ceil((scadeIl.getTime() - adesso.getTime()) / GIORNO_MS);
+  const giorniLavorativi = giorniLavorativiTra(adesso, scadeIl);
+
+  const fase: FaseScadenza =
+    giorni < 0
+      ? "scaduta"
+      : giorniLavorativi <= PREAVVISO_FINESTRA_GIORNI_LAVORATIVI
+        ? "ultima-settimana"
+        : giorni <= PREAVVISO_SCADENZA_GIORNI
+          ? "preavviso"
+          : "valida";
+
+  return { fase, scadeIl, giorni, giorniLavorativi };
+}
+
+/** Etichette mostrate agli utenti. Unico punto in cui vivono i nomi commerciali. */
 export const VERIFICATION_LABEL: Record<VerificationLevel, string> = {
   none: "Iscritto",
   vat_verified: "Pro",

@@ -47,6 +47,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leggiAvvisiInCorso } from "@/lib/avvisi";
+import { statoScadenza } from "@/lib/vat";
 
 export type LivelloNotifica = "azione" | "avviso" | "fatto";
 
@@ -90,6 +91,16 @@ export interface FattiVisibilita {
  * Il motivo per cui NON compare, in una frase che si puo' leggere ad alta
  * voce. null quando compare.
  */
+/** «3 ottobre 2026» — la stessa forma che usano la finestra e la card. */
+function dataBreve(d: Date): string {
+  return d.toLocaleDateString("it-IT", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Rome",
+  });
+}
+
 export function motivoInvisibile(f: FattiVisibilita): string | null {
   if (f.disattivato) {
     return "il tuo profilo è spento: l'hai disattivato tu, oppure è in corso la cancellazione dell'account";
@@ -242,7 +253,7 @@ export async function caricaNotifiche(
       .eq("professional_id", rigaPro.id),
     supabase
       .from("professional_verification")
-      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name")
+      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, vat_expires_at")
       .eq("professional_id", rigaPro.id)
       .maybeSingle(),
   ]);
@@ -290,7 +301,15 @@ export async function caricaNotifiche(
         vat_review_note: string | null;
         vat_reviewed_at: string | null;
         vat_reviewed_by_name: string | null;
+        vat_expires_at: string | null;
       } | null);
+  // Se la lettura della verifica fallisce non sappiamo niente, e tacere e'
+  // meglio che sbagliare: senza questa riga un errore qualsiasi sulla query
+  // (una colonna non ancora migrata, la rete) faceva diventare il livello
+  // "none" e faceva partire «Il tuo profilo non e' verificato» addosso a chi
+  // e' verificato da mesi.
+  if (verifica.error) return ordina(out);
+
   const livelloVerifica = v?.level ?? "none";
   const stato = v?.vat_review_state ?? null;
 
@@ -332,6 +351,38 @@ export async function caricaNotifiche(
       quando: null,
       mittente: "Assistenza Bob",
     });
+  } else if (livelloVerifica !== "none") {
+    // LA SCADENZA (12/09). La verifica dura un anno: a 30 giorni dalla fine lo
+    // diciamo qui, dove si leggono le cose da fare. L'ultima settimana ha
+    // invece una finestra sua sull'area di lavoro — la posta in gioco cambia,
+    // e cambia il posto. Niente notifica prima dei 30 giorni: una scadenza
+    // annunciata con mesi di anticipo e' rumore che insegna a ignorare il
+    // resto.
+    const sc = statoScadenza(v?.vat_expires_at ?? null);
+    if (sc && sc.fase === "scaduta") {
+      out.push({
+        id: `verifica:scaduta:${v?.vat_expires_at ?? ""}`,
+        livello: "azione",
+        titolo: "La tua verifica è scaduta",
+        testo: `Era valida fino al ${dataBreve(sc.scadeIl)}. Il controllo va rifatto: aprila e ripresenta la partita IVA, ci pensiamo noi. Finché non è fatto, il profilo vale come non verificato.`,
+        href: "/impostazioni/verifica",
+        azione: "Rifai la verifica",
+        quando: v?.vat_expires_at ?? null,
+      });
+    } else if (sc && (sc.fase === "preavviso" || sc.fase === "ultima-settimana")) {
+      out.push({
+        id: `verifica:in-scadenza:${v?.vat_expires_at ?? ""}`,
+        livello: sc.fase === "ultima-settimana" ? "azione" : "avviso",
+        titolo:
+          sc.giorni <= 1
+            ? "La tua verifica scade domani"
+            : `La tua verifica scade fra ${sc.giorni} giorni`,
+        testo: `Vale fino al ${dataBreve(sc.scadeIl)}. Dopo quella data il profilo torna «Iscritto» e i clienti non vedono più l'etichetta. Il ricontrollo lo facciamo noi: se ci serve un documento te lo chiediamo qui.`,
+        href: "/impostazioni/verifica",
+        azione: "Vedi la tua verifica",
+        quando: v?.vat_expires_at ?? null,
+      });
+    }
   } else if (livelloVerifica === "none") {
     // L'invito alla verifica vale solo per chi ha un piano che la include:
     // spingerla a un Free e' un vicolo cieco (decisione del 14/08). Il piano

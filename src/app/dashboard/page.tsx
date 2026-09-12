@@ -18,6 +18,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ProWorkspace } from "@/components/ProWorkspace";
 import { CustomerHome } from "@/components/CustomerHome";
 import GuidaPrimoAccesso from "@/components/GuidaPrimoAccesso";
+import { ScadenzaVerificaPopup } from "@/components/ScadenzaVerificaPopup";
 import { leggiProgresso } from "@/lib/guidaProgresso";
 
 interface ProProfile {
@@ -216,6 +217,15 @@ export default function DashboardPage() {
               rating={proRating}
               name={fullName ?? "Professionista"}
             />
+
+            {/* LA SCADENZA DELLA VERIFICA, NELL'ULTIMA SETTIMANA. Sta qui e
+                non nel guscio globale perche' riguarda un solo ruolo e ha
+                bisogno dell'id del professionista, che questa pagina ha gia'
+                letto: montarla in layout vorrebbe dire una query in piu' su
+                ogni pagina per ogni utente, clienti compresi. A 30 giorni
+                invece parla la campanella (lib/notifiche.ts): posta in gioco
+                diversa, posto diverso. */}
+            {proProfile && <ScadenzaVerificaPopup professionalId={proProfile.id} />}
 
             {proProfile && (
               <p className="text-center text-xs text-bob-ink/40">
