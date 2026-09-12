@@ -80,6 +80,34 @@ Resta la regola già scritta: **nessun declassamento automatico**, mai (art. 22
 GDPR). La cessazione della P.IVA non aspetta l'anno: è un evento, e quando lo
 vediamo va in Ricontrollo subito.
 
+**Il badge dice «Verificato» e basta** (12/09). I livelli si chiamavano «Pro» e
+«Pro+», cioè come i piani: un professionista sul piano Free non poteva avere il
+badge «Pro», e uno sul piano Plus si vedeva scritto «Pro» addosso. Due scale con
+gli stessi nomi. Fuori adesso si legge **Verificato** per entrambi i livelli, con
+la data; dentro restano distinti e lo staff ha le sue etichette
+(`VERIFICATION_LABEL_STAFF`), perché chi lavora la coda deve sapere se c'è anche
+un esame documentale. Questo chiude anche, di fatto, la domanda «livello Pro+:
+attivare o rimuovere»: il livello resta, ma non ha più un nome commerciale.
+
+**La cessazione della P.IVA ha un posto dove finire** (migrazione 079). Stato
+nuovo `recheck` con un **motivo** che è un dato, non una frase — scadenza,
+cessazione, procedura, intestazione — perché decide l'ordine della coda, le
+parole che scriviamo al professionista e la motivazione scritta che il P2B
+(art. 4) pretende se poi il livello cade davvero. Il giro notturno fa la
+distinzione che conta: chi è stato verificato **dal VIES** si ricontrolla da
+solo (se il registro conferma ancora, la scadenza si sposta di un anno e non
+disturbiamo nessuno; se **non** conferma più un numero che prima confermava,
+quello è un segnale vero e apre un caso); chi è stato verificato **da una
+persona** non viene nemmeno richiamato, perché per lui un «non risulta» del VIES
+non vuol dire niente — va in ricontrollo per scadenza e lo rifà una persona.
+**Qui non si declassa nessuno**: il livello resta intatto finché non decide un
+umano.
+
+**Resta da decidere una cosa sola su questo**: quanto può restare aperto un caso
+di cessazione con il badge ancora acceso. Oggi resta aperto finché qualcuno non
+lo guarda — cioè dipende dalla coda, che è esattamente il modo in cui un badge
+diventa falso senza che nessuno l'abbia deciso.
+
 **Lo stato del profilo sparisce quando è a posto** (fatto il 12/09). Il riquadro
 «Il tuo profilo» resta aperto solo se manca qualcosa o se non compari; a giro
 completo resta un pallino verde, col testo al passaggio del cursore, e si

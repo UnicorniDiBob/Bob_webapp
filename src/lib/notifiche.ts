@@ -47,7 +47,12 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leggiAvvisiInCorso } from "@/lib/avvisi";
-import { statoScadenza } from "@/lib/vat";
+import {
+  MOTIVO_RICONTROLLO_TESTO,
+  MOTIVO_RICONTROLLO_TITOLO,
+  statoScadenza,
+  type MotivoRicontrollo,
+} from "@/lib/vat";
 
 export type LivelloNotifica = "azione" | "avviso" | "fatto";
 
@@ -253,7 +258,7 @@ export async function caricaNotifiche(
       .eq("professional_id", rigaPro.id),
     supabase
       .from("professional_verification")
-      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, vat_expires_at")
+      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, vat_expires_at, recheck_reason")
       .eq("professional_id", rigaPro.id)
       .maybeSingle(),
   ]);
@@ -302,6 +307,7 @@ export async function caricaNotifiche(
         vat_reviewed_at: string | null;
         vat_reviewed_by_name: string | null;
         vat_expires_at: string | null;
+        recheck_reason: string | null;
       } | null);
   // Se la lettura della verifica fallisce non sappiamo niente, e tacere e'
   // meglio che sbagliare: senza questa riga un errore qualsiasi sulla query
@@ -338,6 +344,24 @@ export async function caricaNotifiche(
       azione: "Correggi e ripresenta",
       quando: v?.vat_reviewed_at ?? null,
       mittente: v?.vat_reviewed_by_name ?? "Staff Bob",
+    });
+  } else if (stato === "recheck") {
+    // RICONTROLLO (079). Il badge ce l'ha ancora e non glielo stiamo togliendo:
+    // va detto nella prima riga, perche' la paura, leggendo «ricontrollo», e'
+    // esattamente quella. Il motivo decide le parole: una scadenza annuale e
+    // una possibile cessazione non si raccontano allo stesso modo.
+    const motivo = (v?.recheck_reason ?? "scadenza") as MotivoRicontrollo;
+    const titolo = MOTIVO_RICONTROLLO_TITOLO[motivo] ?? MOTIVO_RICONTROLLO_TITOLO.scadenza;
+    const testo = MOTIVO_RICONTROLLO_TESTO[motivo] ?? MOTIVO_RICONTROLLO_TESTO.scadenza;
+    out.push({
+      id: `verifica:ricontrollo:${motivo}`,
+      livello: motivo === "scadenza" ? "avviso" : "azione",
+      titolo,
+      testo,
+      href: "/impostazioni/verifica",
+      azione: "Vedi la tua verifica",
+      quando: null,
+      mittente: "Assistenza Bob",
     });
   } else if (stato === "pending") {
     out.push({

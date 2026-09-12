@@ -163,7 +163,56 @@ export const VERIFICATION_CAVEAT: Record<VerificationLevel, string> = {
  * Stato dell'esame umano sui casi che il VIES non conferma (migration 034).
  * null in DB = niente in sospeso.
  */
-export type VatReviewState = "pending" | "docs_requested" | "rejected";
+export type VatReviewState =
+  | "pending"
+  | "docs_requested"
+  | "rejected"
+  /** Era verificato e va riguardato: scadenza o segnale sulla P.IVA (079). */
+  | "recheck";
+
+/**
+ * Perche' una verifica e' finita in ricontrollo. E' un dato e non una frase
+ * perche' decide tre cose: l'ordine della coda (una cessazione non aspetta una
+ * scadenza), cosa scriviamo al professionista, e la motivazione scritta che il
+ * Regolamento P2B (art. 4) pretende se poi il livello cade davvero.
+ */
+export type MotivoRicontrollo =
+  /** E' passato l'anno: il controllo va rifatto, non c'e' niente di storto. */
+  | "scadenza"
+  /** Il riscontro dice che la partita IVA non risulta piu' attiva. */
+  | "cessazione"
+  /** Liquidazione, concordato, amministrazione straordinaria nel nome. */
+  | "procedura"
+  /** L'intestazione non corrisponde piu' al profilo. */
+  | "intestazione";
+
+/** Come lo legge il professionista: prima riga della notifica e del riquadro. */
+export const MOTIVO_RICONTROLLO_TITOLO: Record<MotivoRicontrollo, string> = {
+  scadenza: "Stiamo rifacendo il controllo della tua partita IVA",
+  cessazione: "La tua partita IVA non risulta piu' attiva",
+  procedura: "Il registro segnala una procedura sulla tua impresa",
+  intestazione: "L'intestazione della partita IVA non corrisponde al profilo",
+};
+
+/** Cosa succede adesso, detto al professionista senza girarci intorno. */
+export const MOTIVO_RICONTROLLO_TESTO: Record<MotivoRicontrollo, string> = {
+  scadenza:
+    "La verifica vale un anno ed e' arrivata a scadenza. Lo rifacciamo noi: nella maggior parte dei casi non ti chiediamo niente. Il badge resta finche' non abbiamo finito.",
+  cessazione:
+    "Il controllo dice che la partita IVA con cui sei verificato non risulta piu' attiva. Puo' essere un dato del registro non aggiornato, o un numero cambiato: prima di toccare il badge lo guarda una persona. Se hai cambiato partita IVA, inseriscila qui.",
+  procedura:
+    "Nella denominazione risulta una procedura in corso (per esempio una liquidazione). Non e' un rifiuto e non tocca il badge da solo: lo guarda una persona, e se il dato e' vecchio si chiude li'.",
+  intestazione:
+    "Il nome a cui risulta intestata la partita IVA non corrisponde piu' a quello del profilo. Lo guarda una persona: se hai cambiato ragione sociale, aggiornala nel profilo.",
+};
+
+/** Come lo legge lo staff nella coda. */
+export const MOTIVO_RICONTROLLO_STAFF: Record<MotivoRicontrollo, string> = {
+  scadenza: "Scadenza annuale",
+  cessazione: "P.IVA non piu' attiva",
+  procedura: "Procedura nella denominazione",
+  intestazione: "Intestazione non corrispondente",
+};
 
 /** Peso per ordinare o confrontare i livelli (più alto = più verificato). */
 export function verificationLevelWeight(level: VerificationLevel): number {

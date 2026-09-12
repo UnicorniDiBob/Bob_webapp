@@ -10,6 +10,7 @@ import { VatReviewActions } from "./VatReviewActions";
 import {
   namesMatch,
   procedureFlagInName,
+  MOTIVO_RICONTROLLO_STAFF,
   VERIFICATION_LABEL_STAFF,
   type VerificationLevel,
   type VatReviewState,
@@ -43,6 +44,8 @@ interface VerificationRow {
   vat_reviewed_by_name: string | null;
   declared_business_name: string | null;
   vat_match_source: string | null;
+  recheck_reason: string | null;
+  recheck_opened_at: string | null;
   updated_at: string;
 }
 
@@ -99,12 +102,14 @@ const REVIEW_LABEL: Record<VatReviewState, string> = {
   pending: "Da esaminare",
   docs_requested: "Documenti richiesti",
   rejected: "Respinto",
+  recheck: "Da ricontrollare",
 };
 
 const REVIEW_BADGE: Record<VatReviewState, string> = {
   pending: "bg-amber-50 text-amber-700",
   docs_requested: "bg-bob-indigo-50 text-bob-indigo",
   rejected: "bg-red-50 text-red-700",
+  recheck: "bg-orange-50 text-orange-700",
 };
 
 interface ProRow {
@@ -208,7 +213,7 @@ export default async function AdminProfessionalsPage() {
   const { data: reviewData } = await supabase
     .from("professional_verification")
     .select(
-      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, declared_business_name, vat_match_source, updated_at"
+      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, declared_business_name, vat_match_source, recheck_reason, recheck_opened_at, updated_at"
     )
     .or("vat_review_state.not.is.null,level.neq.none")
     .order("updated_at", { ascending: false });
@@ -298,6 +303,25 @@ export default async function AdminProfessionalsPage() {
     (r) => r.vat_review_state === "pending" || r.vat_review_state === "docs_requested"
   );
   const closedCases = reviewRows.filter((r) => r.vat_review_state === "rejected");
+  // RICONTROLLO (079): una coda a parte, non in fondo a quella delle prime
+  // richieste. Chi e' qui il badge ce l'ha gia' e lo sta rischiando; chi e' di
+  // la' lo aspetta. Urgenze opposte, liste separate. Prima le cessazioni: una
+  // scadenza annuale puo' aspettare un giorno, un'attivita' che non risulta
+  // piu' no.
+  const PESO_MOTIVO: Record<string, number> = {
+    cessazione: 0,
+    procedura: 1,
+    intestazione: 2,
+    scadenza: 3,
+  };
+  const recheckCases = reviewRows
+    .filter((r) => r.vat_review_state === "recheck")
+    .sort(
+      (a, b) =>
+        (PESO_MOTIVO[a.recheck_reason ?? "scadenza"] ?? 9) -
+          (PESO_MOTIVO[b.recheck_reason ?? "scadenza"] ?? 9) ||
+        (a.recheck_opened_at ?? "").localeCompare(b.recheck_opened_at ?? "")
+    );
   const grantedCases = reviewRows.filter(
     (r) => r.level !== "none" && r.vat_review_state === null
   );
@@ -324,6 +348,68 @@ export default async function AdminProfessionalsPage() {
           Esamina i profili e aggiorna il loro stato di verifica.
         </p>
       </div>
+
+      {/* ---- Ricontrollo (079) ---- */}
+      <section id="ricontrollo" data-testid="coda-ricontrollo" className="scroll-mt-20">
+        <div className="mb-3 flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-bob-ink">Ricontrollo</h2>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              recheckCases.length > 0
+                ? "bg-orange-50 text-orange-700"
+                : "bg-black/5 text-bob-ink/65"
+            }`}
+          >
+            {recheckCases.length}
+          </span>
+        </div>
+        <p className="mb-4 text-sm text-bob-ink/70">
+          Verifiche gi&agrave; concesse che vanno riguardate: l&apos;anno
+          &egrave; scaduto, oppure il riscontro ha trovato qualcosa. Il livello
+          qui non &egrave; stato tolto da nessuno &mdash; lo toglie una persona,
+          con motivazione scritta, oppure non lo toglie. Le cessazioni stanno in
+          cima.
+        </p>
+
+        {recheckCases.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
+            Niente da ricontrollare.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {recheckCases.map((row) => (
+              <div key={row.professional_id}>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-orange-700">
+                  {MOTIVO_RICONTROLLO_STAFF[
+                    (row.recheck_reason ?? "scadenza") as keyof typeof MOTIVO_RICONTROLLO_STAFF
+                  ] ?? row.recheck_reason}
+                  {row.recheck_opened_at && (
+                    <span className="font-normal normal-case text-bob-ink/65">
+                      {" "}
+                      · aperto il{" "}
+                      {new Date(row.recheck_opened_at).toLocaleDateString("it-IT", {
+                        day: "numeric",
+                        month: "long",
+                      })}
+                    </span>
+                  )}
+                </p>
+                <VatCaseCard
+                  row={row}
+                  pro={proById[row.professional_id]}
+                  profile={
+                    proById[row.professional_id]
+                      ? profileMap[proById[row.professional_id].user_id]
+                      : undefined
+                  }
+                  storico={eventsByPro.get(row.professional_id) ?? []}
+                  documenti={docsByPro.get(row.professional_id) ?? []}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* ---- Coda partita IVA (blocco 10, §5.3) ---- */}
       <section id="vat-queue" data-testid="vat-queue" className="scroll-mt-20">
