@@ -24,11 +24,12 @@ import {
   weekdayIndex,
 } from "@/lib/calendar";
 
-// MESE (12/09, chiesto da Lucio). Settimana e giorno rispondono a «cosa
-// faccio adesso»; il mese risponde a «com'e' messo il mese», che e' la
-// domanda di chi deve promettere una data a un cliente. Non ha le ore: e'
-// una mappa, non un'agenda — si clicca un giorno e si scende nel giorno.
-type CalView = "week" | "day" | "month";
+// QUATTRO VISTE, DALLA PIU' STRETTA ALLA PIU' LARGA (12/09, Lucio).
+// Giorno e settimana rispondono a «cosa faccio adesso» e hanno le ore. Mese e
+// anno rispondono a «com'e' messo il mese / l'anno», che e' la domanda di chi
+// deve promettere una data a un cliente: non hanno le ore perche' sono mappe,
+// non agende. Si clicca e si scende — dall'anno al mese, dal mese al giorno.
+export type CalView = "week" | "day" | "month" | "year";
 
 /** Granularità dei click sulle zone vuote: mezz'ora. */
 const SLOT_MINUTES = 30;
@@ -42,6 +43,7 @@ export function ProCalendar({
   onCreateAt,
   onSelect,
   onFocusDayChange,
+  onViewChange,
   selectedId,
 }: {
   appointments: Appointment[];
@@ -52,6 +54,11 @@ export function ProCalendar({
   onSelect: (a: Appointment) => void;
   /** Giornata "a fuoco": alimenta il giro del giorno accanto al calendario. */
   onFocusDayChange?: (day: Date) => void;
+  /**
+   * Quale vista e' aperta. Serve fuori: mese e anno vogliono tutta la pagina,
+   * e la pagina non puo' saperlo se il calendario non glielo dice.
+   */
+  onViewChange?: (v: CalView) => void;
   selectedId?: string | null;
 }) {
   const [view, setView] = useState<CalView>("week");
@@ -68,6 +75,11 @@ export function ProCalendar({
     }
   }, []);
 
+  useEffect(() => {
+    onViewChange?.(view);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+
   // Linea "adesso": aggiornata ogni minuto.
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60000);
@@ -83,15 +95,26 @@ export function ProCalendar({
   // La griglia del mese: parte dal lunedi' della settimana in cui cade il
   // primo del mese e arriva alla domenica di quella in cui cade l'ultimo, cosi'
   // le colonne restano allineate ai giorni della settimana.
-  const monthCells = useMemo(() => {
-    const primo = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
-    const ultimo = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0);
+  const celleMese = useCallback((rif: Date) => {
+    const primo = new Date(rif.getFullYear(), rif.getMonth(), 1);
+    const ultimo = new Date(rif.getFullYear(), rif.getMonth() + 1, 0);
     const dal = startOfWeek(primo);
     const al = addDays(startOfWeek(ultimo), 6);
     const out: Date[] = [];
     for (let d = dal; d <= al; d = addDays(d, 1)) out.push(d);
     return out;
-  }, [anchor]);
+  }, []);
+
+  const monthCells = useMemo(() => celleMese(anchor), [celleMese, anchor]);
+
+  const mesiDellAnno = useMemo(
+    () =>
+      Array.from(
+        { length: 12 },
+        (_, m) => new Date(anchor.getFullYear(), m, 1)
+      ),
+    [anchor]
+  );
 
   /** Appuntamenti per giorno, calcolati una volta per tutto il mese. */
   const perGiorno = useMemo(() => {
@@ -160,6 +183,12 @@ export function ProCalendar({
   const step = useCallback(
     (dir: 1 | -1) =>
       setAnchor((d) => {
+        if (view === "year") {
+          const x = new Date(d);
+          x.setDate(1);
+          x.setFullYear(x.getFullYear() + dir);
+          return startOfDay(x);
+        }
         if (view === "month") {
           const x = new Date(d);
           x.setDate(1);
@@ -175,7 +204,9 @@ export function ProCalendar({
   // lavoro, dove si guardano anche mesi avanti, l'anno che manca e' un modo
   // per sbagliare una promessa a un cliente.
   const periodLabel =
-    view === "month"
+    view === "year"
+      ? String(anchor.getFullYear())
+      : view === "month"
       ? fmtMonthYear(anchor)
       : view === "day"
         ? `${fmtDayLong(anchor)} ${anchor.getFullYear()}`
@@ -204,44 +235,33 @@ export function ProCalendar({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Vista settimana / giorno */}
+          {/* Le quattro viste, dalla piu' stretta alla piu' larga: e' l'ordine
+              in cui si zooma, e l'unico che non costringe a cercare. */}
           <div className="flex overflow-hidden rounded-lg border border-black/10">
-            <button
-              onClick={() => setView("week")}
-              className={`px-2.5 py-1.5 text-xs font-medium transition ${
-                view === "week"
-                  ? "bg-bob-indigo text-white"
-                  : "text-bob-ink/70 hover:bg-black/[0.03]"
-              }`}
-              aria-pressed={view === "week"}
-              data-testid="cal-view-week"
-            >
-              Settimana
-            </button>
-            <button
-              onClick={() => setView("day")}
-              className={`px-2.5 py-1.5 text-xs font-medium transition ${
-                view === "day"
-                  ? "bg-bob-indigo text-white"
-                  : "text-bob-ink/70 hover:bg-black/[0.03]"
-              }`}
-              aria-pressed={view === "day"}
-              data-testid="cal-view-day"
-            >
-              Giorno
-            </button>
-            <button
-              onClick={() => setView("month")}
-              className={`border-l border-black/10 px-2.5 py-1.5 text-xs font-medium transition ${
-                view === "month"
-                  ? "bg-bob-indigo text-white"
-                  : "text-bob-ink/70 hover:bg-black/[0.03]"
-              }`}
-              aria-pressed={view === "month"}
-              data-testid="cal-view-month"
-            >
-              Mese
-            </button>
+            {(
+              [
+                ["day", "Giorno"],
+                ["week", "Settimana"],
+                ["month", "Mese"],
+                ["year", "Anno"],
+              ] as [CalView, string][]
+            ).map(([v, etichetta], i) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-2.5 py-1.5 text-xs font-medium transition ${
+                  i > 0 ? "border-l border-black/10" : ""
+                } ${
+                  view === v
+                    ? "bg-bob-indigo text-white"
+                    : "text-bob-ink/70 hover:bg-black/[0.03]"
+                }`}
+                aria-pressed={view === v}
+                data-testid={`cal-view-${v}`}
+              >
+                {etichetta}
+              </button>
+            ))}
           </div>
 
           <button
@@ -285,6 +305,65 @@ export function ProCalendar({
 
       {loading ? (
         <div className="h-64 animate-pulse rounded-xl bg-black/[0.03]" />
+      ) : view === "year" ? (
+        <div
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+          data-testid="cal-year"
+        >
+          {mesiDellAnno.map((m) => (
+            <div
+              key={m.getMonth()}
+              className="rounded-xl border border-black/[0.07] p-2"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setAnchor(startOfDay(m));
+                  setView("month");
+                }}
+                className="mb-1 w-full text-left text-xs font-semibold capitalize text-bob-ink transition hover:text-bob-indigo"
+              >
+                {m.toLocaleDateString("it-IT", { month: "long" })}
+              </button>
+              <div className="grid grid-cols-7 gap-px">
+                {celleMese(m).map((d, i) => {
+                  const dentro = d.getMonth() === m.getMonth();
+                  const quanti = dentro
+                    ? (perGiorno.get(d.toDateString()) ?? []).length
+                    : 0;
+                  const oggi = dentro && sameDay(d, now);
+                  if (!dentro) {
+                    return <span key={i} className="h-5" aria-hidden="true" />;
+                  }
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setAnchor(startOfDay(d));
+                        setView("day");
+                      }}
+                      title={
+                        quanti === 0
+                          ? fmtDayLong(d)
+                          : `${fmtDayLong(d)}: ${quanti} appuntamenti`
+                      }
+                      className={`flex h-5 items-center justify-center rounded text-[10px] tabular-nums transition ${
+                        oggi
+                          ? "bg-bob-indigo font-bold text-white"
+                          : quanti > 0
+                            ? "bg-bob-indigo-50 font-semibold text-bob-indigo"
+                            : "text-bob-ink/50 hover:bg-black/[0.04]"
+                      }`}
+                    >
+                      {d.getDate()}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : view === "month" ? (
         <div
           className="overflow-hidden rounded-xl border border-black/[0.07]"

@@ -16,7 +16,8 @@ import {
 } from "@/lib/calendar";
 
 /**
- * "Giro del giorno": le tappe di una giornata in ordine di orario, con
+ * "Impegni del giorno" (si chiamava "Giro del giorno" fino al 12/09): le
+ * tappe di una giornata in ordine di orario, con
  * indirizzo, tempo libero fra un lavoro e l'altro e link a Maps.
  *
  * Perché una lista e non una mappa con i pin: i pin richiedono coordinate,
@@ -58,7 +59,9 @@ export function DayItinerary({
     <div className="card p-5" data-testid="day-itinerary">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-bob-ink">Giro del giorno</h3>
+          <h3 className="text-sm font-semibold text-bob-ink">
+            Impegni del giorno
+          </h3>
           <p className="truncate text-xs capitalize text-bob-ink/70">
             {fmtDayLong(day)}
           </p>
