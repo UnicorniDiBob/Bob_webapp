@@ -136,7 +136,7 @@ export default async function HomePage() {
             </div>
           </Rivela>
 
-          <Rivela ritardo={100} className="justify-self-center">
+          <Rivela ritardo={100} className="w-full">
             <BobConElenco />
           </Rivela>
         </div>

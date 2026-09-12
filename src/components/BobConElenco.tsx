@@ -6,6 +6,10 @@ import { Bob } from "./Bob";
  * LE PROPORZIONI. Bob occupa il 78% della scena e il telefono il 34%: il
  * protagonista e' lui, il telefono e' quello che mostra. Al primo tentativo era
  * 64/42 e sembrava un uomo aggrappato a un tablet.
+ * Sotto i 640px il telefono sale al 40%, perche' li' la scena e' larga 346px e
+ * al 34% il telefono scendeva a 118px: il testo dentro e' a misura fissa e non
+ * ci stava piu'. Misurato, non a occhio — sotto i 130px di telefono le righe
+ * traboccano.
  *
  * COME STA IN MANO. Il telefono e' disegnato PRIMA di Bob nel DOM, quindi la
  * mano gli finisce sopra invece che sotto: e' quello che lo fa sembrare
@@ -26,6 +30,15 @@ import { Bob } from "./Bob";
  * l'elenco ricomincia e non si vede. Chi ha chiesto meno movimento lo vede
  * fermo — la regola sta in globals.css accanto ai fotogrammi.
  *
+ * IL CONTENITORE DEVE ESSERE LARGO. Ogni misura qui dentro e' una percentuale
+ * della scena, quindi se la scena si restringe si restringe tutto, testo
+ * compreso — e il testo non rimpicciolisce, si taglia. E' successo in
+ * produzione il 12 settembre: il contenitore nella home aveva
+ * `justify-self-center` senza lo `stretch` sul desktop, la cella della griglia
+ * si e' ridotta al contenuto (300px invece di 520), il telefono e' finito a
+ * 102px e l'intestazione si leggeva «IDRAULI…». Chi usa questo componente gli
+ * deve dare una larghezza vera, non lasciarlo dimensionare dal contenuto.
+ *
  * I NOMI SONO FINTI di proposito: stampare i professionisti veri li mette in
  * prima pagina senza che l'abbiano chiesto, e cambierebbe da solo coi dati.
  */
@@ -42,11 +55,11 @@ export function BobConElenco({ className = "" }: { className?: string }) {
   return (
     <div className={`relative mx-auto w-full max-w-[520px] ${className}`}>
       {/* Il telefono viene prima: la mano di Bob deve passargli sopra. */}
-      <div className="absolute left-[58%] top-[29%] w-[34%] rounded-[14%/8%] bg-bob-ink p-[4%] shadow-card-hover">
+      <div className="absolute left-[54.7%] top-[29%] w-[40%] rounded-[14%/8%] bg-bob-ink p-[4%] shadow-card-hover sm:left-[58%] sm:w-[34%]">
         <div className="overflow-hidden rounded-[11%/6%] bg-white">
           <div className="bg-bob-indigo-50 px-2 py-2">
-            <p className="truncate text-center text-2xs font-bold uppercase tracking-wide text-bob-indigo">
-              Idraulici · Milano
+            <p className="truncate text-center text-2xs font-bold uppercase text-bob-indigo">
+              Idraulici<span className="hidden sm:inline"> · Milano</span>
             </p>
           </div>
           {/* Rapporto fisso: l'altezza della finestra segue la larghezza. */}
@@ -58,8 +71,10 @@ export function BobConElenco({ className = "" }: { className?: string }) {
                     {r.nome}
                   </span>
                   <span className="mt-0.5 flex items-baseline justify-between gap-1">
-                    <span className="text-2xs text-bob-ink/65">★ {r.stelle}</span>
-                    <span className="text-2xs font-bold tabular-nums text-bob-ink">
+                    <span className="shrink-0 whitespace-nowrap text-2xs text-bob-ink/65">
+                      ★ {r.stelle}
+                    </span>
+                    <span className="shrink-0 whitespace-nowrap text-2xs font-bold tabular-nums text-bob-ink">
                       {r.prezzo}
                     </span>
                   </span>
