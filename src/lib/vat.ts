@@ -104,11 +104,37 @@ export function statoScadenza(
   return { fase, scadeIl, giorni, giorniLavorativi };
 }
 
-/** Etichette mostrate agli utenti. Unico punto in cui vivono i nomi commerciali. */
+/**
+ * Etichette mostrate agli utenti. Unico punto in cui vivono i nomi.
+ *
+ * «VERIFICATO» E BASTA (12/09, scelta di Lucio). Si chiamavano "Pro" e "Pro+",
+ * cioe' come i piani a pagamento: un professionista col piano Free non poteva
+ * avere il badge "Pro", e uno col piano Plus si vedeva scritto "Pro" addosso.
+ * Due scale diverse con gli stessi nomi si spiegano male a noi e malissimo a
+ * un cliente, che davanti a "Pro" non sa se ha comprato qualcosa o se e' stato
+ * controllato. Il cliente ha bisogno di sapere UNA cosa: questo profilo e'
+ * stato verificato, e quando.
+ *
+ * I due livelli restano distinti nel database e nel lavoro dello staff (il
+ * secondo attesta anche un esame documentale): cambia solo cosa si legge
+ * fuori. Cosa sia stato controllato lo dice VERIFICATION_MEANING, nel
+ * dettaglio del badge.
+ */
 export const VERIFICATION_LABEL: Record<VerificationLevel, string> = {
-  none: "Iscritto",
-  vat_verified: "Pro",
-  documents_verified: "Pro+",
+  none: "Non verificato",
+  vat_verified: "Verificato",
+  documents_verified: "Verificato",
+};
+
+/**
+ * Le stesse etichette, ma per lo STAFF. Fuori i due livelli si leggono uguali
+ * — al cliente interessa una cosa sola — ma chi lavora la coda deve sapere se
+ * dietro c'e' anche un esame documentale, altrimenti non puo' decidere.
+ */
+export const VERIFICATION_LABEL_STAFF: Record<VerificationLevel, string> = {
+  none: "Nessuno",
+  vat_verified: "Verificato (P.IVA)",
+  documents_verified: "Verificato (documenti)",
 };
 
 /** Descrizione sintetica di cosa attesta ciascun livello (per tooltip e UI). */

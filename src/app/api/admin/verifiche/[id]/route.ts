@@ -169,7 +169,8 @@ export async function POST(
       );
     }
 
-    // Chi è già Pro+ non va declassato da una conferma sulla P.IVA: il livello
+    // Chi ha già l'esame documentale non va declassato da una conferma sulla
+    // sola P.IVA: il livello
     // documentale include quello fiscale. Senza questo, il registro
     // scriverebbe una revoca chiamandola concessione.
     const grantedLevel: VerificationLevel =
@@ -206,7 +207,7 @@ export async function POST(
     emailEvent = "verification_granted";
     responseMessage =
       grantedLevel === "documents_verified"
-        ? "Partita IVA confermata a mano; il livello Pro+ resta invariato."
+        ? "Partita IVA confermata a mano; il livello documentale resta invariato."
         : "Livello Pro concesso.";
   } else if (action === "request_docs") {
     // Il livello non cambia: stiamo chiedendo, non negando.

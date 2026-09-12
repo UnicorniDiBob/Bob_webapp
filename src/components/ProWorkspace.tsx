@@ -86,19 +86,6 @@ export function ProWorkspace({
     [appointments, detailId]
   );
 
-  const upcoming = useMemo(() => {
-    const now = new Date();
-    return appointments
-      .filter(
-        (a) =>
-          new Date(a.starts_at) >= now &&
-          a.status !== "cancelled" &&
-          a.status !== "declined"
-      )
-      .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-      .slice(0, 6);
-  }, [appointments]);
-
   // Contro-proposte del cliente in attesa della conferma del pro.
   const pendingFromCustomers = useMemo(
     () =>
@@ -255,8 +242,14 @@ export function ProWorkspace({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
-        {/* COLONNA DEL LAVORO: stato, calendario, chi sei.
+      {/* UNA COLONNA SOLA (12/09, prova chiesta da Lucio). «Prossimi
+          appuntamenti» ripeteva quello che il calendario gia' mostra, e
+          teneva in piedi una colonna di 320px che per il resto era vuota: il
+          calendario ci rimetteva larghezza — cioe' ore leggibili — per una
+          lista che si legge una volta. Tolto come prova: se manca, sta in
+          git. */}
+      <div className="space-y-4">
+        {/* IL LAVORO: stato, calendario, chi sei.
             Lo stato del profilo sta SOPRA il calendario e non piu' in cima
             alla colonna di fianco: quando e' tutto a posto e' un pallino
             verde appoggiato al bordo, quando manca qualcosa si apre e si
@@ -342,54 +335,6 @@ export function ProWorkspace({
           </div>
         </div>
 
-        {/* Colonna di fianco: cosa c'e' in arrivo, e basta. */}
-        <div className="space-y-4">
-          <div className="card p-5">
-            <h3 className="mb-3 text-sm font-semibold text-bob-ink">
-              Prossimi appuntamenti
-            </h3>
-            {upcoming.length === 0 ? (
-              <p className="text-sm text-bob-ink/65">
-                Nessun appuntamento in programma.
-              </p>
-            ) : (
-              <ul className="space-y-2.5">
-                {upcoming.map((a) => (
-                  <li
-                    key={a.id}
-                    className="border-b border-black/5 pb-2.5 last:border-0 last:pb-0"
-                  >
-                    <button
-                      onClick={() => setDetailId(a.id)}
-                      className="flex w-full items-start justify-between gap-2 text-left"
-                      data-testid={`appt-upcoming-${a.id}`}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-bob-ink">
-                          {a.customer_name}
-                        </p>
-                        <p className="truncate text-xs text-bob-ink/70">
-                          {a.title ?? "Appuntamento"}
-                        </p>
-                        <p className="mt-0.5 text-xs tabular-nums text-bob-indigo">
-                          {fmtDay(new Date(a.starts_at))} · {fmtRange(a)}
-                        </p>
-                        <p className="text-2xs text-bob-ink/65">
-                          {fmtDuration(a.duration_minutes)}
-                        </p>
-                      </div>
-                      {a.price != null && (
-                        <span className="shrink-0 text-sm font-semibold text-bob-ink">
-                          € {a.price}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Il portfolio e' uscito da qui: e' un blocco che si aggiorna una volta

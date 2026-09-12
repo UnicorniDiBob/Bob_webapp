@@ -10,7 +10,7 @@ import { VatReviewActions } from "./VatReviewActions";
 import {
   namesMatch,
   procedureFlagInName,
-  VERIFICATION_LABEL,
+  VERIFICATION_LABEL_STAFF,
   type VerificationLevel,
   type VatReviewState,
 } from "@/lib/vat";
@@ -592,7 +592,7 @@ function schedaDelCaso(
         : "nessuna risposta"
     }`,
     `Ultimo controllo: ${fmtDate(row.vat_checked_at)}`,
-    `Livello attuale: ${VERIFICATION_LABEL[row.level]}`,
+    `Livello attuale: ${VERIFICATION_LABEL_STAFF[row.level]}`,
     `Servizio e città: ${svc ?? "—"}${pro?.cities?.name ? `, ${pro.cities.name}` : ""}`,
     profile?.phone ? `Telefono: ${profile.phone}` : null,
     `Profilo: /professionisti/${row.professional_id}`,
@@ -641,7 +641,7 @@ function VatCaseCard({
           </span>
         )}
         <span className="rounded-full bg-black/5 px-2 py-0.5 text-2xs font-semibold text-bob-ink/70">
-          Livello attuale: {VERIFICATION_LABEL[row.level]}
+          Livello attuale: {VERIFICATION_LABEL_STAFF[row.level]}
         </span>
       </div>
 

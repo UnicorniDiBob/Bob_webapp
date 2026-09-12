@@ -399,7 +399,7 @@ export async function caricaNotifiche(
         livello: "azione",
         titolo: "Il tuo profilo non è verificato",
         testo:
-          "Comunicando la partita IVA i clienti vedono l'etichetta Pro con la data del controllo: è il primo segnale di fiducia che guardano prima di scriverti. È inclusa nel tuo piano, bastano il numero e pochi secondi, e il numero non è mai visibile ai clienti.",
+          "Comunicando la partita IVA i clienti vedono l'etichetta «Verificato» con la data del controllo: è il primo segnale di fiducia che guardano prima di scriverti. È inclusa nel tuo piano, bastano il numero e pochi secondi, e il numero non è mai visibile ai clienti.",
         href: "/impostazioni/verifica",
         azione: "Verifica ora",
         quando: null,

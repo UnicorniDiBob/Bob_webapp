@@ -26,9 +26,10 @@
 // `subscription_tier` nel database, scritto in migrazioni, righe e codici
 // promozionali. Rinominare l'enum e' una migrazione a se', da fare quando si
 // decide, non un effetto collaterale di un cambio di copy. C'e' anche un
-// motivo buono per tenerli distinti: "Pro" e "Pro+" sono gia' i nomi dei
-// LIVELLI DI VERIFICA (src/lib/vat.ts), che non sono piani. Con il piano che
-// si chiama Plus, l'ambiguita' sparisce invece di raddoppiare.
+// motivo buono per tenerli distinti: "Pro" e "Pro+" erano anche i nomi dei
+// LIVELLI DI VERIFICA, che non sono piani. Dal 12/09 quel doppione non c'e'
+// piu' da nessuna delle due parti: il badge dice «Verificato» e basta
+// (src/lib/vat.ts), il piano si chiama Plus.
 //
 // ONESTA' DEL LISTINO (23.1): una funzione che oggi non esiste non si segna
 // come inclusa. Ha la sua casella, `ARRIVO`, che in tabella si vede ed e'
@@ -108,7 +109,7 @@ export const FUNZIONI: Funzione[] = [
   },
   {
     gruppo: "Profilo e clienti",
-    nome: "Verifica con documenti (livello Pro+)",
+    nome: "Verifica con documenti",
     nota: "Esame documentale fatto da una persona, sopra al riscontro sulla partita IVA.",
     celle: { free: NO, pro: SI, business: SI },
   },
