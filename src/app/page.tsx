@@ -5,6 +5,7 @@ import { RicercaBox } from "@/components/RicercaBox";
 import { BobCheSaluta } from "@/components/BobCheSaluta";
 import { BobConElenco } from "@/components/BobConElenco";
 import { Rivela } from "@/components/Rivela";
+import { Blocco, Fascia, Passo, TestaSezione } from "@/components/sezioni";
 import {
   ScenaRichiesta,
   ScenaConfronto,
@@ -51,172 +52,95 @@ export default async function HomePage() {
       </section>
 
       {/* ---------- RICERCA: qui vive l'H1 ---------- */}
-      <section className="border-b border-black/5 bg-white">
-        <div className="container-bob py-10 sm:py-12">
-          <h1 className="max-w-[22ch] text-2xl font-extrabold tracking-tight text-bob-ink sm:text-3xl lg:text-4xl">
-            Cosa cerchi?
-          </h1>
-          <div className="mt-6">
-            <RicercaBox />
-          </div>
+      <Fascia sfondo="bianca" spaziatura="stretta" bordo>
+        <h1 className="max-w-[22ch] text-2xl font-extrabold tracking-tight text-bob-ink sm:text-3xl lg:text-4xl">
+          Cosa cerchi?
+        </h1>
+        <div className="mt-6">
+          <RicercaBox />
         </div>
-      </section>
+      </Fascia>
 
       {/* ---------- COME FUNZIONA: tre passi illustrati ---------- */}
-      <section className="bg-bob-indigo-50/40 py-16 sm:py-20">
-        <div className="container-bob">
-          <Rivela className="text-center">
-            <span className="section-eyebrow">Come funziona</span>
-            <h2 className="mx-auto mt-3 max-w-[24ch] text-3xl font-extrabold tracking-tight text-bob-ink sm:text-4xl">
-              Trovare il professionista giusto, senza telefonate a vuoto
-            </h2>
-          </Rivela>
+      <Fascia sfondo="tenue">
+        <TestaSezione
+          occhiello="Come funziona"
+          titolo="Trovare il professionista giusto, senza telefonate a vuoto"
+        />
 
-          <div className="mt-12 grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8">
-            <Passo
-              ritardo={0}
-              numero="Passo 1"
-              titolo="Racconta il problema"
-              testo="Con parole tue, anche se non sai quale professionista cercare. A Bob puoi scrivere «gocciola da stanotte»."
-            >
-              <ScenaRichiesta />
-            </Passo>
-            <Passo
-              ritardo={90}
-              numero="Passo 2"
-              titolo="Bob filtra per te"
-              testo="Zona, urgenza, budget. Restano i professionisti che quel lavoro lo fanno davvero, ordinati con criteri pubblici."
-            >
-              <ScenaConfronto />
-            </Passo>
-            <Passo
-              ritardo={180}
-              numero="Passo 3"
-              titolo="Scegli tu con chi parlare"
-              testo="Tempi di risposta misurati, valutazioni vere, prezzo quando è dichiarato. Il primo messaggio lo scrive Bob."
-            >
-              <ScenaMessaggio />
-            </Passo>
-          </div>
-
-          <Rivela className="mt-10 text-center">
-            <Link href="/come-funziona" className="btn-secondary">
-              Vedi tutti i dettagli →
-            </Link>
-          </Rivela>
+        <div className="mt-12 grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8">
+          <Passo
+            ritardo={0}
+            numero="Passo 1"
+            titolo="Racconta il problema"
+            testo="Con parole tue, anche se non sai quale professionista cercare. A Bob puoi scrivere «gocciola da stanotte»."
+          >
+            <ScenaRichiesta />
+          </Passo>
+          <Passo
+            ritardo={90}
+            numero="Passo 2"
+            titolo="Bob filtra per te"
+            testo="Zona, urgenza, budget. Restano i professionisti che quel lavoro lo fanno davvero, ordinati con criteri pubblici."
+          >
+            <ScenaConfronto />
+          </Passo>
+          <Passo
+            ritardo={180}
+            numero="Passo 3"
+            titolo="Scegli tu con chi parlare"
+            testo="Tempi di risposta misurati, valutazioni vere, prezzo quando è dichiarato. Il primo messaggio lo scrive Bob."
+          >
+            <ScenaMessaggio />
+          </Passo>
         </div>
-      </section>
+
+        <Rivela className="mt-10 text-center">
+          <Link href="/come-funziona" className="btn-secondary">
+            Vedi tutti i dettagli →
+          </Link>
+        </Rivela>
+      </Fascia>
 
       
       {/* ---------- FIDUCIA: la fascia piena ----------
           E' il pezzo che riempie davvero lo schermo. Le tre affermazioni sono
           verificabili e gia' pubblicate altrove sul sito: se una smette di
           essere vera, va cambiata QUI e su /come-funziona#ordine insieme. */}
-      <section className="bg-bob-indigo py-16 text-white sm:py-20">
-        <div className="container-bob grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-16">
-          <Rivela>
-            <span className="section-eyebrow text-bob-yellow">Perché fidarsi</span>
-            <h2 className="mt-3 max-w-[18ch] text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Ecco perché Bob è una scelta sicura
-            </h2>
-            <div className="mt-10 flex flex-col gap-8">
-              <Motivo titolo="Nessuna posizione è a pagamento">
-                L&apos;ordine dell&apos;elenco lo decide un punteggio pubblico:
-                zona, valutazioni, tempi di risposta misurati, prezzo
-                dichiarato. Nessuno lo scavalca pagando.
-              </Motivo>
-              <Motivo titolo="Per chi cerca, Bob è gratis">
-                Nessun lead a pagamento. La fee si applica al professionista, e
-                solo quando un lavoro si chiude davvero.
-              </Motivo>
-              <Motivo titolo="Il primo messaggio lo scrive Bob">
-                Non devi spiegare lo stesso problema cinque volte: Bob prepara
-                il testo e tu lo mandi a uno o più professionisti.
-              </Motivo>
-            </div>
-          </Rivela>
+      <Fascia sfondo="forte">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] lg:gap-16">
+          <div>
+            <TestaSezione
+              occhiello="Perché fidarsi"
+              titolo="Ecco perché Bob è una scelta sicura"
+              tinta="chiara"
+              allineamento="sinistra"
+              misura="stretta"
+            />
+            <Rivela ritardo={60}>
+              <div className="mt-10 flex flex-col gap-8">
+                <Blocco tinta="chiara" titolo="Nessuna posizione è a pagamento">
+                  L&apos;ordine dell&apos;elenco lo decide un punteggio
+                  pubblico: zona, valutazioni, tempi di risposta misurati,
+                  prezzo dichiarato. Nessuno lo scavalca pagando.
+                </Blocco>
+                <Blocco tinta="chiara" titolo="Per chi cerca, Bob è gratis">
+                  Nessun lead a pagamento. La fee si applica al professionista,
+                  e solo quando un lavoro si chiude davvero.
+                </Blocco>
+                <Blocco tinta="chiara" titolo="Il primo messaggio lo scrive Bob">
+                  Non devi spiegare lo stesso problema cinque volte: Bob prepara
+                  il testo e tu lo mandi a uno o più professionisti.
+                </Blocco>
+              </div>
+            </Rivela>
+          </div>
 
           <Rivela ritardo={100} className="w-full">
             <BobConElenco />
           </Rivela>
         </div>
-      </section>
-
-      
-      
-          </>
-  );
-}
-
-function Passo({
-  numero,
-  titolo,
-  testo,
-  ritardo,
-  children,
-}: {
-  numero: string;
-  titolo: string;
-  testo: string;
-  ritardo: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <Rivela ritardo={ritardo} className="text-center">
-      <div className="mb-7">{children}</div>
-      <span className="section-eyebrow">{numero}</span>
-      <h3 className="mt-2 text-xl font-bold tracking-tight text-bob-ink sm:text-2xl">
-        {titolo}
-      </h3>
-      <p className="mx-auto mt-3 max-w-[34ch] text-base leading-relaxed text-bob-ink/70">
-        {testo}
-      </p>
-    </Rivela>
-  );
-}
-
-function Motivo({
-  titolo,
-  children,
-}: {
-  titolo: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border-l-4 border-bob-yellow pl-6">
-      <h3 className="text-xl font-bold tracking-tight sm:text-2xl">{titolo}</h3>
-      <p className="mt-2 max-w-[46ch] leading-relaxed text-white/75">{children}</p>
-    </div>
-  );
-}
-
-function SectionHead({
-  eyebrow,
-  title,
-  subtitle,
-  action,
-}: {
-  eyebrow: string;
-  title: string;
-  subtitle?: string;
-  action?: { href: string; label: string };
-}) {
-  return (
-    <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <span className="section-eyebrow">{eyebrow}</span>
-        <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-bob-ink sm:text-3xl">
-          {title}
-        </h2>
-        {subtitle && (
-          <p className="mt-3 max-w-xl text-base text-bob-ink/70">{subtitle}</p>
-        )}
-      </div>
-      {action && (
-        <Link href={action.href} className="btn-secondary shrink-0 py-2 text-sm">
-          {action.label}
-        </Link>
-      )}
-    </div>
+      </Fascia>
+    </>
   );
 }

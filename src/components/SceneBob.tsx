@@ -12,12 +12,28 @@ import { Bob } from "./Bob";
  * che si adatta alla colonna, e su un telefono si rimpicciolisce tutta insieme.
  */
 
-function Cerchio({ tinta, children }: { tinta: string; children: React.ReactNode }) {
+function Cerchio({
+  tinta,
+  appoggio = "bg-black/[0.06]",
+  children,
+}: {
+  tinta: string;
+  /**
+   * La mezzaluna in basso. Di default e' un velo di nero, che su fondo chiaro
+   * funziona. Su una fascia scura il nero non si vede: li' si passa un velo
+   * chiaro. E' una prop e non una classe aggiunta da fuori per il motivo
+   * scritto in cima a sezioni.tsx — fra due utility pari vince quella che nel
+   * CSS generato viene dopo, non quella passata per ultima.
+   */
+  appoggio?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="relative mx-auto aspect-square w-full max-w-[320px]">
       <div className={`absolute inset-0 rounded-full ${tinta}`} />
-      {/* La mezzaluna in basso: da' un appoggio a Bob, se no galleggia. */}
-      <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden rounded-b-[999px] bg-black/[0.06]" />
+      <div
+        className={`absolute inset-x-0 bottom-0 h-1/2 overflow-hidden rounded-b-[999px] ${appoggio}`}
+      />
       {children}
     </div>
   );
@@ -93,5 +109,45 @@ export function ScenaMessaggio() {
         </svg>
       </div>
     </Cerchio>
+  );
+}
+
+/**
+ * La bilancia coi bracci pari — «equo per i professionisti».
+ *
+ * NON E' UNA SCENA: non ha il cerchio e non ha Bob. E' un segno, e basta uno.
+ * Il cerchio serve a dare un fondo a Bob quando c'e'; senza Bob diventa solo
+ * una bolla attorno a un disegno, e la fascia indaco un fondo ce l'ha gia'.
+ *
+ * La tinta e' una prop perche' vive su fondo scuro: il tratto blu notte delle
+ * altre illustrazioni li' sparirebbe, e i due piatti allo stesso livello sono
+ * tutto il messaggio — se non si vedono, non c'e' messaggio.
+ */
+export function Bilancia({
+  tinta = "chiara",
+  className = "",
+}: {
+  tinta?: "chiara" | "scura";
+  className?: string;
+}) {
+  const tratto = tinta === "chiara" ? "#ffffff" : "#1e1b4b";
+  return (
+    <svg
+      viewBox="0 0 120 100"
+      className={`mx-auto w-full max-w-[300px] ${className}`}
+      aria-hidden="true"
+    >
+      {/* colonna e base */}
+      <rect x="56" y="14" width="8" height="74" rx="4" fill={tratto} />
+      <rect x="34" y="88" width="52" height="9" rx="4.5" fill={tratto} />
+      {/* giogo */}
+      <rect x="8" y="12" width="104" height="8" rx="4" fill={tratto} />
+      {/* i due tiranti, della stessa lunghezza */}
+      <rect x="23" y="20" width="3" height="26" fill={tratto} />
+      <rect x="94" y="20" width="3" height="26" fill={tratto} />
+      {/* i due piatti, alla stessa altezza */}
+      <path d="M6 46h37c0 10-8 16-18.5 16S6 56 6 46z" fill="#fbbf24" />
+      <path d="M77 46h37c0 10-8 16-18.5 16S77 56 77 46z" fill="#fbbf24" />
+    </svg>
   );
 }

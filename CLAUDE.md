@@ -86,6 +86,31 @@ Progetta le verifiche perché possano FALLIRE.
 - Dopo un cambio di interfaccia, verifica dal vivo su www.meetonda.com, desktop e
   390px.
 
+## Layout e illustrazioni
+
+- **Una scena a percentuali ha bisogno di una larghezza vera.** Le illustrazioni
+  di Bob (`BobConElenco`, `SceneBob`) dimensionano tutto in percentuale del loro
+  contenitore, ma il testo dentro è in pixel fissi. Se il contenitore si
+  restringe, i disegni rimpiccioliscono e il testo **si taglia**: è un difetto
+  che non somiglia a un problema di larghezza, somiglia a un pezzo mancante.
+- **`justify-self-center` su una cella di griglia la stringe al contenuto**, non
+  la centra soltanto. Una cella che contiene qualcosa con `w-full max-w-[N]` non
+  arriverà mai a N. Per centrare un figlio che deve riempire: `w-full` sulla
+  cella e `mx-auto` sul figlio. Vale anche per `justify-self-start/end`.
+  Costato il 12 settembre: la scena nella fascia indaco della home stava a 300px
+  invece di 520, Bob a 234 invece di 406, il telefono a 102 invece di 177 e
+  l'intestazione leggeva «IDRAULI…». Una classe, quattro sintomi.
+- **Ogni breakpoint va misurato, non dedotto.** La stessa scena al 34% regge a
+  1600px e non regge a 390px, perché sotto una certa larghezza il testo fisso non
+  ci sta più — a prescindere da chi lo contiene. Le proporzioni delle
+  illustrazioni sono quindi legittimamente diverse fra mobile e desktop.
+- **Come si verifica**, senza aspettare il deploy: aprire la pagina viva,
+  simulare la correzione con `classList` e **misurare** `scrollWidth` contro
+  `clientWidth` sui testi e `getBoundingClientRect()` sui contenitori. Per i
+  390px, un `<iframe src="/">` largo 390 sulla stessa pagina dà un viewport
+  vero. Attenzione: i componenti client (`Rivela`) riscrivono la `className` al
+  cambio di stato e si riprendono le classi tolte a mano.
+
 ## Come lavorare con me
 
 - Spiega sempre il perché prima di fare una modifica, e dai i comandi esatti per
