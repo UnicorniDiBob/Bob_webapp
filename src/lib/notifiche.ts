@@ -266,25 +266,16 @@ export async function caricaNotifiche(
         azione: fatti.disattivato ? "Riaccendi il profilo" : "Dichiara cosa fai",
         quando: null,
       });
-    } else if (rigaPro.ready_at) {
-      out.push({
-        id: "profilo-visibile",
-        livello: "fatto",
-        titolo: "Il tuo profilo è nelle ricerche",
-        testo: `Da${
-          rigaPro.ready_at
-            ? "l " +
-              new Date(rigaPro.ready_at).toLocaleDateString("it-IT", {
-                day: "numeric",
-                month: "long",
-              })
-            : "desso"
-        } i clienti possono trovarti. Zone e orari non ti nascondono: cambiano quante richieste ricevi e a che ora ti proponiamo.`,
-        href: "/dashboard",
-        azione: "Vedi il tuo profilo",
-        quando: rigaPro.ready_at,
-      });
     }
+    // NIENTE NOTIFICA «COMPARI NELLE RICERCHE» (12/09, scelta di Lucio).
+    // Qui c'era una notifica di livello «fatto» che ripeteva, a ogni giro di
+    // campanella, uno stato PERMANENTE: sei visibile. Una notifica che non
+    // chiede niente e non cambia mai insegna a non aprire la campanella, e
+    // quando poi ci finisce dentro una cosa da fare non la guarda nessuno.
+    // La risposta a «mi vedono?» adesso sta dove serve, sull'area di lavoro:
+    // il pallino verde di StatoProfiloCard, che al passaggio del cursore dice
+    // se compari. Resta invece la notifica «I clienti non ti trovano», perche'
+    // quella chiede un'azione.
   }
 
   // 4. La verifica della partita IVA. Stessi quattro stati del vecchio

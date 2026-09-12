@@ -6,6 +6,49 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 
 ---
 
+## 2026-09-12 · Verifica, stato del profilo, area di lavoro (decisioni di Lucio)
+
+**SLA della coda di verifica: 5 giorni lavorativi.** È il tempo che dichiariamo
+al professionista quando chiede la verifica, salvo imprevisti. Va scritto nei
+ToS pro ("SLA di esame") e mostrato al pro mentre aspetta: il silenzio, su una
+cosa che ha pagato e che lo tiene fuori dalle ricerche, è la parte che fa male.
+Durante l'attesa una **barretta di avanzamento discreta**, che si riempie man
+mano e **sparisce quando è piena**. Serve un timestamp per riga di coda,
+altrimenti l'SLA è una promessa che nessuno misura.
+
+**Scadenza della verifica: ANNUALE** (chiude 10.4, che proponeva 6 mesi). Il
+ricontrollo è automatico dove l'automatismo arriva (VIES); quello che
+l'automatismo non chiude finisce in una sezione admin dedicata, **Ricontrollo**,
+separata dalla coda delle prime verifiche — sono due lavori diversi e mescolarli
+nasconde entrambi. Resta la regola già scritta: **nessun declassamento
+automatico**, mai (art. 22 GDPR). La cessazione della P.IVA non aspetta l'anno:
+è un evento, e quando lo vediamo va in Ricontrollo subito.
+
+**Lo stato del profilo sparisce quando è a posto** (fatto il 12/09). Il riquadro
+«Il tuo profilo» resta aperto solo se manca qualcosa o se non compari; a giro
+completo resta un pallino verde, col testo al passaggio del cursore, e si
+riapre con un clic. Di conseguenza **è stata tolta la notifica «Il tuo profilo è
+nelle ricerche»**: era di livello «fatto» e ripeteva uno stato permanente, cioè
+insegnava a non aprire la campanella.
+
+**«Bloccato da un admin» oggi non esiste.** Le uniche due ragioni per cui un
+profilo non compare sono: spento (da lui o per cancellazione account) e nessun
+servizio dichiarato. Un blocco deciso da noi è una **restrizione del servizio**:
+serve una colonna con il **motivo** (non un booleano) e, per il Regolamento P2B
+art. 4, motivazione scritta e preavviso. È una migrazione e una decisione, non
+una riga di copy.
+
+**Area di lavoro: le nuove richieste vanno in una sezione propria.** Con dieci
+richieste aperte il calendario finisce sotto chilometri di scroll. Insieme a
+questo: poter **cancellare le chat dei lavori conclusi** e impostare un tempo di
+cancellazione automatica. Vincolo da rispettare (DATA_COMPLIANCE §5): le chat
+legate a una transazione si conservano fino alla prescrizione, quindi quello che
+il professionista cancella è **la sua vista**, non la prova; l'erasure vera
+segue la regola di retention. Va scritto prima di costruirlo, altrimenti
+promettiamo una cancellazione che non possiamo fare.
+
+---
+
 ## 2026-08-03 · 10.x — Blocco 10 in produzione: cosa è cambiato nelle regole
 
 Il blocco 10 è passato da motore a funzione visibile. Le tre cose che vale la
