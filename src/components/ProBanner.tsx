@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { classeContenitore } from "@/lib/layout";
 import { useAuth } from "./AuthProvider";
 
 const HIDDEN_PREFIXES = [
@@ -22,13 +23,14 @@ const HIDDEN_PREFIXES = [
 export function ProBanner() {
   const { user, loading } = useAuth();
   const pathname = usePathname();
+  const cont = classeContenitore(pathname);
 
   if (loading || user) return null;
   if (HIDDEN_PREFIXES.some((p) => pathname?.startsWith(p))) return null;
 
   return (
     <section className="bg-bob-indigo" data-testid="pro-banner">
-      <div className="container-bob flex flex-col items-start gap-4 py-8 sm:flex-row sm:items-center sm:justify-between">
+      <div className={`${cont} flex flex-col items-start gap-4 py-8 sm:flex-row sm:items-center sm:justify-between`}>
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-white/60">
             Sei un professionista?

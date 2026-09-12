@@ -70,7 +70,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
   const attivo = (href: string) => pathname === href;
 
   return (
-    <div className="container-bob py-8 sm:py-10">
+    <div className="container-app py-8 sm:py-10">
       {/* Se il professionista e' arrivato qui dalla guida, la pagina lo dice e
           gli tiene aperta la strada del ritorno. Sta sopra tutto: e' il motivo
           per cui e' su questa pagina. */}

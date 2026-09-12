@@ -12,10 +12,13 @@
 // ripensarci non e' una finestra.
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { classeContenitore } from "@/lib/layout";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 
 export function CancellazioneBanner() {
+  const cont = classeContenitore(usePathname());
   const supabase = createClient();
   const { user, loading } = useAuth();
   const [scadenza, setScadenza] = useState<string | null>(null);
@@ -79,7 +82,7 @@ export function CancellazioneBanner() {
       role="status"
       data-testid="banner-cancellazione"
     >
-      <div className="container-bob flex flex-wrap items-center justify-between gap-3 py-3">
+      <div className={`${cont} flex flex-wrap items-center justify-between gap-3 py-3`}>
         <p className="text-sm leading-relaxed text-red-900">
           <strong>Il tuo account verrà cancellato</strong>{" "}
           {giorni === 0 ? "entro oggi" : giorni === 1 ? "domani" : `fra ${giorni} giorni`} (

@@ -41,6 +41,10 @@ const config: Config = {
       },
       maxWidth: {
         container: "1120px",
+        // Le pagine applicazione. Fluido fino a qui: su un portatile da 1512px
+        // usa tutto, su un monitor grande si ferma prima che le righe della
+        // chat e delle tabelle diventino illeggibili.
+        app: "1600px",
       },
       // La scala tipografica.
       //

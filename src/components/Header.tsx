@@ -9,6 +9,7 @@ import { useAuth } from "./AuthProvider";
 import { NotificheCampanella } from "./NotificheCampanella";
 import { useNotifiche } from "./NotificheProvider";
 import { VERIFICATION_LABEL } from "@/lib/vat";
+import { classeContenitore } from "@/lib/layout";
 import { BadgeCheck } from "lucide-react";
 
 const NAV = [
@@ -20,6 +21,9 @@ const NAV = [
 
 export function Header() {
   const pathname = usePathname();
+  // L'intestazione segue la larghezza della pagina sotto: senza questo,
+  // sulla dashboard il logo resterebbe rientrato rispetto al calendario.
+  const cont = classeContenitore(pathname);
   const router = useRouter();
   const { user, role, verificationLevel, signOut, loading } = useAuth();
   const { daContare } = useNotifiche();
@@ -33,7 +37,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/85 backdrop-blur-md">
-      <div className="container-bob flex h-16 items-center justify-between gap-4">
+      <div className={`${cont} flex h-16 items-center justify-between gap-4`}>
         <Link href="/" className="flex items-center" data-testid="link-home">
           <Logo />
         </Link>
@@ -171,7 +175,7 @@ export function Header() {
 
       {open && (
         <div className="border-t border-black/5 bg-white md:hidden">
-          <div className="container-bob flex flex-col gap-1 py-3">
+          <div className={`${cont} flex flex-col gap-1 py-3`}>
             {NAV.map((item) => (
               <Link
                 key={item.href}
