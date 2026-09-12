@@ -12,21 +12,41 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 al professionista quando chiede la verifica, salvo imprevisti. Va scritto nei
 ToS pro ("SLA di esame") e mostrato al pro mentre aspetta: il silenzio, su una
 cosa che ha pagato e che lo tiene fuori dalle ricerche, è la parte che fa male.
-Durante l'attesa una **barretta di avanzamento discreta** (fatta il 12/09): la
-riempiono i **passi della pratica** — ricevuta, controllo automatico, esame di
-una persona, esito — non il tempo e non la coda. Il tempo la riempirebbe anche
-quando non è successo niente, e a barra piena senza risposta la promessa si
-vedrebbe rotta da sola. Sparisce a verifica ottenuta. Manca ancora il
-**timestamp di ingresso in coda**: finché non c'è, la data attesa si conta da
-`vat_checked_at` e l'SLA non è misurato da nessuno.
+Durante l'attesa una **barretta discreta** (fatta il 12/09) che dice **lo stato
+della richiesta e basta**: ricevuta → in gestione → esito, più il caso
+«documenti richiesti». Non i passi interni della lavorazione — al pro non serve
+sapere quale archivio abbiamo interrogato, e raccontarglielo promette un
+meccanismo invece di uno stato — e **nessun conto alla rovescia**: i 5 giorni si
+leggono come promessa, non come cifra che scorre. Sparisce ad approvazione
+ottenuta; se la richiesta non è accolta resta, piena, perché «non accolta» è uno
+stato che va letto. Manca ancora il **timestamp di ingresso in coda**: finché
+non c'è, l'SLA non lo misura nessuno — e un countdown a video sarebbe una cifra
+inventata.
 
-**Scadenza della verifica: ANNUALE** (chiude 10.4, che proponeva 6 mesi). Il
-ricontrollo è automatico dove l'automatismo arriva (VIES); quello che
-l'automatismo non chiude finisce in una sezione admin dedicata, **Ricontrollo**,
-separata dalla coda delle prime verifiche — sono due lavori diversi e mescolarli
-nasconde entrambi. Resta la regola già scritta: **nessun declassamento
-automatico**, mai (art. 22 GDPR). La cessazione della P.IVA non aspetta l'anno:
-è un evento, e quando lo vediamo va in Ricontrollo subito.
+**Scadenza della verifica: ANNUALE** (chiude 10.4, che proponeva 6 mesi).
+
+Sul ricontrollo automatico va corretta un'idea sbagliata, perché ritorna ogni
+volta che si parla di frequenza: **ripassare il VIES spesso non serve a niente.**
+Il VIES risponde solo per chi è iscritto agli scambi intra-UE, che tra gli
+artigiani è la minoranza; per tutti gli altri un esito negativo **non è un
+segnale**, è la normalità, e non può far partire niente — né una richiesta di
+documenti né un controllo. Quindi:
+
+- Il ricontrollo automatico ha senso **solo per chi è stato verificato DAL
+  VIES**, e solo come **cambio di stato**: da confermato a non più confermato.
+  Lì sì che vuol dire qualcosa, e costa centesimi.
+- Per tutti gli altri — la maggioranza, verificata da una persona — non esiste
+  oggi nessun ricontrollo gratuito. Vale l'anno, e il lavoro si taglia in due
+  modi onesti: **a campione** invece che su tutti, e **su evento** (una
+  segnalazione, una contestazione, un dato che cambia). Il ricontrollo di massa
+  automatico arriva solo col gradino 3 a pagamento (Openapi), non prima.
+- Quello che l'automatismo non chiude finisce in una sezione admin dedicata,
+  **Ricontrollo**, separata dalla coda delle prime verifiche: sono due lavori
+  diversi e mescolarli li nasconde entrambi.
+
+Resta la regola già scritta: **nessun declassamento automatico**, mai (art. 22
+GDPR). La cessazione della P.IVA non aspetta l'anno: è un evento, e quando lo
+vediamo va in Ricontrollo subito.
 
 **Lo stato del profilo sparisce quando è a posto** (fatto il 12/09). Il riquadro
 «Il tuo profilo» resta aperto solo se manca qualcosa o se non compari; a giro

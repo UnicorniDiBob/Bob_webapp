@@ -205,11 +205,7 @@ export default function VatVerification({
       {/* L'avanzamento sta SOPRA il riquadro giallo: e' la risposta alla
           domanda che uno si fa per prima («a che punto e'?»), il riquadro
           spiega. Sparisce da solo a verifica ottenuta. */}
-      <AvanzamentoVerifica
-        review={review}
-        verificato={verified}
-        controllatoIl={row?.vat_checked_at ?? null}
-      />
+      <AvanzamentoVerifica review={review} verificato={verified} />
 
       {review === "pending" && !verified && (
         <div
