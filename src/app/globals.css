@@ -9,22 +9,6 @@
 
 html {
   scroll-behavior: smooth;
-
-  /* L'INTERFACCIA CRESCE CON LO SCHERMO.
-   *
-   * Tutto in Tailwind e' espresso in rem: le dimensioni del testo, le
-   * spaziature, i raggi, le larghezze massime. Cambiando la base cambia tutto
-   * insieme e in proporzione — non solo il testo.
-   *
-   * Sotto i 1280px non succede niente (resta 1rem): telefoni e portatili
-   * piccoli vedono esattamente quello che vedevano prima. Da li' sale fino a
-   * 1.25rem a 2000px, cioe' un quarto piu' grande su un monitor da scrivania.
-   *
-   * La formula tiene un pezzo in rem e non solo vw di proposito: cosi' chi ha
-   * alzato la dimensione del testo nelle impostazioni del browser continua a
-   * essere ascoltato. Con i soli vw quella preferenza verrebbe ignorata.
-   */
-  font-size: clamp(1rem, 0.56vw + 0.55rem, 1.25rem);
 }
 
 body {

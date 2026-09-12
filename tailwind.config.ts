@@ -40,11 +40,20 @@ const config: Config = {
         "card-hover": "0 2px 4px rgba(30,27,75,0.06), 0 16px 40px rgba(30,27,75,0.12)",
       },
       maxWidth: {
-        // Una larghezza sola per tutto il sito, in rem cosi' cresce con la
-        // base tipografica. 120rem sono 1920px alla base normale e 2400px a
-        // quella massima: su un monitor da scrivania la pagina usa tutto lo
-        // spazio, e il tetto serve solo a non impazzire sugli ultralarghi.
-        container: "120rem",
+        // UNA LARGHEZZA SOLA, per ogni pagina del sito.
+        //
+        // Non cambia fra pagine pubbliche e pagine applicazione: una cornice
+        // che si muove da una pagina all'altra si nota, e da' l'impressione
+        // che il sito sia fatto a pezzi.
+        //
+        // 100rem = 1600px con la base normale. In rem e non in px cosi' chi ha
+        // alzato la dimensione del testo nelle impostazioni del browser vede
+        // crescere anche la cornice, invece di ritrovarsi il testo grande in un
+        // contenitore stretto.
+        //
+        // Il vuoto ai lati su un monitor grande NON si risolve allargando
+        // ancora: si risolve mettendo nella pagina qualcosa da guardare.
+        container: "100rem",
       },
       // La scala tipografica.
       //

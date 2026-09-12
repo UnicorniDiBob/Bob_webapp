@@ -38,7 +38,7 @@ export default async function HomePage() {
                 Ti aiuto a capire chi contattare.
               </span>
             </h1>
-            <p className="mt-4 max-w-lg text-base leading-relaxed text-bob-ink/65">
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-bob-ink/65">
               Sono Bob, il concierge dei servizi locali. Più chiarezza su
               prezzo, disponibilità e qualità — e nessuna fee per usarmi come
               cliente.
