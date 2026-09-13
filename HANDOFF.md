@@ -185,21 +185,16 @@ interfaccia e un componente nuovo.
 
 ## Cosa è a metà — André (12 settembre, mattina)
 
-- **`Bob.tsx` è in `main` ma non lo usa nessuna pagina.** Entra in scena quando
-  si costruisce la home. È voluto, ma è anche la situazione da tenere d'occhio:
-  un componente che nessuno usa marcisce in fretta.
-- **La home nuova esiste solo come mock, non come codice.** La direzione è
-  decisa e non è la larghezza: lo schermo si riempie **di contenuto** — fasce a
-  tutta larghezza che si alternano (chiara, grigia, indaco piena, gialla),
-  illustrazioni grandi, animazioni allo scorrimento. Da fare: riscrivere
-  `src/app/page.tsx`, il footer nuovo, le animazioni. **Non è una serata.**
-- **Le scene attorno a Bob vivono solo nel mock**: il telefono del passo 1, le
-  schede del passo 2, il fumetto del passo 3, il telefono della sezione app.
-  Vanno portate nel repo insieme alla home.
-- **Il footer a quattro colonne** (Esplora, Supporto, Professionisti, Bob
-  Italia) esiste solo nel mock. Quattro voci puntano a pagine **che non
-  esistono**: *Requisiti minimi*, *Lavora con noi*, *Blog*, *Contatti stampa*.
-  O si creano o si tolgono dal footer — non si spediscono link morti.
+- ~~`Bob.tsx` è in `main` ma non lo usa nessuna pagina.~~ **Chiusa il 12 sera**:
+  Bob è sulla home, su `/come-funziona` e su `/per-i-professionisti`.
+- ~~La home nuova esiste solo come mock.~~ **Chiusa il 12 sera**: è in
+  produzione, con le fasce, le illustrazioni e le animazioni allo scorrimento.
+- ~~Le scene attorno a Bob vivono solo nel mock.~~ **Chiusa il 12 sera**: stanno
+  in `SceneBob.tsx`, `ScalaDeiMestieri.tsx`, `BobConCariola.tsx`.
+- ~~Il footer a quattro colonne esiste solo nel mock, con quattro link morti.~~
+  **Chiusa il 12 sera**: il footer è in produzione e tutti e tredici i link
+  puntano a rotte che esistono — verificato, i quattro link morti del mock non
+  sono mai stati spediti.
 - **Le altre tre tenute di Bob** (camicia e cintura, alta visibilità, polo e
   grembiule) sono disegnate ma non sono nel repo. Servono quando si faranno le
   sezioni per mestiere: il grembiule racconta le pulizie meglio del gilet.
@@ -207,6 +202,81 @@ interfaccia e un componente nuovo.
   Se un giorno si cambia, non è la mascotte: sono i pulsanti, i chip, il logo,
   il calendario, l'anteprima sui social. **Va deciso prima del pilota, non
   dopo.**
+
+## Cosa è a metà — André (12 settembre, sera)
+
+> **Queste voci erano andate perse.** La sera del 12 abbiamo scritto
+> `HANDOFF.md` tutti e due: Lucio alle 17:28, André alle 17:59. Il file si
+> sovrascrive a ogni sessione, quindi è arrivata in `main` una versione sola e
+> l'altra è rimasta sul ramo `design/pagina-pro`. Recuperate il 13 mattina.
+> **Il formato va cambiato**: le sezioni per persona che ci sono qui sopra sono
+> la strada giusta, ma finché il file è uno e si riscrive, chi salva per secondo
+> perde. La proposta minima è che ognuno tocchi solo la propria sezione.
+
+- **La decisione sui termini è di Lucio e non è ancora presa.** `TERMS_VERSION`
+  è ferma a `2026-07-v1` di proposito. La sezione 9 sull'ordinamento è stata
+  riscritta ed è in produzione: se quella correzione conta come modifica dei
+  termini ai sensi dell'**art. 3(2) P2B**, ai professionisti va dato un
+  preavviso di almeno 15 giorni. Secondo noi è una rettifica per rendere
+  accurata una dichiarazione, non un obbligo nuovo — ma non è una decisione da
+  prendere di straforo dentro un commit di design. **Finché non è presa, la
+  versione dei termini dice il falso: il testo è cambiato e il numero no.**
+- **`.card` è usata 138 volte da una definizione sola** in `globals.css`.
+  Cambiare quella definizione cambia quaranta pagine in un pomeriggio, comprese
+  quelle che nessuno ha ancora toccato. **È la cosa più economica del progetto**
+  e non è ancora stata fatta.
+- **Il blocco C dell'audit è stato guardato da vicino: non così, e non prima di
+  gennaio.** Le sei finestre non sono un problema solo.
+  - Il difetto vero è che **15 file ricopiano a mano `fixed inset-0 z-50`** con
+    la loro copia dell'`useEffect` per Escape e per il blocco dello scroll: non
+    esiste nessun componente `Modal` condiviso. `TermsDialog.tsx` è l'unico
+    fatto bene — usa l'elemento nativo `<dialog>`, che dà focus trap, Escape e
+    blocco dello scroll gratis — e nessuna delle altre lo riusa.
+    `InstantBookingDialog` (667 righe, tre passi, la funzione del piano a
+    pagamento) non ha né Escape, né blocco dello scroll, né `role="dialog"`.
+  - **Quella che merita davvero una rotta è solo la prenotazione**, ed è un bug
+    di conversione, non di stile: a `InstantBookingDialog` riga 357, se non sei
+    loggato il pulsante porta a `/login?returnTo=` + il *pathname*, cioè la
+    pagina del professionista. Dopo il login torni sul profilo, la finestra è
+    chiusa, e quello che avevi scritto è perso.
+  - `QuoteDialog` e `RequestDialog` **non si possono spostare da sole**: vivono
+    dello stato di `BobChat`, che è una macchina a **9 stati tutta in
+    `useState`** sulla home, senza nessuna rappresentazione nell'URL.
+  - Due ostacoli da sapere prima di aprire una rotta nuova: `next.config.mjs` ha
+    `/dashboard/:sezione+` → `/impostazioni/:sezione+`, quindi **ogni rotta nuova
+    sotto `/dashboard/` finisce su una pagina che non esiste**; e
+    `middleware.ts` protegge per **prefisso** (`ROTTE_PRIVATE = ["/dashboard",
+    "/messaggi", "/impostazioni"]`), quindi una `/prenota/...` nuova nasce
+    **pubblica** finché non la aggiungi lì.
+- **Le pagine che restano da portare nello stile nuovo**, in ordine: `/servizi`
+  e `/citta` (corte, 65 e 90 righe, quasi identiche — si fanno in una passata),
+  `/professionisti`, `/servizi/[slug]`. **Poi l'area privata, con un criterio
+  diverso**: la dashboard non deve somigliare alla home. Ci lavori dentro, non
+  la guardi. Quello che passa di là è la somiglianza di famiglia — stesso
+  trattamento delle schede, stesso ritmo dei titoli, **Bob negli stati vuoti** —
+  non l'impaginazione a fasce.
+- **L'animazione della scala dei mestieri non è mai stata vista muoversi.** È
+  verificato che il calcolo risponde alla posizione (angoli diversi a quote
+  diverse), ma non è stato possibile far scorrere la pagina da remoto:
+  `scrollTop` non si muove attraverso l'estensione su localhost. **Va guardata
+  con gli occhi.** Se è troppo o troppo poco, sono due colonne di numeri in cima
+  a `ScalaDeiMestieri.tsx`: `ampiezza` quanto ampio il gesto, `passo` quanto
+  veloce — più piccolo è il passo, più veloce va.
+- **`/come-funziona` è passata da quattro passi a tre.** I vecchi 3 e 4
+  («confronti prezzo e rating», «contatti chi preferisci») erano lo stesso
+  momento raccontato due volte, ed erano già uniti in home. Niente è stato
+  tolto: il contenuto vive nel terzo. **È una decisione di contenuto, non di
+  stile**: se non convince, si torna indietro.
+- **L'ancora `#come-funziona` su `/per-i-professionisti` non la linka più
+  nessuno in pagina.** Il bottone che ci puntava è stato tolto; l'`id` è rimasto
+  perché un link incollato o un segnalibro lo usano ancora.
+- **Due righe di copy sono state scritte da noi** su `/per-i-professionisti`:
+  l'occhiello «I vantaggi» e il titolo «Cosa cambia, per te». Quella sezione non
+  aveva titolo e i quattro blocchi partivano da `h3` sotto un `h1`.
+- **Il verde delle banconote (`#4ec27a`) non è nella palette** e vive solo dentro
+  `BobConCariola.tsx`. È voluto: i soldi devono leggersi come soldi, non come un
+  pezzo di Bob. Se un giorno serve altrove, va deciso allora — non ereditato di
+  nascosto da un'illustrazione.
 
 ## Applicato in produzione da André il 12 settembre — resta valido
 
