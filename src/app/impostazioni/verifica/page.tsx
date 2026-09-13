@@ -35,6 +35,7 @@ import {
   UpgradeNeeded,
 } from "@/components/SectionStates";
 import { VerificationLevelBadge } from "@/components/ui";
+import { livelloVisibile, scadenzaBadge } from "@/lib/vat";
 import VatVerification from "@/components/VatVerification";
 import VerificationDocuments from "@/components/VerificationDocuments";
 
@@ -61,13 +62,22 @@ export default function VerificaPage() {
     (async () => {
       const { data } = await supabase
         .from("professional_verification")
-        .select("level, vat_checked_at")
+        .select("level, vat_checked_at, vat_expires_at, vat_review_opened_at, recheck_opened_at")
         .eq("professional_id", pro.id)
         .maybeSingle();
       if (!active) return;
       const v = (data ?? {}) as Record<string, unknown>;
-      setLivello((v.level as Livello) ?? "none");
-      setVerificatoIl((v.vat_checked_at as string) ?? null);
+      // Scaduta: qui si vede quello che vedono i clienti, cioe' niente badge.
+      const vivo = livelloVisibile(
+        (v.level as Livello) ?? "none",
+        scadenzaBadge(
+          (v.vat_expires_at as string) ?? null,
+          (v.recheck_opened_at as string) ?? null
+        ),
+        v.vat_review_opened_at != null
+      ) as Livello;
+      setLivello(vivo);
+      setVerificatoIl(vivo === "none" ? null : ((v.vat_checked_at as string) ?? null));
     })();
     return () => {
       active = false;

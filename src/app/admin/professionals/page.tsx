@@ -10,7 +10,9 @@ import { VatReviewActions } from "./VatReviewActions";
 import {
   namesMatch,
   procedureFlagInName,
+  statoCoda,
   MOTIVO_RICONTROLLO_STAFF,
+  SLA_VERIFICA_GIORNI_LAVORATIVI,
   VERIFICATION_LABEL_STAFF,
   type VerificationLevel,
   type VatReviewState,
@@ -46,6 +48,7 @@ interface VerificationRow {
   vat_match_source: string | null;
   recheck_reason: string | null;
   recheck_opened_at: string | null;
+  vat_review_opened_at: string | null;
   updated_at: string;
 }
 
@@ -213,7 +216,7 @@ export default async function AdminProfessionalsPage() {
   const { data: reviewData } = await supabase
     .from("professional_verification")
     .select(
-      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, declared_business_name, vat_match_source, recheck_reason, recheck_opened_at, updated_at"
+      "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, declared_business_name, vat_match_source, recheck_reason, recheck_opened_at, vat_review_opened_at, updated_at"
     )
     .or("vat_review_state.not.is.null,level.neq.none")
     .order("updated_at", { ascending: false });
@@ -299,8 +302,37 @@ export default async function AdminProfessionalsPage() {
 
   // Da lavorare; già decisi (per rispondere a chi chiede "come mai?"); e
   // livelli attivi, dove l'azione utile è semmai la revoca motivata.
-  const openCases = reviewRows.filter(
-    (r) => r.vat_review_state === "pending" || r.vat_review_state === "docs_requested"
+  // LA CODA SI ORDINA PER QUANTO MANCA ALLO SFORAMENTO, non per data di
+  // aggiornamento: l'ordine di prima metteva davanti l'ultimo caso toccato,
+  // cioe' esattamente quello di cui ci eravamo appena occupati. L'SLA e' uno
+  // solo per tutti (5 giorni lavorativi), quindi il piu' vecchio in coda e'
+  // anche il piu' vicino a sforare: basta ordinare per ingresso crescente.
+  // Chi aspetta i documenti non ha orologio e va in fondo — la palla e' sua,
+  // non nostra.
+  const codaAperta = reviewRows
+    .filter(
+      (r) =>
+        r.vat_review_state === "pending" || r.vat_review_state === "docs_requested"
+    )
+    .sort((a, b) => {
+      const sa = a.vat_review_opened_at;
+      const sb = b.vat_review_opened_at;
+      if (sa && sb) return sa.localeCompare(sb);
+      if (sa) return -1;
+      if (sb) return 1;
+      return (a.updated_at ?? "").localeCompare(b.updated_at ?? "");
+    });
+
+  // CHI HA GIA' SFORATO STA IN UNA SEZIONE SUA, non in cima alla stessa lista.
+  // Un caso fuori tempo non e' «lo stesso lavoro, un po' piu' urgente»: e' una
+  // promessa che abbiamo gia' rotto, e mescolarlo agli altri lo fa scorrere via
+  // insieme a loro. Il numero accanto al titolo si legge senza aprire niente,
+  // ed e' la cifra che dice se i 5 giorni lavorativi reggono.
+  const emergenze = codaAperta.filter(
+    (r) => statoCoda(r.vat_review_opened_at)?.sforata
+  );
+  const openCases = codaAperta.filter(
+    (r) => !statoCoda(r.vat_review_opened_at)?.sforata
   );
   const closedCases = reviewRows.filter((r) => r.vat_review_state === "rejected");
   // RICONTROLLO (079): una coda a parte, non in fondo a quella delle prime
@@ -348,6 +380,51 @@ export default async function AdminProfessionalsPage() {
           Esamina i profili e aggiorna il loro stato di verifica.
         </p>
       </div>
+
+      {/* ---- Emergenze: SLA gia' sforato (13/09) ---- */}
+      <section id="emergenze" data-testid="coda-emergenze" className="scroll-mt-20">
+        <div className="mb-3 flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-bob-ink">Emergenze</h2>
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              emergenze.length > 0
+                ? "bg-red-50 text-red-700"
+                : "bg-black/5 text-bob-ink/65"
+            }`}
+          >
+            {emergenze.length}
+          </span>
+        </div>
+        <p className="mb-4 text-sm text-bob-ink/70">
+          Casi oltre i {SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi che
+          abbiamo promesso. Non sono più in coda: la promessa è già rotta, e
+          finché restano qui sono la prima cosa da fare.
+        </p>
+
+        {emergenze.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
+            Nessuno fuori tempo. I {SLA_VERIFICA_GIORNI_LAVORATIVI} giorni
+            lavorativi li stiamo rispettando.
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {emergenze.map((row) => (
+              <VatCaseCard
+                key={row.professional_id}
+                row={row}
+                pro={proById[row.professional_id]}
+                profile={
+                  proById[row.professional_id]
+                    ? profileMap[proById[row.professional_id].user_id]
+                    : undefined
+                }
+                storico={eventsByPro.get(row.professional_id) ?? []}
+                documenti={docsByPro.get(row.professional_id) ?? []}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* ---- Ricontrollo (079) ---- */}
       <section id="ricontrollo" data-testid="coda-ricontrollo" className="scroll-mt-20">
@@ -431,7 +508,9 @@ export default async function AdminProfessionalsPage() {
           Casi che il controllo automatico non ha confermato. Non sono rifiuti:
           chi non lavora con l&apos;estero spesso non è iscritto al VIES, quindi
           decide una persona. La motivazione che scrivi la legge il
-          professionista.
+          professionista. In cima c&apos;è chi aspetta da più tempo: abbiamo
+          dichiarato {SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi, e chi
+          li ha già superati sta nelle emergenze qui sopra.
         </p>
 
         {openCases.length === 0 ? (
@@ -686,6 +765,36 @@ function schedaDelCaso(
   return righe.filter(Boolean).join("\n");
 }
 
+// Da quanto aspetta, in giorni lavorativi, e quanto manca alla cifra che
+// abbiamo dichiarato. Non c'e' countdown al secondo: il numero utile a chi
+// lavora la coda e' «quanti giorni ho ancora», non «quante ore».
+function PillolaSla({ apertoIl }: { apertoIl: string | null }) {
+  const stato = statoCoda(apertoIl);
+  if (!stato) return null;
+
+  const testo = stato.sforata
+    ? `SLA sforata di ${-stato.rimasti} ${-stato.rimasti === 1 ? "giorno" : "giorni"}`
+    : stato.rimasti === 0
+      ? "Ultimo giorno utile"
+      : `Restano ${stato.rimasti} ${stato.rimasti === 1 ? "giorno" : "giorni"}`;
+
+  const stile = stato.sforata
+    ? "bg-red-50 text-red-700"
+    : stato.rimasti <= 1
+      ? "bg-amber-50 text-amber-700"
+      : "bg-black/5 text-bob-ink/70";
+
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${stile}`}
+      title={`In coda da ${stato.inCoda} giorni lavorativi. Scadenza SLA: ${stato.scadenzaSla.toLocaleDateString("it-IT", { timeZone: "Europe/Rome" })}.`}
+      data-testid="pillola-sla"
+    >
+      {testo} · in coda da {stato.inCoda}
+    </span>
+  );
+}
+
 // ---- Un caso della coda P.IVA ----
 // Mostra tutto quello che serve per decidere senza aprire altre schede: cosa
 // ha dichiarato il professionista, cosa ha risposto il VIES e se la
@@ -729,6 +838,7 @@ function VatCaseCard({
         <span className="rounded-full bg-black/5 px-2 py-0.5 text-2xs font-semibold text-bob-ink/70">
           Livello attuale: {VERIFICATION_LABEL_STAFF[row.level]}
         </span>
+        <PillolaSla apertoIl={row.vat_review_opened_at} />
       </div>
 
       <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-bob-ink/70">

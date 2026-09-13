@@ -13,6 +13,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { livelloVisibile } from "@/lib/vat";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ProWorkspace } from "@/components/ProWorkspace";
@@ -85,7 +86,7 @@ export default function DashboardPage() {
       const { data: prof } = await supabase
         .from("professionals")
         .select(
-          "id, user_id, headline, bio, verification_status, verification_level, subscription_tier, onboarding_completed_at, cities ( name )"
+          "id, user_id, headline, bio, verification_status, verification_level, verification_badge_until, verification_under_review, subscription_tier, onboarding_completed_at, cities ( name )"
         )
         .eq("user_id", user.id)
         .maybeSingle();
@@ -105,9 +106,13 @@ export default function DashboardPage() {
             verification_status:
               (p.verification_status as ProProfile["verification_status"]) ??
               "unverified",
-            verification_level:
-              (p.verification_level as ProProfile["verification_level"]) ??
-              "none",
+            // Il livello che arriva a ProWorkspace e' gia' quello VISIBILE:
+            // scaduta la verifica, il pro vede quello che vedono i clienti.
+            verification_level: livelloVisibile(
+              (p.verification_level as ProProfile["verification_level"]) ?? "none",
+              (p.verification_badge_until as string | null) ?? null,
+              (p.verification_under_review as boolean | null) ?? false
+            ) as ProProfile["verification_level"],
             subscription_tier:
               (p.subscription_tier as ProProfile["subscription_tier"]) ?? "free",
             onboarding_completed_at:

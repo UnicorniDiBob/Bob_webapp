@@ -600,7 +600,13 @@ export function BobChat({
   // è proposto (primo passo verso il ranking spiegabile, workstream #11).
   function whyThisPro(p: ProfessionalCard): string {
     const reasons: string[] = [];
-    if (p.verificationStatus === "verified") reasons.push("profilo verificato");
+    // Il motivo dice quale controllo e' stato superato, non che qualcuno
+    // dello staff ha girato un interruttore: se lo scriviamo al cliente,
+    // deve corrispondere a un riscontro che sappiamo difendere.
+    if (p.verificationLevel === "documents_verified")
+      reasons.push("documenti verificati");
+    else if (p.verificationLevel === "vat_verified")
+      reasons.push("partita IVA verificata");
     if (p.nRatings > 0 && (p.avgRating ?? 0) >= 4.5)
       reasons.push(`recensioni ottime (${p.avgRating})`);
     if (collected.maxPrice && p.maxPrice && p.maxPrice <= collected.maxPrice)

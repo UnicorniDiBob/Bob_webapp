@@ -38,6 +38,16 @@ export const SLA_VERIFICA_GIORNI_LAVORATIVI = 5;
 /** Quanto vale una verifica prima del ricontrollo. */
 export const VALIDITA_VERIFICA_MESI = 12;
 
+/**
+ * LA FINESTRA DEL RICONTROLLO: 7 giorni dall'apertura del caso, cioe' i 5
+ * giorni lavorativi gia' dichiarati (13/09, Lucio). Un numero solo per due
+ * strade: la scadenza annuale apre il ricontrollo 7 giorni prima, quindi la
+ * finestra coincide con la data; una cessazione lo apre subito, e da li' il
+ * professionista ha la stessa finestra per rispondere. Se risponde, la palla e'
+ * nostra e il badge tiene; se non risponde, cade.
+ */
+export const FINESTRA_RICONTROLLO_GIORNI = 7;
+
 /** Da quanti giorni prima lo diciamo nella campanella. */
 export const PREAVVISO_SCADENZA_GIORNI = 30;
 
@@ -75,6 +85,66 @@ export function giorniLavorativiTra(da: Date, a: Date): number {
     if (g !== 0 && g !== 6) n += 1;
   }
   return n;
+}
+
+/** Somma n giorni LAVORATIVI a una data: sabato e domenica saltati, festivi no. */
+export function aggiungiGiorniLavorativi(da: Date, n: number): Date {
+  const d = new Date(da);
+  let restanti = n;
+  while (restanti > 0) {
+    d.setDate(d.getDate() + 1);
+    const g = d.getDay();
+    if (g !== 0 && g !== 6) restanti -= 1;
+  }
+  return d;
+}
+
+export interface StatoCoda {
+  /** Da quando il caso aspetta NOI (stato pending). */
+  apertoIl: Date;
+  /** Il giorno in cui sforiamo l'SLA dichiarato. */
+  scadenzaSla: Date;
+  /** Giorni lavorativi gia' passati in coda. */
+  inCoda: number;
+  /** Giorni lavorativi che mancano allo sforamento. Negativi se gia' sforato. */
+  rimasti: number;
+  sforata: boolean;
+}
+
+/**
+ * Quanto aspetta un caso della coda P.IVA, in giorni lavorativi.
+ *
+ * L'SLA e' UNO SOLO per tutti (5 giorni lavorativi), quindi ordinare per
+ * scadenza equivale a ordinare per ingresso: il piu' vecchio e' anche il piu'
+ * vicino a sforare. Restituire comunque la data serve a scriverla, non a
+ * ordinare — una cifra che il professionista puo' vedere va calcolata in un
+ * posto solo.
+ *
+ * null quando il caso non aspetta noi: nessun orologio, niente da promettere.
+ */
+export function statoCoda(
+  apertoIl: string | null,
+  adesso: Date = new Date()
+): StatoCoda | null {
+  if (!apertoIl) return null;
+  const aperto = new Date(apertoIl);
+  if (Number.isNaN(aperto.getTime())) return null;
+
+  const scadenzaSla = aggiungiGiorniLavorativi(
+    aperto,
+    SLA_VERIFICA_GIORNI_LAVORATIVI
+  );
+  const sforata = adesso > scadenzaSla;
+
+  return {
+    apertoIl: aperto,
+    scadenzaSla,
+    inCoda: giorniLavorativiTra(aperto, adesso),
+    rimasti: sforata
+      ? -giorniLavorativiTra(scadenzaSla, adesso)
+      : giorniLavorativiTra(adesso, scadenzaSla),
+    sforata,
+  };
 }
 
 /**
@@ -231,12 +301,78 @@ export function verificationLevelWeight(level: VerificationLevel): number {
  */
 export function publicVerificationLevel(
   level: VerificationLevel,
-  staffStatus: "unverified" | "pending" | "verified"
+  staffStatus: "unverified" | "pending" | "verified",
+  scadenza: string | null = null,
+  inEsame: boolean = false
 ): VerificationLevel {
+  // SCADUTA = NON VERIFICATA, per chi guarda. Il livello nel database resta
+  // dov'e': lo toglie una persona dalla coda Ricontrollo, con motivazione
+  // scritta (art. 22 GDPR). Qui cambia solo cosa si legge, ed e' reversibile —
+  // al rinnovo il badge torna da solo. Il preavviso a 30 giorni della 078 e' il
+  // preavviso di questa perdita (Reg. P2B art. 4). La stessa regola vale per i
+  // punti dell'ordinamento, nella migrazione 081: se divergono, la scheda dice
+  // una cosa e l'ordine ne fa un'altra.
+  const vivo = livelloVisibile(level, scadenza, inEsame);
+  if (vivo === "none") return "none";
   if (level === "documents_verified" && staffStatus !== "verified") {
     return "vat_verified";
   }
   return level;
+}
+
+/**
+ * Quando si spegne il badge: la prima fra la scadenza annuale e la fine della
+ * finestra del ricontrollo. Senza la seconda, una cessazione lascerebbe
+ * l'etichetta accesa per tutti i mesi che mancano alla scadenza, cioe' proprio
+ * nel caso in cui il registro dice gia' che e' falsa.
+ */
+export function scadenzaBadge(
+  scadenza: string | null,
+  ricontrolloApertoIl: string | null
+): string | null {
+  const date = [scadenza, ricontrolloApertoIl ? addGiorni(ricontrolloApertoIl, FINESTRA_RICONTROLLO_GIORNI) : null]
+    .filter((d): d is string => !!d)
+    .sort();
+  return date[0] ?? null;
+}
+
+function addGiorni(iso: string, n: number): string | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() + n);
+  return d.toISOString();
+}
+
+/**
+ * Il livello da MOSTRARE, scadenza compresa e senza il gate dello staff.
+ *
+ * Lo usano le pagine del professionista, dove il commento dice da sempre «qui
+ * il pro deve vedere la stessa etichetta che vedono i clienti»: se la scadenza
+ * la applicasse solo la scheda pubblica, quella frase diventerebbe falsa e il
+ * professionista si vedrebbe verificato mentre i clienti non lo vedono piu'.
+ */
+export function livelloVisibile(
+  level: VerificationLevel,
+  scadenza: string | null,
+  inEsame: boolean = false
+): VerificationLevel {
+  // LA SCADENZA NON MORDE MENTRE LA PALLA E' DA NOI (13/09, Lucio). Chi carica
+  // i documenti l'ultimo giorno utile non puo' perdere l'etichetta per il tempo
+  // che ci mettiamo NOI a guardarli: quella verifica non e' scaduta per colpa
+  // sua, sta aspettando una nostra decisione. Alla conferma riparte l'anno; al
+  // rifiuto il badge cade, ed e' una decisione presa da una persona.
+  if (inEsame) return level;
+  return level !== "none" && verificaScaduta(scadenza) ? "none" : level;
+}
+
+/** Vero quando la verifica ha una data ed e' passata. */
+export function verificaScaduta(
+  scadenza: string | null,
+  adesso: Date = new Date()
+): boolean {
+  if (!scadenza) return false;
+  const d = new Date(scadenza);
+  return !Number.isNaN(d.getTime()) && d <= adesso;
 }
 
 /**
