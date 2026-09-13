@@ -20,6 +20,8 @@ import { VerificationLevelBadge } from "@/components/ui";
 import { AvanzamentoVerifica } from "@/components/AvanzamentoVerifica";
 import {
   vatValidationError,
+  livelloVisibile,
+  scadenzaBadge,
   normalizeVat,
   MOTIVO_RICONTROLLO_TESTO,
   MOTIVO_RICONTROLLO_TITOLO,
@@ -33,9 +35,12 @@ import {
 interface VerificationRow {
   level: VerificationLevel;
   vat_checked_at: string | null;
+  vat_expires_at: string | null;
+  recheck_opened_at: string | null;
   vat_holder_name: string | null;
   vat_review_state: VatReviewState | null;
   vat_review_note: string | null;
+  vat_review_opened_at: string | null;
   recheck_reason: string | null;
   declared_business_name: string | null;
 }
@@ -88,7 +93,7 @@ export default function VatVerification({
     const { data } = await supabase
       .from("professional_verification")
       .select(
-        "level, vat_checked_at, vat_holder_name, vat_review_state, vat_review_note, recheck_reason, declared_business_name"
+        "level, vat_checked_at, vat_expires_at, vat_holder_name, vat_review_state, vat_review_note, vat_review_opened_at, recheck_reason, recheck_opened_at, declared_business_name"
       )
       .eq("professional_id", professionalId)
       .maybeSingle();
@@ -163,7 +168,13 @@ export default function VatVerification({
     );
   }
 
-  const level: VerificationLevel = row?.level ?? "none";
+  // La scadenza vale anche qui: il pro deve vedere quello che vedono i
+  // clienti, compreso quando il badge non c'e' piu'.
+  const level: VerificationLevel = livelloVisibile(
+    row?.level ?? "none",
+    scadenzaBadge(row?.vat_expires_at ?? null, row?.recheck_opened_at ?? null),
+    row?.vat_review_opened_at != null
+  );
   const review = row?.vat_review_state ?? null;
   const verified = level === "vat_verified" || level === "documents_verified";
   // Il form resta disponibile in ogni stato tranne "già verificato" (e lì
@@ -180,7 +191,7 @@ export default function VatVerification({
         <span className="text-sm text-bob-ink/70">Il tuo livello:</span>
         <VerificationLevelBadge
           level={level}
-          verifiedAt={row?.vat_checked_at ?? null}
+          verifiedAt={level === "none" ? null : (row?.vat_checked_at ?? null)}
         />
       </div>
 

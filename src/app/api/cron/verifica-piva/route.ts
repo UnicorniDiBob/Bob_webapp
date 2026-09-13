@@ -32,7 +32,11 @@ import {
   type SupabaseClient,
 } from "@supabase/supabase-js";
 import { checkVatOnVies } from "@/lib/vies";
-import { matchRegistryName, procedureFlagInName } from "@/lib/vat";
+import {
+  matchRegistryName,
+  procedureFlagInName,
+  FINESTRA_RICONTROLLO_GIORNI,
+} from "@/lib/vat";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,7 +97,7 @@ async function registraGiro(
 /** Quante verifiche in scadenza guardare per giro. */
 const MAX_RICONTROLLI = 50;
 /** Quanti giorni prima della scadenza il ricontrollo puo' partire. */
-const ANTICIPO_GIORNI = 7;
+const ANTICIPO_GIORNI = FINESTRA_RICONTROLLO_GIORNI;
 
 /**
  * RICONTROLLO ANNUALE (079).
@@ -160,13 +164,25 @@ async function ricontrollaScadute(admin: SupabaseClient) {
         updated_at: adesso,
       })
       .eq("professional_id", id);
-    await admin.from("verification_events").insert({
-      professional_id: id,
-      event: evento,
-      note: nota,
-      actor_name: "Ricontrollo automatico",
-      actor_role: "system",
-    });
+    // L'errore si legge. Fino alla 081 questo insert falliva in silenzio —
+    // 'vat_recheck_opened' non era fra i valori ammessi dal vincolo — e il
+    // registro non sapeva niente dei ricontrolli aperti da qui. Un registro
+    // che tace sulle decisioni automatiche non e' una prova di niente, e
+    // scoprirlo richiede che qualcuno guardi: quindi lo guardiamo.
+    const { error: errEvento } = await admin
+      .from("verification_events")
+      .insert({
+        professional_id: id,
+        event: evento,
+        note: nota,
+        actor_name: "Ricontrollo automatico",
+        actor_role: "system",
+      });
+    if (errEvento) {
+      console.error(
+        `[verifica-piva] ricontrollo aperto su ${id} ma l'evento non e' stato scritto: ${errEvento.message}`
+      );
+    }
     inRicontrollo++;
   };
 

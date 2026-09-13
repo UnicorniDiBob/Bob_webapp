@@ -4,7 +4,12 @@ import {
   rangoCopertura,
   trovaPerRichiesta,
 } from "@/lib/copertura";
-import { publicVerificationLevel, type VerificationLevel } from "@/lib/vat";
+import {
+  publicVerificationLevel,
+  verificaScaduta,
+  verificationLevelWeight,
+  type VerificationLevel,
+} from "@/lib/vat";
 import type {
   City,
   Service,
@@ -123,6 +128,8 @@ type RawProfessionalRow = {
   verification_status: VerificationStatus;
   verification_level: VerificationLevel | null;
   verification_level_at: string | null;
+  verification_badge_until: string | null;
+  verification_under_review: boolean | null;
   response_time_label: string | null;
   cities: { name: string; slug: string } | null;
   professional_services: {
@@ -155,6 +162,8 @@ const PROFESSIONAL_SELECT = `
   verification_status,
   verification_level,
   verification_level_at,
+  verification_badge_until,
+  verification_under_review,
   response_time_label,
   city_id,
   cities ( name, slug ),
@@ -307,9 +316,17 @@ function toCard(
     // regola sta in publicVerificationLevel, qui non si decide nulla.
     verificationLevel: publicVerificationLevel(
       row.verification_level ?? "none",
-      row.verification_status
+      row.verification_status,
+      row.verification_badge_until,
+      row.verification_under_review ?? false
     ),
-    verifiedAt: row.verification_level_at,
+    // Scaduta: via anche la data, se no la scheda direbbe «Iscritto · 12 set»,
+    // cioe' mostrerebbe la prova di una verifica che non vale piu'.
+    verifiedAt:
+      verificaScaduta(row.verification_badge_until) &&
+      !(row.verification_under_review ?? false)
+        ? null
+        : row.verification_level_at,
     responseTimeLabel: row.response_time_label,
     coverageKeys: cop?.keys ?? [],
     bestScope: cop?.bestScope ?? null,
@@ -554,19 +571,20 @@ function ordinaSenzaPunteggio(
       );
       if (rb !== ra) return rb - ra;
     }
+    // Ordina per LIVELLO di verifica (blocco 10), non per il flag manuale
+    // verification_status: quest'ultimo lo girava una persona senza motivazione
+    // obbligatoria ne' traccia nel registro, mentre /come-funziona#ordine al
+    // cliente promette «la partita IVA controllata». Stessa regola della
+    // migrazione 080, che fa la stessa sostituzione nel punteggio in SQL: le due
+    // strade devono dire la stessa cosa.
     const v =
-      verifiedWeight(b.verificationStatus) - verifiedWeight(a.verificationStatus);
+      verificationLevelWeight(b.verificationLevel) -
+      verificationLevelWeight(a.verificationLevel);
     if (v !== 0) return v;
     const r = (b.avgRating ?? 0) - (a.avgRating ?? 0);
     if (r !== 0) return r;
     return (a.minPrice ?? 9999) - (b.minPrice ?? 9999);
   });
-}
-
-function verifiedWeight(status: VerificationStatus): number {
-  if (status === "verified") return 2;
-  if (status === "pending") return 1;
-  return 0;
 }
 
 export async function getProfessionalById(
