@@ -1,11 +1,39 @@
-# Passaggio di consegne — 12 settembre 2026, sera (Lucio, con Claude)
+# Passaggio di consegne — 14 settembre 2026 (Lucio, con Claude)
 
-> Aggiornato dopo il merge della PR #65 e l'applicazione delle migrazioni.
+> Sostituisce quello del 12 settembre sera e ne porta avanti tutte le voci
+> ancora aperte, comprese quelle di André. HANDOFF.md si sovrascrive a ogni
+> sessione, **ma quello che è a metà si porta avanti, non si butta**.
 
-> Sostituisce quello dell'11 settembre e ne porta avanti tutte le voci ancora
-> aperte, nelle sezioni in fondo. HANDOFF.md si sovrascrive a ogni sessione,
-> **ma quello che è a metà si porta avanti, non si butta**. Scritto e mergiato
-> lo stesso giorno.
+## Cosa ho fatto — Lucio (14 settembre)
+
+Ramo **`feat/verifica-finestra-e-testi`**, **nessuna migrazione, niente
+applicato in produzione oggi**. `npx tsc --noEmit` e `npm run lint` passano; la
+build la fa la CI.
+
+- **I testi del ricontrollo non promettono più quello che la regola non
+  mantiene.** Tre righe su quattro di `MOTIVO_RICONTROLLO_TESTO` dicevano che
+  il badge non si tocca finché non lo guarda una persona: dalla mig 080 (13/09)
+  non è più vero — `verification_badge_until` spegne l'etichetta alla fine della
+  finestra anche se nessuno di noi ha aperto il caso. Adesso dicono quello che è
+  rimasto vero: il **livello** lo toglie solo una persona, con motivazione
+  (art. 22 GDPR), e l'etichetta torna da sola appena il controllo passa.
+- **La finestra ha una data, e il pro la legge.** `fraseEtichettaFinoAl()` in
+  `src/lib/vat.ts` scrive in un posto solo il giorno in cui l'etichetta smette
+  di comparire: la usano il riquadro verde e quello del ricontrollo in
+  `VatVerification`, e la notifica del ricontrollo, che prima aveva
+  `quando: null` e nessuna data nel testo. Un preavviso senza data non è un
+  preavviso (Reg. P2B art. 4).
+- **La finestra dell'ultima settimana vale anche sui ricontrolli.**
+  `ScadenzaVerificaPopup` guardava solo `vat_expires_at`: su una cessazione —
+  che apre il caso subito e spegne l'etichetta sette giorni dopo, mesi prima
+  della scadenza annuale — non si apriva mai. Ora la data è quella di
+  `scadenzaBadge()`, la stessa che spegne il badge, e
+  `scadenza_verifica_vista_al` conserva quella.
+- **Deciso e scritto in `docs/NOTE_E_DECISIONI.md` (voce 14/09), non
+  costruito**: cosa racconta la barretta dell'SLA, che quando sforiamo non è
+  dovuto nulla, e che i piani con quello che comprendono vanno nel contratto che
+  il pro accetta **quando sottoscrive l'abbonamento** — non in una policy di
+  registrazione. Con la forma che serve per le clausole dell'art. 1341 c.c.
 
 ## Cosa ho fatto — Lucio (12 settembre, tarda sera)
 
@@ -101,13 +129,21 @@ produzione non ho messo niente, e nessuna migrazione è applicata.**
 - **Il calendario nel piano Free.** La tabella lo toglie al Free, il prodotto lo
   dà ancora a tutti. È l'unico punto dove la pagina dice una cosa e l'app ne fa
   un'altra: vale anche per recensioni e risalto nei risultati.
-- **Alla scadenza il badge non cade ancora davvero**: mancano la regola di
-  lettura sull'etichetta pubblica e il giro che porta le righe scadute in
-  Ricontrollo.
-- **Quanto può restare aperto un caso di cessazione** col badge acceso: non
-  deciso. Oggi dipende da quanto ci mette qualcuno a guardarlo.
-- **L'SLA non è misurato**: manca il timestamp di ingresso in coda, la regola di
-  escalation e la riga nei ToS pro.
+- **La caduta del badge non è mai stata esercitata su dati veri.** La regola
+  c'è (mig 080, applicata) e il giro notturno gira, ma l'unico pro verificato
+  scade il 12/09/2027: il cron esamina 0 righe ogni notte e nel repo non esiste
+  nessun test. È viva, non è provata.
+- **La barretta dell'SLA non racconta ancora il ciclo deciso il 14/09**: dice
+  ricevuta → in gestione → esito, non distingue «il controllo automatico non è
+  passato» da «stiamo revisionando i documenti» e non dice niente quando
+  sforiamo. Spec in `docs/NOTE_E_DECISIONI.md`, voce 14/09.
+- **Lo sforamento dell'SLA non esce dalla pagina admin**: la coda mostra «SLA
+  sforata di N giorni» e mette i casi sforati in cima, ma nessuno viene
+  avvisato e non succede niente se nessuno apre quella pagina. Il giro notturno
+  che già gira è il posto dove contarli.
+- **I ToS pro non dicono niente dell'SLA né degli effetti del declassamento**:
+  `docs/legal/SCHELETRO_ToS_Professionisti.md` ha ancora `[DA INSERIRE]` su
+  «SLA di esame». Tocca un testo legale: cambia la versione dei termini.
 - **Richieste → In corso → Conclusi** e la cancellazione delle chat concluse:
   scritte in `docs/NOTE_E_DECISIONI.md`, non costruite. Dipendono dalla macchina
   a stati di `request_professionals`, che non viene mai aggiornata dopo

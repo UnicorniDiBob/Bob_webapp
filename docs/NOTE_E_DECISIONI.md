@@ -6,6 +6,63 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 
 ---
 
+## 2026-09-14 · Verifica: cosa vede il pro mentre aspetta, e dove vanno scritte le regole dell'abbonamento (decisioni di Lucio)
+
+**La barretta dell'SLA entra solo quando il controllo automatico non passa.**
+Quando arriva una richiesta il primo a guardarla è il controllo automatico: se
+conferma, non c'è nessuna attesa da raccontare e nessuna barretta. Se non
+conferma, allora entra l'SLA e la barretta dice che **la richiesta verrà presa
+in esame**. Da lì il ciclo:
+
+- **se ci servono documenti**, la barretta lo segna e passa al livello
+  successivo;
+- **mandati i documenti**, dice che stiamo revisionando i documenti;
+- **se ne chiediamo altri**, il ciclo si ripete da capo;
+- **a controllo concluso** dice che il processo è completato, e poi sparisce.
+
+**Se sforiamo i 5 giorni lavorativi: una riga, e nient'altro.** Sulla linea del
+tempo compare «ci stiamo mettendo più del previsto». Nessun indennizzo, nessuna
+corsia preferenziale, nessuna promessa: *non succede nulla*. La cifra la
+misuriamo per noi (`vat_review_opened_at`, mig 080), non per prometterla.
+
+**Dove va scritto che non è dovuto nulla, e dove vanno i piani.** Verificato il
+14/09, da far confermare al legale prima del go-live:
+
+- **Il d.lgs. 70/2003 (art. 12) non ci obbliga**: gli obblighi informativi
+  precontrattuali del commercio elettronico **non si applicano ai contratti fra
+  non consumatori**, e i professionisti sono utenti business. Da lì, niente.
+- **Il Regolamento P2B (UE) 2019/1150 sì**: i termini vanno redatti in modo
+  chiaro, restare disponibili, e devono indicare **i motivi per cui il servizio
+  può essere limitato, sospeso o cessato** (art. 3); ogni restrizione va
+  motivata e preavvisata (art. 4) — è la norma che regge la perdita
+  dell'etichetta — e le modifiche vogliono un preavviso di almeno 15 giorni
+  (art. 8), che i nostri termini già danno.
+- **L'art. 1341 comma 2 c.c. è il punto che decide la forma.** «Se sforiamo non
+  è dovuto nulla» è una **limitazione di responsabilità**; nello stesso elenco
+  stanno la **sospensione del servizio** e il **rinnovo tacito**
+  dell'abbonamento (che abbiamo, mig 074). Sono clausole che richiedono
+  approvazione specifica, e la Cassazione (ord. 20945/2026) ha detto che **la
+  spunta non basta**: vanno isolate dalle condizioni generali, accettate a
+  parte e con un log dell'accettazione.
+
+**Conclusione operativa.** I piani e cosa comprende ciascuno, l'SLA di esame e
+la riga sullo sforamento non bastano in una policy accettata alla creazione
+dell'account: vanno nel **contratto che il professionista accetta quando
+sottoscrive l'abbonamento**, e le tre clausole dell'elenco 1341 (responsabilità,
+sospensione, rinnovo tacito) vanno isolate con un'accettazione propria. Prima di
+scriverle va chiuso lo scarto noto fra la tabella dei piani e il prodotto (il
+calendario dato anche al Free): un contratto che descrive piani che non
+corrispondono è peggio di nessun contratto.
+
+**Fatto lo stesso giorno** (ramo `feat/verifica-finestra-e-testi`): i testi del
+ricontrollo non promettono più che il badge regge finché non lo guarda una
+persona — dalla mig 080 non è vero — e il giorno in cui l'etichetta si spegne
+adesso è scritto dove il pro lo legge, notifica compresa, oltre che nella
+finestra dell'ultima settimana, che ora si apre anche sui ricontrolli e non solo
+sulla scadenza annuale.
+
+---
+
 ## 2026-09-12 · Verifica, stato del profilo, area di lavoro (decisioni di Lucio)
 
 **SLA della coda di verifica: 5 giorni lavorativi.** È il tempo che dichiariamo

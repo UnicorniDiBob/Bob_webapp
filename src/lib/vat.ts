@@ -264,17 +264,47 @@ export const MOTIVO_RICONTROLLO_TITOLO: Record<MotivoRicontrollo, string> = {
   intestazione: "L'intestazione della partita IVA non corrisponde al profilo",
 };
 
-/** Cosa succede adesso, detto al professionista senza girarci intorno. */
+/**
+ * Cosa succede adesso, detto al professionista senza girarci intorno.
+ *
+ * NIENTE PROMESSE CHE LA REGOLA NON MANTIENE (14/09, Lucio). Tre di queste
+ * quattro righe dicevano che il badge non si tocca finche' non lo guarda una
+ * persona. Dal 13/09 non e' piu' vero: `verification_badge_until` (mig 080)
+ * spegne l'etichetta alla fine della finestra del ricontrollo anche se nessuno
+ * di noi ha aperto il caso. Resta vero — ed e' quello che va detto — che il
+ * LIVELLO non lo toglie nessun automatismo: quella e' una decisione di una
+ * persona, motivata (art. 22 GDPR), e l'etichetta torna da sola appena il
+ * controllo passa. Il giorno in cui si spegne lo scrive fraseEtichettaFinoAl(),
+ * perche' una data che il professionista puo' vedere si calcola in un posto
+ * solo (Reg. P2B art. 4: una restrizione si preavvisa e si motiva).
+ */
 export const MOTIVO_RICONTROLLO_TESTO: Record<MotivoRicontrollo, string> = {
   scadenza:
-    "La verifica vale un anno ed e' arrivata a scadenza. Lo rifacciamo noi: nella maggior parte dei casi non ti chiediamo niente. Il badge resta finche' non abbiamo finito.",
+    "La verifica vale un anno ed è arrivata a scadenza. Il ricontrollo lo facciamo noi: nella maggior parte dei casi non ti chiediamo niente. Se ti chiediamo un documento e ce lo mandi, l'etichetta resta accesa finché non decidiamo noi.",
   cessazione:
-    "Il controllo dice che la partita IVA con cui sei verificato non risulta piu' attiva. Puo' essere un dato del registro non aggiornato, o un numero cambiato: prima di toccare il badge lo guarda una persona. Se hai cambiato partita IVA, inseriscila qui.",
+    "Il controllo dice che la partita IVA con cui sei verificato non risulta più attiva. Può essere un dato del registro non aggiornato, o un numero cambiato: il livello non te lo toglie nessun automatismo, lo decide una persona. Se hai cambiato partita IVA inseriscila qui: appena il controllo passa torna tutto da solo.",
   procedura:
-    "Nella denominazione risulta una procedura in corso (per esempio una liquidazione). Non e' un rifiuto e non tocca il badge da solo: lo guarda una persona, e se il dato e' vecchio si chiude li'.",
+    "Nella denominazione risulta una procedura in corso (per esempio una liquidazione). Non è un rifiuto e il livello non lo tocca nessun automatismo: lo guarda una persona, e se il dato è vecchio si chiude lì.",
   intestazione:
-    "Il nome a cui risulta intestata la partita IVA non corrisponde piu' a quello del profilo. Lo guarda una persona: se hai cambiato ragione sociale, aggiornala nel profilo.",
+    "Il nome a cui risulta intestata la partita IVA non corrisponde più a quello del profilo. Lo guarda una persona: se hai cambiato ragione sociale, aggiornala nel profilo.",
 };
+
+/**
+ * La riga che dice fino a quando l'etichetta si vede, in un posto solo.
+ *
+ * La data arriva gia' formattata da chi chiama: ogni schermata ha il suo
+ * formato, la frase no. `inRicontrollo` cambia la seconda meta' perche'
+ * cambia la posta in gioco — un rinnovo annuale non e' un caso aperto.
+ */
+export function fraseEtichettaFinoAl(
+  dataFormattata: string,
+  inRicontrollo: boolean = false
+): string {
+  const base = `L'etichetta resta visibile ai clienti fino al ${dataFormattata}.`;
+  return inRicontrollo
+    ? `${base} Se il caso non si chiude prima, dopo quel giorno il profilo torna «Iscritto»: il livello non si perde e l'etichetta riappare da sola appena il controllo passa.`
+    : `${base} Poi la rinnoviamo noi: se ci serve un documento te lo chiediamo qui.`;
+}
 
 /** Come lo legge lo staff nella coda. */
 export const MOTIVO_RICONTROLLO_STAFF: Record<MotivoRicontrollo, string> = {
