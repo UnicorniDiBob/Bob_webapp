@@ -20,6 +20,7 @@ import { VerificationLevelBadge } from "@/components/ui";
 import { AvanzamentoVerifica } from "@/components/AvanzamentoVerifica";
 import {
   vatValidationError,
+  fraseEtichettaFinoAl,
   livelloVisibile,
   scadenzaBadge,
   normalizeVat,
@@ -170,10 +171,20 @@ export default function VatVerification({
 
   // La scadenza vale anche qui: il pro deve vedere quello che vedono i
   // clienti, compreso quando il badge non c'e' piu'.
+  //
+  // IL GIORNO SI CALCOLA UNA VOLTA SOLA (14/09). Serve a due cose che non
+  // possono divergere: la regola di lettura qui sotto e la riga che quel
+  // giorno lo dice al professionista. Finche' la pratica e' da noi
+  // (`inEsame`) la data non morde — regola 3 della mig 080.
+  const spegneIl = scadenzaBadge(
+    row?.vat_expires_at ?? null,
+    row?.recheck_opened_at ?? null
+  );
+  const inEsame = row?.vat_review_opened_at != null;
   const level: VerificationLevel = livelloVisibile(
     row?.level ?? "none",
-    scadenzaBadge(row?.vat_expires_at ?? null, row?.recheck_opened_at ?? null),
-    row?.vat_review_opened_at != null
+    spegneIl,
+    inEsame
   );
   const review = row?.vat_review_state ?? null;
   const verified = level === "vat_verified" || level === "documents_verified";
@@ -213,6 +224,19 @@ export default function VatVerification({
             <strong>{VERIFICATION_LABEL[level]}</strong> e la data del riscontro.
             Il numero non è visibile a nessuno di loro.
           </p>
+          {/* Fino a quando: prima questa data non era scritta da nessuna
+              parte, e il professionista scopriva la scadenza quando
+              l'etichetta era gia' sparita. */}
+          {spegneIl && !inEsame && (
+            <p className="mt-1 text-emerald-700/90" data-testid="vat-etichetta-fino-al">
+              {fraseEtichettaFinoAl(fmtDate(spegneIl))}
+            </p>
+          )}
+          {inEsame && (
+            <p className="mt-1 text-emerald-700/90">
+              {"Stiamo guardando la tua pratica: finché la palla è da noi l'etichetta resta accesa, anche se intanto la data passa."}
+            </p>
+          )}
         </div>
       )}
 
@@ -255,6 +279,14 @@ export default function VatVerification({
               (row?.recheck_reason ?? "scadenza") as keyof typeof MOTIVO_RICONTROLLO_TESTO
             ] ?? MOTIVO_RICONTROLLO_TESTO.scadenza}
           </p>
+          {spegneIl && (
+            <p
+              className="mt-1 font-medium text-orange-900"
+              data-testid="vat-ricontrollo-fino-al"
+            >
+              {fraseEtichettaFinoAl(fmtDate(spegneIl), true)}
+            </p>
+          )}
           {row?.vat_review_note && (
             <p className="mt-1 text-orange-800">{row.vat_review_note}</p>
           )}

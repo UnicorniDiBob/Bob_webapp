@@ -50,6 +50,8 @@ import { leggiAvvisiInCorso } from "@/lib/avvisi";
 import {
   MOTIVO_RICONTROLLO_TESTO,
   MOTIVO_RICONTROLLO_TITOLO,
+  fraseEtichettaFinoAl,
+  scadenzaBadge,
   statoScadenza,
   type MotivoRicontrollo,
 } from "@/lib/vat";
@@ -258,7 +260,7 @@ export async function caricaNotifiche(
       .eq("professional_id", rigaPro.id),
     supabase
       .from("professional_verification")
-      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, vat_expires_at, recheck_reason")
+      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, vat_expires_at, recheck_reason, recheck_opened_at")
       .eq("professional_id", rigaPro.id)
       .maybeSingle(),
   ]);
@@ -308,6 +310,7 @@ export async function caricaNotifiche(
         vat_reviewed_by_name: string | null;
         vat_expires_at: string | null;
         recheck_reason: string | null;
+        recheck_opened_at: string | null;
       } | null);
   // Se la lettura della verifica fallisce non sappiamo niente, e tacere e'
   // meglio che sbagliare: senza questa riga un errore qualsiasi sulla query
@@ -353,14 +356,25 @@ export async function caricaNotifiche(
     const motivo = (v?.recheck_reason ?? "scadenza") as MotivoRicontrollo;
     const titolo = MOTIVO_RICONTROLLO_TITOLO[motivo] ?? MOTIVO_RICONTROLLO_TITOLO.scadenza;
     const testo = MOTIVO_RICONTROLLO_TESTO[motivo] ?? MOTIVO_RICONTROLLO_TESTO.scadenza;
+    // IL GIORNO IN CUI L'ETICHETTA SI SPEGNE (14/09). Prima questa notifica
+    // apriva un caso senza dire quando finisce: `quando` era null e il testo
+    // non conteneva nessuna data, mentre la regola di lettura (mig 080) spegne
+    // l'etichetta alla fine della finestra. Un preavviso senza data non e' un
+    // preavviso.
+    const spegne = scadenzaBadge(
+      v?.vat_expires_at ?? null,
+      v?.recheck_opened_at ?? null
+    );
     out.push({
       id: `verifica:ricontrollo:${motivo}`,
       livello: motivo === "scadenza" ? "avviso" : "azione",
       titolo,
-      testo,
+      testo: spegne
+        ? `${testo} ${fraseEtichettaFinoAl(dataBreve(new Date(spegne)), true)}`
+        : testo,
       href: "/impostazioni/verifica",
       azione: "Vedi la tua verifica",
-      quando: null,
+      quando: spegne,
       mittente: "Assistenza Bob",
     });
   } else if (stato === "pending") {

@@ -22,13 +22,22 @@
 // NON BLOCCA. Si chiude col bottone, con Esc e cliccando fuori, e la stessa
 // cosa resta nella campanella. Una finestra che non si puo' chiudere e' una
 // pagina di errore.
+//
+// VALE ANCHE PER IL RICONTROLLO (14/09, Lucio). Fino a oggi qui si guardava
+// solo `vat_expires_at`: su una cessazione — che apre un caso subito e spegne
+// l'etichetta alla fine della finestra, mesi prima della scadenza annuale —
+// questa finestra non si apriva mai, e l'unico preavviso di una restrizione
+// era una notifica senza data. Adesso la data e' la stessa che spegne il
+// badge, `scadenzaBadge()`, cioe' la prima fra le due: un posto solo (mig 080,
+// Reg. P2B art. 4). `scadenza_verifica_vista_al` conserva QUELLA data, quindi
+// se il caso si chiude o la scadenza si sposta la finestra torna da sola.
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { statoScadenza, type StatoScadenza } from "@/lib/vat";
+import { scadenzaBadge, statoScadenza, type StatoScadenza } from "@/lib/vat";
 
 const GIORNO = new Intl.DateTimeFormat("it-IT", {
   day: "numeric",
@@ -46,6 +55,7 @@ export function ScadenzaVerificaPopup({
   const { user, loading } = useAuth();
   const [stato, setStato] = useState<StatoScadenza | null>(null);
   const [scadenza, setScadenza] = useState<string | null>(null);
+  const [daRicontrollo, setDaRicontrollo] = useState(false);
   const [aperto, setAperto] = useState(false);
 
   useEffect(() => {
@@ -56,7 +66,7 @@ export function ScadenzaVerificaPopup({
       const [verifica, profilo] = await Promise.all([
         supabase
           .from("professional_verification")
-          .select("level, vat_expires_at")
+          .select("level, vat_expires_at, recheck_opened_at")
           .eq("professional_id", professionalId)
           .maybeSingle(),
         supabase
@@ -70,10 +80,17 @@ export function ScadenzaVerificaPopup({
       const riga = verifica.data as {
         level: string | null;
         vat_expires_at: string | null;
+        recheck_opened_at: string | null;
       } | null;
-      if (!riga || riga.level === "none" || !riga.vat_expires_at) return;
+      if (!riga || riga.level === "none") return;
 
-      const s = statoScadenza(riga.vat_expires_at);
+      const spegneIl = scadenzaBadge(
+        riga.vat_expires_at,
+        riga.recheck_opened_at
+      );
+      if (!spegneIl) return;
+
+      const s = statoScadenza(spegneIl);
       if (!s) return;
       if (s.fase !== "ultima-settimana" && s.fase !== "scaduta") return;
 
@@ -85,12 +102,13 @@ export function ScadenzaVerificaPopup({
       // una formattazione diversa da quella che abbiamo scritto noi.
       if (
         vistaAl &&
-        new Date(vistaAl).getTime() === new Date(riga.vat_expires_at).getTime()
+        new Date(vistaAl).getTime() === new Date(spegneIl).getTime()
       ) {
         return;
       }
 
-      setScadenza(riga.vat_expires_at);
+      setScadenza(spegneIl);
+      setDaRicontrollo(riga.recheck_opened_at != null);
       setStato(s);
       setAperto(true);
     })();
@@ -130,7 +148,7 @@ export function ScadenzaVerificaPopup({
       className="fixed inset-0 z-[70] flex items-end justify-center bg-bob-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label="Scadenza della verifica"
+      aria-label={daRicontrollo ? "Ricontrollo della verifica" : "Scadenza della verifica"}
       onClick={() => void chiudi()}
     >
       <div
@@ -145,18 +163,28 @@ export function ScadenzaVerificaPopup({
             aria-hidden="true"
           />
           <span className="min-w-0">
-            {scaduta
-              ? "La tua verifica è scaduta"
-              : stato.giorniLavorativi <= 1
-                ? "La tua verifica scade domani"
-                : `La tua verifica scade fra ${stato.giorniLavorativi} giorni lavorativi`}
+            {daRicontrollo
+              ? scaduta
+                ? "I clienti non vedono più la tua etichetta"
+                : stato.giorniLavorativi <= 1
+                  ? "Da domani i clienti non vedono più la tua etichetta"
+                  : `Fra ${stato.giorniLavorativi} giorni lavorativi i clienti non vedono più la tua etichetta`
+              : scaduta
+                ? "La tua verifica è scaduta"
+                : stato.giorniLavorativi <= 1
+                  ? "La tua verifica scade domani"
+                  : `La tua verifica scade fra ${stato.giorniLavorativi} giorni lavorativi`}
           </span>
         </p>
 
         <p className="mt-2.5 text-sm leading-relaxed text-bob-ink/75">
-          {scaduta
-            ? `Era valida fino al ${GIORNO.format(stato.scadeIl)}. Finché non rifacciamo il controllo, il tuo profilo vale come non verificato: i clienti non vedono più l'etichetta e la data del riscontro.`
-            : `Vale fino al ${GIORNO.format(stato.scadeIl)}. Dopo quella data il profilo torna «Iscritto», cioè non verificato: i clienti smettono di vedere l'etichetta che guardano per prima.`}
+          {daRicontrollo
+            ? scaduta
+              ? `C'è un ricontrollo aperto sulla tua partita IVA e la finestra si è chiusa il ${GIORNO.format(stato.scadeIl)}: per i clienti il profilo torna «Iscritto». Il livello non è perso — non lo toglie nessun automatismo — e l'etichetta riappare da sola appena il controllo passa.`
+              : `C'è un ricontrollo aperto sulla tua partita IVA. L'etichetta resta visibile fino al ${GIORNO.format(stato.scadeIl)}: se il caso non si chiude prima, dopo quel giorno il profilo torna «Iscritto» per i clienti. Il livello non si perde e torna da solo appena il controllo passa.`
+            : scaduta
+              ? `Era valida fino al ${GIORNO.format(stato.scadeIl)}. Finché non rifacciamo il controllo, il tuo profilo vale come non verificato: i clienti non vedono più l'etichetta e la data del riscontro.`
+              : `Vale fino al ${GIORNO.format(stato.scadeIl)}. Dopo quella data il profilo torna «Iscritto», cioè non verificato: i clienti smettono di vedere l'etichetta che guardano per prima.`}
         </p>
 
         <p className="mt-2 text-sm leading-relaxed text-bob-ink/60">
