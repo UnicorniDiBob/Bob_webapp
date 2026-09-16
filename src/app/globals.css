@@ -46,8 +46,25 @@ body {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-bob-ink/70 transition hover:bg-bob-indigo-50 hover:text-bob-indigo;
   }
 
+  /* LA SCHEDA E' UN CONTENITORE, NON UN BERSAGLIO.
+     Su 118 usi di `.card` nel progetto, TRE sono cliccabili (piu' la scheda
+     del professionista in ui.tsx): tutti gli altri sono pannelli. Eppure
+     fino al 14 settembre `.card` era vestita da tessera cliccabile — bianca,
+     arrotondata e sollevata da `shadow-card`. E' il rilievo del paragrafo 5
+     dell'audit dell'11 settembre: quando tutto e' una scheda, niente ha piu'
+     importanza di altro.
+     Via l'ombra a riposo. Il bordo passa da /5 a /10 perche' ora deve reggere
+     da solo: il corpo pagina e' #fafafb e una scheda bianca senza ne' ombra
+     ne' bordo visibile sparisce nel fondo.
+     Chi deve sollevarsi lo dichiara da se': le quattro schede cliccabili
+     aggiungono gia' `hover:-translate-y-0.5 hover:shadow-card-hover`, quindi
+     al passaggio del mouse si alzano come prima — semplicemente a riposo non
+     lo urlano piu'.
+     `shadow-card` resta viva e usata 19 volte fuori di qui: sono finestre,
+     popup e la barra di ricerca, cioe' cose che galleggiano davvero sopra la
+     pagina. Quelle l'ombra la meritano. */
   .card {
-    @apply rounded-2xl border border-black/5 bg-white shadow-card transition;
+    @apply rounded-2xl border border-black/10 bg-white transition;
   }
 
   .chip {
