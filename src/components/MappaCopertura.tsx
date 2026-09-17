@@ -49,6 +49,17 @@ import {
   percorsoProvincia,
   type FormaComune,
 } from "@/lib/confini";
+import {
+  MAX_PROVINCE_APERTE,
+  PERCORSO_ITALIA,
+  ZOOM_COMUNI,
+  leggiProvince,
+  provinceNelRiquadro,
+  siToccano,
+  unisciForme,
+  type FormaProvincia,
+  type Riquadro,
+} from "@/lib/italia";
 
 /**
  * La forma dei quartieri, se il file c'è.
@@ -109,6 +120,12 @@ interface Props {
   formeCliccabili?: boolean;
 }
 
+/** L'inquadratura di adesso, come riquadro. */
+function vista(m: MappaLibre): Riquadro {
+  const b = m.getBounds();
+  return { ovest: b.getWest(), sud: b.getSouth(), est: b.getEast(), nord: b.getNorth() };
+}
+
 const SFONDO: StyleSpecification = {
   version: 8,
   sources: {},
@@ -118,6 +135,13 @@ const SFONDO: StyleSpecification = {
 };
 
 /** Sotto questo ingrandimento i quartieri sono pallini senza nome. */
+/**
+ * Quante province di comuni si tengono in memoria. Sopra questo numero le meno
+ * utili si buttano: sono ~50 KB di forme l'una, e tenerle tutte vorrebbe dire
+ * arrivare ai sei megabyte dell'Italia intera un pezzo per volta.
+ */
+const MAX_PROVINCE_IN_MEMORIA = 10;
+
 const ZOOM_ETICHETTE = 12;
 
 /**
@@ -161,6 +185,19 @@ export default function MappaCopertura({
   const forme = useRef<FormaComune[]>([]);
   const tracciatiComuni = useRef<SVGPathElement[]>([]);
   const disegnoInCoda = useRef(false);
+
+  // L'ITALIA DI SFONDO E LE PROVINCE APERTE (17/09).
+  // `province` sono le 110 forme dello sfondo, caricate una volta sola;
+  // `comuniPerSigla` è quello che si è scaricato finora, una provincia per
+  // chiave; `forme` resta l'elenco piatto su cui si disegna e si cerca il
+  // click, e adesso è la somma delle province aperte invece di una sola.
+  const province = useRef<FormaProvincia[]>([]);
+  const tracciatiProvince = useRef<SVGPathElement[]>([]);
+  const gruppoProvince = useRef<SVGGElement | null>(null);
+  const comuniPerSigla = useRef<Map<string, FormaComune[]>>(new Map());
+  const inCorso = useRef<Set<string>>(new Set());
+  const siglaRef = useRef<string | null>(siglaProvincia);
+  siglaRef.current = siglaProvincia;
 
   // Dati e callback in ref: gli handler si registrano una volta sola e vedono
   // sempre l'ultima versione, senza ricreare la mappa a ogni render.
@@ -297,11 +334,76 @@ export default function MappaCopertura({
    * cinquanta chilometri non lo è — e chi sceglie i comuni a mano ne tocca
    * dieci o venti, non uno.
    */
+  /**
+   * LO SFONDO: l'Italia, sempre acceso.
+   *
+   * PERCHÉ. Con una sola provincia disegnata, chi allarga la mappa vede la
+   * propria città sospesa nel vuoto — segnalato il 17/09 con lo screenshot.
+   * Queste sono le 110 forme di provincia: 138 KB compressi, una volta sola,
+   * e a qualsiasi ingrandimento sotto c'è l'Italia.
+   *
+   * SI DISEGNA SOLO QUELLO CHE SI VEDE. Le 110 forme sono 24.000 vertici: a
+   * proiettarli tutti a ogni fotogramma il trascinamento si sentirebbe.
+   * Il riquadro di ogni provincia — che sta nel file — dice in un confronto se
+   * vale la pena proiettarla.
+   */
+  const disegnaProvince = useCallback(() => {
+    const m = mappa.current;
+    const gruppo = gruppoProvince.current;
+    if (!m || !gruppo || province.current.length === 0) return;
+    const v = vista(m);
+
+    province.current.forEach((p, i) => {
+      let path = tracciatiProvince.current[i];
+      if (!path) {
+        path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const titolo = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        titolo.textContent = p.nome;
+        path.appendChild(titolo);
+        path.setAttribute("fill", "rgba(255,255,255,0.62)");
+        path.setAttribute("stroke", "rgba(0,0,0,0.2)");
+        path.setAttribute("stroke-width", "0.8");
+        gruppo.appendChild(path);
+        tracciatiProvince.current[i] = path;
+      }
+      if (!siToccano(v, p.riquadro)) {
+        path.setAttribute("d", "");
+        return;
+      }
+      path.setAttribute(
+        "d",
+        p.anelli
+          .map((anello) => {
+            const punti = anello.map(([lng, lat]) => {
+              const q = m.project([lng, lat]);
+              return `${q.x.toFixed(1)},${q.y.toFixed(1)}`;
+            });
+            return punti.length ? `M${punti.join("L")}Z` : "";
+          })
+          .join("")
+      );
+    });
+  }, []);
+
+  /**
+   * `forme` è la somma delle province caricate. Cambia di numero e di ordine
+   * ogni volta che se ne apre una, quindi i tracciati vecchi si buttano tutti:
+   * riusarli per indice disegnerebbe il comune sbagliato.
+   */
+  const rinfrescaForme = useCallback(() => {
+    forme.current = unisciForme(comuniPerSigla.current, [
+      ...comuniPerSigla.current.keys(),
+    ]);
+    tracciatiComuni.current.forEach((t) => t.remove());
+    tracciatiComuni.current = [];
+  }, []);
+
   const disegnaComuni = useCallback(() => {
     const m = mappa.current;
     const gruppo = gruppoComuni.current;
     if (!m || !gruppo || forme.current.length === 0) return;
     const dentro = new Set(selComuniRef.current);
+    const v = vista(m);
 
     forme.current.forEach((forma, i) => {
       let path = tracciatiComuni.current[i];
@@ -312,6 +414,13 @@ export default function MappaCopertura({
         path.appendChild(titolo);
         gruppo.appendChild(path);
         tracciatiComuni.current[i] = path;
+      }
+
+      // Fuori dall'inquadratura non si proietta: con più province aperte sono
+      // qualche migliaio di forme, e il trascinamento si sentirebbe.
+      if (!siToccano(v, forma.riquadro)) {
+        path.setAttribute("d", "");
+        return;
       }
 
       const d = forma.anelli
@@ -379,10 +488,75 @@ export default function MappaCopertura({
     disegnoInCoda.current = true;
     requestAnimationFrame(() => {
       disegnoInCoda.current = false;
+      disegnaProvince();
       disegnaComuni();
       disegnaQuartieri();
     });
-  }, [disegnaComuni, disegnaQuartieri]);
+  }, [disegnaProvince, disegnaComuni, disegnaQuartieri]);
+
+  /**
+   * QUALI PROVINCE TENERE APERTE.
+   *
+   * L'Italia intera a livello di comune sono sei megabyte: non si spediscono a
+   * un idraulico che sceglie un raggio. Ma una provincia sola non basta — chi
+   * lavora a Monza copre anche Milano e Como, e prima di oggi vedeva solo la
+   * Brianza. Quindi: si caricano le province che stanno nell'inquadratura, al
+   * massimo sei, e solo da un certo ingrandimento in su. Sotto, lo sfondo
+   * delle province è già il disegno giusto e i confini comunali sarebbero
+   * righe da mezzo pixel.
+   *
+   * COSA NON SI BUTTA MAI: la provincia della base del professionista e quelle
+   * dove ha già acceso un comune. Se si buttassero, la sua scelta sparirebbe
+   * dallo schermo appena sposta la mappa — e sembrerebbe cancellata.
+   */
+  const aggiornaProvinceAperte = useCallback(() => {
+    const m = mappa.current;
+    if (!m || province.current.length === 0) return;
+    if (m.getZoom() < ZOOM_COMUNI) return;
+
+    const selezionati = new Set(selComuniRef.current);
+    const intoccabili = new Set<string>();
+    if (siglaRef.current) intoccabili.add(siglaRef.current.toUpperCase());
+    comuniPerSigla.current.forEach((elenco, sigla) => {
+      if (elenco.some((f) => selezionati.has(f.istat))) intoccabili.add(sigla);
+    });
+
+    const volute = provinceNelRiquadro(
+      province.current,
+      vista(m),
+      MAX_PROVINCE_APERTE,
+      [...intoccabili]
+    );
+
+    volute.forEach((sigla) => {
+      if (comuniPerSigla.current.has(sigla) || inCorso.current.has(sigla)) return;
+      inCorso.current.add(sigla);
+      fetch(percorsoProvincia(sigla))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((dati) => {
+          inCorso.current.delete(sigla);
+          if (!dati || !mappa.current) return;
+          comuniPerSigla.current.set(sigla, leggiConfini(dati));
+
+          // Si fa spazio: le province che non servono più e che non tengono
+          // niente di acceso escono, le più vecchie per prime.
+          const salve = new Set([...volute, ...intoccabili]);
+          for (const vecchia of [...comuniPerSigla.current.keys()]) {
+            if (comuniPerSigla.current.size <= MAX_PROVINCE_IN_MEMORIA) break;
+            if (salve.has(vecchia)) continue;
+            comuniPerSigla.current.delete(vecchia);
+          }
+
+          rinfrescaForme();
+          disegnaComuni();
+        })
+        // Un file che manca non è un errore da mostrare: quella provincia
+        // resta senza comuni e la mappa continua a funzionare.
+        .catch(() => {
+          inCorso.current.delete(sigla);
+        });
+    });
+  }, [rinfrescaForme, disegnaComuni]);
 
   // 1. Creazione, una volta.
   useEffect(() => {
@@ -412,19 +586,37 @@ export default function MappaCopertura({
     const canvas = m.getCanvas();
     const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     s.setAttribute("class", "pointer-events-none absolute inset-0 h-full w-full");
-    // Due piani, in quest'ordine: i comuni sotto, i quartieri sopra. Dentro
-    // Milano le due griglie si sovrappongono, e quella fine deve restare
-    // leggibile — e cliccabile — sopra quella larga.
+    // Tre piani, in quest'ordine: l'Italia sotto, poi i comuni, poi i
+    // quartieri. È una carta a tre scale: allargando resta il paese, entrando
+    // compaiono i comuni, dentro Milano i nuclei. Quella fine deve restare
+    // leggibile — e cliccabile — sopra quelle larghe.
+    const gProvince = document.createElementNS("http://www.w3.org/2000/svg", "g");
     const gComuni = document.createElementNS("http://www.w3.org/2000/svg", "g");
     const gQuartieri = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    s.appendChild(gProvince);
     s.appendChild(gComuni);
     s.appendChild(gQuartieri);
+    gruppoProvince.current = gProvince;
     gruppoComuni.current = gComuni;
     gruppoQuartieri.current = gQuartieri;
     canvas.parentNode?.insertBefore(s, canvas.nextSibling);
     svg.current = s;
 
     let vivo = true;
+
+    // L'ITALIA, una volta sola: da qui in poi lo sfondo c'è a ogni
+    // ingrandimento, e i riquadri dentro il file dicono quali province di
+    // comuni valga la pena chiedere.
+    fetch(PERCORSO_ITALIA)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((dati) => {
+        if (!vivo || !dati) return;
+        province.current = leggiProvince(dati);
+        disegnaProvince();
+        aggiornaProvinceAperte();
+      })
+      .catch(() => null);
+
     fetch("/geo/milano-nil.geojson")
       .then((r) => (r.ok ? r.json() : null))
       .then((dati) => {
@@ -462,9 +654,15 @@ export default function MappaCopertura({
     m.on("load", () => {
       inquadrato.current = inquadra(m);
       disegnaMarcatori();
+      disegnaProvince();
       disegnaComuni();
       disegnaQuartieri();
+      aggiornaProvinceAperte();
     });
+    // Le province si chiedono a movimento finito, non durante: mentre si
+    // trascina l'inquadratura cambia sessanta volte al secondo, e sarebbero
+    // sessanta richieste per un file solo che serve.
+    m.on("moveend", aggiornaProvinceAperte);
     m.on("move", disegnaQuartieriRitmato);
     m.on("zoom", disegnaQuartieriRitmato);
     m.on("resize", disegnaQuartieriRitmato);
@@ -521,6 +719,7 @@ export default function MappaCopertura({
     return () => {
       vivo = false;
       osservatore.disconnect();
+      m.off("moveend", aggiornaProvinceAperte);
       m.off("move", disegnaQuartieriRitmato);
       m.off("zoom", disegnaQuartieriRitmato);
       m.off("resize", disegnaQuartieriRitmato);
@@ -538,40 +737,53 @@ export default function MappaCopertura({
       tracciatiComuni.current = [];
       quartieri.current = [];
       forme.current = [];
+      gruppoProvince.current = null;
+      tracciatiProvince.current = [];
+      province.current = [];
+      comuniPerSigla.current = new Map();
+      inCorso.current = new Set();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2. I confini della provincia: un file per volta, quello che serve.
-  //    Cambiare provincia butta via i tracciati vecchi — se restassero, si
-  //    disegnerebbero due province una sopra l'altra.
+  // 2. La provincia della base: quella si carica sempre, anche se in questo
+  //    momento la mappa sta guardando da un'altra parte. Le altre le decide
+  //    l'inquadratura, in aggiornaProvinceAperte.
+  //
+  //    PRIMA (fino al 17/09) QUI SI BUTTAVA TUTTO e si caricava una provincia
+  //    sola: cambiare provincia cancellava le forme di quella di prima. Adesso
+  //    le province aperte convivono — un professionista di Monza copre anche
+  //    Milano e Como — e chi decide cosa tenere è la cache, non questo effetto.
   useEffect(() => {
-    const gruppo = gruppoComuni.current;
-    if (!siglaProvincia) {
-      forme.current = [];
-      tracciatiComuni.current.forEach((p) => p.remove());
-      tracciatiComuni.current = [];
+    if (!siglaProvincia) return;
+    const sigla = siglaProvincia.trim().toUpperCase();
+    if (comuniPerSigla.current.has(sigla) || inCorso.current.has(sigla)) {
+      aggiornaProvinceAperte();
       return;
     }
     let vivo = true;
-    fetch(percorsoProvincia(siglaProvincia))
+    inCorso.current.add(sigla);
+    fetch(percorsoProvincia(sigla))
       .then((r) => (r.ok ? r.json() : null))
       .then((dati) => {
+        inCorso.current.delete(sigla);
         if (!vivo || !dati) return;
-        tracciatiComuni.current.forEach((p) => p.remove());
-        tracciatiComuni.current = [];
-        forme.current = leggiConfini(dati);
-        if (gruppo) disegnaComuni();
+        comuniPerSigla.current.set(sigla, leggiConfini(dati));
+        rinfrescaForme();
+        disegnaComuni();
         const m = mappa.current;
         if (m && !inquadrato.current) inquadrato.current = inquadra(m);
+        aggiornaProvinceAperte();
       })
       // Un file che manca non è un errore da mostrare: la provincia resta
       // senza forme e restano i comuni come punti nell'elenco sotto.
-      .catch(() => null);
+      .catch(() => {
+        inCorso.current.delete(sigla);
+      });
     return () => {
       vivo = false;
     };
-  }, [siglaProvincia, disegnaComuni, inquadra]);
+  }, [siglaProvincia, disegnaComuni, inquadra, rinfrescaForme, aggiornaProvinceAperte]);
 
   // 3. I quartieri arrivano dal database dopo la creazione della mappa: qui si
   //    ridisegnano e, se non era ancora riuscita, si tenta l'inquadratura.
@@ -580,6 +792,7 @@ export default function MappaCopertura({
     if (!m) return;
     if (!inquadrato.current) inquadrato.current = inquadra(m);
     disegnaMarcatori();
+    disegnaProvince();
     disegnaComuni();
     disegnaQuartieri();
   }, [
@@ -590,6 +803,7 @@ export default function MappaCopertura({
     formeCliccabili,
     inquadra,
     disegnaMarcatori,
+    disegnaProvince,
     disegnaComuni,
     disegnaQuartieri,
   ]);

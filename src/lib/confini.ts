@@ -18,6 +18,13 @@ export interface FormaComune {
   nome: string;
   /** Gli anelli esterni, in [lng, lat] come li vuole maplibre. */
   anelli: [number, number][][];
+  /**
+   * [ovest, sud, est, nord]. Serve a saltare, senza proiettare un vertice, i
+   * comuni che in questo momento non sono nell'inquadratura: da quando la
+   * mappa tiene aperte più province insieme sono qualche migliaio di forme, e
+   * proiettarle tutte a ogni fotogramma si sentirebbe trascinando.
+   */
+  riquadro: [number, number, number, number];
 }
 
 /** Dove sta il file di una provincia. La sigla è quella dei comuni (MI, BG). */
@@ -48,10 +55,23 @@ export function leggiConfini(dati: unknown): FormaComune[] {
     }
     anelli = anelli.filter((a) => a && a.length >= 4);
     if (anelli.length === 0) continue;
+    let ovest = Infinity;
+    let sud = Infinity;
+    let est = -Infinity;
+    let nord = -Infinity;
+    for (const anello of anelli) {
+      for (const [x, y] of anello) {
+        if (x < ovest) ovest = x;
+        if (x > est) est = x;
+        if (y < sud) sud = y;
+        if (y > nord) nord = y;
+      }
+    }
     forme.push({
       istat: f.properties?.i ?? "",
       nome: f.properties?.n ?? "",
       anelli,
+      riquadro: [ovest, sud, est, nord],
     });
   }
   return forme;
