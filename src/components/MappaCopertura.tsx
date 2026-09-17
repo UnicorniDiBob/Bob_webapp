@@ -67,7 +67,10 @@ import type { ZonaRow } from "@/lib/copertura";
  * caso di Roma e Torino, che i quartieri non li hanno ancora.
  */
 interface Quartiere {
+  /** La slug del nucleo (griglia della 084). */
   zona: string | null;
+  /** Il nome corto di prima a cui il nucleo appartiene, quando ce n'è uno. */
+  gruppo: string | null;
   anelli: [number, number][][];
 }
 
@@ -238,7 +241,12 @@ export default function MappaCopertura({
         })
         .join("");
       path.setAttribute("d", d);
-      const attiva = q.zona ? dentro.has(q.zona) : false;
+      // Si accende sul nucleo O sul gruppo: prima che la 084 sia applicata le
+      // zone salvate sono ancora i 28 nomi corti, e senza il gruppo la forma
+      // resterebbe spenta su un'area che il professionista copre davvero.
+      const attiva =
+        (q.zona !== null && dentro.has(q.zona)) ||
+        (q.gruppo !== null && dentro.has(q.gruppo));
       path.setAttribute("fill", attiva ? "rgba(79,70,229,0.28)" : "rgba(255,255,255,0.55)");
       path.setAttribute("stroke", attiva ? "#4f46e5" : "rgba(0,0,0,0.14)");
       path.setAttribute("stroke-width", attiva ? "1.4" : "1");
@@ -292,7 +300,11 @@ export default function MappaCopertura({
         if (!vivo || !dati) return;
         quartieri.current = (dati.features ?? [])
           .map((f: {
-            properties?: { slug?: string | null; zona?: string | null };
+            properties?: {
+              slug?: string | null;
+              zona?: string | null;
+              gruppo?: string | null;
+            };
             geometry?: { type?: string; coordinates?: unknown };
           }) => {
             const g = f.geometry;
@@ -302,9 +314,14 @@ export default function MappaCopertura({
             } else if (g?.type === "Polygon") {
               anelli = [(g.coordinates as [number, number][][])[0]];
             }
-            // `slug` è il nucleo (la griglia della 084); `zona` era il nome
-            // corto di prima e resta come ripiego se il file non è rigenerato.
-            return { zona: f.properties?.slug ?? f.properties?.zona ?? null, anelli };
+            // `slug` è il nucleo (la griglia della 084), `gruppo` il nome
+            // corto di prima: si tengono tutti e due, così la mappa si accende
+            // sia con le zone vecchie sia con quelle nuove.
+            return {
+              zona: f.properties?.slug ?? f.properties?.zona ?? null,
+              gruppo: f.properties?.gruppo ?? f.properties?.zona ?? null,
+              anelli,
+            };
           })
           .filter((q: Quartiere) => q.anelli.length > 0);
         disegnaQuartieri();
