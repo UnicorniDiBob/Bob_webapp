@@ -42,7 +42,13 @@ import {
   type MapMouseEvent,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { ZonaRow } from "@/lib/copertura";
+import type { ComuneRow, ZonaRow } from "@/lib/copertura";
+import {
+  dentroForma,
+  leggiConfini,
+  percorsoProvincia,
+  type FormaComune,
+} from "@/lib/confini";
 
 /**
  * La forma dei quartieri, se il file c'è.
@@ -85,6 +91,22 @@ interface Props {
   onCentro?: (c: { lat: number; lng: number }) => void;
   /** Click su un quartiere. */
   onZona?: (slug: string) => void;
+
+  // ----- Fuori dalla città: i comuni (087, blocco 5) -----
+  /** I comuni della provincia, per il nome e per il centro. */
+  comuni?: ComuneRow[];
+  /** I comuni dichiarati, per codice ISTAT. */
+  comuniSelezionati?: string[];
+  /** La sigla della provincia da disegnare: la mappa si carica il suo file. */
+  siglaProvincia?: string | null;
+  /** Click su un comune. */
+  onComune?: (istat: string) => void;
+  /**
+   * Se vero le forme si cliccano; se falso il click sulla mappa sposta il
+   * centro del cerchio, anche sopra una forma. Non possono valere insieme: in
+   * modo cerchio il bersaglio è la mappa, in modo manuale sono le aree.
+   */
+  formeCliccabili?: boolean;
 }
 
 const SFONDO: StyleSpecification = {
@@ -118,6 +140,11 @@ export default function MappaCopertura({
   interattivo = true,
   onCentro,
   onZona,
+  comuni = [],
+  comuniSelezionati = [],
+  siglaProvincia = null,
+  onComune,
+  formeCliccabili = false,
 }: Props) {
   const box = useRef<HTMLDivElement | null>(null);
   const mappa = useRef<MappaLibre | null>(null);
@@ -128,7 +155,11 @@ export default function MappaCopertura({
   const contatore = useRef<HTMLDivElement | null>(null);
   const quartieri = useRef<Quartiere[]>([]);
   const svg = useRef<SVGSVGElement | null>(null);
+  const gruppoComuni = useRef<SVGGElement | null>(null);
+  const gruppoQuartieri = useRef<SVGGElement | null>(null);
   const tracciati = useRef<SVGPathElement[]>([]);
+  const forme = useRef<FormaComune[]>([]);
+  const tracciatiComuni = useRef<SVGPathElement[]>([]);
   const disegnoInCoda = useRef(false);
 
   // Dati e callback in ref: gli handler si registrano una volta sola e vedono
@@ -138,18 +169,43 @@ export default function MappaCopertura({
   const cbCentro = useRef(onCentro);
   const cbZona = useRef(onZona);
   const cbInterattivo = useRef(interattivo);
+  const comuniRef = useRef(comuni);
+  const selComuniRef = useRef(comuniSelezionati);
+  const cbComune = useRef(onComune);
+  const cliccabiliRef = useRef(formeCliccabili);
   zoneRef.current = zone;
   selRef.current = selezionate;
   cbCentro.current = onCentro;
   cbZona.current = onZona;
   cbInterattivo.current = interattivo;
+  comuniRef.current = comuni;
+  selComuniRef.current = comuniSelezionati;
+  cbComune.current = onComune;
+  cliccabiliRef.current = formeCliccabili;
 
-  /** Inquadra la città. Torna false se i quartieri non sono ancora arrivati. */
+  /**
+   * Inquadra quello che c'è da guardare: i quartieri se la città ne ha, se no
+   * i comuni della provincia. Torna false se non è ancora arrivato niente —
+   * succede sempre al primo giro, perché i dati vengono dal database e la
+   * mappa nasce prima (imparato il 28/08: fitBounds su un elenco vuoto non
+   * fallisce, semplicemente non fa niente, e Milano resta in un angolo).
+   */
   const inquadra = useCallback((m: MappaLibre) => {
-    const punti = zoneRef.current.filter((z) => z.lat !== null && z.lng !== null);
-    if (punti.length === 0) return false;
     const b = new LngLatBounds();
-    punti.forEach((z) => b.extend([z.lng as number, z.lat as number]));
+    let punti = 0;
+    zoneRef.current.forEach((z) => {
+      if (z.lat === null || z.lng === null) return;
+      b.extend([z.lng, z.lat]);
+      punti++;
+    });
+    if (punti === 0) {
+      comuniRef.current.forEach((c) => {
+        if (c.lat === null || c.lng === null) return;
+        b.extend([c.lng, c.lat]);
+        punti++;
+      });
+    }
+    if (punti === 0) return false;
     m.fitBounds(b, { padding: 44, animate: false, maxZoom: 13 });
     return true;
   }, []);
@@ -205,16 +261,79 @@ export default function MappaCopertura({
       m.getCanvasContainer().appendChild(el);
       contatore.current = el;
     }
+    // Il contatore parla della griglia che si sta usando: dove non ci sono
+    // quartieri — cioè fuori dalle città che li pubblicano — dire «nessuna
+    // zona» sarebbe falso e scoraggiante, mentre i comuni ci sono eccome.
     const badge = contatore.current;
-    if (dentro.size === 0) {
+    const comuniDentro = selComuniRef.current.length;
+    const senzaQuartieri = zoneRef.current.length === 0;
+
+    if (senzaQuartieri) {
+      badge.textContent =
+        comuniDentro === 0
+          ? "Nessun comune nella tua area"
+          : comuniDentro === 1
+            ? "1 comune nella tua area"
+            : `${comuniDentro} comuni nella tua area`;
+      badge.style.display = "block";
+    } else if (dentro.size === 0) {
       badge.textContent = "Nessuna zona nella tua area";
       badge.style.display = "block";
     } else if (!conNome) {
-      badge.textContent = `${dentro.size} zone nella tua area`;
+      badge.textContent =
+        comuniDentro > 0
+          ? `${dentro.size} zone e ${comuniDentro} comuni nella tua area`
+          : `${dentro.size} zone nella tua area`;
       badge.style.display = "block";
     } else {
       badge.style.display = "none";
     }
+  }, []);
+
+  /**
+   * Ridisegna i comuni della provincia. Stesso mestiere dei quartieri, con una
+   * differenza: qui le forme SI CLICCANO. Un comune è un bersaglio grande e
+   * riconoscibile, mentre un pallino da tre pixel su una provincia larga
+   * cinquanta chilometri non lo è — e chi sceglie i comuni a mano ne tocca
+   * dieci o venti, non uno.
+   */
+  const disegnaComuni = useCallback(() => {
+    const m = mappa.current;
+    const gruppo = gruppoComuni.current;
+    if (!m || !gruppo || forme.current.length === 0) return;
+    const dentro = new Set(selComuniRef.current);
+
+    forme.current.forEach((forma, i) => {
+      let path = tracciatiComuni.current[i];
+      if (!path) {
+        path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const titolo = document.createElementNS("http://www.w3.org/2000/svg", "title");
+        titolo.textContent = forma.nome;
+        path.appendChild(titolo);
+        gruppo.appendChild(path);
+        tracciatiComuni.current[i] = path;
+      }
+
+      const d = forma.anelli
+        .map((anello) => {
+          const punti = anello.map(([lng, lat]) => {
+            const p = m.project([lng, lat]);
+            return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+          });
+          return punti.length ? `M${punti.join("L")}Z` : "";
+        })
+        .join("");
+      path.setAttribute("d", d);
+
+      const attiva = dentro.has(forma.istat);
+      path.setAttribute("fill", attiva ? "rgba(79,70,229,0.22)" : "rgba(255,255,255,0.5)");
+      path.setAttribute("stroke", attiva ? "#4f46e5" : "rgba(0,0,0,0.16)");
+      path.setAttribute("stroke-width", attiva ? "1.4" : "0.9");
+      // Nessun evento sul tracciato: se il disegno prendesse i click,
+      // trascinare la mappa sopra un comune smetterebbe di funzionare — ed è
+      // il gesto che si fa più spesso. Il click resta della mappa, che poi
+      // chiede a dentroForma() quale area è stata toccata.
+    });
   }, []);
 
   /** Ridisegna i quartieri: proietta i vertici alle coordinate dello schermo. */
@@ -228,7 +347,7 @@ export default function MappaCopertura({
       let path = tracciati.current[i];
       if (!path) {
         path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        contenitore.appendChild(path);
+        (gruppoQuartieri.current ?? contenitore).appendChild(path);
         tracciati.current[i] = path;
       }
       const d = q.anelli
@@ -250,6 +369,7 @@ export default function MappaCopertura({
       path.setAttribute("fill", attiva ? "rgba(79,70,229,0.28)" : "rgba(255,255,255,0.55)");
       path.setAttribute("stroke", attiva ? "#4f46e5" : "rgba(0,0,0,0.14)");
       path.setAttribute("stroke-width", attiva ? "1.4" : "1");
+
     });
   }, []);
 
@@ -259,9 +379,10 @@ export default function MappaCopertura({
     disegnoInCoda.current = true;
     requestAnimationFrame(() => {
       disegnoInCoda.current = false;
+      disegnaComuni();
       disegnaQuartieri();
     });
-  }, [disegnaQuartieri]);
+  }, [disegnaComuni, disegnaQuartieri]);
 
   // 1. Creazione, una volta.
   useEffect(() => {
@@ -275,7 +396,8 @@ export default function MappaCopertura({
       zoom: 11,
       attributionControl: {
         compact: true,
-        customAttribution: "Quartieri: NIL Comune di Milano (CC-BY)",
+        customAttribution:
+        "Quartieri: NIL Comune di Milano (CC-BY) · Comuni: confini ISTAT (CC BY 4.0)",
       },
     });
     m.addControl(new NavigationControl({ showCompass: false }), "top-right");
@@ -290,6 +412,15 @@ export default function MappaCopertura({
     const canvas = m.getCanvas();
     const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     s.setAttribute("class", "pointer-events-none absolute inset-0 h-full w-full");
+    // Due piani, in quest'ordine: i comuni sotto, i quartieri sopra. Dentro
+    // Milano le due griglie si sovrappongono, e quella fine deve restare
+    // leggibile — e cliccabile — sopra quella larga.
+    const gComuni = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const gQuartieri = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    s.appendChild(gComuni);
+    s.appendChild(gQuartieri);
+    gruppoComuni.current = gComuni;
+    gruppoQuartieri.current = gQuartieri;
     canvas.parentNode?.insertBefore(s, canvas.nextSibling);
     svg.current = s;
 
@@ -331,6 +462,7 @@ export default function MappaCopertura({
     m.on("load", () => {
       inquadrato.current = inquadra(m);
       disegnaMarcatori();
+      disegnaComuni();
       disegnaQuartieri();
     });
     m.on("move", disegnaQuartieriRitmato);
@@ -338,9 +470,43 @@ export default function MappaCopertura({
     m.on("resize", disegnaQuartieriRitmato);
     m.on("zoomend", disegnaMarcatori);
     m.on("click", (e: MapMouseEvent) => {
-      if (cbInterattivo.current) {
-        cbCentro.current?.({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      const punto = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+
+      // In modo manuale il click accende l'area toccata. Si guarda prima il
+      // quartiere e poi il comune: dentro Milano le due griglie stanno una
+      // sopra l'altra, e quella fine è quella che il professionista intende.
+      if (cliccabiliRef.current) {
+        const q = quartieri.current.find(
+          (x) => x.zona !== null && dentroForma(punto, x.anelli)
+        );
+        if (q?.zona) {
+          cbZona.current?.(q.zona);
+          return;
+        }
+        const c = forme.current.find((x) => dentroForma(punto, x.anelli));
+        if (c) {
+          cbComune.current?.(c.istat);
+          return;
+        }
+        return;
       }
+
+      if (cbInterattivo.current) {
+        cbCentro.current?.(punto);
+      }
+    });
+
+    // Il puntatore dice se lì sotto c'è qualcosa da accendere.
+    m.on("mousemove", (e: MapMouseEvent) => {
+      if (!cliccabiliRef.current) {
+        m.getCanvas().style.cursor = "";
+        return;
+      }
+      const punto = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+      const sopra =
+        quartieri.current.some((x) => x.zona !== null && dentroForma(punto, x.anelli)) ||
+        forme.current.some((x) => dentroForma(punto, x.anelli));
+      m.getCanvas().style.cursor = sopra ? "pointer" : "";
     });
 
     // Il contenitore cambia taglia (layout, rotazione, apertura di una
@@ -366,23 +532,69 @@ export default function MappaCopertura({
       alone.current = null;
       contatore.current = null;
       svg.current = null;
+      gruppoComuni.current = null;
+      gruppoQuartieri.current = null;
       tracciati.current = [];
+      tracciatiComuni.current = [];
       quartieri.current = [];
+      forme.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2. I quartieri arrivano dal database dopo la creazione della mappa: qui si
+  // 2. I confini della provincia: un file per volta, quello che serve.
+  //    Cambiare provincia butta via i tracciati vecchi — se restassero, si
+  //    disegnerebbero due province una sopra l'altra.
+  useEffect(() => {
+    const gruppo = gruppoComuni.current;
+    if (!siglaProvincia) {
+      forme.current = [];
+      tracciatiComuni.current.forEach((p) => p.remove());
+      tracciatiComuni.current = [];
+      return;
+    }
+    let vivo = true;
+    fetch(percorsoProvincia(siglaProvincia))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((dati) => {
+        if (!vivo || !dati) return;
+        tracciatiComuni.current.forEach((p) => p.remove());
+        tracciatiComuni.current = [];
+        forme.current = leggiConfini(dati);
+        if (gruppo) disegnaComuni();
+        const m = mappa.current;
+        if (m && !inquadrato.current) inquadrato.current = inquadra(m);
+      })
+      // Un file che manca non è un errore da mostrare: la provincia resta
+      // senza forme e restano i comuni come punti nell'elenco sotto.
+      .catch(() => null);
+    return () => {
+      vivo = false;
+    };
+  }, [siglaProvincia, disegnaComuni, inquadra]);
+
+  // 3. I quartieri arrivano dal database dopo la creazione della mappa: qui si
   //    ridisegnano e, se non era ancora riuscita, si tenta l'inquadratura.
   useEffect(() => {
     const m = mappa.current;
     if (!m) return;
     if (!inquadrato.current) inquadrato.current = inquadra(m);
     disegnaMarcatori();
+    disegnaComuni();
     disegnaQuartieri();
-  }, [zone, selezionate, inquadra, disegnaMarcatori, disegnaQuartieri]);
+  }, [
+    zone,
+    selezionate,
+    comuni,
+    comuniSelezionati,
+    formeCliccabili,
+    inquadra,
+    disegnaMarcatori,
+    disegnaComuni,
+    disegnaQuartieri,
+  ]);
 
-  // 3. Il cerchio: un alone nel DOM, non una sorgente della mappa.
+  // 4. Il cerchio: un alone nel DOM, non una sorgente della mappa.
   //
   // PERCHÉ NON UN LAYER GEOJSON. Provato, e non si disegnava: una sorgente
   // geojson viene analizzata in un web worker, e nel bundle di produzione di

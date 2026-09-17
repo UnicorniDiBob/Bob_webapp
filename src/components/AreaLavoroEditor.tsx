@@ -29,10 +29,12 @@ import {
   RAGGIO_MIN,
   SCOPE_LABEL,
   SCOPE_ORDINE,
+  comuniNelCerchio,
   gettoniRichiesta,
   trovaPerRichiesta,
   zoneNelCerchio,
   type CittaRow,
+  type ComuneRow,
   type Scope,
   type ZonaRow,
 } from "@/lib/copertura";
@@ -83,9 +85,18 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
   const [cityId, setCityId] = useState<string | null>(cityIdIniziale);
   const [zone, setZone] = useState<ZonaRow[]>([]);
   const [filtroZona, setFiltroZona] = useState("");
+  const [comuni, setComuni] = useState<ComuneRow[]>([]);
+  const [comuniIstat, setComuniIstat] = useState<string[]>([]);
+  const [siglaProvincia, setSiglaProvincia] = useState<string | null>(null);
   // Il punto da cui parte la mappa quando il professionista non ha ancora
   // disegnato niente: il suo comune (085), non il centro della città.
-  const [base, setBase] = useState<{ lat: number; lng: number; nome: string } | null>(null);
+  const [base, setBase] = useState<{
+    lat: number;
+    lng: number;
+    nome: string;
+    provincia: string;
+    sigla: string;
+  } | null>(null);
   const [maxScope, setMaxScope] = useState<Scope | null>(null);
 
   const [rigaId, setRigaId] = useState<string | null>(null);
@@ -104,14 +115,8 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     [citta, cityId]
   );
 
-  // «comuni» esiste in database dalla 087 — il cerchio li calcola già e i
-  // gettoni escono — ma qui non si può ancora scegliere: l'interfaccia per
-  // disegnarli arriva con la mappa fuori Milano. Un bottone che non fa niente
-  // è peggio di un bottone che non c'è.
-  const ordineVisibile = useMemo<Scope[]>(
-    () => SCOPE_ORDINE.filter((s) => s !== "comuni"),
-    []
-  );
+  // Tutti gli ambiti si scelgono: «comuni» ha la sua interfaccia da adesso.
+  const ordineVisibile = useMemo<Scope[]>(() => SCOPE_ORDINE, []);
 
   // Ampiezze ammesse: dal catalogo, non dal professionista.
   const scopeAmmessi = useMemo(() => {
@@ -128,13 +133,13 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
       const [cittaRes, copRes, svcRes, pubRes, proRes] = await Promise.all([
         supabase
           .from("cities")
-          .select("id, name, slug, status, province, region, macro_region, coverage_keys")
+          .select("*")
           .order("name"),
         supabase
           .from("professional_coverage")
-          .select(
-            "id, scope, city_id, mode, zone_slugs, center_lat, center_lng, radius_m, works_remote"
-          )
+          // select("*"): comuni_istat arriva con la 087, e finché non è
+          // applicata nominarla qui farebbe fallire tutta la lettura.
+          .select("*")
           .eq("professional_id", professionalId),
         supabase
           .from("professional_services")
@@ -166,9 +171,17 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
         fetch(`/api/geo/comuni?istat=${encodeURIComponent(istat)}`)
           .then((r) => (r.ok ? r.json() : null))
           .then((d) => {
-            const c = d?.comune as { nome: string; lat: number | null; lng: number | null } | undefined;
+            const c = d?.comune as
+              | { nome: string; provincia: string; sigla: string; lat: number | null; lng: number | null }
+              | undefined;
             if (c?.lat != null && c?.lng != null) {
-              setBase({ lat: c.lat, lng: c.lng, nome: c.nome });
+              setBase({
+                lat: c.lat,
+                lng: c.lng,
+                nome: c.nome,
+                provincia: c.provincia,
+                sigla: c.sigla,
+              });
             }
           })
           .catch(() => null);
@@ -186,6 +199,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
         city_id: string | null;
         mode: "zones" | "circle" | "polygon";
         zone_slugs: string[];
+        comuni_istat?: string[] | null;
         center_lat: number | null;
         center_lng: number | null;
         radius_m: number | null;
@@ -199,6 +213,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
         setScope(riga.scope);
         setModo(riga.mode === "circle" ? "circle" : "zones");
         setZoneSlugs(riga.zone_slugs ?? []);
+        setComuniIstat(riga.comuni_istat ?? []);
         setRaggioM(riga.radius_m ?? RAGGIO_DEFAULT);
         setADistanza(riga.works_remote);
         setCityId(riga.city_id ?? cityIdIniziale);
@@ -246,6 +261,51 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityId]);
 
+  // I COMUNI DELLA PROVINCIA. Quale provincia: quella della base dichiarata
+  // all'iscrizione (085) e, se manca, quella della città di Bob scelta qui.
+  // Un professionista di Monza deve trovarsi davanti i comuni della Brianza,
+  // non quelli di Milano.
+  useEffect(() => {
+    const provincia = base?.provincia ?? cittaScelta?.province ?? null;
+    if (!provincia) {
+      setComuni([]);
+      setSiglaProvincia(null);
+      return;
+    }
+    let annullato = false;
+    (async () => {
+      // La tabella arriva con la 086: finché non è applicata si resta senza
+      // comuni, e la pagina continua a funzionare com'era.
+      const { data, error } = await supabase
+        .from("comuni")
+        .select("istat, nome, sigla, provincia, lat, lng")
+        .eq("provincia", provincia)
+        .order("nome");
+      if (annullato) return;
+      if (error) {
+        setComuni([]);
+        setSiglaProvincia(null);
+        return;
+      }
+      const righe = (data ?? []) as ComuneRow[];
+      setComuni(righe);
+      setSiglaProvincia(base?.sigla ?? righe[0]?.sigla ?? null);
+    })();
+    return () => {
+      annullato = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [base, cittaScelta]);
+
+  // I comuni che NON si dichiarano come comune: quelli che sono città di Bob
+  // con i propri quartieri, dove vale la griglia fine. È la stessa regola del
+  // trigger della 087 — qui serve perché l'anteprima mentre si trascina il
+  // cerchio dica la verità, e il conto che vale lo rifà comunque il database.
+  const comuniEsclusi = useMemo(() => {
+    const istat = (cittaScelta as { comune_istat?: string | null } | null)?.comune_istat;
+    return zone.length > 0 && istat ? [istat] : [];
+  }, [cittaScelta, zone.length]);
+
   // Primo centro, in ordine: il comune dichiarato all'iscrizione, e solo se
   // manca la media dei quartieri. Chi sta a Sesto San Giovanni apriva la mappa
   // sul Duomo e doveva trascinare il perno ogni volta: il dato per non
@@ -270,8 +330,9 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
   useEffect(() => {
     if (modo !== "circle" || !centro) return;
     setZoneSlugs(zoneNelCerchio(zone, centro, raggioM));
+    setComuniIstat(comuniNelCerchio(comuni, centro, raggioM, comuniEsclusi));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, centro, raggioM, zone]);
+  }, [modo, centro, raggioM, zone, comuni, comuniEsclusi]);
 
   // Ottantotto caselle in fila sono un muro di testo: si raggruppano sotto i
   // nomi corti di prima — quelli che il database porta in `group_slug` — e si
@@ -309,6 +370,17 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     });
   }
 
+  // Un comune si accende cliccandolo sulla mappa o nella sua pastiglia: sono
+  // lo stesso gesto, e il primo è quello che una persona prova per istinto.
+  function toccaComune(istat: string) {
+    if (comuniEsclusi.includes(istat)) return;
+    setSalvato(false);
+    setModo("zones");
+    setComuniIstat((prec) =>
+      prec.includes(istat) ? prec.filter((i) => i !== istat) : [...prec, istat].sort()
+    );
+  }
+
   function toccaZona(slug: string) {
     setSalvato(false);
     setModo("zones");
@@ -322,13 +394,14 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     setErrore(null);
     setSalvato(false);
     try {
-      const perZone = scope === "zones";
+      const perZone = scope === "zones" || scope === "comuni";
       const payload = {
         professional_id: professionalId,
         scope,
         city_id: scope === "national" ? null : cityId,
         mode: perZone ? modo : "zones",
         zone_slugs: perZone ? zoneSlugs : [],
+        comuni_istat: perZone ? comuniIstat : [],
         center_lat: perZone && modo === "circle" ? centro?.lat ?? null : null,
         center_lng: perZone && modo === "circle" ? centro?.lng ?? null : null,
         radius_m: perZone && modo === "circle" ? raggioM : null,
@@ -372,7 +445,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     );
   }
 
-  const perZone = scope === "zones";
+  const perZone = scope === "zones" || scope === "comuni";
 
   return (
     <div className="space-y-4">
@@ -448,6 +521,13 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
               setSalvato(false);
             }}
             onZona={toccaZona}
+            comuni={comuni}
+            comuniSelezionati={comuniIstat}
+            siglaProvincia={siglaProvincia}
+            onComune={toccaComune}
+            // In modo cerchio il bersaglio è la mappa (si sposta il centro);
+            // in modo manuale sono le aree, che si accendono cliccandole.
+            formeCliccabili={modo !== "circle"}
           />
 
           <div className="card p-4">
@@ -485,11 +565,66 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
             />
             <p className="mt-1 text-xs text-bob-ink/65">
               {modo === "circle"
-                ? "Trascina il perno o clicca sulla mappa per spostare il centro. Tocca un quartiere per scegliere a mano."
-                : "Stai scegliendo i quartieri a mano: il cerchio non comanda più."}
+                ? "Trascina il perno o clicca sulla mappa per spostare il centro. Tocca un'area per sceglierla a mano."
+                : "Stai scegliendo a mano: clicca le aree sulla mappa per accenderle e spegnerle. Il cerchio non comanda più."}
             </p>
           </div>
 
+          {scope === "comuni" ? (
+            <div data-testid="chip-comuni" className="space-y-3">
+              {comuni.length > 8 && (
+                <input
+                  type="search"
+                  value={filtroZona}
+                  onChange={(e) => setFiltroZona(e.target.value)}
+                  placeholder="Cerca un comune…"
+                  aria-label="Cerca un comune"
+                  className="w-full rounded-lg border border-black/10 px-3 py-1.5 text-sm outline-none focus:border-bob-indigo"
+                />
+              )}
+
+              <div className="flex flex-wrap gap-1.5">
+                {comuni
+                  .filter((c) => {
+                    const cerca = filtroZona.trim().toLowerCase();
+                    return !cerca || c.nome.toLowerCase().includes(cerca);
+                  })
+                  .map((c) => {
+                    const dentro = comuniIstat.includes(c.istat);
+                    const escluso = comuniEsclusi.includes(c.istat);
+                    return (
+                      <button
+                        key={c.istat}
+                        type="button"
+                        onClick={() => toccaComune(c.istat)}
+                        disabled={escluso}
+                        aria-pressed={dentro}
+                        title={
+                          escluso
+                            ? `${c.nome}: qui si copre a quartieri, non a comuni`
+                            : c.nome
+                        }
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                          escluso
+                            ? "cursor-not-allowed border-dashed border-black/15 text-bob-ink/35"
+                            : dentro
+                              ? "border-bob-indigo bg-bob-indigo/10 text-bob-indigo"
+                              : "border-black/10 text-bob-ink/70 hover:border-black/30"
+                        }`}
+                      >
+                        {c.nome}
+                      </button>
+                    );
+                  })}
+              </div>
+
+              {comuni.length === 0 && (
+                <p className="text-sm text-bob-ink/65">
+                  Per questa provincia non ho ancora l&apos;elenco dei comuni.
+                </p>
+              )}
+            </div>
+          ) : (
           <div data-testid="chip-zone" className="space-y-3">
             {zone.length > 8 && (
               <input
@@ -558,7 +693,28 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
                 scegliere un&apos;area più larga qui sopra.
               </p>
             )}
+
+            {/* QUELLO CHE IL CERCHIO PRENDE FUORI CITTÀ, detto e non nascosto.
+                Il cerchio non si ferma al confine comunale: se sconfina, quei
+                comuni finiscono davvero nella tua area (087) e il
+                professionista ha diritto di vederlo scritto, non di scoprirlo
+                dalle richieste che arrivano. */}
+            {comuniIstat.length > 0 && (
+              <p className="text-xs text-bob-ink/65">
+                Fuori città il cerchio prende anche{" "}
+                <span className="font-medium">
+                  {comuniIstat.length === 1 ? "1 comune" : `${comuniIstat.length} comuni`}
+                </span>
+                : {comuni
+                  .filter((c) => comuniIstat.includes(c.istat))
+                  .slice(0, 4)
+                  .map((c) => c.nome)
+                  .join(", ")}
+                {comuniIstat.length > 4 ? "…" : ""}
+              </p>
+            )}
           </div>
+          )}
         </>
       ) : (
         <div className="card flex items-start gap-3 p-4">

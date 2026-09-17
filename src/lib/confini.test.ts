@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { leggiConfini, percorsoProvincia } from "./confini";
+import { dentroForma, leggiConfini, percorsoProvincia } from "./confini";
 
 // I file dei confini sono generati e committati: queste prove guardano il file
 // vero, non un finto. Se un giorno il generatore cambia fonte o taglia troppo,
@@ -85,5 +85,46 @@ describe("la Sardegna, che è il caso difficile", () => {
   it("e il Sud Sardegna, dove sono finiti gli altri, non è vuoto", () => {
     const forme = leggiConfini(provincia("SU"));
     expect(forme.length).toBeGreaterThan(90);
+  });
+});
+
+describe("cliccare su un'area", () => {
+  // È il conto che sostituisce il bersaglio: il click resta della mappa, e
+  // questo dice quale comune è stato toccato. Se sbaglia, il professionista
+  // clicca su Sesto e gli si accende Milano.
+  const forme = leggiConfini(provincia("MI"));
+  const milano = forme.find((f) => f.istat === "015146")!;
+  const sesto = forme.find((f) => f.istat === "015209")!;
+
+  it("il Duomo è dentro Milano e non dentro Sesto", () => {
+    const duomo = { lng: 9.1895, lat: 45.4642 };
+    expect(dentroForma(duomo, milano.anelli)).toBe(true);
+    expect(dentroForma(duomo, sesto.anelli)).toBe(false);
+  });
+
+  it("il centro di Sesto è dentro Sesto e non dentro Milano", () => {
+    const punto = { lng: 9.2333, lat: 45.5333 };
+    expect(dentroForma(punto, sesto.anelli)).toBe(true);
+    expect(dentroForma(punto, milano.anelli)).toBe(false);
+  });
+
+  it("un punto in mezzo al mare non è dentro niente", () => {
+    const mare = { lng: 12.5, lat: 43.0 };
+    expect(forme.some((f) => dentroForma(mare, f.anelli))).toBe(false);
+  });
+
+  it("ogni comune della provincia riconosce un punto vicino al proprio centro", () => {
+    // Prova grossolana ma utile: se il ray casting fosse rotto (o le
+    // coordinate invertite) qui passerebbe quasi nessuno.
+    let dentro = 0;
+    for (const f of forme) {
+      const [lng, lat] = f.anelli[0][0];
+      // Un vertice sta sul bordo: si entra di un soffio verso l'interno
+      // muovendosi verso il vertice opposto dell'anello.
+      const [lng2, lat2] = f.anelli[0][Math.floor(f.anelli[0].length / 2)];
+      const punto = { lng: lng + (lng2 - lng) * 0.5, lat: lat + (lat2 - lat) * 0.5 };
+      if (dentroForma(punto, f.anelli)) dentro++;
+    }
+    expect(dentro).toBeGreaterThan(forme.length * 0.8);
   });
 });

@@ -56,3 +56,34 @@ export function leggiConfini(dati: unknown): FormaComune[] {
   }
   return forme;
 }
+
+/**
+ * Il punto cade dentro questa forma? Ray casting sugli anelli esterni.
+ *
+ * PERCHÉ SERVE. Sulla mappa le aree si scelgono cliccandole, e il bersaglio
+ * dev'essere la forma, non un pallino da tre pixel. Il click però non può
+ * essere intercettato dal disegno: se i tracciati SVG prendessero gli eventi,
+ * trascinare la mappa sopra un comune smetterebbe di funzionare — e trascinare
+ * la mappa è il gesto che si fa più spesso. Quindi il click resta della mappa,
+ * e a dire quale area è stata toccata è questo conto, che costa qualche
+ * migliaio di confronti: nulla, una volta per click.
+ */
+export function dentroForma(
+  punto: { lng: number; lat: number },
+  anelli: [number, number][][]
+): boolean {
+  return anelli.some((anello) => dentroAnello(punto.lng, punto.lat, anello));
+}
+
+function dentroAnello(x: number, y: number, anello: [number, number][]): boolean {
+  let dentro = false;
+  for (let i = 0; i < anello.length - 1; i++) {
+    const [x1, y1] = anello[i];
+    const [x2, y2] = anello[i + 1];
+    if (y1 > y !== y2 > y) {
+      const taglio = x1 + ((y - y1) * (x2 - x1)) / (y2 - y1);
+      if (taglio > x) dentro = !dentro;
+    }
+  }
+  return dentro;
+}
