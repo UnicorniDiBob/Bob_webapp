@@ -32,6 +32,7 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
+      - run: npm test
       - run: npm run build
         env:
           # Dummy values so the Next.js build can complete — no real Supabase/Anthropic
