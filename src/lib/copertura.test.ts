@@ -86,6 +86,34 @@ describe("chi trova chi", () => {
     );
   });
 
+  it("una richiesta col CAP di Sesto incontra chi copre Sesto", () => {
+    // È il punto di tutta la 088: la città di Bob resta Milano — è lì che il
+    // cliente ha cercato — ma il CAP dice Sesto, e chi copre Sesto deve
+    // comparire. Senza il terzo gettone non comparirebbe mai nessuno fuori
+    // dalle tre città.
+    const citta = { slug: "milano", coverage_keys: ["city:milano", "comune:015146", "prov:milano", "it:*"] };
+    const daSesto = gettoniRichiesta(citta, null, "015209");
+    expect(daSesto).toContain("comune:015209");
+
+    const proDiSesto = { keys: ["comune:015209"], citySlug: "milano" };
+    expect(trovaPerRichiesta(proDiSesto, daSesto, "milano")).toBe(true);
+  });
+
+  it("non ripete il comune quando è già quello della città", () => {
+    const citta = { slug: "milano", coverage_keys: ["city:milano", "comune:015146", "it:*"] };
+    const chiavi = gettoniRichiesta(citta, null, "015146");
+    expect(chiavi.filter((k) => k === "comune:015146")).toHaveLength(1);
+  });
+
+  it("senza comune la richiesta è quella di prima", () => {
+    const citta = { slug: "milano", coverage_keys: ["city:milano", "it:*"] };
+    expect(gettoniRichiesta(citta, "isola")).toEqual([
+      "zone:milano/isola",
+      "city:milano",
+      "it:*",
+    ]);
+  });
+
   it("i gettoni della richiesta restano quelli del database, più la zona", () => {
     const citta = { slug: "milano", coverage_keys: ["city:milano", "comune:015146", "it:*"] };
     expect(gettoniRichiesta(citta, "isola")).toEqual([
