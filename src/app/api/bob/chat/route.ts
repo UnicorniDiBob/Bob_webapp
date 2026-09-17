@@ -7,6 +7,7 @@ import {
   buildBriefTool,
   mergeBrief,
   ruleBasedDecision,
+  fieldsForSubtask,
   EMPTY_BRIEF,
   type BobDecision,
   type BobMessage,
@@ -135,12 +136,18 @@ export async function POST(request: Request) {
 
   try {
     const client = new Anthropic({ apiKey });
-    const tool = buildBriefTool(services, subservices);
+    // Le chiavi valide per il sotto-servizio già noto da un turno precedente
+    // (spec §3, Fase 3): se prev.subtaskSlug non è ancora impostato, questa
+    // è [] e sia il prompt sia lo schema restano nella modalità "non lo so
+    // ancora" — non un elenco vuoto interpretato come "nessuna chiave è
+    // ammessa mai".
+    const candidateFields = fieldsForSubtask(prev.subtaskSlug, subservices);
+    const tool = buildBriefTool(services, subservices, candidateFields);
     const completion = await client.messages.create({
       model: "claude-3-5-haiku-latest",
       max_tokens: 1000,
       temperature: 0.4,
-      system: buildSystemPrompt(services, subservices),
+      system: buildSystemPrompt(services, subservices, candidateFields),
       tools: [tool as Anthropic.Tool],
       tool_choice: { type: "tool", name: "update_job_brief" },
       messages: toAnthropicMessages(messages),

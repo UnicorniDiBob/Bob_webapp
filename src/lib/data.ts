@@ -18,6 +18,7 @@ import type {
   ProfessionalOffer,
   PortfolioItem,
   VerificationStatus,
+  QuoteField,
 } from "@/lib/supabase/types";
 import { withArticle, afterDi } from "@/lib/italian";
 
@@ -77,13 +78,16 @@ export async function getSubservices(serviceId: string): Promise<Subservice[]> {
 }
 
 // Tutti i sottoservizi con lo slug del servizio padre (per il brief di Bob).
+// quoteFields viaggia insieme allo slug apposta: la Fase 3 deve poter
+// vincolare lo scope al sotto-servizio candidato senza un giro a parte sul
+// DB — la lista completa serve gia' per l'enum di subtaskSlug.
 export async function getAllSubservices(): Promise<
-  { serviceSlug: string; slug: string; name: string }[]
+  { serviceSlug: string; slug: string; name: string; quoteFields: QuoteField[] }[]
 > {
   const supabase = createClient();
   const { data } = await supabase
     .from("subservices")
-    .select("slug, name, services(slug)")
+    .select("slug, name, quote_fields, services(slug)")
     .is("superseded_by", null)
     .order("name", { ascending: true });
   return (data ?? [])
@@ -91,11 +95,23 @@ export async function getAllSubservices(): Promise<
       const svc = row.services as { slug: string } | { slug: string }[] | null;
       const serviceSlug = Array.isArray(svc) ? svc[0]?.slug : svc?.slug;
       return serviceSlug
-        ? { serviceSlug, slug: row.slug as string, name: row.name as string }
+        ? {
+            serviceSlug,
+            slug: row.slug as string,
+            name: row.name as string,
+            quoteFields: (row.quote_fields as QuoteField[] | null) ?? [],
+          }
         : null;
     })
-    .filter((x): x is { serviceSlug: string; slug: string; name: string } =>
-      Boolean(x)
+    .filter(
+      (
+        x
+      ): x is {
+        serviceSlug: string;
+        slug: string;
+        name: string;
+        quoteFields: QuoteField[];
+      } => Boolean(x)
     );
 }
 

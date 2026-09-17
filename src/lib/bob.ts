@@ -6,6 +6,7 @@
 
 import { guessServiceSlug, guessSeverity } from "./matching";
 import { afterDi } from "./italian";
+import type { QuoteField } from "./supabase/types";
 
 export type Severity = "alta" | "media" | "bassa";
 export type BriefUrgency =
@@ -113,6 +114,11 @@ export interface SubserviceRef {
   serviceSlug: string;
   slug: string;
   name: string;
+  // Le chiavi di scope valide per questo sotto-servizio (spec §3, migration
+  // 082/083). Assente/vuoto per i catalog ref che non lo portano ancora
+  // (retrocompatibilità con chiamate esistenti che non hanno bisogno di
+  // validare scope, es. ruleBasedDecision).
+  quoteFields?: QuoteField[];
 }
 
 // [F2] Memoria cliente: preferenze e storico salvati nel DB.
@@ -146,10 +152,115 @@ const URGENCIES: BriefUrgency[] = [
 ];
 const SEVERITIES: Severity[] = ["alta", "media", "bassa"];
 
+// Le chiavi di scope valide per un sotto-servizio (spec §3). Torna [] se il
+// sotto-servizio non è ancora noto o non ha un elenco: scope resta vuoto
+// invece di accettare qualunque chiave — è il motivo per cui questa
+// funzione esiste, non un dettaglio implementativo.
+export function fieldsForSubtask(
+  subtaskSlug: string | null,
+  subservices: SubserviceRef[]
+): QuoteField[] {
+  if (!subtaskSlug) return [];
+  return subservices.find((x) => x.slug === subtaskSlug)?.quoteFields ?? [];
+}
+
+// Limite generico in assenza di un min/max per campo nel catalogo (la spec
+// §3.1 lo dà come esempio — "mq_approx tra 5 e 2000" — non come vincolo
+// salvato per ogni campo). Fino a quando quote_fields non porta i suoi
+// limiti, un valore fuori da questo range diventa un'assenza, non un dato
+// scartato silenziosamente accettato: mai negativo, mai assurdamente grande.
+const GENERIC_NUMERIC_MAX = 100_000;
+
+function looksLikeEmail(v: string): boolean {
+  return /[^\s@]+@[^\s@]+\.[^\s@]+/.test(v);
+}
+
+// Conta le cifre vere, ignorando separatori: un modello di caldaia come
+// "ecoTEC 24" non ha 8 cifre consecutive, un numero di telefono italiano sì.
+function looksLikePhone(v: string): boolean {
+  return (v.match(/\d/g)?.length ?? 0) >= 8;
+}
+
+// Richiede ENTRAMBI un termine di via ed una cifra: "vicolo cieco" da solo
+// non basta, "via Roma 12" sì. Euristica, non un parser di indirizzi —
+// coerente con lo scopo (spec §3.1, non un bypass della 044), non con la
+// precisione di un servizio di geocoding.
+function looksLikeAddress(v: string): boolean {
+  return (
+    /\b(via|viale|piazza|piazzale|corso|vicolo|largo|strada)\b/i.test(v) &&
+    /\d/.test(v)
+  );
+}
+
+function coerceScopeValue(
+  field: QuoteField,
+  value: unknown
+): string | number | boolean | undefined {
+  switch (field.type) {
+    case "number": {
+      const n =
+        typeof value === "number"
+          ? value
+          : typeof value === "string" && /^-?\d+(\.\d+)?$/.test(value.trim())
+            ? Number(value)
+            : NaN;
+      if (!Number.isFinite(n) || n < 0 || n > GENERIC_NUMERIC_MAX) return undefined;
+      return n;
+    }
+    case "bool":
+      return typeof value === "boolean" ? value : undefined;
+    case "select":
+      return typeof value === "string" && (field.options ?? []).includes(value)
+        ? value
+        : undefined;
+    case "text": {
+      if (typeof value !== "string") return undefined;
+      const trimmed = value.trim();
+      if (!trimmed) return undefined;
+      // Mai un bypass della progressive disclosure (migration 044): un
+      // campo testo dell'intake non deve poter portare un indirizzo, un
+      // telefono o una email fuori dai canali che la 044 esiste per
+      // proteggere.
+      if (
+        looksLikeEmail(trimmed) ||
+        looksLikePhone(trimmed) ||
+        looksLikeAddress(trimmed)
+      ) {
+        return undefined;
+      }
+      return trimmed;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Filtra uno scope candidato contro l'elenco di campi validi per il
+ * sotto-servizio scelto. Una chiave non nell'elenco viene scartata, non
+ * segnalata: lo scope diventa un oggetto vincolato per costruzione, non un
+ * oggetto libero con un controllo sopra (spec §3.1).
+ */
+export function validateScope(
+  scope: Record<string, unknown>,
+  fields: QuoteField[]
+): Record<string, string | number | boolean> {
+  const byKey = new Map(fields.map((f) => [f.key, f]));
+  const out: Record<string, string | number | boolean> = {};
+  for (const [key, value] of Object.entries(scope)) {
+    const field = byKey.get(key);
+    if (!field) continue;
+    const validated = coerceScopeValue(field, value);
+    if (validated !== undefined) out[key] = validated;
+  }
+  return out;
+}
+
 // System prompt: personalità, compito e politica delle domande.
 export function buildSystemPrompt(
   services: ServiceRef[],
-  subservices: SubserviceRef[]
+  subservices: SubserviceRef[],
+  candidateFields: QuoteField[] = []
 ): string {
   const catalog = services
     .map((s) => {
@@ -160,6 +271,27 @@ export function buildSystemPrompt(
       return `- ${s.slug} (${s.name}): ${subs}`;
     })
     .join("\n");
+
+  // Prima causa di scope vuoto (spec, verificato in produzione: 0/8
+  // job_briefs con scope popolato): questa regola chiedeva "la singola
+  // informazione più utile" senza mai dire QUALI chiavi esistono, cosi'
+  // il modello ne inventava una a caso o non compilava scope per niente.
+  // Ora la lista arriva qui, chiave per chiave, per il sotto-servizio già
+  // scelto — se non c'è ancora un candidato, l'istruzione lo dice
+  // esplicitamente invece di indovinare.
+  const scopeGuidance =
+    candidateFields.length > 0
+      ? `Per questo sotto-servizio le uniche chiavi di scope valide sono:\n${candidateFields
+          .map(
+            (f) =>
+              `  - ${f.key}${
+                f.type === "select" ? ` (una di: ${(f.options ?? []).join(", ")})` : ` (${f.type})`
+              }`
+          )
+          .join(
+            "\n"
+          )}\nChiedi UNA di queste per turno, la più utile che non conosci ancora. Non usare NESSUN'ALTRA chiave.`
+      : `Il sotto-servizio non è ancora chiaro (vedi punti 1 e 3): chiariscilo prima. Finché serviceSlug + subtaskSlug non sono noti, lascia scope vuoto — non riceverai un elenco di chiavi valide finché non lo sono.`;
 
   return `Sei Bob, il concierge di un marketplace italiano che mette in contatto privati e professionisti dei servizi (idraulici, elettricisti, imbianchini, pulizie, ecc.).
 
@@ -174,7 +306,7 @@ Politica delle domande (massimo 2 domande di approfondimento in totale, poi proc
 1. Se il servizio è ignoto → chiarisci con una domanda concreta, mai un elenco di categorie.
 2. Se ci sono segnali di pericolo (acqua che esce, odore di bruciato, scintille) → 1 frase di sicurezza pratica + una verifica; compila redFlags e severity.
 3. Se il sotto-servizio è ambiguo tra 2 candidati → una domanda secca "o questo o quello".
-4. Altrimenti chiedi la SINGOLA informazione di scope più utile per quel sotto-servizio (es. mq per imbianchino; piano e ascensore per traslochi; caldaia a gas o elettrica per idraulico).
+4. Altrimenti, per lo scope: ${scopeGuidance}
 5. Tutto il resto NON chiederlo: città e budget li gestisce il wizard dopo. Non chiedere mai il budget.
 
 Regole per il brief:
@@ -182,17 +314,53 @@ Regole per il brief:
 - Per ogni campo compilato indica in fieldMeta la confidence (high/medium/low) e la source (user_text/photo/inferred).
 - severity: "alta" = urgente/danno in corso; "media" = concreto ma non emergenza; "bassa" = pianificabile.
 - summary: 1-2 frasi in prima persona del cliente.
-- scope: oggetto con chiavi brevi in snake_case (es. mq_approx, leak_active, floor_from, elevator).
+- scope: usa SOLO le chiavi elencate al punto 4 per il sotto-servizio corrente. Mai un'altra chiave, mai un indirizzo, un telefono o una email dentro scope — quelli si chiedono altrove.
 
 Se il messaggio contiene una FOTO: descrivi brevemente cosa vedi ("Dalla foto vedo…"), usa la foto per compilare servizio, sotto-servizio, severity e scope (source="photo"), compila photoCaption, e chiedi conferma di ciò che hai dedotto invece di fare altre domande.
 
 Quando hai serviceSlug + subtaskSlug + severity con confidence almeno media (o hai esaurito il budget di domande): usa next="city", nella reply conferma in una frase cosa hai capito e chiedi in che città serve. Compila anche shortlistReason (1-2 frasi su cosa cercherai) e suggestedMessage (messaggio pronto per il professionista, in prima persona del cliente, con i dettagli utili del brief).`;
 }
 
+// Lo schema JSON di "scope" per il tool: se il sotto-servizio candidato è
+// noto, elenca esattamente le sue chiavi (additionalProperties:false —
+// il modello non può nemmeno provare a inventarne una); altrimenti resta
+// un oggetto libero ma la descrizione dice di lasciarlo vuoto (il
+// controllo che conta comunque, in mergeBrief, non è questo: è
+// validateScope, che scarta ogni chiave fuori catalogo indipendentemente
+// da cosa il modello ha provato a mandare).
+function buildScopeSchema(candidateFields: QuoteField[]) {
+  if (candidateFields.length === 0) {
+    return {
+      type: "object" as const,
+      description:
+        "Il sotto-servizio non è ancora noto: lascia questo oggetto vuoto.",
+    };
+  }
+  const properties: Record<string, Record<string, unknown>> = {};
+  for (const f of candidateFields) {
+    properties[f.key] =
+      f.type === "select"
+        ? { type: "string", enum: f.options ?? [] }
+        : f.type === "number"
+          ? { type: "number" }
+          : f.type === "bool"
+            ? { type: "boolean" }
+            : { type: "string" };
+  }
+  return {
+    type: "object" as const,
+    description:
+      "Compila SOLO queste chiavi, se e quando le conosci. Nessun'altra chiave è ammessa.",
+    properties,
+    additionalProperties: false,
+  };
+}
+
 // Schema del tool update_job_brief (JSON Schema per l'API Anthropic).
 export function buildBriefTool(
   services: ServiceRef[],
-  subservices: SubserviceRef[]
+  subservices: SubserviceRef[],
+  candidateFields: QuoteField[] = []
 ) {
   return {
     name: "update_job_brief",
@@ -228,11 +396,7 @@ export function buildBriefTool(
             },
             accessNotes: { type: ["string", "null"] },
             timingAvailability: { type: ["string", "null"] },
-            scope: {
-              type: "object",
-              description:
-                "Chiavi di scope specifiche del servizio (snake_case).",
-            },
+            scope: buildScopeSchema(candidateFields),
             redFlags: {
               type: "array",
               items: { type: "string", enum: [...RED_FLAGS] },
@@ -296,20 +460,22 @@ export function mergeBrief(
     fallback: T | null
   ): T | null => (allowed.includes(v as T) ? (v as T) : fallback);
 
+  // Validato contro le chiavi del sotto-servizio ORA risolto (sopra), non
+  // quello di prev: se il modello ha appena scelto subtaskSlug in questa
+  // stessa chiamata, scope va controllato contro le sue chiavi, non contro
+  // quelle del turno precedente. Una chiave fuori catalogo viene scartata,
+  // non tenuta "per ora" — è il punto della Fase 3.
   const scopeIn =
     inc["scope"] && typeof inc["scope"] === "object"
       ? (inc["scope"] as Record<string, unknown>)
       : {};
-  const scope: JobBrief["scope"] = { ...prev.scope };
-  for (const [k, v] of Object.entries(scopeIn)) {
-    if (
-      typeof v === "string" ||
-      typeof v === "number" ||
-      typeof v === "boolean"
-    ) {
-      scope[k] = v;
-    }
-  }
+  const validatedIncoming = validateScope(
+    scopeIn,
+    fieldsForSubtask(subtaskSlug, subservices)
+  );
+  // Merge-with-previous: una chiave già valorizzata non regredisce a null
+  // solo perché questo turno non l'ha ripetuta.
+  const scope: JobBrief["scope"] = { ...prev.scope, ...validatedIncoming };
 
   const redFlagsIn = Array.isArray(inc["redFlags"]) ? inc["redFlags"] : [];
   const redFlags = Array.from(
