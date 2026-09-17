@@ -49,6 +49,15 @@ Protection` di sempre (vuole il piano Pro).
   CS. **Da verificare in locale e in produzione dopo il merge: non ho potuto
   avviare il server di sviluppo da questa sessione.**
 
+- **La mappa strappava, e adesso no** (stesso ramo). Cinque misure: i comuni
+  non si disegnano sotto lo zoom 8 (erano una macchia grigia sul nord Italia);
+  i vertici si proiettano una volta sola in Mercatore e a ogni fotogramma resta
+  una moltiplicazione; un tracciato SVG per piano invece di uno per forma (da
+  ~880 `setAttribute` a tre); si arrotonda al pixel saltando i doppioni; e il
+  riquadro filtra prima del point-in-polygon, che girava a ogni movimento del
+  mouse. Sul banco di prova: **12,2 → 1,0 ms** a vista nazionale, **5,2 → 0,2**
+  a vista cittadina, senza contare il DOM.
+
 ## Fine giornata: cosa è applicato, e una deriva trovata
 
 **Applicate tutte e sei: 084, 085, 086, 087, 088, 089.** Advisor rieseguiti dopo

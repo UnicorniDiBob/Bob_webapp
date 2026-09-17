@@ -518,3 +518,62 @@ file?», e l'unica risposta esatta è il riquadro del file stesso.
 
 Fonte: confini provinciali ISTAT via openpolis/geojson-italy, CC BY 4.0,
 attribuzione dentro il file e nel controllo della mappa.
+
+## 18 settembre 2026 — la mappa strappava: cinque misure, e i numeri
+
+Con l'Italia accesa e sei province aperte la mappa ha cominciato a strappare.
+Nello screenshot si vedeva anche il motivo principale: una macchia grigia sul
+nord Italia, che erano i comuni di sei province disegnati a livello nazionale.
+
+### 1. Sotto lo zoom 8 i comuni non si disegnano (non solo: non si caricano)
+
+Il controllo c'era già, ma solo sul CARICAMENTO: le province già in memoria
+continuavano a disegnarsi. A quella scala sono 772 forme che diventano una
+macchia, e costano tutto il fotogramma per non far vedere niente. È la misura
+che rende di più ed è anche quella giusta da vedere.
+
+### 2. I vertici si proiettano una volta sola, non a ogni fotogramma
+
+In Mercatore la X dipende solo dalla longitudine e la Y solo dalla latitudine, e
+lo schermo è una trasformazione **lineare** di quelle due — finché la mappa non
+è ruotata né inclinata, che qui non succede (la bussola è disattivata). Quindi
+ogni vertice diventa due numeri in un `Float64Array` quando il file arriva, e a
+ogni fotogramma resta una moltiplicazione e una somma: niente trigonometria,
+niente allocazioni, niente chiamate a maplibre. La trasformazione si tara su due
+punti veri chiesti a `project()`, due volte per fotogramma invece di centomila.
+Se la mappa risulta ruotata o inclinata si torna a `project()` per vertice.
+
+### 3. Un tracciato solo per piano, non uno per forma
+
+Le forme spente hanno tutte lo stesso colore: stanno in un `<path>` unico.
+Restano separate solo quelle accese, che sono poche. Da ~880 `setAttribute` per
+fotogramma a tre. Il `<title>` per forma è sparito con i tracciati: il nome del
+comune adesso lo dice una targhetta in alto a destra, che si vede subito invece
+di aspettare il secondo del browser.
+
+### 4. Si arrotonda al pixel e si saltano i doppioni
+
+Due vertici che cadono sullo stesso pixel sono un vertice. A livello nazionale
+un confine da 220 punti ne lascia una quarantina: è una semplificazione che si
+adatta all'ingrandimento senza precalcolare nessun livello di dettaglio. E
+`Math.round` al posto di `toFixed(1)`, che è formattazione di stringhe.
+
+### 5. Il riquadro prima del ray casting
+
+Il click resta della mappa e chi è stato toccato lo dice un point-in-polygon.
+Girava su tutte le forme **a ogni movimento del mouse**. Adesso prima si guarda
+il riquadro — un confronto fra numeri — e il conto vero tocca a una o due
+forme. Più un fotogramma di ritmo su `mousemove`, che arriva a raffica.
+
+### I numeri
+
+Banco di prova sui file veri (solo l'aritmetica e le stringhe, senza il DOM,
+quindi il guadagno vero è più grande):
+
+| | prima | dopo |
+|---|---|---|
+| vista nazionale | 12,2 ms/fotogramma | **1,0** |
+| vista cittadina | 5,2 ms/fotogramma | **0,2** |
+
+Sedici millisecondi è il bilancio di un fotogramma a 60 al secondo: prima se ne
+andavano quasi tutti nel disegno, e restava lo strappo.

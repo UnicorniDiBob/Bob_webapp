@@ -89,6 +89,25 @@ interface Quartiere {
   /** Il nome corto di prima a cui il nucleo appartiene, quando ce n'è uno. */
   gruppo: string | null;
   anelli: [number, number][][];
+  riquadro: [number, number, number, number];
+  pronti: Float64Array[];
+}
+
+/** Il riquadro di un gruppo di anelli. */
+function riquadroDi(anelli: [number, number][][]): [number, number, number, number] {
+  let ovest = Infinity;
+  let sud = Infinity;
+  let est = -Infinity;
+  let nord = -Infinity;
+  for (const anello of anelli) {
+    for (const [x, y] of anello) {
+      if (x < ovest) ovest = x;
+      if (x > est) est = x;
+      if (y < sud) sud = y;
+      if (y > nord) nord = y;
+    }
+  }
+  return [ovest, sud, est, nord];
 }
 
 interface Props {
@@ -124,6 +143,138 @@ interface Props {
 function vista(m: MappaLibre): Riquadro {
   const b = m.getBounds();
   return { ovest: b.getWest(), sud: b.getSouth(), est: b.getEast(), nord: b.getNorth() };
+}
+
+/**
+ * IL DISEGNO, E PERCHÉ È FATTO COSÌ (18/09).
+ *
+ * La prima versione proiettava ogni vertice con `map.project()` e dava un
+ * tracciato SVG a ogni forma. Con una provincia sola si reggeva; con l'Italia
+ * e sei province aperte sono ~100.000 vertici e ~1.000 nodi nel DOM a ogni
+ * fotogramma, e la mappa ha cominciato a strappare. Tre misure, in ordine di
+ * quanto rendono:
+ *
+ * 1. I VERTICI SI PROIETTANO UNA VOLTA SOLA, quando il file arriva. In
+ *    Mercatore la X dipende solo dalla longitudine e la Y solo dalla
+ *    latitudine, e lo schermo è una trasformazione LINEARE di quelle due —
+ *    finché la mappa non è ruotata né inclinata, che qui non succede mai
+ *    (la bussola è disattivata). Quindi ogni vertice diventa due numeri in un
+ *    Float64Array, e a ogni fotogramma resta una moltiplicazione e una somma:
+ *    niente trigonometria, niente allocazioni, niente chiamate a maplibre.
+ *    Se la mappa risulta ruotata o inclinata si torna a `map.project()`.
+ *
+ * 2. UN TRACCIATO SOLO PER PIANO, non uno per forma. Le forme spente hanno
+ *    tutte lo stesso colore: stanno in un `<path>` unico, e cambia una
+ *    stringa invece di mille attributi. Restano separate solo quelle accese,
+ *    che sono poche e devono avere il loro colore.
+ *
+ * 3. SI ARROTONDA AL PIXEL E SI SALTANO I DOPPIONI. Due vertici che cadono
+ *    sullo stesso pixel sono un vertice: a livello nazionale un confine da
+ *    220 punti ne lascia una quarantina. È una semplificazione che si adatta
+ *    all'ingrandimento senza precalcolare niente.
+ */
+
+/** Y di Mercatore. La X è la longitudine stessa: la trasformazione la assorbe. */
+function mercatoreY(lat: number): number {
+  const chiusa = lat > 85.05 ? 85.05 : lat < -85.05 ? -85.05 : lat;
+  return Math.log(Math.tan(Math.PI / 4 + (chiusa * Math.PI) / 360));
+}
+
+function latDaMercatore(y: number): number {
+  return ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
+}
+
+/** Gli anelli pronti per il disegno: [lng, mercatoreY] di fila. */
+function preparaAnelli(anelli: [number, number][][]): Float64Array[] {
+  return anelli.map((anello) => {
+    const piatto = new Float64Array(anello.length * 2);
+    for (let i = 0; i < anello.length; i++) {
+      piatto[i * 2] = anello[i][0];
+      piatto[i * 2 + 1] = mercatoreY(anello[i][1]);
+    }
+    return piatto;
+  });
+}
+
+interface Trasformazione {
+  ax: number;
+  ay: number;
+  lng0: number;
+  y0: number;
+  kx: number;
+  ky: number;
+}
+
+/**
+ * La trasformazione di questo fotogramma, tarata su due punti veri chiesti a
+ * maplibre. Torna null se la mappa è ruotata o inclinata: lì non è più una
+ * retta e si ricade su project(), che è lento ma giusto.
+ */
+function calibra(m: MappaLibre): Trasformazione | null {
+  if (m.getBearing() !== 0 || m.getPitch() !== 0) return null;
+  const c = m.getCenter();
+  const passo = 0.05;
+  const a = m.project([c.lng, c.lat]);
+  const b = m.project([c.lng + passo, c.lat + passo]);
+  const y0 = mercatoreY(c.lat);
+  const dy = mercatoreY(c.lat + passo) - y0;
+  if (dy === 0) return null;
+  return {
+    ax: a.x,
+    ay: a.y,
+    lng0: c.lng,
+    y0,
+    kx: (b.x - a.x) / passo,
+    ky: (b.y - a.y) / dy,
+  };
+}
+
+/**
+ * Da anelli pronti a `d` di SVG. Arrotonda al pixel e salta i doppioni: è lì
+ * che si recupera la maggior parte del lavoro a ingrandimento basso.
+ */
+function traccia(
+  anelli: Float64Array[],
+  t: Trasformazione | null,
+  m: MappaLibre
+): string {
+  let d = "";
+  for (const anello of anelli) {
+    let px = NaN;
+    let py = NaN;
+    let quanti = 0;
+    let pezzo = "";
+    for (let i = 0; i < anello.length; i += 2) {
+      let x: number;
+      let y: number;
+      if (t) {
+        x = Math.round(t.ax + (anello[i] - t.lng0) * t.kx);
+        y = Math.round(t.ay + (anello[i + 1] - t.y0) * t.ky);
+      } else {
+        const q = m.project([anello[i], latDaMercatore(anello[i + 1])]);
+        x = Math.round(q.x);
+        y = Math.round(q.y);
+      }
+      if (x === px && y === py) continue;
+      pezzo += (quanti === 0 ? "M" : "L") + x + "," + y;
+      px = x;
+      py = y;
+      quanti++;
+    }
+    // Un triangolo è il minimo che racchiuda qualcosa: sotto, la forma è
+    // sparita nell'arrotondamento e non vale il tracciato.
+    if (quanti >= 3) d += pezzo + "Z";
+  }
+  return d;
+}
+
+/** Una forma pronta: i gradi per il click, i numeri di Mercatore per il disegno. */
+interface Disegnabile {
+  chiave: string;
+  nome: string;
+  riquadro: [number, number, number, number];
+  anelli: [number, number][][];
+  pronti: Float64Array[];
 }
 
 const SFONDO: StyleSpecification = {
@@ -181,9 +332,15 @@ export default function MappaCopertura({
   const svg = useRef<SVGSVGElement | null>(null);
   const gruppoComuni = useRef<SVGGElement | null>(null);
   const gruppoQuartieri = useRef<SVGGElement | null>(null);
-  const tracciati = useRef<SVGPathElement[]>([]);
-  const forme = useRef<FormaComune[]>([]);
-  const tracciatiComuni = useRef<SVGPathElement[]>([]);
+  const tracciati = useRef<Map<string, SVGPathElement>>(new Map());
+  const forme = useRef<Disegnabile[]>([]);
+  const tracciatiComuni = useRef<Map<string, SVGPathElement>>(new Map());
+  /** Il tracciato unico delle forme spente, uno per piano. */
+  const spentiComuni = useRef<SVGPathElement | null>(null);
+  const spentiQuartieri = useRef<SVGPathElement | null>(null);
+  const spentiProvince = useRef<SVGPathElement | null>(null);
+  const targhetta = useRef<HTMLDivElement | null>(null);
+  const sopraRitmato = useRef(false);
   const disegnoInCoda = useRef(false);
 
   // L'ITALIA DI SFONDO E LE PROVINCE APERTE (17/09).
@@ -191,8 +348,7 @@ export default function MappaCopertura({
   // `comuniPerSigla` è quello che si è scaricato finora, una provincia per
   // chiave; `forme` resta l'elenco piatto su cui si disegna e si cerca il
   // click, e adesso è la somma delle province aperte invece di una sola.
-  const province = useRef<FormaProvincia[]>([]);
-  const tracciatiProvince = useRef<SVGPathElement[]>([]);
+  const province = useRef<(FormaProvincia & { pronti: Float64Array[] })[]>([]);
   const gruppoProvince = useRef<SVGGElement | null>(null);
   const comuniPerSigla = useRef<Map<string, FormaComune[]>>(new Map());
   const inCorso = useRef<Set<string>>(new Set());
@@ -253,6 +409,10 @@ export default function MappaCopertura({
     const dentro = new Set(selRef.current);
     const conNome =
       m.getZoom() >= ZOOM_ETICHETTE && dentro.size > 0 && dentro.size <= MAX_ETICHETTE;
+    // A livello nazionale gli 88 pallini dei quartieri di Milano cadono tutti
+    // sullo stesso punto: sono 88 elementi che il browser dispone e ridipinge
+    // a ogni fotogramma per mostrare una macchia grande tre pixel.
+    const visibili = m.getZoom() >= ZOOM_COMUNI;
 
     zoneRef.current.forEach((z) => {
       if (z.lat === null || z.lng === null) return;
@@ -273,6 +433,9 @@ export default function MappaCopertura({
         mk = new Marker({ element: radice }).setLngLat([z.lng, z.lat]).addTo(m);
         marcatori.current[z.slug] = mk;
       }
+
+      mk.getElement().style.display = visibili ? "" : "none";
+      if (!visibili) return;
 
       const bottone = mk.getElement().firstElementChild as HTMLButtonElement;
       const attiva = dentro.has(z.slug);
@@ -352,37 +515,25 @@ export default function MappaCopertura({
     const gruppo = gruppoProvince.current;
     if (!m || !gruppo || province.current.length === 0) return;
     const v = vista(m);
+    const t = calibra(m);
 
-    province.current.forEach((p, i) => {
-      let path = tracciatiProvince.current[i];
-      if (!path) {
-        path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        const titolo = document.createElementNS("http://www.w3.org/2000/svg", "title");
-        titolo.textContent = p.nome;
-        path.appendChild(titolo);
-        path.setAttribute("fill", "rgba(255,255,255,0.62)");
-        path.setAttribute("stroke", "rgba(0,0,0,0.2)");
-        path.setAttribute("stroke-width", "0.8");
-        gruppo.appendChild(path);
-        tracciatiProvince.current[i] = path;
-      }
-      if (!siToccano(v, p.riquadro)) {
-        path.setAttribute("d", "");
-        return;
-      }
-      path.setAttribute(
-        "d",
-        p.anelli
-          .map((anello) => {
-            const punti = anello.map(([lng, lat]) => {
-              const q = m.project([lng, lat]);
-              return `${q.x.toFixed(1)},${q.y.toFixed(1)}`;
-            });
-            return punti.length ? `M${punti.join("L")}Z` : "";
-          })
-          .join("")
-      );
-    });
+    let path = spentiProvince.current;
+    if (!path) {
+      path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("fill", "rgba(255,255,255,0.62)");
+      path.setAttribute("stroke", "rgba(0,0,0,0.2)");
+      path.setAttribute("stroke-width", "0.8");
+      path.setAttribute("stroke-linejoin", "round");
+      gruppo.appendChild(path);
+      spentiProvince.current = path;
+    }
+
+    let d = "";
+    for (const p of province.current) {
+      if (!siToccano(v, p.riquadro)) continue;
+      d += traccia(p.pronti, t, m);
+    }
+    path.setAttribute("d", d);
   }, []);
 
   /**
@@ -391,94 +542,155 @@ export default function MappaCopertura({
    * riusarli per indice disegnerebbe il comune sbagliato.
    */
   const rinfrescaForme = useCallback(() => {
-    forme.current = unisciForme(comuniPerSigla.current, [
+    const unite = unisciForme(comuniPerSigla.current, [
       ...comuniPerSigla.current.keys(),
     ]);
+    // Si proietta qui, una volta per file, non a ogni fotogramma.
+    forme.current = unite.map((f: FormaComune) => ({
+      chiave: f.istat,
+      nome: f.nome,
+      riquadro: f.riquadro,
+      anelli: f.anelli,
+      pronti: preparaAnelli(f.anelli),
+    }));
     tracciatiComuni.current.forEach((t) => t.remove());
-    tracciatiComuni.current = [];
+    tracciatiComuni.current = new Map();
   }, []);
 
   const disegnaComuni = useCallback(() => {
     const m = mappa.current;
     const gruppo = gruppoComuni.current;
-    if (!m || !gruppo || forme.current.length === 0) return;
+    if (!m || !gruppo) return;
+
+    let spento = spentiComuni.current;
+    if (!spento) {
+      spento = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      spento.setAttribute("fill", "rgba(255,255,255,0.5)");
+      spento.setAttribute("stroke", "rgba(0,0,0,0.16)");
+      spento.setAttribute("stroke-width", "0.9");
+      spento.setAttribute("stroke-linejoin", "round");
+      gruppo.appendChild(spento);
+      spentiComuni.current = spento;
+    }
+
+    // SOTTO LO ZOOM 8 I COMUNI NON SI DISEGNANO. Prima il controllo c'era solo
+    // sul CARICAMENTO: le province già in memoria continuavano a disegnarsi a
+    // livello nazionale, dove 780 forme diventano una macchia grigia sul nord
+    // Italia — visibile nello screenshot del 18/09 — e costano tutto il
+    // fotogramma per non far vedere niente.
+    if (forme.current.length === 0 || m.getZoom() < ZOOM_COMUNI) {
+      spento.setAttribute("d", "");
+      tracciatiComuni.current.forEach((t) => t.remove());
+      tracciatiComuni.current = new Map();
+      return;
+    }
+
     const dentro = new Set(selComuniRef.current);
     const v = vista(m);
+    const t = calibra(m);
+    const vive = new Set<string>();
+    let d = "";
 
-    forme.current.forEach((forma, i) => {
-      let path = tracciatiComuni.current[i];
+    for (const forma of forme.current) {
+      // Fuori dall'inquadratura non si proietta: con sei province aperte sono
+      // qualche migliaio di forme, e il trascinamento si sentirebbe.
+      if (!siToccano(v, forma.riquadro)) continue;
+      const pezzo = traccia(forma.pronti, t, m);
+      if (!pezzo) continue;
+
+      if (!dentro.has(forma.chiave)) {
+        // Le spente hanno tutte lo stesso colore: un tracciato solo.
+        d += pezzo;
+        continue;
+      }
+
+      // Le accese hanno il loro, e sono poche.
+      vive.add(forma.chiave);
+      let path = tracciatiComuni.current.get(forma.chiave);
       if (!path) {
         path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        const titolo = document.createElementNS("http://www.w3.org/2000/svg", "title");
-        titolo.textContent = forma.nome;
-        path.appendChild(titolo);
+        path.setAttribute("fill", "rgba(79,70,229,0.22)");
+        path.setAttribute("stroke", "#4f46e5");
+        path.setAttribute("stroke-width", "1.4");
+        path.setAttribute("stroke-linejoin", "round");
         gruppo.appendChild(path);
-        tracciatiComuni.current[i] = path;
+        tracciatiComuni.current.set(forma.chiave, path);
       }
+      path.setAttribute("d", pezzo);
+    }
 
-      // Fuori dall'inquadratura non si proietta: con più province aperte sono
-      // qualche migliaio di forme, e il trascinamento si sentirebbe.
-      if (!siToccano(v, forma.riquadro)) {
-        path.setAttribute("d", "");
-        return;
-      }
-
-      const d = forma.anelli
-        .map((anello) => {
-          const punti = anello.map(([lng, lat]) => {
-            const p = m.project([lng, lat]);
-            return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-          });
-          return punti.length ? `M${punti.join("L")}Z` : "";
-        })
-        .join("");
-      path.setAttribute("d", d);
-
-      const attiva = dentro.has(forma.istat);
-      path.setAttribute("fill", attiva ? "rgba(79,70,229,0.22)" : "rgba(255,255,255,0.5)");
-      path.setAttribute("stroke", attiva ? "#4f46e5" : "rgba(0,0,0,0.16)");
-      path.setAttribute("stroke-width", attiva ? "1.4" : "0.9");
-      // Nessun evento sul tracciato: se il disegno prendesse i click,
-      // trascinare la mappa sopra un comune smetterebbe di funzionare — ed è
-      // il gesto che si fa più spesso. Il click resta della mappa, che poi
-      // chiede a dentroForma() quale area è stata toccata.
+    spento.setAttribute("d", d);
+    tracciatiComuni.current.forEach((path, chiave) => {
+      if (vive.has(chiave)) return;
+      path.remove();
+      tracciatiComuni.current.delete(chiave);
     });
+    // Nessun evento sui tracciati: se il disegno prendesse i click,
+    // trascinare la mappa sopra un comune smetterebbe di funzionare — ed è il
+    // gesto che si fa più spesso. Il click resta della mappa, che poi chiede a
+    // dentroForma() quale area è stata toccata.
   }, []);
 
-  /** Ridisegna i quartieri: proietta i vertici alle coordinate dello schermo. */
+  /** Ridisegna i quartieri. Stessa struttura dei comuni: uno spento, N accesi. */
   const disegnaQuartieri = useCallback(() => {
     const m = mappa.current;
     const contenitore = svg.current;
-    if (!m || !contenitore || quartieri.current.length === 0) return;
+    const gruppo = gruppoQuartieri.current ?? contenitore;
+    if (!m || !gruppo || quartieri.current.length === 0) return;
+
+    let spento = spentiQuartieri.current;
+    if (!spento) {
+      spento = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      spento.setAttribute("fill", "rgba(255,255,255,0.55)");
+      spento.setAttribute("stroke", "rgba(0,0,0,0.14)");
+      spento.setAttribute("stroke-width", "1");
+      spento.setAttribute("stroke-linejoin", "round");
+      gruppo.appendChild(spento);
+      spentiQuartieri.current = spento;
+    }
+
     const dentro = new Set(selRef.current);
+    const v = vista(m);
+    const t = calibra(m);
+    const vive = new Set<string>();
+    let d = "";
 
     quartieri.current.forEach((q, i) => {
-      let path = tracciati.current[i];
-      if (!path) {
-        path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        (gruppoQuartieri.current ?? contenitore).appendChild(path);
-        tracciati.current[i] = path;
-      }
-      const d = q.anelli
-        .map((anello) => {
-          const punti = anello.map(([lng, lat]) => {
-            const p = m.project([lng, lat]);
-            return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-          });
-          return punti.length ? `M${punti.join("L")}Z` : "";
-        })
-        .join("");
-      path.setAttribute("d", d);
+      if (!siToccano(v, q.riquadro)) return;
+      const pezzo = traccia(q.pronti, t, m);
+      if (!pezzo) return;
+
       // Si accende sul nucleo O sul gruppo: prima che la 084 sia applicata le
       // zone salvate sono ancora i 28 nomi corti, e senza il gruppo la forma
       // resterebbe spenta su un'area che il professionista copre davvero.
       const attiva =
         (q.zona !== null && dentro.has(q.zona)) ||
         (q.gruppo !== null && dentro.has(q.gruppo));
-      path.setAttribute("fill", attiva ? "rgba(79,70,229,0.28)" : "rgba(255,255,255,0.55)");
-      path.setAttribute("stroke", attiva ? "#4f46e5" : "rgba(0,0,0,0.14)");
-      path.setAttribute("stroke-width", attiva ? "1.4" : "1");
+      if (!attiva) {
+        d += pezzo;
+        return;
+      }
 
+      const chiave = q.zona ?? q.gruppo ?? String(i);
+      vive.add(chiave);
+      let path = tracciati.current.get(chiave);
+      if (!path) {
+        path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("fill", "rgba(79,70,229,0.28)");
+        path.setAttribute("stroke", "#4f46e5");
+        path.setAttribute("stroke-width", "1.4");
+        path.setAttribute("stroke-linejoin", "round");
+        gruppo.appendChild(path);
+        tracciati.current.set(chiave, path);
+      }
+      path.setAttribute("d", pezzo);
+    });
+
+    spento.setAttribute("d", d);
+    tracciati.current.forEach((path, chiave) => {
+      if (vive.has(chiave)) return;
+      path.remove();
+      tracciati.current.delete(chiave);
     });
   }, []);
 
@@ -611,7 +823,10 @@ export default function MappaCopertura({
       .then((r) => (r.ok ? r.json() : null))
       .then((dati) => {
         if (!vivo || !dati) return;
-        province.current = leggiProvince(dati);
+        province.current = leggiProvince(dati).map((p) => ({
+          ...p,
+          pronti: preparaAnelli(p.anelli),
+        }));
         disegnaProvince();
         aggiornaProvinceAperte();
       })
@@ -644,6 +859,8 @@ export default function MappaCopertura({
               zona: f.properties?.slug ?? f.properties?.zona ?? null,
               gruppo: f.properties?.gruppo ?? f.properties?.zona ?? null,
               anelli,
+              riquadro: riquadroDi(anelli),
+              pronti: preparaAnelli(anelli),
             };
           })
           .filter((q: Quartiere) => q.anelli.length > 0);
@@ -667,6 +884,37 @@ export default function MappaCopertura({
     m.on("zoom", disegnaQuartieriRitmato);
     m.on("resize", disegnaQuartieriRitmato);
     m.on("zoomend", disegnaMarcatori);
+    /**
+     * CHI C'È SOTTO IL PUNTATORE.
+     *
+     * Il click resta della mappa e non dei tracciati (vedi disegnaComuni), e a
+     * dire quale area è stata toccata è un point-in-polygon. Con l'Italia e sei
+     * province aperte sono qualche migliaio di forme: si guarda PRIMA il
+     * riquadro, che è un confronto fra numeri, e il ray casting vero tocca a
+     * una o due forme. Senza questo filtro il conto girava a ogni movimento del
+     * mouse, e si sentiva.
+     */
+    const sotto = (punto: { lng: number; lat: number }) => {
+      for (const q of quartieri.current) {
+        if (q.zona === null) continue;
+        const r = q.riquadro;
+        if (punto.lng < r[0] || punto.lng > r[2] || punto.lat < r[1] || punto.lat > r[3]) {
+          continue;
+        }
+        if (dentroForma(punto, q.anelli)) return { zona: q.zona, nome: null as string | null };
+      }
+      if (m.getZoom() >= ZOOM_COMUNI) {
+        for (const c of forme.current) {
+          const r = c.riquadro;
+          if (punto.lng < r[0] || punto.lng > r[2] || punto.lat < r[1] || punto.lat > r[3]) {
+            continue;
+          }
+          if (dentroForma(punto, c.anelli)) return { comune: c.chiave, nome: c.nome };
+        }
+      }
+      return null;
+    };
+
     m.on("click", (e: MapMouseEvent) => {
       const punto = { lat: e.lngLat.lat, lng: e.lngLat.lng };
 
@@ -674,18 +922,11 @@ export default function MappaCopertura({
       // quartiere e poi il comune: dentro Milano le due griglie stanno una
       // sopra l'altra, e quella fine è quella che il professionista intende.
       if (cliccabiliRef.current) {
-        const q = quartieri.current.find(
-          (x) => x.zona !== null && dentroForma(punto, x.anelli)
-        );
-        if (q?.zona) {
-          cbZona.current?.(q.zona);
-          return;
-        }
-        const c = forme.current.find((x) => dentroForma(punto, x.anelli));
-        if (c) {
-          cbComune.current?.(c.istat);
-          return;
-        }
+        const bersaglio = sotto(punto) as
+          | { zona?: string; comune?: string; nome: string | null }
+          | null;
+        if (bersaglio?.zona) cbZona.current?.(bersaglio.zona);
+        else if (bersaglio?.comune) cbComune.current?.(bersaglio.comune);
         return;
       }
 
@@ -694,17 +935,40 @@ export default function MappaCopertura({
       }
     });
 
-    // Il puntatore dice se lì sotto c'è qualcosa da accendere.
+    // Il puntatore dice se lì sotto c'è qualcosa da accendere, e la targhetta
+    // dice cosa. Un fotogramma per volta: mousemove arriva a raffica.
     m.on("mousemove", (e: MapMouseEvent) => {
       if (!cliccabiliRef.current) {
         m.getCanvas().style.cursor = "";
+        if (targhetta.current) targhetta.current.style.display = "none";
         return;
       }
+      if (sopraRitmato.current) return;
+      sopraRitmato.current = true;
       const punto = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-      const sopra =
-        quartieri.current.some((x) => x.zona !== null && dentroForma(punto, x.anelli)) ||
-        forme.current.some((x) => dentroForma(punto, x.anelli));
-      m.getCanvas().style.cursor = sopra ? "pointer" : "";
+      requestAnimationFrame(() => {
+        sopraRitmato.current = false;
+        const bersaglio = sotto(punto) as { nome: string | null } | null;
+        m.getCanvas().style.cursor = bersaglio ? "pointer" : "";
+
+        if (!targhetta.current) {
+          const el = document.createElement("div");
+          el.className =
+            "pointer-events-none absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-bob-ink/80 shadow-sm";
+          el.style.display = "none";
+          m.getCanvasContainer().appendChild(el);
+          targhetta.current = el;
+        }
+        // Il nome del comune: prima stava in un <title> per forma, che adesso
+        // non c'è più perché le forme spente condividono un tracciato solo.
+        // Questo si vede subito, invece di aspettare il secondo del browser.
+        if (bersaglio?.nome) {
+          targhetta.current.textContent = bersaglio.nome;
+          targhetta.current.style.display = "";
+        } else {
+          targhetta.current.style.display = "none";
+        }
+      });
     });
 
     // Il contenitore cambia taglia (layout, rotazione, apertura di una
@@ -733,12 +997,15 @@ export default function MappaCopertura({
       svg.current = null;
       gruppoComuni.current = null;
       gruppoQuartieri.current = null;
-      tracciati.current = [];
-      tracciatiComuni.current = [];
+      tracciati.current = new Map();
+      tracciatiComuni.current = new Map();
+      spentiComuni.current = null;
+      spentiQuartieri.current = null;
+      spentiProvince.current = null;
+      targhetta.current = null;
       quartieri.current = [];
       forme.current = [];
       gruppoProvince.current = null;
-      tracciatiProvince.current = [];
       province.current = [];
       comuniPerSigla.current = new Map();
       inCorso.current = new Set();
