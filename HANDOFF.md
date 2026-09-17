@@ -36,6 +36,28 @@ Protection` di sempre (vuole il piano Pro).
   un point-in-polygon, perché tracciati SVG che prendono gli eventi rompono il
   trascinamento.
 
+- **L'Italia sotto la mappa** (ramo `feat/mappa-italia`, da mergiare).
+  `public/geo/italia.geojson`: 110 forme di provincia, 138 KB compressi,
+  caricate una volta sola e accese a ogni ingrandimento. Sopra, i comuni delle
+  province che stanno nell'inquadratura — **fino a sei insieme, non più una
+  sola**: chi lavora a Monza copre anche Milano e Como. Sotto lo zoom 8 i
+  comuni non si caricano affatto. Le genera
+  `scripts/build_italia_province.py`; 13 prove nuove in `src/lib/italia.test.ts`.
+- **`/admin/copertura`** (stesso ramo): mappa + tabella dei professionisti per
+  comune, con l'elenco dei **buchi** (richieste senza copertura) e due export,
+  SVG della mappa e CSV della tabella, per le presentazioni. Solo admin, non
+  CS. **Da verificare in locale e in produzione dopo il merge: non ho potuto
+  avviare il server di sviluppo da questa sessione.**
+
+- **La mappa strappava, e adesso no** (stesso ramo). Cinque misure: i comuni
+  non si disegnano sotto lo zoom 8 (erano una macchia grigia sul nord Italia);
+  i vertici si proiettano una volta sola in Mercatore e a ogni fotogramma resta
+  una moltiplicazione; un tracciato SVG per piano invece di uno per forma (da
+  ~880 `setAttribute` a tre); si arrotonda al pixel saltando i doppioni; e il
+  riquadro filtra prima del point-in-polygon, che girava a ogni movimento del
+  mouse. Sul banco di prova: **12,2 → 1,0 ms** a vista nazionale, **5,2 → 0,2**
+  a vista cittadina, senza contare il DOM.
+
 ## Fine giornata: cosa è applicato, e una deriva trovata
 
 **Applicate tutte e sei: 084, 085, 086, 087, 088, 089.** Advisor rieseguiti dopo

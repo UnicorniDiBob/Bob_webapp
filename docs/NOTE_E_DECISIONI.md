@@ -455,3 +455,125 @@ della licenza, non una cortesia.
    da correggere: il cerchio lavora sul punto, e il punto è quello. Lo script
    lo controlla a ogni passata (99,7% dentro) proprio per accorgersi se un
    giorno quella percentuale crollasse, che vorrebbe dire due Italie diverse.
+
+## 17 settembre 2026 — l'Italia sotto la mappa, e più province insieme
+
+Lo screenshot del pomeriggio: la provincia di Milano disegnata, e intorno il
+colore di fondo. «Manca ancora l'Italia e i comuni.» È lo stesso problema del
+28 agosto dentro Milano — «non si vede proprio Milano sotto» — su scala
+nazionale: senza un disegno d'insieme la propria città è sospesa nel vuoto e
+non si capisce dove si è.
+
+### Tre piani, che sono lo stesso disegno visto da tre distanze
+
+`public/geo/italia.geojson` sono 110 forme di provincia, 428 KB (138 compressi),
+caricate una volta sola e accese a ogni ingrandimento. Sopra, i comuni delle
+province che stanno nell'inquadratura; sopra ancora, i quartieri dove la città
+li pubblica. Come una carta stradale: allargando resta il paese, entrando
+compaiono i comuni.
+
+### Perché le province come sfondo e non i comuni
+
+Un'Italia fatta di 7.904 comuni, anche diradata, resta un file grosso e a zoom
+basso è un groviglio di righe. 110 forme danno la sagoma del paese e
+abbastanza struttura per orientarsi, con settanta volte meno disegno.
+
+### Perché più province di comuni insieme, e non una sola
+
+Fino a oggi la mappa teneva una provincia per volta e cambiare provincia
+buttava via la precedente. Ma chi lavora a Monza copre anche Milano e Como: la
+sua area sta su tre file. Adesso se ne tengono aperte fino a sei, scelte
+dall'inquadratura e chieste **a movimento finito**, non durante il
+trascinamento — durante sarebbero sessanta richieste al secondo per un file
+solo che serve.
+
+**Non si buttano mai** la provincia della base e quelle dove ha già acceso un
+comune: se si buttassero, la sua scelta sparirebbe dallo schermo appena sposta
+la mappa, e sembrerebbe cancellata.
+
+### I due tagli che tengono il costo
+
+1. **Sotto lo zoom 8 i comuni non si caricano affatto.** A quella distanza sono
+   righe da mezzo pixel: sarebbero megabyte per non far vedere niente. Resta lo
+   sfondo delle province, che a quella scala è il disegno giusto.
+2. **Si proiettano solo le forme che toccano l'inquadratura.** Ogni forma porta
+   adesso il proprio riquadro (`FormaComune.riquadro`), e il confronto costa un
+   millesimo della proiezione. Senza, con sei province aperte il trascinamento
+   si sentirebbe.
+
+### La Sardegna, ancora — e una cosa trovata dalla prova
+
+La fonte pubblica delle province ha ancora le quattro soppresse dalla riforma
+del 2016 (CI, VS, OG, OT); il nostro elenco dei comuni ha quelle di adesso, e
+la sigla è il **nome del file**. Le forme restano come sono — la sagoma
+dell'isola non cambia, e per uno sfondo è tutto quello che serve — e cambia
+solo la sigla: CI e VS diventano SU, OG diventa NU, OT diventa SS.
+
+Il riquadro di ogni provincia, però, **lo decide il file dei comuni, non la
+forma**. Prima versione: riquadro della forma, allargato con i centri dei
+comuni. La prova ha trovato che il nord di Seulo restava fuori da SU — un
+comune che, guardando solo quel pezzo di mappa, non si sarebbe disegnato. Il
+riquadro serve a rispondere a «in questa inquadratura ci sono comuni di quel
+file?», e l'unica risposta esatta è il riquadro del file stesso.
+
+Fonte: confini provinciali ISTAT via openpolis/geojson-italy, CC BY 4.0,
+attribuzione dentro il file e nel controllo della mappa.
+
+## 18 settembre 2026 — la mappa strappava: cinque misure, e i numeri
+
+Con l'Italia accesa e sei province aperte la mappa ha cominciato a strappare.
+Nello screenshot si vedeva anche il motivo principale: una macchia grigia sul
+nord Italia, che erano i comuni di sei province disegnati a livello nazionale.
+
+### 1. Sotto lo zoom 8 i comuni non si disegnano (non solo: non si caricano)
+
+Il controllo c'era già, ma solo sul CARICAMENTO: le province già in memoria
+continuavano a disegnarsi. A quella scala sono 772 forme che diventano una
+macchia, e costano tutto il fotogramma per non far vedere niente. È la misura
+che rende di più ed è anche quella giusta da vedere.
+
+### 2. I vertici si proiettano una volta sola, non a ogni fotogramma
+
+In Mercatore la X dipende solo dalla longitudine e la Y solo dalla latitudine, e
+lo schermo è una trasformazione **lineare** di quelle due — finché la mappa non
+è ruotata né inclinata, che qui non succede (la bussola è disattivata). Quindi
+ogni vertice diventa due numeri in un `Float64Array` quando il file arriva, e a
+ogni fotogramma resta una moltiplicazione e una somma: niente trigonometria,
+niente allocazioni, niente chiamate a maplibre. La trasformazione si tara su due
+punti veri chiesti a `project()`, due volte per fotogramma invece di centomila.
+Se la mappa risulta ruotata o inclinata si torna a `project()` per vertice.
+
+### 3. Un tracciato solo per piano, non uno per forma
+
+Le forme spente hanno tutte lo stesso colore: stanno in un `<path>` unico.
+Restano separate solo quelle accese, che sono poche. Da ~880 `setAttribute` per
+fotogramma a tre. Il `<title>` per forma è sparito con i tracciati: il nome del
+comune adesso lo dice una targhetta in alto a destra, che si vede subito invece
+di aspettare il secondo del browser.
+
+### 4. Si arrotonda al pixel e si saltano i doppioni
+
+Due vertici che cadono sullo stesso pixel sono un vertice. A livello nazionale
+un confine da 220 punti ne lascia una quarantina: è una semplificazione che si
+adatta all'ingrandimento senza precalcolare nessun livello di dettaglio. E
+`Math.round` al posto di `toFixed(1)`, che è formattazione di stringhe.
+
+### 5. Il riquadro prima del ray casting
+
+Il click resta della mappa e chi è stato toccato lo dice un point-in-polygon.
+Girava su tutte le forme **a ogni movimento del mouse**. Adesso prima si guarda
+il riquadro — un confronto fra numeri — e il conto vero tocca a una o due
+forme. Più un fotogramma di ritmo su `mousemove`, che arriva a raffica.
+
+### I numeri
+
+Banco di prova sui file veri (solo l'aritmetica e le stringhe, senza il DOM,
+quindi il guadagno vero è più grande):
+
+| | prima | dopo |
+|---|---|---|
+| vista nazionale | 12,2 ms/fotogramma | **1,0** |
+| vista cittadina | 5,2 ms/fotogramma | **0,2** |
+
+Sedici millisecondi è il bilancio di un fotogramma a 60 al secondo: prima se ne
+andavano quasi tutti nel disegno, e restava lo strappo.
