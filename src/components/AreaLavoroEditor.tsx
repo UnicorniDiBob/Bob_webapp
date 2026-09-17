@@ -104,12 +104,22 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     [citta, cityId]
   );
 
+  // «comuni» esiste in database dalla 087 — il cerchio li calcola già e i
+  // gettoni escono — ma qui non si può ancora scegliere: l'interfaccia per
+  // disegnarli arriva con la mappa fuori Milano. Un bottone che non fa niente
+  // è peggio di un bottone che non c'è.
+  const ordineVisibile = useMemo<Scope[]>(
+    () => SCOPE_ORDINE.filter((s) => s !== "comuni"),
+    []
+  );
+
   // Ampiezze ammesse: dal catalogo, non dal professionista.
   const scopeAmmessi = useMemo(() => {
-    if (!maxScope) return SCOPE_ORDINE;
-    const tetto = SCOPE_ORDINE.indexOf(maxScope);
-    return SCOPE_ORDINE.slice(0, tetto + 1);
-  }, [maxScope]);
+    if (!maxScope) return ordineVisibile;
+    const tetto = ordineVisibile.indexOf(maxScope);
+    if (tetto < 0) return ordineVisibile;
+    return ordineVisibile.slice(0, tetto + 1);
+  }, [maxScope, ordineVisibile]);
 
   const carica = useCallback(async () => {
     setCaricando(true);
@@ -414,7 +424,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
               </option>
             ))}
           </select>
-          {maxScope && scopeAmmessi.length < SCOPE_ORDINE.length && (
+          {maxScope && scopeAmmessi.length < ordineVisibile.length && (
             <p className="mt-1 text-xs text-bob-ink/65">
               Per il tuo mestiere l&apos;area più larga possibile è
               «{SCOPE_LABEL[maxScope].toLowerCase()}»: i clienti cercano vicino,
