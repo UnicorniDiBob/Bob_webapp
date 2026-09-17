@@ -203,10 +203,20 @@ export function cerchioGeoJSON(
  */
 export function gettoniRichiesta(
   citta: Pick<CittaRow, "slug" | "coverage_keys">,
-  zonaSlug?: string | null
+  zonaSlug?: string | null,
+  comuneIstat?: string | null
 ): string[] {
   const base = citta.coverage_keys ?? [];
-  return zonaSlug ? [`zone:${citta.slug}/${zonaSlug}`, ...base] : [...base];
+  const chiavi = zonaSlug ? [`zone:${citta.slug}/${zonaSlug}`, ...base] : [...base];
+
+  // IL COMUNE DELLA RICHIESTA (088) PUÒ NON ESSERE QUELLO DELLA CITTÀ.
+  // `cities.coverage_keys` porta già il comune della città di Bob; ma chi
+  // scrive dal CAP di Sesto San Giovanni è a Sesto, anche se la città scelta
+  // in chat è Milano. Quel gettone è l'unico modo che ha di incontrare chi
+  // copre Sesto, ed è il motivo per cui questa funzione ne accetta un terzo.
+  const comune = comuneIstat ? `comune:${comuneIstat}` : null;
+  if (!comune || chiavi.includes(comune)) return chiavi;
+  return zonaSlug ? [chiavi[0], comune, ...chiavi.slice(1)] : [comune, ...chiavi];
 }
 
 /** Riassunto leggibile di una copertura, per la scheda pubblica e la checklist. */

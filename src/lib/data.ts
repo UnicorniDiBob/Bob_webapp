@@ -361,6 +361,8 @@ function toCard(
 
 export interface ProfessionalFilters {
   citySlug?: string;
+  /** Il comune da cui arriva la richiesta (088), quando si sa. */
+  comuneIstat?: string | null;
   serviceSlug?: string;
   maxPrice?: number;
   /** La zona dichiarata dal cliente, se l'ha detta. */
@@ -397,7 +399,8 @@ export function offreIntervento(
  */
 export async function getRequestCoverageKeys(
   citySlug: string,
-  zoneSlug?: string | null
+  zoneSlug?: string | null,
+  comuneIstat?: string | null
 ): Promise<string[]> {
   const supabase = createClient();
   const { data } = await supabase
@@ -408,7 +411,8 @@ export async function getRequestCoverageKeys(
   if (!data) return [];
   return gettoniRichiesta(
     data as { slug: string; coverage_keys: string[] | null },
-    zoneSlug ?? null
+    zoneSlug ?? null,
+    comuneIstat ?? null
   );
 }
 
@@ -445,7 +449,8 @@ export async function getProfessionals(
   if (filters.citySlug) {
     gettoniDellaRichiesta = await getRequestCoverageKeys(
       filters.citySlug,
-      filters.zoneSlug
+      filters.zoneSlug,
+      filters.comuneIstat
     );
     const citta = filters.citySlug;
     cards = cards.filter((c) =>
@@ -528,6 +533,9 @@ async function punteggiDelGiorno(
     p_city_slug: filters.citySlug ?? null,
     p_zone_slug: filters.zoneSlug ?? null,
     p_subservice_slug: filters.subserviceSlug ?? null,
+    // Il comune della richiesta (088/089): senza, chi copre Cologno prende
+    // zero punti d'area su una richiesta di Cologno.
+    p_comune_istat: filters.comuneIstat ?? null,
   });
   if (error || !Array.isArray(data)) return null;
   const mappa = new Map<string, PunteggioPro>();

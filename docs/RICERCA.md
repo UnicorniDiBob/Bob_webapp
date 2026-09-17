@@ -109,7 +109,7 @@ impossibile rispondere a un professionista che chiede perché è settimo.
 
 | voce | punti | perché |
 |---|---|---|
-| area: zona / città / provincia / regione / macro / Italia | 20 / 15 / 8 / 4 / 3 / 2 | chi è vicino serve meglio; chi copre l'Italia deve comparire, non vincere |
+| area: zona / comune / città / provincia / regione / macro / Italia | 20 / 18 / 15 / 8 / 4 / 3 / 2 | chi è vicino serve meglio; chi copre l'Italia deve comparire, non vincere |
 | valutazione | fino a 25 | vedi sotto |
 | tempo di risposta **misurato** | fino a 20 | ≤30 min 20, ≤2 h 16, ≤8 h 12, ≤24 h 8, ≤72 h 4, oltre 0 |
 | prezzo **dichiarato**, in qualunque forma | 15 sul lavoro cercato, 10 su qualcosa che offre | un prezzo che non c'è non fa decidere nessuno |

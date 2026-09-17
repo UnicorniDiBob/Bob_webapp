@@ -197,8 +197,8 @@ export default function ComeFunzionaPage() {
             </li>
             <li>
               <strong className="text-bob-ink">Chi lavora dove servi tu.</strong>{" "}
-              Prima chi ha dichiarato proprio la tua zona, poi chi copre la città,
-              poi chi arriva da più lontano. Chi lavora in tutta Italia compare
+              Prima chi ha dichiarato proprio la tua zona, poi chi copre il tuo
+              comune, poi chi copre la città, poi chi arriva da più lontano. Chi lavora in tutta Italia compare
               comunque, ma parte quasi da zero su questa voce.
             </li>
             <li>

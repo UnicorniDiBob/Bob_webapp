@@ -41,7 +41,7 @@ DATA_COMPLIANCE.md §8.
 | **Finalità** | Raccogliere la richiesta, presentarla ai professionisti pertinenti, permettere al cliente di scegliere |
 | **Base giuridica** | Contratto — art. 6(1)(b): è il servizio che l'utente chiede |
 | **Interessati** | Clienti, professionisti |
-| **Dati** | Descrizione del problema, servizio e sottoservizio, città, urgenza, fascia di budget, foto caricate, tipo di immobile, note di accesso, disponibilità, segnali di attenzione |
+| **Dati** | Descrizione del problema, servizio e sottoservizio, città, **comune** (`requests.comune_istat`, mig. 088: ricavato dal CAP o dalla città, non chiesto di nuovo), urgenza, fascia di budget, foto caricate, tipo di immobile, note di accesso, disponibilità, segnali di attenzione |
 | **Tabelle** | `requests`, `request_professionals`, `job_briefs` |
 | **Destinatari** | I professionisti invitati (che diventano **titolari autonomi** per l'uso che ne fanno — EDPB 07/2020), Supabase, Vercel |
 | **Trasferimenti** | Come A1 |
