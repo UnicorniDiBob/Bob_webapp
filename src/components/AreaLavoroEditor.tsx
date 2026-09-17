@@ -30,6 +30,7 @@ import {
   SCOPE_LABEL,
   SCOPE_ORDINE,
   gettoniRichiesta,
+  trovaPerRichiesta,
   zoneNelCerchio,
   type CittaRow,
   type Scope,
@@ -40,6 +41,34 @@ import MappaCopertura from "@/components/MappaCopertura";
 interface Props {
   professionalId: string;
   cityIdIniziale: string | null;
+}
+
+// Le zone raccolte sotto il nome corto a cui appartengono (`group_slug`, 084).
+// L'etichetta del gruppo si ricava dalla slug invece di leggere
+// src/lib/zones.ts: quel file serve il percorso del cliente ed è area di
+// André, e qui non serve dipenderne.
+function raggruppa(elenco: ZonaRow[]) {
+  const per = new Map<string, ZonaRow[]>();
+  for (const z of elenco) {
+    const chiave = z.group_slug ?? "";
+    per.set(chiave, [...(per.get(chiave) ?? []), z]);
+  }
+  const nome = (slug: string) =>
+    slug
+      .split("-")
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join(" ");
+  return [...per.entries()]
+    .map(([chiave, zone]) => ({
+      chiave: chiave || "_altri",
+      etichetta: chiave ? nome(chiave) : "Altri quartieri",
+      zone,
+    }))
+    .sort((a, b) => {
+      if (a.chiave === "_altri") return 1;
+      if (b.chiave === "_altri") return -1;
+      return a.etichetta.localeCompare(b.etichetta, "it");
+    });
 }
 
 export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Props) {
@@ -250,28 +279,12 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
             (z.nome_ufficiale ?? "").toLowerCase().includes(cerca)
         )
       : zone;
-    const per = new Map<string, ZonaRow[]>();
-    for (const z of visibili) {
-      const chiave = z.group_slug ?? "";
-      per.set(chiave, [...(per.get(chiave) ?? []), z]);
-    }
-    const nome = (slug: string) =>
-      slug
-        .split("-")
-        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-        .join(" ");
-    return [...per.entries()]
-      .map(([chiave, elenco]) => ({
-        chiave: chiave || "_altri",
-        etichetta: chiave ? nome(chiave) : "Altri quartieri",
-        zone: elenco,
-      }))
-      .sort((a, b) => {
-        if (a.chiave === "_altri") return 1;
-        if (b.chiave === "_altri") return -1;
-        return a.etichetta.localeCompare(b.etichetta, "it");
-      });
+    return raggruppa(visibili);
   }, [zone, filtroZona]);
+
+  // Lo stesso raggruppamento SENZA il filtro: la tendina della prova qui sotto
+  // non deve restringersi perché uno sta cercando una casella da accendere.
+  const gruppiTutti = useMemo(() => raggruppa(zone), [zone]);
 
   // Un gruppo si accende o si spegne tutto insieme: «lavoro ai Navigli» non
   // deve costare tre clic su tre nuclei che il cliente chiama con un nome solo.
@@ -569,17 +582,26 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
         </span>
       </label>
 
+      {/* LA PROVA. Prima si chiamava «Provalo» e rispondeva «non ti trova»
+          senza dire di cosa parlasse: due parole che non spiegano né la
+          domanda né cosa farci. Ora è scritta come la domanda che il
+          professionista si fa davvero — un cliente di lì mi trova? — e quando
+          la risposta è no dice anche perché e dove si sistema. Il confronto
+          resta quello vero: trovaPerRichiesta è la stessa funzione che filtra
+          gli elenchi, comprese le sue regole di compatibilità. */}
       {gettoni.length > 0 && cittaScelta && (
         <div className="card p-4">
-          <h4 className="text-sm font-semibold text-bob-ink">Provalo</h4>
+          <h4 className="text-sm font-semibold text-bob-ink">
+            Un cliente ti trova?
+          </h4>
           <p className="mt-1 text-xs text-bob-ink/65">
-            Il confronto è lo stesso che fa la ricerca: i gettoni della tua area
-            pubblicata contro quelli della richiesta. Non è una simulazione
-            scritta a parte.
+            Scegli da dove arriva la richiesta. La risposta la calcola lo stesso
+            confronto che fa la ricerca vera — la tua area pubblicata contro
+            quella della richiesta — non una simulazione scritta a parte.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <label className="text-sm text-bob-ink/70" htmlFor="cop-prova">
-              Una richiesta da
+              Se la richiesta arriva da
             </label>
             <select
               id="cop-prova"
@@ -589,17 +611,35 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
               data-testid="select-prova-zona"
             >
               <option value="">
-                {zone.length > 0 ? "tutta la città" : "questa città"}
+                {zone.length > 0
+                  ? `${cittaScelta.name}, senza quartiere`
+                  : cittaScelta.name}
               </option>
-              {zone.map((z) => (
-                <option key={z.slug} value={z.slug}>
-                  {z.label}
-                </option>
-              ))}
+              {gruppiTutti.map((g) =>
+                g.zone.length > 1 ? (
+                  <optgroup key={g.chiave} label={g.etichetta}>
+                    {g.zone.map((z) => (
+                      <option key={z.slug} value={z.slug}>
+                        {z.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : (
+                  g.zone.map((z) => (
+                    <option key={z.slug} value={z.slug}>
+                      {z.label}
+                    </option>
+                  ))
+                )
+              )}
             </select>
             {(() => {
               const attesi = gettoniRichiesta(cittaScelta, zonaProva || null);
-              const trovato = attesi.some((k) => gettoni.includes(k));
+              const trovato = trovaPerRichiesta(
+                { keys: gettoni, citySlug: cittaScelta.slug },
+                attesi,
+                cittaScelta.slug
+              );
               return (
                 <span
                   className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
@@ -614,6 +654,33 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
               );
             })()}
           </div>
+          {(() => {
+            const attesi = gettoniRichiesta(cittaScelta, zonaProva || null);
+            const trovato = trovaPerRichiesta(
+              { keys: gettoni, citySlug: cittaScelta.slug },
+              attesi,
+              cittaScelta.slug
+            );
+            const nome = zone.find((z) => z.slug === zonaProva)?.label ?? null;
+            let spiegazione: string;
+            if (trovato && nome) {
+              spiegazione = `${nome} è tra le zone che copri.`;
+            } else if (trovato) {
+              spiegazione = `Chi non dice il quartiere ti trova lo stesso: hai dichiarato delle zone di ${cittaScelta.name}.`;
+            } else if (nome) {
+              spiegazione = `${nome} non è tra le zone che copri: toccala sulla mappa, o allarga il raggio finché non ci entra.`;
+            } else {
+              spiegazione = `Una richiesta da ${cittaScelta.name} non ti raggiunge: la tua area pubblicata è altrove.`;
+            }
+            return (
+              <p
+                className="mt-2 text-xs text-bob-ink/65"
+                data-testid="spiegazione-prova"
+              >
+                {spiegazione}
+              </p>
+            );
+          })()}
         </div>
       )}
 
