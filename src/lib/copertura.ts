@@ -65,6 +65,15 @@ export interface ZonaRow {
   label: string;
   lat: number | null;
   lng: number | null;
+  /**
+   * Il nome corto a cui il nucleo appartiene (migrazione 084): «duomo» sta in
+   * «centro», «ronchetto-sul-naviglio» in «navigli». Facoltativi perché le
+   * colonne arrivano con la 084: prima che sia applicata la lettura con
+   * select("*") non le riporta, e l'interfaccia deve reggere lo stesso.
+   */
+  group_slug?: string | null;
+  /** Il nome del nucleo come lo pubblica il Comune, per esteso. */
+  nome_ufficiale?: string | null;
 }
 
 export interface Copertura {

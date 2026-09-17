@@ -53,6 +53,10 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
   const [citta, setCitta] = useState<CittaRow[]>([]);
   const [cityId, setCityId] = useState<string | null>(cityIdIniziale);
   const [zone, setZone] = useState<ZonaRow[]>([]);
+  const [filtroZona, setFiltroZona] = useState("");
+  // Il punto da cui parte la mappa quando il professionista non ha ancora
+  // disegnato niente: il suo comune (085), non il centro della città.
+  const [base, setBase] = useState<{ lat: number; lng: number; nome: string } | null>(null);
   const [maxScope, setMaxScope] = useState<Scope | null>(null);
 
   const [rigaId, setRigaId] = useState<string | null>(null);
@@ -82,7 +86,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     setCaricando(true);
     setErrore(null);
     try {
-      const [cittaRes, copRes, svcRes, pubRes] = await Promise.all([
+      const [cittaRes, copRes, svcRes, pubRes, proRes] = await Promise.all([
         supabase
           .from("cities")
           .select("id, name, slug, status, province, region, macro_region, coverage_keys")
@@ -103,10 +107,33 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
           .select("coverage_keys")
           .eq("professional_id", professionalId)
           .maybeSingle(),
+        // select("*"): comune_istat arriva con la 085 e finché non è applicata
+        // non deve far fallire il caricamento della pagina.
+        supabase
+          .from("professionals")
+          .select("*")
+          .eq("id", professionalId)
+          .maybeSingle(),
       ]);
 
       const listaCitta = (cittaRes.data ?? []) as CittaRow[];
       setCitta(listaCitta);
+
+      // Le coordinate del comune non stanno in database: le sa l'elenco
+      // ISTAT, che vive sul server. Se manca non succede niente — si torna
+      // alla media dei quartieri, come prima.
+      const istat = (proRes.data as { comune_istat?: string | null } | null)?.comune_istat;
+      if (istat) {
+        fetch(`/api/geo/comuni?istat=${encodeURIComponent(istat)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => {
+            const c = d?.comune as { nome: string; lat: number | null; lng: number | null } | undefined;
+            if (c?.lat != null && c?.lng != null) {
+              setBase({ lat: c.lat, lng: c.lng, nome: c.nome });
+            }
+          })
+          .catch(() => null);
+      }
       setGettoni((pubRes.data?.coverage_keys as string[] | undefined) ?? []);
 
       const svc = svcRes.data?.[0] as
@@ -165,7 +192,10 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     (async () => {
       const { data } = await supabase
         .from("city_zones")
-        .select("slug, label, lat, lng")
+        // select("*") e non l'elenco delle colonne: group_slug e
+        // nome_ufficiale arrivano con la 084, e finché non è applicata
+        // nominarle qui farebbe fallire la lettura invece di ignorarle.
+        .select("*")
         .eq("city_id", cityId)
         .order("label");
       if (annullato) return;
@@ -177,9 +207,17 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityId]);
 
-  // Primo centro: la media dei quartieri, se il pro non ne ha ancora uno.
+  // Primo centro, in ordine: il comune dichiarato all'iscrizione, e solo se
+  // manca la media dei quartieri. Chi sta a Sesto San Giovanni apriva la mappa
+  // sul Duomo e doveva trascinare il perno ogni volta: il dato per non
+  // chiederglielo ce l'abbiamo già.
   useEffect(() => {
-    if (centro || zone.length === 0) return;
+    if (centro) return;
+    if (base) {
+      setCentro({ lat: base.lat, lng: base.lng });
+      return;
+    }
+    if (zone.length === 0) return;
     const validi = zone.filter((z) => z.lat !== null && z.lng !== null);
     if (validi.length === 0) return;
     setCentro({
@@ -187,7 +225,7 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
       lng: validi.reduce((s, z) => s + (z.lng as number), 0) / validi.length,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zone]);
+  }, [zone, base]);
 
   // In modo cerchio le zone le decide il cerchio: anteprima, poi il database.
   useEffect(() => {
@@ -195,6 +233,58 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
     setZoneSlugs(zoneNelCerchio(zone, centro, raggioM));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modo, centro, raggioM, zone]);
+
+  // Ottantotto caselle in fila sono un muro di testo: si raggruppano sotto i
+  // nomi corti di prima — quelli che il database porta in `group_slug` — e si
+  // filtrano scrivendo, così chi cerca «Trenno» lo trova senza sapere in che
+  // gruppo sia finito. L'etichetta del gruppo si ricava dalla slug invece di
+  // leggere src/lib/zones.ts: quel file serve il percorso del cliente ed è
+  // area di André, e qui non serve dipenderne.
+  const gruppiZone = useMemo(() => {
+    const cerca = filtroZona.trim().toLowerCase();
+    const visibili = cerca
+      ? zone.filter(
+          (z) =>
+            z.label.toLowerCase().includes(cerca) ||
+            z.slug.includes(cerca) ||
+            (z.nome_ufficiale ?? "").toLowerCase().includes(cerca)
+        )
+      : zone;
+    const per = new Map<string, ZonaRow[]>();
+    for (const z of visibili) {
+      const chiave = z.group_slug ?? "";
+      per.set(chiave, [...(per.get(chiave) ?? []), z]);
+    }
+    const nome = (slug: string) =>
+      slug
+        .split("-")
+        .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+        .join(" ");
+    return [...per.entries()]
+      .map(([chiave, elenco]) => ({
+        chiave: chiave || "_altri",
+        etichetta: chiave ? nome(chiave) : "Altri quartieri",
+        zone: elenco,
+      }))
+      .sort((a, b) => {
+        if (a.chiave === "_altri") return 1;
+        if (b.chiave === "_altri") return -1;
+        return a.etichetta.localeCompare(b.etichetta, "it");
+      });
+  }, [zone, filtroZona]);
+
+  // Un gruppo si accende o si spegne tutto insieme: «lavoro ai Navigli» non
+  // deve costare tre clic su tre nuclei che il cliente chiama con un nome solo.
+  function toccaGruppo(slugs: string[]) {
+    setSalvato(false);
+    setModo("zones");
+    setZoneSlugs((prec) => {
+      const tutte = slugs.every((s) => prec.includes(s));
+      return tutte
+        ? prec.filter((s) => !slugs.includes(s))
+        : [...new Set([...prec, ...slugs])].sort();
+    });
+  }
 
   function toccaZona(slug: string) {
     setSalvato(false);
@@ -377,25 +467,68 @@ export default function AreaLavoroEditor({ professionalId, cityIdIniziale }: Pro
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-1.5" data-testid="chip-zone">
-            {zone.map((z) => {
-              const dentro = zoneSlugs.includes(z.slug);
+          <div data-testid="chip-zone" className="space-y-3">
+            {zone.length > 8 && (
+              <input
+                type="search"
+                value={filtroZona}
+                onChange={(e) => setFiltroZona(e.target.value)}
+                placeholder="Cerca un quartiere…"
+                aria-label="Cerca un quartiere"
+                className="w-full rounded-lg border border-black/10 px-3 py-1.5 text-sm outline-none focus:border-bob-indigo"
+              />
+            )}
+
+            {gruppiZone.map((g) => {
+              const slugs = g.zone.map((z) => z.slug);
+              const tutte = slugs.every((s) => zoneSlugs.includes(s));
               return (
-                <button
-                  key={z.slug}
-                  type="button"
-                  onClick={() => toccaZona(z.slug)}
-                  aria-pressed={dentro}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
-                    dentro
-                      ? "border-bob-indigo bg-bob-indigo/10 text-bob-indigo"
-                      : "border-black/10 text-bob-ink/70 hover:border-black/30"
-                  }`}
-                >
-                  {z.label}
-                </button>
+                <div key={g.chiave}>
+                  {g.zone.length > 1 && (
+                    <div className="mb-1 flex items-baseline gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-bob-ink/45">
+                        {g.etichetta}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toccaGruppo(slugs)}
+                        className="text-[11px] text-bob-indigo hover:underline"
+                      >
+                        {tutte ? "togli tutta la zona" : "tutta la zona"}
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {g.zone.map((z) => {
+                      const dentro = zoneSlugs.includes(z.slug);
+                      return (
+                        <button
+                          key={z.slug}
+                          type="button"
+                          onClick={() => toccaZona(z.slug)}
+                          aria-pressed={dentro}
+                          title={z.nome_ufficiale ?? z.label}
+                          className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                            dentro
+                              ? "border-bob-indigo bg-bob-indigo/10 text-bob-indigo"
+                              : "border-black/10 text-bob-ink/70 hover:border-black/30"
+                          }`}
+                        >
+                          {z.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
+
+            {zone.length > 0 && gruppiZone.length === 0 && (
+              <p className="text-sm text-bob-ink/65">
+                Nessun quartiere con questo nome.
+              </p>
+            )}
+
             {zone.length === 0 && (
               <p className="text-sm text-bob-ink/65">
                 Per questa città non abbiamo ancora i quartieri: intanto puoi

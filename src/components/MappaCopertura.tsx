@@ -52,7 +52,10 @@ import type { ZonaRow } from "@/lib/copertura";
  * Per vedere la città serve la sua geometria, e la prendiamo dal perimetro dei
  * NIL pubblicato dal Comune in CC-BY — un file servito dal nostro dominio,
  * non tile di un terzo a cui uscirebbero l'IP del professionista e la porzione
- * di città che sta guardando. Lo genera scripts/build_milano_nil_geojson.py.
+ * di città che sta guardando. Lo scarica scripts/build_milano_nil_geojson.py,
+ * e scripts/build_milano_nil_zones.py gli aggiunge la slug del nucleo — la
+ * stessa che sta in city_zones: è così che una forma sa di essere dentro
+ * l'area del professionista.
  *
  * PERCHÉ DISEGNATI IN SVG E NON COME LAYER. Una sorgente geojson di maplibre
  * viene analizzata in un web worker, e nel bundle di produzione di Next quel
@@ -289,7 +292,7 @@ export default function MappaCopertura({
         if (!vivo || !dati) return;
         quartieri.current = (dati.features ?? [])
           .map((f: {
-            properties?: { zona?: string | null };
+            properties?: { slug?: string | null; zona?: string | null };
             geometry?: { type?: string; coordinates?: unknown };
           }) => {
             const g = f.geometry;
@@ -299,7 +302,9 @@ export default function MappaCopertura({
             } else if (g?.type === "Polygon") {
               anelli = [(g.coordinates as [number, number][][])[0]];
             }
-            return { zona: f.properties?.zona ?? null, anelli };
+            // `slug` è il nucleo (la griglia della 084); `zona` era il nome
+            // corto di prima e resta come ripiego se il file non è rigenerato.
+            return { zona: f.properties?.slug ?? f.properties?.zona ?? null, anelli };
           })
           .filter((q: Quartiere) => q.anelli.length > 0);
         disegnaQuartieri();
