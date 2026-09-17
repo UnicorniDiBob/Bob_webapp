@@ -36,6 +36,39 @@ Protection` di sempre (vuole il piano Pro).
   un point-in-polygon, perché tracciati SVG che prendono gli eventi rompono il
   trascinamento.
 
+## Fine giornata: cosa è applicato, e una deriva trovata
+
+**Applicate tutte e sei: 084, 085, 086, 087, 088, 089.** Advisor rieseguiti dopo
+l'ultima. Verificato sui dati veri: 88 zone a Milano, 7.904 comuni, tutte e 10
+le richieste esistenti hanno il loro comune (Milano), `professionals_score` ha
+la firma nuova a cinque argomenti. Il sito è in produzione: `/come-funziona`
+dice «poi chi copre il tuo comune» e `/geo/province/MI.geojson` risponde.
+
+**IL CONTROLLO DI DERIVA DICE CHE LA PRODUZIONE È INDIETRO DI TRE MIGRAZIONI.**
+Ricostruito lo schema dai soli file del repo e confrontato con la produzione,
+mancano in produzione:
+
+| cosa | da dove | stato in produzione |
+|---|---|---|
+| `requests.quote_mode`, `requests.scope` | 082 | assenti |
+| `subservices.quote_level`, `quote_fields`, `superseded_by` | 082/081 | assenti |
+| tabella `subservice_migration_review` | 081 | assente |
+| funzione `canonical_subservice_id` | 081 | assente |
+| deduplicazione dei 7 sotto-servizi doppi | 081 | non fatta: 120 righe |
+
+Cioè **081, 082 e 083 sono su `main` ma non sono state applicate**. Il codice del
+quote intake è quindi deployato sopra uno schema che non ha le sue colonne: se
+una pagina le legge, risponde errore. Non è roba nostra — è l'iniziativa quote
+flow di André — ma andava detta il giorno in cui si scopre, non il giorno in cui
+un cliente ci sbatte contro.
+
+**Due rilievi nuovi degli advisor**, e sono la stessa cosa scritta due volte:
+`professionals_score` è `SECURITY DEFINER` ed è chiamabile da `anon` e da
+`authenticated` via `/rest/v1/rpc`. Non è una novità della 089: i permessi sono
+identici a quelli che la 072 aveva dato il 13 settembre, e la funzione serve
+proprio a far ordinare gli elenchi pubblici. Va deciso se lasciarla così
+(scrivendo perché, come si è fatto per le funzioni della 057) o spostarla.
+
 ## Cosa deve sapere André
 
 - **Le quattro migrazioni sono già applicate in produzione**, e il codice che le
