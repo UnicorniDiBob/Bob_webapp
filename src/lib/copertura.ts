@@ -22,6 +22,7 @@ import type { Feature, Polygon } from "geojson";
 
 export type Scope =
   | "zones"
+  | "comuni"
   | "city"
   | "province"
   | "region"
@@ -32,6 +33,7 @@ export type Modo = "zones" | "circle" | "polygon";
 
 export const SCOPE_LABEL: Record<Scope, string> = {
   zones: "Zone della città",
+  comuni: "I comuni che giro",
   city: "Tutta la città",
   province: "Tutta la provincia",
   region: "Tutta la regione",
@@ -42,6 +44,10 @@ export const SCOPE_LABEL: Record<Scope, string> = {
 /** Ordine dal più preciso al più ampio: serve anche a ordinare i risultati. */
 export const SCOPE_ORDINE: Scope[] = [
   "zones",
+  // Un comune sta fra il quartiere e la città: è più largo di «Isola» e più
+  // stretto di «tutta Milano». Per chi ha la base fuori da una città con i
+  // quartieri è l'unità naturale, ed è il motivo per cui esiste (087).
+  "comuni",
   "city",
   "province",
   "region",
@@ -65,6 +71,15 @@ export interface ZonaRow {
   label: string;
   lat: number | null;
   lng: number | null;
+  /**
+   * Il nome corto a cui il nucleo appartiene (migrazione 084): «duomo» sta in
+   * «centro», «ronchetto-sul-naviglio» in «navigli». Facoltativi perché le
+   * colonne arrivano con la 084: prima che sia applicata la lettura con
+   * select("*") non le riporta, e l'interfaccia deve reggere lo stesso.
+   */
+  group_slug?: string | null;
+  /** Il nome del nucleo come lo pubblica il Comune, per esteso. */
+  nome_ufficiale?: string | null;
 }
 
 export interface Copertura {
@@ -73,6 +88,8 @@ export interface Copertura {
   cityId: string | null;
   mode: Modo;
   zoneSlugs: string[];
+  /** I comuni coperti, per codice ISTAT (087). */
+  comuniIstat: string[];
   centerLat: number | null;
   centerLng: number | null;
   radiusM: number | null;
@@ -102,6 +119,43 @@ export function distanzaM(
     Math.sin(dLat / 2) ** 2 +
     Math.sin(dLng / 2) ** 2 * Math.cos(la) * Math.cos(lb);
   return 2 * R_TERRA * Math.asin(Math.sqrt(h));
+}
+
+export interface ComuneRow {
+  istat: string;
+  nome: string;
+  sigla: string;
+  provincia: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+/**
+ * I comuni il cui centro cade nel cerchio. Anteprima, come per le zone: il
+ * conto che vale lo rifà `private.comuni_nel_cerchio` alla scrittura.
+ *
+ * `esclusi` sono i comuni che NON vanno dichiarati perché sono città di Bob
+ * con i propri quartieri: lì si copre a quartieri, e prendersi il comune
+ * intero vorrebbe dire dichiarare mezza città che non si gira. La stessa
+ * esclusione la rifà il trigger della 087 — qui serve solo perché quello che
+ * il professionista vede mentre trascina il cerchio sia quello che poi salva.
+ */
+export function comuniNelCerchio(
+  comuni: ComuneRow[],
+  centro: { lat: number; lng: number },
+  raggioM: number,
+  esclusi: string[] = []
+): string[] {
+  return comuni
+    .filter(
+      (c) =>
+        c.lat !== null &&
+        c.lng !== null &&
+        !esclusi.includes(c.istat) &&
+        distanzaM(centro, { lat: c.lat, lng: c.lng }) <= raggioM
+    )
+    .map((c) => c.istat)
+    .sort();
 }
 
 /** Le zone il cui centro cade nel cerchio. Anteprima: il database rifà il conto. */
@@ -163,6 +217,11 @@ export function descriviCopertura(c: Copertura, citta?: CittaRow | null): string
   if (c.scope === "province") return `Provincia di ${citta?.province ?? nome}`;
   if (c.scope === "region") return citta?.region ?? "Tutta la regione";
   if (c.scope === "macro_region") return `Italia: ${citta?.macro_region ?? "area"}`;
+  if (c.scope === "comuni") {
+    const q = c.comuniIstat.length;
+    if (q === 0) return "Nessun comune scelto";
+    return q === 1 ? "1 comune" : `${q} comuni`;
+  }
   const n = c.zoneSlugs.length;
   if (n === 0) return "Nessuna zona scelta";
   return n === 1 ? "1 zona" : `${n} zone`;
@@ -175,7 +234,8 @@ export function descriviCopertura(c: Copertura, citta?: CittaRow | null): string
 
 /** Quanto è preciso un gettone: più alto, più vicino al cliente. */
 export const RANGO_GETTONE: Record<string, number> = {
-  zone: 5,
+  zone: 6,
+  comune: 5,
   city: 4,
   prov: 3,
   reg: 2,
