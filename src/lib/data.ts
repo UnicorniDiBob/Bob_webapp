@@ -533,6 +533,9 @@ async function punteggiDelGiorno(
     p_city_slug: filters.citySlug ?? null,
     p_zone_slug: filters.zoneSlug ?? null,
     p_subservice_slug: filters.subserviceSlug ?? null,
+    // Il comune della richiesta (088/089): senza, chi copre Cologno prende
+    // zero punti d'area su una richiesta di Cologno.
+    p_comune_istat: filters.comuneIstat ?? null,
   });
   if (error || !Array.isArray(data)) return null;
   const mappa = new Map<string, PunteggioPro>();
