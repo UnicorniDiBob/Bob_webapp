@@ -526,22 +526,23 @@ Part of "done", per `docs/DATA_COMPLIANCE.md`.
 
 ## 11. Phases
 
-Owners per the track split: André = client and pro interfaces, Lucio = infrastructure, admin,
-legal.
+Default track split (CLAUDE.md): André = client and pro interfaces, Lucio = infrastructure,
+admin, legal. **Exception for this initiative, decided 17 September 2026:** André owns the
+entire quote flow end to end, client side and pro side, including the migrations. The table
+below reflects that decision; the default split still governs everything outside this document.
 
 | # | Content | Owner | Done when |
 |---|---|---|---|
-| 0 | Resolve the eight duplicate slugs (migration 081) | Lucio | every read path returns one row per real sub-task |
-| 1 | Freeze the field sets for the core five; Art. 9 review | André, with Lucio on §10 | this document merged with §4 complete |
-| 2 | Migration 082 + seed `quote_level` and `quote_fields` | Lucio | file in PR before applied; advisors clean |
+| 0 | Resolve the eight duplicate slugs (migration 081) | André | every read path returns one row per real sub-task |
+| 1 | Freeze the field sets for the core five; Art. 9 review | André | this document merged with §4 complete |
+| 2 | Migration 082 + seed `quote_level` and `quote_fields` | André | file in PR before applied; advisors clean |
 | 3 | `quoting.ts` resolver + tool schema takes the key list + server validation | André | a live chat writes a non-empty `scope` and a non-null `subtask_slug` |
 | 4 | Scheda lavoro UI (stages B and C) | André | new `requests` rows carry `subservice_id`, `scope`, `quote_mode` |
 | 5 | Pro-side structured render + `quote_mode` badge | André | a professional sees fields, not a paragraph |
 | 6 | Photo calibration test, §6.2 | André | four scored categories, bars set beforehand, decision recorded |
 | 7 | Editorial pass: remaining ten services | André | every sub-task has at least the generic fallback |
 
-Phases 2–3 are independent of 4, so they can run across both tracks in parallel. Phase 0 blocks
-everything.
+Phases 2–3 are independent of 4, so they can run in parallel. Phase 0 blocks everything.
 
 **Deferred, recorded, accepted:** the per-professional listino stays at W13 rather than being
 pulled into pre-October onboarding. Consequence acknowledged on 16 September 2026: the sixty to
