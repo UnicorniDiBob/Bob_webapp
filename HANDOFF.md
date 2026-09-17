@@ -1,3 +1,72 @@
+# Passaggio di consegne — 17 settembre 2026 (Lucio, con Claude)
+
+> Aggiunge la giornata di oggi in cima. Le voci del 14 settembre e quelle
+> portate avanti restano sotto, invariate.
+
+## Cosa ho fatto — Lucio (17 settembre)
+
+Ramo **`feat/mappa-88-nil-e-base-pro`**, 8 commit, PR aperta. **Quattro
+migrazioni applicate in produzione oggi: 084, 085, 086, 087.** Advisor
+rieseguiti dopo: nessun rilievo nuovo, resta solo il `Leaked Password
+Protection` di sempre (vuole il piano Pro).
+
+- **084 — Milano da 28 zone a 88 nuclei.** `city_zones` è ora la griglia dei
+  NIL del Comune (ds964, CC-BY), centro calcolato dal poligono. I 28 nomi corti
+  restano in `src/lib/zones.ts` (area di André, non toccata) e vivono come
+  `city_zones.group_slug`: `coverage_keys_for` emette anche il gettone del
+  gruppo, quindi una richiesta che dice «Navigli» incontra ancora chi copre
+  Ronchetto sul Naviglio. **In produzione: 88 zone, 35 con gruppo, 28 gruppi.**
+  L'unica copertura esistente si è ricalcolata da sola sul cerchio: 47 nuclei,
+  57 gettoni pubblicati.
+- **085 — la base del professionista.** `professionals` ha comune (codice
+  ISTAT), provincia, regione e CAP. Colonne che accettano il vuoto: **chi era
+  già iscritto non si blocca**, gli arriva una voce nuova nella checklist del
+  profilo. Nel modulo di iscrizione il CAP è obbligatorio e il comune si sceglie
+  da elenco, non si scrive.
+- **086 — i 7.904 comuni italiani in database**, con `comuni_nel_cerchio()` e
+  `cities.comune_istat`. In produzione: 7.904 righe, 7.856 con coordinate, 133
+  in provincia di Milano, Milano con 42 CAP.
+- **087 — la copertura impara il comune.** Il cerchio produce anche i comuni che
+  tocca e il gettone `comune:<istat>` entra nel confronto. Un cerchio che tocca
+  Milano NON dichiara «comune: Milano»: lì vale la griglia fine.
+
+- **La mappa esce da Milano**: confini comunali ISTAT (CC BY 4.0) in 107 file,
+  uno per provincia, in `public/geo/province/`. Le aree si scelgono
+  cliccandole; il click resta della mappa e a dire quale area è stata toccata è
+  un point-in-polygon, perché tracciati SVG che prendono gli eventi rompono il
+  trascinamento.
+
+## Cosa deve sapere André
+
+- **Le quattro migrazioni sono già applicate in produzione**, e il codice che le
+  usa è sulla PR, non ancora in `main`. Fino al merge il sito vive con lo schema
+  nuovo e il codice vecchio: regge, perché tutte le colonne nuove accettano il
+  vuoto e le funzioni vecchie continuano a esistere.
+- **Per applicare il seed dei comuni ho acceso l'estensione `http` e l'ho spenta
+  subito dopo** (il canale delle migrazioni non regge 731 KB in una volta; il
+  file è pinnato al commit c4b500e). Verificato che sia spenta: `select count(*)
+  from pg_extension where extname='http'` torna 0.
+- `src/lib/zones.ts` **non è stata toccata**: il percorso del cliente funziona
+  esattamente come prima.
+- **Trappola nuova, vale per tutti:** la 084 contiene un `create or replace` di
+  `private.coverage_keys_for`. Rigiocarla dopo la 087 riporta indietro la
+  funzione e i gettoni escono monchi, senza un solo errore.
+
+## Cosa è a metà — 17 settembre
+
+- **`professionals_score` (072) non pesa i gettoni `comune:`**: oggi un incontro
+  per comune ordina come se valesse zero. È il prossimo giro.
+- **La chat del cliente offre ancora tre città.** Finché non cambia, un
+  professionista che copre Bergamo non riceve richieste da lì. Il CAP nella
+  richiesta però esiste già (046): da lì al comune è una riga, e quella parte si
+  può fare senza toccare `BobChat` — il passo «in che città?» invece è di André.
+- **16 comuni senza confine disegnato** (fusioni successive al nostro elenco
+  ISTAT 2020) e **26 col centro fuori dalla propria forma** (comuni fatti di
+  pezzi separati): entrambe scritte in `docs/NOTE_E_DECISIONI.md`.
+- **La riga RoPA A22** («Base del professionista») è scritta ma **da rileggere**.
+
+---
+
 # Passaggio di consegne — 14 settembre 2026 (Lucio, con Claude)
 
 > Sostituisce quello del 12 settembre sera e ne porta avanti tutte le voci
