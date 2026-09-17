@@ -1,44 +1,64 @@
 -- 081_subservizi_deduplicazione.sql
 --
--- Il catalogo dei cinque servizi core porta sette sotto-servizi legacy,
+-- Il catalogo dei cinque servizi core porta sei sotto-servizi legacy,
 -- doppioni di altrettanti canonici, sopravvissuti alla 013/014 perche' i
 -- profili professionista potevano gia' puntarci. Verificato in produzione il
--- 16-17 settembre 2026, non a memoria:
+-- 16-17 settembre 2026, non a memoria — e rivisto il 17 settembre dopo che
+-- una lettura riga per riga delle collisioni reali ha corretto due mappature:
 --
 --   idraulico     riparazione-perdite        -> perdita-rubinetto-sifone (+ perdita-tubatura-infiltrazione)
---   idraulico     sostituzione-rubinetteria  -> perdita-rubinetto-sifone (+ wc-sanitari)
 --   elettricista  prese-e-interruttori       -> presa-interruttore
 --   elettricista  messa-a-norma              -> messa-a-norma-certificazione
 --   imbianchino   imbiancatura-camere        -> tinteggiatura-interni
---   pulizie       pulizie-appartamenti       -> profonda-una-tantum (+ ordinarie-ricorrenti)
+--   pulizie       pulizie-appartamenti       -> ordinarie-ricorrenti (+ profonda-una-tantum)
 --   pulizie       pulizie-uffici-piccoli     -> uffici-negozi
 --
--- Tre legacy si dividono su due canonici: nessuna riga del genere porta un
--- indizio (booking_fields vuoti su idraulico/elettricista/imbianchino) per
--- decidere quale intendesse il professionista che l'ha scelta, quindi il
--- bersaglio "primario" sotto e' una scelta editoriale, non una deduzione.
--- pulizie-appartamenti fa eccezione: i suoi booking_fields sono identici byte
--- per byte a quelli di profonda-una-tantum (stessi 4 campi), non a quelli di
--- ordinarie-ricorrenti (che ne ha un quinto, frequency); e' la sola riga con
--- una prova reale, quindi e' il bersaglio primario.
+-- SOSTITUZIONE-RUBINETTERIA NON E' UN DOPPIONE. Sostituire un rubinetto che
+-- funziona e' un lavoro preventivabile a se', non una riparazione di perdita
+-- ne' un intervento su WC e sanitari. Resta un sotto-servizio canonico per
+-- conto suo: non compare piu' in nessuna mappa qui sotto.
 --
--- NON SI CANCELLA NIENTE. professionals.subservice_slugs referenzia dal vivo
--- tre degli otto slug legacy per un solo professionista; professional_services
--- (il listino con prezzi veri, non il catalogo) ne referenzia sei righe su
--- tredici, due delle quali con instant_book_enabled=true e una tariffa reale.
--- La 013/014 aveva ragione a non cancellare: la dedup di questa migrazione
--- alias, non elimina.
+-- PULIZIE-APPARTAMENTI -> ORDINARIE-RICORRENTI, non profonda-una-tantum. La
+-- prima stesura di questa migrazione aveva letto l'identita' byte-per-byte
+-- dei booking_fields come prova a favore di profonda-una-tantum: era un
+-- artefatto della semina dati (le due righe erano state clonate dalla stessa
+-- fonte), non un indizio sul lavoro. Il legacy divide per TIPO DI IMMOBILE
+-- (appartamenti / uffici piccoli), il canonico divide per TIPO DI LAVORO
+-- (ricorrente / una tantum) — due assi diversi. "Pulizie appartamenti" a
+-- 20 EUR/ora con un minimo di 2 ore e' pulizia domestica ordinaria: il
+-- bersaglio primario e' ordinarie-ricorrenti.
+--
+-- Due legacy si dividono ancora su due canonici: nessuna riga del genere
+-- porta un indizio nei dati (booking_fields vuoti su idraulico/imbianchino)
+-- per decidere quale intendesse il professionista, quindi il bersaglio
+-- "primario" sotto e' una scelta editoriale dove non c'e' una prova come
+-- quella di pulizie-appartamenti.
+--
+-- NON SI CANCELLA NIENTE, e qui non serve nemmeno stare troppo sul chi va
+-- avvisato: le sei righe professional_services toccate da questa migrazione
+-- appartengono tutte ai cinque professionisti demo seminati il 2 giugno
+-- (b1000000-...), non a professionisti veri. FOTOPRO-MILANO, l'unico
+-- professionista reale in produzione al 17 settembre 2026, non ne ha
+-- nessuna. Bassa posta in gioco oggi; la cautela sotto resta comunque la
+-- regola giusta per quando smettera' di esserlo.
 --
 -- PREZZO: MAI INVENTATO. Dove il professionista ha gia' una riga vuota sul
 -- canonico, il prezzo legacy vi si trasferisce (e' la sua stessa dichiarazione,
 -- solo riallineata). Dove il canonico ha GIA' un prezzo diverso, nessuna delle
 -- due righe viene toccata: finisce in subservice_migration_review, una coda
 -- che al prossimo accesso chiede conferma al professionista invece di
--- scegliere per lui. Stessa cautela per il secondo bersaglio dei tre legacy
+-- scegliere per lui. Stessa cautela per il secondo bersaglio dei due legacy
 -- che si dividono in due: mai un prezzo copiato li', solo una riga di
 -- conferma se il professionista non offre gia' quel servizio a parte.
--- expandere professionals.subservice_slugs a entrambi i canonici e' invece
+-- Espandere professionals.subservice_slugs a entrambi i canonici e' invece
 -- sicuro e reversibile: dichiarare una capacita' non e' dichiarare un prezzo.
+--
+-- SUBSERVICE_MIGRATION_REVIEW E' UNA RETE DI SICUREZZA, NON UNA FEATURE. La
+-- deduplicazione gira una volta sola; da qui in avanti un professionista
+-- nuovo puo' scegliere solo slug canonici (i punti di lettura sono gia'
+-- filtrati, vedi sotto), quindi su dati reali questa coda non si popolera'
+-- mai piu' dopo questa migrazione. Nessuna fase successiva deve costruirci
+-- sopra un'interfaccia per il professionista: resta un tavolo per lo staff.
 --
 -- LETTURA: ogni punto che elenca sotto-servizi attivi deve escludere le righe
 -- con superseded_by valorizzato, o usare public.canonical_subservice_id() per
@@ -83,11 +103,10 @@ comment on function public.canonical_subservice_id(uuid) is
 with mapping (legacy_slug, canonical_slug) as (
   values
     ('riparazione-perdite', 'perdita-rubinetto-sifone'),
-    ('sostituzione-rubinetteria', 'perdita-rubinetto-sifone'),
     ('prese-e-interruttori', 'presa-interruttore'),
     ('messa-a-norma', 'messa-a-norma-certificazione'),
     ('imbiancatura-camere', 'tinteggiatura-interni'),
-    ('pulizie-appartamenti', 'profonda-una-tantum'),
+    ('pulizie-appartamenti', 'ordinarie-ricorrenti'),
     ('pulizie-uffici-piccoli', 'uffici-negozi')
 )
 update public.subservices legacy
@@ -111,7 +130,7 @@ create table if not exists public.subservice_migration_review (
 );
 
 comment on table public.subservice_migration_review is
-  'Coda di servizio della deduplicazione 081: casi in cui unire due prezzi o inventarne uno avrebbe rischiato di sbagliare, quindi restano da confermare al professionista al prossimo accesso. Conservazione: cancellata riga per riga quando risolta (percorso applicativo, non automatico); mai oltre la disattivazione del professionista (on delete cascade).';
+  'Rete di sicurezza della deduplicazione 081, non una coda pensata per durare: gira una volta, e da qui in avanti un professionista nuovo puo'' scegliere solo slug canonici, quindi su dati reali non si ripopola. Nessuna interfaccia professionista va costruita sopra — resta un tavolo per lo staff. Conservazione: cancellata riga per riga quando risolta (percorso applicativo, non automatico); mai oltre la disattivazione del professionista (on delete cascade).';
 
 create index if not exists subservice_migration_review_pro_idx
   on public.subservice_migration_review (professional_id)
@@ -144,11 +163,10 @@ create policy "Staff legge tutta la coda di revisione"
 with mapping (legacy_slug, canonical_slug) as (
   values
     ('riparazione-perdite', 'perdita-rubinetto-sifone'),
-    ('sostituzione-rubinetteria', 'perdita-rubinetto-sifone'),
     ('prese-e-interruttori', 'presa-interruttore'),
     ('messa-a-norma', 'messa-a-norma-certificazione'),
     ('imbiancatura-camere', 'tinteggiatura-interni'),
-    ('pulizie-appartamenti', 'profonda-una-tantum'),
+    ('pulizie-appartamenti', 'ordinarie-ricorrenti'),
     ('pulizie-uffici-piccoli', 'uffici-negozi')
 ),
 legacy_rows as (
@@ -186,8 +204,7 @@ update public.professional_services ps
 with mapping (legacy_slug, canonical_slug) as (
   values
     ('riparazione-perdite', 'perdita-rubinetto-sifone'),
-    ('sostituzione-rubinetteria', 'perdita-rubinetto-sifone'),
-    ('pulizie-appartamenti', 'profonda-una-tantum')
+    ('pulizie-appartamenti', 'ordinarie-ricorrenti')
 ),
 collision as (
   select
@@ -237,15 +254,13 @@ where not c.target_is_empty
        and r.resolved_at is null
   );
 
--- 3c) Il secondo bersaglio dei tre legacy che si dividono in due: mai un
+-- 3c) Il secondo bersaglio dei due legacy che si dividono in due: mai un
 --     prezzo copiato li'. Solo una riga di conferma, e solo se il
---     professionista non offre gia' quel servizio per conto suo (pro 005 ha
---     gia' un prezzo proprio su ordinarie-ricorrenti: nessuna riga inutile).
+--     professionista non offre gia' quel servizio per conto suo.
 with secondary_mapping (legacy_slug, secondary_slug) as (
   values
     ('riparazione-perdite', 'perdita-tubatura-infiltrazione'),
-    ('sostituzione-rubinetteria', 'wc-sanitari'),
-    ('pulizie-appartamenti', 'ordinarie-ricorrenti')
+    ('pulizie-appartamenti', 'profonda-una-tantum')
 ),
 gaps as (
   select distinct
@@ -282,13 +297,11 @@ with mapping (legacy_slug, canonical_slug) as (
   values
     ('riparazione-perdite', 'perdita-rubinetto-sifone'),
     ('riparazione-perdite', 'perdita-tubatura-infiltrazione'),
-    ('sostituzione-rubinetteria', 'perdita-rubinetto-sifone'),
-    ('sostituzione-rubinetteria', 'wc-sanitari'),
     ('prese-e-interruttori', 'presa-interruttore'),
     ('messa-a-norma', 'messa-a-norma-certificazione'),
     ('imbiancatura-camere', 'tinteggiatura-interni'),
-    ('pulizie-appartamenti', 'profonda-una-tantum'),
     ('pulizie-appartamenti', 'ordinarie-ricorrenti'),
+    ('pulizie-appartamenti', 'profonda-una-tantum'),
     ('pulizie-uffici-piccoli', 'uffici-negozi')
 ),
 additions as (
@@ -315,11 +328,10 @@ update public.professionals p
 with mapping (legacy_slug, canonical_slug) as (
   values
     ('riparazione-perdite', 'perdita-rubinetto-sifone'),
-    ('sostituzione-rubinetteria', 'perdita-rubinetto-sifone'),
     ('prese-e-interruttori', 'presa-interruttore'),
     ('messa-a-norma', 'messa-a-norma-certificazione'),
     ('imbiancatura-camere', 'tinteggiatura-interni'),
-    ('pulizie-appartamenti', 'profonda-una-tantum'),
+    ('pulizie-appartamenti', 'ordinarie-ricorrenti'),
     ('pulizie-uffici-piccoli', 'uffici-negozi')
 )
 update public.requests r

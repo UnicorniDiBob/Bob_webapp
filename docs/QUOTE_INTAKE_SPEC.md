@@ -183,7 +183,7 @@ the sub-task is probably level 3 and the honest answer is a site visit.
 
 ## 4. Field sets for the core five
 
-Written against the canonical slugs. **See §9 — eight legacy duplicate slugs must be resolved
+Written against the canonical slugs. **See §9 — six legacy duplicate slugs must be resolved
 first**, or this content gets written twice and the data splits.
 
 ### idraulico
@@ -477,18 +477,36 @@ the Supabase security advisors run after it.
 
 ## 9. Blocker found on 16 September: duplicate sub-service slugs
 
-The core five carry **eight legacy duplicates**, kept during migration 013/014 because professional
+**Amended 17 September**, after row-by-row verification of the actual collision data in migration
+081: the original table below had two mappings wrong. Corrected here rather than left to drift
+from what actually shipped — this section is the record of what the catalog does, not what it did
+on the day the blocker was found.
+
+The core five carry **six legacy duplicates**, kept during migration 013/014 because professional
 profiles may reference them. They split the taxonomy and would double the editorial work.
 
 | Service | Legacy slug | Canonical slug |
 |---|---|---|
 | idraulico | `riparazione-perdite` | `perdita-rubinetto-sifone` / `perdita-tubatura-infiltrazione` |
-| idraulico | `sostituzione-rubinetteria` | `perdita-rubinetto-sifone` / `wc-sanitari` |
 | elettricista | `prese-e-interruttori` | `presa-interruttore` |
 | elettricista | `messa-a-norma` | `messa-a-norma-certificazione` |
 | imbianchino | `imbiancatura-camere` | `tinteggiatura-interni` |
 | pulizie | `pulizie-appartamenti` | `ordinarie-ricorrenti` / `profonda-una-tantum` |
 | pulizie | `pulizie-uffici-piccoli` | `uffici-negozi` |
+
+**`sostituzione-rubinetteria` is not a duplicate.** The original table treated it as one, mapped to
+`perdita-rubinetto-sifone` / `wc-sanitari`. It isn't either: replacing a tap that already works is
+a distinct quotable job, not a leak repair and not general sanitary-fixture work. It stays a
+canonical sub-task on its own and carries no `superseded_by`.
+
+**`pulizie-appartamenti` maps primarily to `ordinarie-ricorrenti`, not `profonda-una-tantum`.** The
+original resolution read the two legacy rows' `booking_fields` being byte-identical to
+`profonda-una-tantum`'s as evidence. It wasn't — the rows were cloned from the same seed source,
+which produces identical JSON regardless of which job the row is actually about. The legacy pair
+splits the taxonomy by **premises type** (appartamenti / uffici piccoli); the canonical set splits
+it by **job type** (ricorrente / una tantum) — two different axes, not a matching pair. "Pulizie
+appartamenti" priced at 20 €/hour with a 2-hour minimum is ordinary recurring domestic cleaning,
+which is what `ordinarie-ricorrenti` is.
 
 Aggravating detail: `pulizie-appartamenti` and `pulizie-uffici-piccoli` are **legacy slugs that
 carry `instant_book_eligible = true` and populated `booking_fields`**, while their canonical
@@ -499,6 +517,12 @@ bookable. That is currently decided by which demo row happened to be seeded firs
 point the legacy rows at the canonical ones, repoint `professionals.subservice_slugs` and any
 `requests.subservice_id`, and exclude superseded rows from every read path. Deleting them would
 break existing profiles.
+
+**Checked against production on 17 September:** every `professional_services` row this migration
+touches belongs to one of the five demo professionals seeded 2 June (`b1000000-...`). FOTOPRO-MILANO,
+the one real professional in production, has none of these six slugs. Low stakes today — the
+never-invent-a-price discipline in migration 081 is for when that stops being true, not because it
+mattered this time.
 
 ---
 
@@ -533,7 +557,7 @@ below reflects that decision; the default split still governs everything outside
 
 | # | Content | Owner | Done when |
 |---|---|---|---|
-| 0 | Resolve the eight duplicate slugs (migration 081) | André | every read path returns one row per real sub-task |
+| 0 | Resolve the six duplicate slugs (migration 081) | André | every read path returns one row per real sub-task |
 | 1 | Freeze the field sets for the core five; Art. 9 review | André | this document merged with §4 complete |
 | 2 | Migration 082 + seed `quote_level` and `quote_fields` | André | file in PR before applied; advisors clean |
 | 3 | `quoting.ts` resolver + tool schema takes the key list + server validation | André | a live chat writes a non-empty `scope` and a non-null `subtask_slug` |
@@ -555,7 +579,7 @@ rates.
 
 | # | Question | Blocks |
 |---|---|---|
-| A | Alias or hard-migrate the eight legacy slugs? Alias is safer, leaves dead rows | phase 0 |
+| A | Alias or hard-migrate the six legacy slugs? Alias is safer, leaves dead rows — decided: alias (081) | phase 0, resolved |
 | B | `personal-trainer` `goal`: drop, or consent-gate? | phase 1 |
 | C | Does the forbice (level 1) ship before the price catalogue P1.2 exists? If not, level 1 degrades to `assisted` in the pilot | phase 3 |
 | D | Who writes the ranking-parameters declaration, and before which outreach date? | before October |
