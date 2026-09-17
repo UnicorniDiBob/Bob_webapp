@@ -418,3 +418,40 @@ licenza**, perché a sua volta li ha raccolti da terzi.
   e nel modulo c'è sempre la via d'uscita «il mio non è in elenco».
 - Il file (`src/lib/data/comuni-italia.json`, 900 KB) non va mai importato da
   un componente del browser: lo legge solo `/api/geo/comuni`, lato server.
+
+## 2026-09-17 (sera) · I confini dei comuni, un file per provincia
+
+Per disegnare l'area di lavoro fuori Milano servono le forme dei comuni.
+`scripts/build_confini_province.py` le ritaglia dai **confini comunali ISTAT
+distribuiti da openpolis/geojson-italy in CC BY 4.0** e ne scrive uno per
+provincia in `public/geo/province/`: 107 file, in media 56 KB, 6 MB in tutto.
+L'attribuzione sta dentro ogni file, nella proprietà `fonte` — è un obbligo
+della licenza, non una cortesia.
+
+- **Un file per provincia e non uno solo**: tutta Italia sono decine di
+  megabyte, e la mappa deve caricare quello che guardi, non il paese intero.
+- **Niente tile, come per Milano**: nessun fornitore, quindi l'IP del
+  professionista e il pezzo d'Italia che sta guardando non escono da Bob.
+- **Semplificazione con Douglas-Peucker**, tolleranza 0,0005° (~55 m), non «un
+  punto ogni N» che sui confini frastagliati taglia i promontori e lascia i
+  rettilinei. Si cambia con `--tolleranza`: a 0,001 i file dimezzano e le forme
+  restano riconoscibili a scala di provincia.
+
+### Tre cose trovate facendolo, che restano vere anche domani
+
+1. **I codici ISTAT della Sardegna non combaciano fra i due elenchi.** Le
+   province sarde sono state rifatte e il codice del comune comincia col codice
+   della provincia: stesso paese, due numeri. Sono 377 comuni. Il generatore li
+   appaia per nome e regione, e c'è una prova in `src/lib/confini.test.ts` che
+   fallisce se quel pezzo si rompe — senza, mezza isola sparirebbe in silenzio.
+2. **16 comuni del nostro elenco non hanno una forma** (Bardello, Bregano,
+   Monteciccardo, Moransengo…): i confini sono più recenti del nostro elenco
+   ISTAT 2020 e quei comuni nel frattempo si sono fusi. Sulla mappa resteranno
+   un pallino. Si chiude aggiornando l'elenco dei comuni, che oggi non
+   aggiorniamo perché ci portiamo dietro i CAP della stessa fonte.
+3. **26 comuni hanno il proprio centro fuori dal proprio confine** — Caorle,
+   Portoferraio, Pedemonte, Ponza: comuni fatti di pezzi separati, o a forma di
+   C, dove il centro medio cade nel mare o nel comune accanto. Non è un errore
+   da correggere: il cerchio lavora sul punto, e il punto è quello. Lo script
+   lo controlla a ogni passata (99,7% dentro) proprio per accorgersi se un
+   giorno quella percentuale crollasse, che vorrebbe dire due Italie diverse.
