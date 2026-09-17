@@ -143,6 +143,7 @@ export default function AziendaPage() {
           supabase
             .from("subservices")
             .select("id, service_id, name, slug")
+            .is("superseded_by", null)
             .order("name"),
           supabase
             .from("professionals")

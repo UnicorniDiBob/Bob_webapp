@@ -34,6 +34,7 @@ export default async function AdminCatalogoPage() {
       .select(
         "id, service_id, name, slug, instant_book_eligible, default_rate_unit, booking_fields"
       )
+      .is("superseded_by", null)
       .order("name"),
   ]);
 

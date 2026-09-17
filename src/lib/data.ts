@@ -62,12 +62,16 @@ export async function getServiceBySlug(slug: string): Promise<Service | null> {
   return (data as Service) ?? null;
 }
 
+// Esclude le righe legacy sostituite dalla deduplicazione (migration 081):
+// un sotto-servizio superseded non deve comparire in nessuna scelta, ne'
+// per il cliente ne' per Bob.
 export async function getSubservices(serviceId: string): Promise<Subservice[]> {
   const supabase = createClient();
   const { data } = await supabase
     .from("subservices")
     .select("*")
     .eq("service_id", serviceId)
+    .is("superseded_by", null)
     .order("name", { ascending: true });
   return (data ?? []) as Subservice[];
 }
@@ -80,6 +84,7 @@ export async function getAllSubservices(): Promise<
   const { data } = await supabase
     .from("subservices")
     .select("slug, name, services(slug)")
+    .is("superseded_by", null)
     .order("name", { ascending: true });
   return (data ?? [])
     .map((row) => {
@@ -145,7 +150,7 @@ type RawProfessionalRow = {
       is_plural: boolean | null;
       takes_article: boolean | null;
     } | null;
-    subservices: { name: string; slug: string } | null;
+    subservices: { name: string; slug: string; superseded_by: string | null } | null;
   }[];
   ratings: { score: number }[];
 };
@@ -167,7 +172,7 @@ const PROFESSIONAL_SELECT = `
   response_time_label,
   city_id,
   cities ( name, slug ),
-  professional_services ( min_price, max_price, price_note, service_id, subservice_id, services ( name, slug, gender, is_plural, takes_article ), subservices ( name, slug ) ),
+  professional_services ( min_price, max_price, price_note, service_id, subservice_id, services ( name, slug, gender, is_plural, takes_article ), subservices ( name, slug, superseded_by ) ),
   ratings ( score )
 `;
 
@@ -247,7 +252,14 @@ function toCard(
   // l'ha, e l'ordinamento per prezzo lo trattava come 9999, mandandolo in
   // fondo. Non e' un difetto nato con la 070 — c'era gia' con quattro righe —
   // ma la 070 lo ha reso normale.
-  const righe = row.professional_services ?? [];
+  //
+  // Deduplicazione (081): una riga rimasta su uno slug legacy (mai
+  // sovrascritta perche' portava un prezzo diverso dal canonico, vedi
+  // subservice_migration_review) non deve comparire come un'offerta a parte
+  // accanto al suo canonico — e' letteralmente il difetto descritto sopra.
+  const righe = (row.professional_services ?? []).filter(
+    (r) => !r.subservices?.superseded_by
+  );
 
   const offers: ProfessionalOffer[] = righe.map((r) => ({
     serviceSlug: r.services?.slug ?? null,

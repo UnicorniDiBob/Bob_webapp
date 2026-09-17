@@ -41,7 +41,10 @@ export default async function AdminAnalisiPage() {
       .from("cities")
       .select("id, name, slug, province, region, macro_region"),
     supabase.from("services").select("id, name, slug"),
-    supabase.from("subservices").select("id, service_id, name, slug"),
+    supabase
+      .from("subservices")
+      .select("id, service_id, name, slug")
+      .is("superseded_by", null),
     supabase.from("users").select("id, role, created_at"),
     supabase.from("profiles").select("user_id, full_name"),
     supabase

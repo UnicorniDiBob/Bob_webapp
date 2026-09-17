@@ -107,6 +107,7 @@ export default function InstantBookingConfig({
         .select("name, slug")
         .eq("service_id", serviceId)
         .eq("instant_book_eligible", true)
+        .is("superseded_by", null)
         .order("name");
       if (on) setCatEligible((data ?? []) as { name: string; slug: string }[]);
     })();
@@ -132,7 +133,8 @@ export default function InstantBookingConfig({
         .from("subservices")
         .select("id, slug, name, default_rate_unit, booking_fields, instant_book_eligible")
         .in("slug", subSlugs)
-        .eq("instant_book_eligible", true);
+        .eq("instant_book_eligible", true)
+        .is("superseded_by", null);
 
       const eligible = (subs ?? []) as unknown as EligibleSub[];
       if (eligible.length === 0) {

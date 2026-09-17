@@ -42,7 +42,7 @@ export default function InstantBookingEntry({
           supabase
             .from("professional_services")
             .select(
-              "id, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, subservices(name, booking_fields)"
+              "id, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, subservices(name, booking_fields, superseded_by)"
             )
             .eq("professional_id", professionalId)
             .eq("instant_book_enabled", true),
@@ -67,13 +67,16 @@ export default function InstantBookingEntry({
         .map((r) => {
           const subRel = r.subservices;
           const sub = (Array.isArray(subRel) ? subRel[0] : subRel) as
-            | { name?: string; booking_fields?: BookingField[] }
+            | { name?: string; booking_fields?: BookingField[]; superseded_by?: string | null }
             | null;
           if (
             r.rate_amount == null ||
             r.min_units == null ||
             r.slot_duration_min == null ||
-            !sub
+            !sub ||
+            // Deduplicazione (081): una riga sopravvissuta su uno slug legacy
+            // non deve comparire due volte accanto al suo canonico.
+            sub.superseded_by
           )
             return null;
           return {
