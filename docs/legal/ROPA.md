@@ -352,3 +352,18 @@ per conto suo.
 | **Note** | **La 065 riduce i dati pubblicati, non li aumenta.** Prima il titolo della scheda era `profiles.full_name`, cioè il nome e cognome della persona: un dato personale pubblicato senza che servisse alla finalità. Ora è il nome dell'attività, scelto dal professionista, e il nome del titolare resta interno (assistenza, verifica P.IVA in A7, fatturazione). Per una ditta individuale i due possono coincidere: è una scelta del professionista, non un'imposizione nostra. **DA CONFERMARE**: i profili nati prima della 065 hanno `business_name` riempito dal backfill con il nome della persona — al primo salvataggio della scheda lo cambiano, ma finché non lo fanno pubblicano quello che pubblicavano prima |
 
 ---
+
+## A22 — Base del professionista (comune e CAP)
+
+| | |
+|---|---|
+| **Finalità** | Sapere da dove parte il professionista quando esce per un lavoro: inquadrare la mappa della sua area di lavoro sul posto giusto e proporgli le richieste raggiungibili |
+| **Base giuridica** | Contratto — art. 6(1)(b): senza un punto di partenza il servizio non può proporlo per un lavoro vicino al cliente |
+| **Interessati** | Professionisti (per le ditte individuali comune e CAP sono dati personali: dicono in quale paese o quartiere vive chi lavora da casa) |
+| **Dati** | Comune scelto da elenco ISTAT (`comune_istat`, `comune_name`), provincia, regione, CAP (`postal_code`). **Non** via e civico |
+| **Tabelle** | `professionals` (migrazione 085) |
+| **Destinatari** | Nessuno. Queste colonne non sono pubbliche: verso i clienti esce `professional_coverage_public`, cioè i soli gettoni delle zone servite. Supabase e Vercel come A1 |
+| **Trasferimenti** | Come A1 |
+| **Conservazione** | Vita del profilo; cancellazione a cascata con l'account |
+| **Sicurezza** | RLS della riga `professionals`: la legge il proprietario e lo staff. L'elenco dei comuni è un file nostro servito dal server (`/api/geo/comuni`), nessuna chiamata a terzi e nessun geocoder |
+| **Note** | Minimizzazione: la grana è il comune e il CAP, non l'indirizzo — la stessa scelta fatta lato cliente con le migrazioni 044-046. Il CAP è obbligatorio nel modulo di iscrizione e facoltativo in database, perché i professionisti già iscritti non devono trovarsi bloccati: a loro arriva un promemoria nel profilo. **DA CONFERMARE da una persona**: allineare la voce dell'informativa quando si tocca, e decidere se il comune (non il CAP) debba comparire sulla scheda pubblica — oggi non compare |

@@ -378,3 +378,43 @@ l'articolo si deriva in `src/lib/italian.ts` (`withArticle`, `quale`).
   Le frasi che lo richiedevano ("trovi X verificati") sono state riscritte per
   parlare di "professionisti". Se in futuro serve il plurale, va una colonna
   `name_plural`, non un'euristica sul suffisso.
+
+## 2026-09-17 · Le 88 zone di Milano, e da dove viene l'elenco dei CAP
+
+**Milano passa da 28 zone a 88 (mig. 084).** Le 28 erano un elenco corto
+scritto a mano per il cliente in chat; al professionista servono per dire dove
+lavora, e lì non bastavano: 55 nuclei su 88 non avevano nessuna casella, e la
+mappa li disegnava senza poterli scegliere. La griglia sono ora i NIL del
+Comune (dataset ds964, CC-BY), con il centro di ogni zona **calcolato dal
+poligono** e non copiato dal CSV dei centroidi: è il punto che sta dentro la
+forma che si vede sulla mappa.
+
+- I 28 nomi corti restano in `src/lib/zones.ts` (percorso del cliente, area di
+  André, non toccata) e diventano `city_zones.group_slug`. `coverage_keys_for`
+  emette anche il gettone del gruppo, così una richiesta che dice «Navigli»
+  incontra chi copre Ronchetto sul Naviglio.
+- **Scelta da rivedere se cambia la liquidità:** il gettone del gruppo si
+  emette se il professionista copre **almeno uno** dei nuclei del gruppo, non
+  tutti. Con sei professionisti attivi perdere incontri veri costa più che
+  allargare di un quartiere. La riga da cambiare è nella 084.
+- Due nuclei erano fuori dai gruppi per un confronto fatto sulle stringhe:
+  «PTA ROMANA» non contiene «PORTA ROMANA», e i Giardini di Porta Venezia sono
+  scritti «GIARDINI P.TA VENEZIA». Rimessi dentro nel generatore.
+
+**Il CAP all'iscrizione, e la sua fonte (mig. 085).** Comune e regione si
+scelgono da un elenco, il CAP è obbligatorio nel modulo. L'elenco completo e
+ufficiale dei CAP è di Poste Italiane e **non è aperto**: quello che usiamo per
+proporli arriva da `matteocontrini/comuni-json`, dove i comuni vengono
+dall'archivio ISTAT (CC BY 3.0 IT, attribuzione dovuta e scritta nel file
+generato) mentre **per i CAP la fonte dichiara di non applicare alcuna
+licenza**, perché a sua volta li ha raccolti da terzi.
+
+- Decisione di Lucio, 17/09/2026: si usa lo stesso, con l'attribuzione scritta
+  nel file generato e in questa voce, perché l'alternativa (OSM, ODbL con
+  share-alike sul database derivato) costa di più e copre peggio.
+- **Conseguenza pratica, ed è il motivo per cui è scritto qui:** l'elenco non è
+  garantito completo, quindi il CAP si **suggerisce**, non si impone. Il
+  vincolo in database controlla le cinque cifre, non l'appartenenza al comune,
+  e nel modulo c'è sempre la via d'uscita «il mio non è in elenco».
+- Il file (`src/lib/data/comuni-italia.json`, 900 KB) non va mai importato da
+  un componente del browser: lo legge solo `/api/geo/comuni`, lato server.

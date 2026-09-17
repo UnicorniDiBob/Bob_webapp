@@ -31,6 +31,7 @@
 // sul campo e ce lo mette dentro il fuoco, invece di scriverlo in fondo.
 
 import { useEffect, useMemo, useState } from "react";
+import SceltaComune, { type ComuneScelto } from "@/components/SceltaComune";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -101,6 +102,8 @@ export default function AziendaPage() {
   const [subservices, setSubservices] = useState<Subservice[]>([]);
 
   const [cityId, setCityId] = useState("");
+  const [comune, setComune] = useState<ComuneScelto | null>(null);
+  const [cap, setCap] = useState("");
   const [serviceId, setServiceId] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [headline, setHeadline] = useState("");
@@ -147,9 +150,10 @@ export default function AziendaPage() {
             .order("name"),
           supabase
             .from("professionals")
-            .select(
-              "id, city_id, business_name, headline, bio, years_experience, response_time_label, subservice_slugs"
-            )
+            // select("*") e non l'elenco: le colonne della base arrivano con
+            // la 085, e finché non è applicata nominarle qui farebbe fallire
+            // la lettura dell'intero profilo invece di lasciarle vuote.
+            .select("*")
             .eq("user_id", user.id)
             .maybeSingle(),
         ]);
@@ -176,6 +180,17 @@ export default function AziendaPage() {
         if (p.response_time_label)
           setResponseLabel(p.response_time_label as string);
         setSubSlugs((p.subservice_slugs as string[]) ?? []);
+        setCap((p.postal_code as string) ?? "");
+        // Il comune sta in database come codice ISTAT: il resto (CAP del
+        // comune, coordinate, provincia) lo sa solo il server, e si chiede.
+        if (p.comune_istat) {
+          fetch(`/api/geo/comuni?istat=${encodeURIComponent(p.comune_istat as string)}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+              if (active && d?.comune) setComune(d.comune as ComuneScelto);
+            })
+            .catch(() => null);
+        }
 
         const { data: ps } = await supabase
           .from("professional_services")
@@ -206,6 +221,8 @@ export default function AziendaPage() {
     () =>
       JSON.stringify([
         cityId,
+        comune?.istat ?? "",
+        cap,
         serviceId,
         businessName,
         headline,
@@ -219,6 +236,8 @@ export default function AziendaPage() {
       ]),
     [
       cityId,
+      comune,
+      cap,
       serviceId,
       businessName,
       headline,
@@ -313,10 +332,23 @@ export default function AziendaPage() {
 
     setSaving(true);
     try {
+      // Il CAP resta facoltativo qui — chi c'era prima non va bloccato — ma
+      // se c'è dev'essere un CAP: cinque cifre, non «20» né «milano».
+      if (cap && !/^[0-9]{5}$/.test(cap)) {
+        setError("Il CAP è di cinque cifre, per esempio 20159.");
+        setSaving(false);
+        return;
+      }
+
       const { error: upErr } = await supabase
         .from("professionals")
         .update({
           city_id: cityId,
+          comune_istat: comune?.istat ?? null,
+          comune_name: comune?.nome ?? null,
+          province: comune?.provincia ?? null,
+          region: comune?.regione ?? null,
+          postal_code: cap || null,
           business_name: attivita,
           headline: headline.trim(),
           bio: bio.trim() || null,
@@ -638,6 +670,26 @@ export default function AziendaPage() {
             I clienti su BOB scelgono chi è trasparente: una forbice onesta
             porta richieste più in linea con le tue tariffe.
           </p>
+        </div>
+
+        {/* LA BASE. Non è la città di Bob (quella dice in quale elenco
+            compari): è il posto da cui parti, e serve a inquadrare la mappa
+            dell'area di lavoro e a sapere se sei a Sesto o a Baggio. Il CAP è
+            obbligatorio per chi si iscrive da oggi; a chi c'era già lo
+            chiediamo qui, senza chiudergli fuori niente. */}
+        <div className="border-t border-black/5 pt-5">
+          <h3 className="mb-1 text-sm font-semibold">La tua base</h3>
+          <p className="mb-3 text-xs leading-relaxed text-bob-ink/65">
+            Da dove parti quando esci per un lavoro. Non compare sulla tua
+            scheda: serve a mostrarti le richieste vicine e a centrare la mappa
+            della tua area di lavoro.
+          </p>
+          <SceltaComune
+            comune={comune}
+            cap={cap}
+            onComune={setComune}
+            onCap={setCap}
+          />
         </div>
 
         {error && (
