@@ -36,6 +36,19 @@ Protection` di sempre (vuole il piano Pro).
   un point-in-polygon, perché tracciati SVG che prendono gli eventi rompono il
   trascinamento.
 
+- **L'Italia sotto la mappa** (ramo `feat/mappa-italia`, da mergiare).
+  `public/geo/italia.geojson`: 110 forme di provincia, 138 KB compressi,
+  caricate una volta sola e accese a ogni ingrandimento. Sopra, i comuni delle
+  province che stanno nell'inquadratura — **fino a sei insieme, non più una
+  sola**: chi lavora a Monza copre anche Milano e Como. Sotto lo zoom 8 i
+  comuni non si caricano affatto. Le genera
+  `scripts/build_italia_province.py`; 13 prove nuove in `src/lib/italia.test.ts`.
+- **`/admin/copertura`** (stesso ramo): mappa + tabella dei professionisti per
+  comune, con l'elenco dei **buchi** (richieste senza copertura) e due export,
+  SVG della mappa e CSV della tabella, per le presentazioni. Solo admin, non
+  CS. **Da verificare in locale e in produzione dopo il merge: non ho potuto
+  avviare il server di sviluppo da questa sessione.**
+
 ## Fine giornata: cosa è applicato, e una deriva trovata
 
 **Applicate tutte e sei: 084, 085, 086, 087, 088, 089.** Advisor rieseguiti dopo
