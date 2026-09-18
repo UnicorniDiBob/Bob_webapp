@@ -18,11 +18,28 @@
 -- cosa, quanti pezzi, pezzo gia' comprato, smontaggio del vecchio) — non
 -- viene dalla spec, va confermato editorialmente come gli altri.
 --
--- NESSUN DATO ART. 9 IN QUESTA SEMINA. Il fallback generico per gli altri
--- dieci servizi (what_exactly, quantity, deadline) non porta un campo
--- "goal" ne' nessun campo di salute: l'avvertimento della spec §10 su
--- personal-trainer riguarda un campo che non esiste ancora in questa
--- migrazione, non uno che c'e'.
+-- UN DATO ART. 9 C'ERA, ED E' STATO TOLTO (rilevato in review il 18
+-- settembre, prima dell'apply). La stesura precedente di questo commento
+-- diceva che nessun campo di salute esisteva nella semina — falso:
+-- sanificazione.purpose offriva "dopo una malattia in casa" come opzione,
+-- pro_visible:true, quindi un professionista che prezza una sanificazione
+-- avrebbe visto il motivo di salute del cliente. Tolta l'opzione, restano
+-- le altre tre (obbligo per attivita' commerciale, precauzione, non lo
+-- so): il professionista non ha bisogno del motivo per fare il suo
+-- lavoro, solo di sapere che la sanificazione serve.
+--
+-- RESTA UNA SUPERFICIE INDIRETTA, NON RISOLTA QUI. personal-trainer usa
+-- il fallback generico (spec §4 fine sezione): what_exactly e' testo
+-- libero OBBLIGATORIO ("Cosa ti serve esattamente?"), senza nessuna
+-- opzione che suggerisca un argomento di salute — ma le persone ci
+-- scriveranno "voglio dimagrire" o "riprendo da un infortunio al
+-- ginocchio" perche' e' letteralmente quello che stanno chiedendo, non
+-- perche' un campo glielo abbia proposto. Un campo select con opzioni
+-- editoriali si potrebbe schermare come sanificazione; un testo libero
+-- obbligatorio no. Questo file non lo risolve: servirebbe un campo
+-- dedicato con consenso esplicito o un editing del fallback specifico per
+-- personal-trainer, entrambi fuori scope di una semina di dati statici.
+-- Segnalato, non costruito.
 --
 -- Idempotente: ogni update e' per slug, valori statici, nessuno stato da
 -- rileggere — rieseguirla scrive di nuovo lo stesso risultato, mai un
@@ -392,7 +409,7 @@ update public.subservices set quote_level = 'assisted', quote_fields = '[
   {"key":"mq_approx","type":"number","unit":"m2","label":"Quanti metri quadri?","required":true,
    "is_billable_unit":true,"pro_visible":true,"unknown_ok":true},
   {"key":"purpose","type":"select","label":"Perche'' ti serve?",
-   "options":["dopo una malattia in casa","obbligo per attivita'' commerciale","precauzione","non lo so"],
+   "options":["obbligo per attivita'' commerciale","precauzione","non lo so"],
    "required":false,"is_billable_unit":false,"pro_visible":true,"unknown_ok":true},
   {"key":"certificate_needed","type":"bool","label":"Ti serve un certificato di sanificazione?",
    "required":false,"is_billable_unit":false,"pro_visible":true,"unknown_ok":true}
@@ -440,12 +457,26 @@ update public.subservices set quote_level = 'range', quote_fields = '[
    "required":false,"is_billable_unit":false,"pro_visible":true,"unknown_ok":true}
 ]'::jsonb where slug = 'piccole-riparazioni';
 
+-- locked_out ERA QUI ED E' STATO TOLTO (review 18 settembre, prima
+-- dell'apply). La spec (§4, tuttofare) lo descrive come un pre-check —
+-- "quella persona ha bisogno di un numero di telefono, non di una
+-- scheda" — ma quoting.ts corto-circuita solo su red_flags e urgency
+-- 'emergenza', mai su un campo di scope: la risposta sarebbe stata
+-- raccolta e mai letta da nessuno. Non l'ho agganciata al 'dispatch'
+-- esistente: quel valore rende "linea di sicurezza + smistamento a chi
+-- e' disponibile, prezzo dopo" — un cliente chiuso fuori casa non e' la
+-- stessa cosa di un danno in corso, e mischiare i due significherebbe
+-- mostrargli (quando esistera' una UI per quote_mode) un messaggio che
+-- non gli appartiene. Un terzo esito ("dai un numero di telefono, salta
+-- la scheda") richiederebbe un valore nuovo di QuoteMode senza nessuno
+-- che lo consumi ancora — nessuna Fase 4/5 esiste per renderlo
+-- diversamente da dispatch. Raccogliere una risposta vera e non farne
+-- niente e' peggio che non chiederla: tolta finche' non c'e' un posto
+-- dove farla arrivare.
 update public.subservices set quote_level = 'range', quote_fields = '[
   {"key":"lock_type","type":"select","label":"Cosa devo fare alla serratura?",
    "options":["sostituzione","riparazione","duplicazione chiavi"],
    "required":true,"is_billable_unit":false,"pro_visible":true,"unknown_ok":false},
-  {"key":"locked_out","type":"bool","label":"Sei chiuso fuori casa adesso?","required":true,
-   "is_billable_unit":false,"pro_visible":true,"unknown_ok":false},
   {"key":"door_type","type":"select","label":"Che tipo di porta?",
    "options":["blindata","interna","portoncino esterno non blindato","non lo so"],
    "required":false,"is_billable_unit":false,"pro_visible":true,"unknown_ok":true}
