@@ -88,7 +88,14 @@ export async function POST(request: Request) {
         red_flags: brief.redFlags ?? [],
         photos: brief.photos ?? [],
         field_meta: brief.fieldMeta ?? {},
-        source: body.source === "rules" ? "rules" : "ai",
+        // job_briefs.source ammette solo 'ai'/'rules' (mig 014): vero SOLO se
+        // /api/bob/chat ha davvero risposto con un tool_use. Prima il verso
+        // era invertito (tutto cio' che non era letteralmente "rules"
+        // diventava "ai") e siccome il client non mandava mai questo campo,
+        // la colonna diceva 'ai' sempre — anche per rules, rules-fallback e
+        // rules-error. Ora il default onesto e' 'rules': non sappiamo che
+        // sia stato davvero Claude finche' non ce lo dice esplicitamente.
+        source: body.source === "ai" ? "ai" : "rules",
       })
       .select("id")
       .single();
