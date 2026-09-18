@@ -1,3 +1,67 @@
+# Passaggio di consegne — 18 settembre 2026 (André, con Claude)
+
+> Aggiunge la giornata di oggi in cima. Le voci del 17 settembre e quelle
+> portate avanti restano sotto, invariate.
+
+## Cosa ho fatto — André (18 settembre)
+
+Fasi 0-3 del flusso preventivo strutturato (`docs/QUOTE_INTAKE_SPEC.md`)
+chiuse e mergiate: PR #76-80, #84-86. **Migrazioni 090, 091, 092 applicate
+in produzione e verificate** (090 dedup sotto-servizi, 091 schema
+quote_level/quote_fields/scope/quote_mode, 092 semina dei campi per i
+cinque servizi core + fallback generico per gli altri dieci). **093
+ancora NON applicata** (PR #86, aperta): il fallback generico anche per i
+cinque "-altro" dei servizi core, mancato nella 092.
+
+- **Fase 0-1 — deduplicazione e schema.** Sei sotto-servizi legacy
+  (non otto: la spec originale contava male) alias verso i canonici via
+  `subservices.superseded_by`, mai cancellati — sei righe
+  `professional_services` reali toccate, tutte di professionisti demo
+  (nessuna di FOTOPRO-MILANO). Due mappature editoriali corrette in
+  review prima dell'apply (`sostituzione-rubinetteria` non è un
+  doppione; `pulizie-appartamenti` → `ordinarie-ricorrenti`, non
+  `profonda-una-tantum` — l'identità dei booking_fields era un
+  artefatto della semina, non una prova).
+- **Fase 2 — risolutore.** `src/lib/quoting.ts`, puro, 28 test. Nessun
+  test runner esisteva nel repo: aggiunto Vitest da zero (config, script,
+  passo CI).
+- **Fase 3 — scope vincolato, e un bug più grosso trovato per strada.**
+  `ANTHROPIC_API_KEY` non è mai esistita in nessun ambiente per tre mesi:
+  il percorso LLM di `/api/bob/chat` non ha mai girato, tutti gli 8
+  `job_briefs` di produzione venivano da `ruleBasedDecision`. Con la
+  chiave finalmente configurata, il test di accettazione dal vivo ha
+  trovato un SECONDO bug indipendente: il model id `claude-3-5-haiku-
+  latest` è ritirato (404 sull'API), e i tre rami di fallback di
+  `chat/route.ts` erano completamente silenziosi — tre mesi di errori
+  mai loggati da nessuna parte. Corretto il model id (in `chat/route.ts`
+  e nel gemello `pro/request-summary/route.ts`, stesso bug), aggiunta
+  logging permanente ai rami di fallback in entrambi i file, e sistemato
+  `job_briefs.source` (diceva sempre `'ai'` per un bug di verso nel
+  ternario di `brief/route.ts` più il client che non rimandava mai il
+  campo). **Verificato dal vivo contro produzione**: una conversazione
+  vera ("mi perde il rubinetto del lavandino in cucina") ha prodotto
+  `job_briefs` con `subtask_slug` e `scope` popolati per la prima volta
+  in assoluto.
+
+**ANTHROPIC_API_KEY resta deliberatamente NON impostata su Vercel.** La
+chiave è valida (verificata con una chiamata diretta all'API, HTTP 200) e
+vive solo in locale per i test. `/api/bob/chat` non ha autenticazione, né
+rate limit, né tetto sul payload (G20-G22, mai risolto) — accendere la
+chiave in produzione prima che il rate limit esista vuol dire esporre un
+endpoint che chiama un LLM a pagamento senza nessun limite a chi lo trova.
+Non è un dimenticato: è un cancello tenuto chiuso apposta. Chi imposta la
+chiave su Vercel prima del rate limit deve saperlo.
+
+## Cosa è a metà
+
+Fase 4 (scheda lavoro, `SchedaLavoro.tsx`) e Fase 5 (rendering lato pro)
+non ancora iniziate — partono da qui. Nella spec restano aperti: il
+`goal` di personal-trainer (Art. 9, consenso non ancora deciso), e ora
+anche `personal-trainer.what_exactly` come superficie indiretta (testo
+libero obbligatorio, segnalata ma non risolta nella 092).
+
+---
+
 # Passaggio di consegne — 17 settembre 2026 (Lucio, con Claude)
 
 > Aggiunge la giornata di oggi in cima. Le voci del 14 settembre e quelle
