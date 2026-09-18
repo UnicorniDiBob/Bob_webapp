@@ -84,7 +84,7 @@ export interface Subservice {
   instant_book_eligible: boolean;
   booking_fields: BookingField[];
   default_rate_unit: RateUnit | null;
-  // Deduplicazione (migration 081): valorizzato solo sulle righe legacy.
+  // Deduplicazione (migration 090): valorizzato solo sulle righe legacy.
   superseded_by: string | null;
 }
 

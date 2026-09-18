@@ -437,11 +437,11 @@ clause.
 
 ## 8. Data model changes
 
-### Migration 081 — sub-service de-duplication
+### Migration 090 — sub-service de-duplication
 
 Prerequisite for everything else. See §9.
 
-### Migration 082 — quote intake
+### Migration 091 — quote intake
 
 ```sql
 alter table public.subservices
@@ -478,7 +478,7 @@ the Supabase security advisors run after it.
 ## 9. Blocker found on 16 September: duplicate sub-service slugs
 
 **Amended 17 September**, after row-by-row verification of the actual collision data in migration
-081: the original table below had two mappings wrong. Corrected here rather than left to drift
+090: the original table below had two mappings wrong. Corrected here rather than left to drift
 from what actually shipped — this section is the record of what the catalog does, not what it did
 on the day the blocker was found.
 
@@ -521,7 +521,7 @@ break existing profiles.
 **Checked against production on 17 September:** every `professional_services` row this migration
 touches belongs to one of the five demo professionals seeded 2 June (`b1000000-...`). FOTOPRO-MILANO,
 the one real professional in production, has none of these six slugs. Low stakes today — the
-never-invent-a-price discipline in migration 081 is for when that stops being true, not because it
+never-invent-a-price discipline in migration 090 is for when that stops being true, not because it
 mattered this time.
 
 ---
@@ -544,7 +544,7 @@ Part of "done", per `docs/DATA_COMPLIANCE.md`.
   Bob's inference, not as facts the customer supplied. Photo-derived values likewise.
 - **Photo retention:** orphan purge on the existing `pg_cron` job (P1.5), moderation pass before
   storage, EXIF stripped client-side.
-- New columns: RLS reviewed, advisors run for both `security` and `performance` after 081 and 082.
+- New columns: RLS reviewed, advisors run for both `security` and `performance` after 090 and 091.
 
 ---
 
@@ -557,9 +557,9 @@ below reflects that decision; the default split still governs everything outside
 
 | # | Content | Owner | Done when |
 |---|---|---|---|
-| 0 | Resolve the six duplicate slugs (migration 081) | André | every read path returns one row per real sub-task |
+| 0 | Resolve the six duplicate slugs (migration 090) | André | every read path returns one row per real sub-task |
 | 1 | Freeze the field sets for the core five; Art. 9 review | André | this document merged with §4 complete |
-| 2 | Migration 082 + seed `quote_level` and `quote_fields` | André | file in PR before applied; advisors clean |
+| 2 | Migration 091 + seed `quote_level` and `quote_fields` | André | file in PR before applied; advisors clean |
 | 3 | `quoting.ts` resolver + tool schema takes the key list + server validation | André | a live chat writes a non-empty `scope` and a non-null `subtask_slug` |
 | 4 | Scheda lavoro UI (stages B and C) | André | new `requests` rows carry `subservice_id`, `scope`, `quote_mode` |
 | 5 | Pro-side structured render + `quote_mode` badge | André | a professional sees fields, not a paragraph |
@@ -579,7 +579,7 @@ rates.
 
 | # | Question | Blocks |
 |---|---|---|
-| A | Alias or hard-migrate the six legacy slugs? Alias is safer, leaves dead rows — decided: alias (081) | phase 0, resolved |
+| A | Alias or hard-migrate the six legacy slugs? Alias is safer, leaves dead rows — decided: alias (090) | phase 0, resolved |
 | B | `personal-trainer` `goal`: drop, or consent-gate? | phase 1 |
 | C | Does the forbice (level 1) ship before the price catalogue P1.2 exists? If not, level 1 degrades to `assisted` in the pilot | phase 3 |
 | D | Who writes the ranking-parameters declaration, and before which outreach date? | before October |

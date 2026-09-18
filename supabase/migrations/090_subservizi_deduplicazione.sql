@@ -1,4 +1,4 @@
--- 081_subservizi_deduplicazione.sql
+-- 090_subservizi_deduplicazione.sql
 --
 -- Il catalogo dei cinque servizi core porta sei sotto-servizi legacy,
 -- doppioni di altrettanti canonici, sopravvissuti alla 013/014 perche' i
@@ -79,7 +79,7 @@ alter table public.subservices
   add column if not exists superseded_by uuid references public.subservices(id);
 
 comment on column public.subservices.superseded_by is
-  'Valorizzata solo sulle righe legacy: punta al sotto-servizio canonico che le sostituisce (081). Le righe non si cancellano perche'' professional_services e professionals.subservice_slugs possono ancora referenziarle. Ogni punto che elenca sotto-servizi selezionabili deve leggere "where superseded_by is null"; per risolvere un id incontrato altrove vedi canonical_subservice_id().';
+  'Valorizzata solo sulle righe legacy: punta al sotto-servizio canonico che le sostituisce (090). Le righe non si cancellano perche'' professional_services e professionals.subservice_slugs possono ancora referenziarle. Ogni punto che elenca sotto-servizi selezionabili deve leggere "where superseded_by is null"; per risolvere un id incontrato altrove vedi canonical_subservice_id().';
 
 create index if not exists subservices_superseded_by_idx
   on public.subservices (superseded_by)
@@ -98,7 +98,7 @@ as $$
 $$;
 
 comment on function public.canonical_subservice_id(uuid) is
-  'Risolve un id di sotto-servizio al suo canonico: se p_id e'' legacy torna superseded_by, altrimenti torna p_id stesso. Un solo salto: la 081 non crea catene.';
+  'Risolve un id di sotto-servizio al suo canonico: se p_id e'' legacy torna superseded_by, altrimenti torna p_id stesso. Un solo salto: la 090 non crea catene.';
 
 with mapping (legacy_slug, canonical_slug) as (
   values
@@ -130,7 +130,7 @@ create table if not exists public.subservice_migration_review (
 );
 
 comment on table public.subservice_migration_review is
-  'Rete di sicurezza della deduplicazione 081, non una coda pensata per durare: gira una volta, e da qui in avanti un professionista nuovo puo'' scegliere solo slug canonici, quindi su dati reali non si ripopola. Nessuna interfaccia professionista va costruita sopra — resta un tavolo per lo staff. Conservazione: cancellata riga per riga quando risolta (percorso applicativo, non automatico); mai oltre la disattivazione del professionista (on delete cascade).';
+  'Rete di sicurezza della deduplicazione 090, non una coda pensata per durare: gira una volta, e da qui in avanti un professionista nuovo puo'' scegliere solo slug canonici, quindi su dati reali non si ripopola. Nessuna interfaccia professionista va costruita sopra — resta un tavolo per lo staff. Conservazione: cancellata riga per riga quando risolta (percorso applicativo, non automatico); mai oltre la disattivazione del professionista (on delete cascade).';
 
 create index if not exists subservice_migration_review_pro_idx
   on public.subservice_migration_review (professional_id)

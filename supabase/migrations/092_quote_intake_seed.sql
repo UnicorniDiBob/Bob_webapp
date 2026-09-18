@@ -1,16 +1,16 @@
--- 083_quote_intake_seed.sql
+-- 092_quote_intake_seed.sql
 --
--- Popola quote_level e quote_fields (082, stesso PR) per i sotto-servizi
+-- Popola quote_level e quote_fields (091, stesso PR) per i sotto-servizi
 -- canonici dei cinque servizi core, spec §4, piu' il fallback generico a tre
 -- campi per gli altri dieci servizi, spec §4 fine sezione. Idraulico ed
 -- elettricista portano ciascuno un sotto-servizio "pre-check" (emergenza):
--- resta a quote_level='survey' con quote_fields vuoto, il default della 082
+-- resta a quote_level='survey' con quote_fields vuoto, il default della 091
 -- — un'emergenza non e' un livello del catalogo da dichiarare, e' un bypass
 -- che il risolutore applica per conto suo (Fase 2) leggendo red_flags e
 -- urgency, non un fatto che sta scritto qui.
 --
 -- SOSTITUZIONE-RUBINETTERIA NON ERA IN SPEC §4: la spec la trattava come
--- doppione di perdita-rubinetto-sifone quando e' stata scritta. La 081 l'ha
+-- doppione di perdita-rubinetto-sifone quando e' stata scritta. La 090 l'ha
 -- corretto — resta un sotto-servizio canonico a se' — e da qui in avanti
 -- gli serve un proprio set di campi, non il default vuoto che lascerebbe un
 -- lavoro preventivabile per sempre a "survey". Il set sotto e' costruito
@@ -127,7 +127,7 @@ update public.subservices set quote_level = 'survey', quote_fields = '[
    "required":false,"is_billable_unit":false,"pro_visible":true,"unknown_ok":true}
 ]'::jsonb where slug = 'rifacimento-impianto-bagno';
 
--- Non in spec §4 (081 l'ha tolto dai doppioni dopo che la spec era scritta,
+-- Non in spec §4 (090 l'ha tolto dai doppioni dopo che la spec era scritta,
 -- vedi header). Set costruito per analogia con wc-sanitari.
 update public.subservices set quote_level = 'assisted', quote_fields = '[
   {"key":"fixture_type","type":"select","label":"Cosa vuoi sostituire?",
@@ -466,7 +466,7 @@ update public.subservices set quote_level = 'assisted', quote_fields = '[
 
 -- ---------------------------------------------------------------------------
 -- Gli altri dieci servizi: fallback generico a tre campi, spec §4 fine
--- sezione. quote_level resta 'survey', gia' il default della 082 — scritto
+-- sezione. quote_level resta 'survey', gia' il default della 091 — scritto
 -- comunque qui per esplicito, non per necessita'.
 -- ---------------------------------------------------------------------------
 update public.subservices s
