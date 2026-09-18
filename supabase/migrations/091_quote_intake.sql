@@ -1,4 +1,4 @@
--- 082_quote_intake.sql
+-- 091_quote_intake.sql
 --
 -- Lo scaffolding per l'intake strutturato del preventivo (spec §8,
 -- docs/QUOTE_INTAKE_SPEC.md). Due colonne nuove su subservices per dire cosa
@@ -22,7 +22,7 @@
 -- LETTURA: qualunque punto scriva scope su una request deve validare le sue
 -- chiavi contro il quote_fields del subservice scelto (Fase 3, non qui) —
 -- questa migrazione apre solo lo spazio, non lo riempie e non lo controlla.
--- La 083 (seed, stesso PR) popola quote_level/quote_fields per i cinque
+-- La 092 (seed, stesso PR) popola quote_level/quote_fields per i cinque
 -- servizi core e il fallback generico per gli altri dieci.
 --
 -- PRIVACY. Le due colonne su subservices sono in lettura pubblica come il

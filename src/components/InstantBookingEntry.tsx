@@ -74,7 +74,7 @@ export default function InstantBookingEntry({
             r.min_units == null ||
             r.slot_duration_min == null ||
             !sub ||
-            // Deduplicazione (081): una riga sopravvissuta su uno slug legacy
+            // Deduplicazione (090): una riga sopravvissuta su uno slug legacy
             // non deve comparire due volte accanto al suo canonico.
             sub.superseded_by
           )

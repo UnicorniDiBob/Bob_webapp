@@ -62,7 +62,7 @@ export async function getServiceBySlug(slug: string): Promise<Service | null> {
   return (data as Service) ?? null;
 }
 
-// Esclude le righe legacy sostituite dalla deduplicazione (migration 081):
+// Esclude le righe legacy sostituite dalla deduplicazione (migration 090):
 // un sotto-servizio superseded non deve comparire in nessuna scelta, ne'
 // per il cliente ne' per Bob.
 export async function getSubservices(serviceId: string): Promise<Subservice[]> {
@@ -253,7 +253,7 @@ function toCard(
   // fondo. Non e' un difetto nato con la 070 — c'era gia' con quattro righe —
   // ma la 070 lo ha reso normale.
   //
-  // Deduplicazione (081): una riga rimasta su uno slug legacy (mai
+  // Deduplicazione (090): una riga rimasta su uno slug legacy (mai
   // sovrascritta perche' portava un prezzo diverso dal canonico, vedi
   // subservice_migration_review) non deve comparire come un'offerta a parte
   // accanto al suo canonico — e' letteralmente il difetto descritto sopra.

@@ -13,7 +13,7 @@
 // con danno_in_corso o rischio_sicurezza, o urgency 'emergenza', non
 // producono un quote_level piu' basso: producono 'dispatch', che non fa
 // nemmeno parte della scala del catalogo (subservices.quote_level non lo
-// contempla, vedi 082) — e' un bypass, non un livello.
+// contempla, vedi 091) — e' un bypass, non un livello.
 export type QuoteLevel = "bookable" | "range" | "assisted" | "survey";
 export type QuoteMode = QuoteLevel | "dispatch";
 
@@ -39,7 +39,7 @@ function oneLevelDown(level: QuoteLevel): QuoteLevel {
 const EMERGENCY_RED_FLAGS = new Set(["danno_in_corso", "rischio_sicurezza"]);
 
 // Sotto-servizi il cui livello e' 'survey' a prescindere (spec §2.1,
-// colonna "always"): la semina 083 li ha gia' messi a 'survey' di default,
+// colonna "always"): la semina 092 li ha gia' messi a 'survey' di default,
 // quindi qui e' ridondante nel caso comune — ma resta l'unica fonte di
 // verita' per QUESTA regola, non un'assunzione sul contenuto del catalogo.
 // Se un domani il default cambiasse nel catalogo, questa lista lo terrebbe
