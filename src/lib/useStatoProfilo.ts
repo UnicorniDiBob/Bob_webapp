@@ -26,7 +26,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { dovesiSistema, motivoInvisibile } from "@/lib/notifiche";
 
-export type ChiaveStato = "servizi" | "zone" | "telefono" | "orari";
+export type ChiaveStato = "servizi" | "base" | "zone" | "telefono" | "orari";
 
 export interface VoceStato {
   chiave: ChiaveStato;
@@ -81,6 +81,18 @@ const TESTI: Record<ChiaveStato, Omit<VoceStato, "fatto">> = {
     href: "/impostazioni/azienda",
     tabella: "professional_services",
     blocca: true,
+  },
+  base: {
+    chiave: "base",
+    titolo: "Dove hai la base",
+    // Chi si iscrive da oggi il CAP lo dà per forza (085). Chi c'era prima no,
+    // e non gli si chiude fuori niente: senza, la mappa di «Dove lavori» parte
+    // dal centro di Milano invece che da casa sua.
+    conseguenza:
+      "Senza comune e CAP la mappa della tua area parte dal centro città invece che da dove sei.",
+    href: "/impostazioni/azienda",
+    tabella: "professionals",
+    blocca: false,
   },
   zone: {
     chiave: "zone",
@@ -154,7 +166,9 @@ export function useStatoProfilo(
           .eq("professional_id", professionalId),
         supabase
           .from("professionals")
-          .select("ready_at, deactivated_at")
+          // postal_code arriva con la 085: select("*") lo legge quando c'è e
+          // non fa fallire la lettura quando ancora non c'è.
+          .select("*")
           .eq("id", professionalId)
           .maybeSingle(),
       ]);
@@ -168,15 +182,18 @@ export function useStatoProfilo(
         return;
       }
 
+      const profiloRiga = (riga.data ?? {}) as { postal_code?: string | null };
+
       const fatti: Record<ChiaveStato, boolean> = {
         servizi: (servizi.count ?? 0) > 0,
+        base: Boolean(profiloRiga.postal_code),
         zone: (zone.count ?? 0) > 0,
         telefono: Boolean((telefono.data as { phone?: string } | null)?.phone),
         orari: (orari.count ?? 0) > 0,
       };
 
       const voci: VoceStato[] = (
-        ["servizi", "zone", "telefono", "orari"] as ChiaveStato[]
+        ["servizi", "base", "zone", "telefono", "orari"] as ChiaveStato[]
       ).map((k) => ({ ...TESTI[k], fatto: fatti[k] }));
 
       const profilo = (riga.data ?? {}) as {

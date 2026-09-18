@@ -1,3 +1,127 @@
+# Passaggio di consegne — 17 settembre 2026 (Lucio, con Claude)
+
+> Aggiunge la giornata di oggi in cima. Le voci del 14 settembre e quelle
+> portate avanti restano sotto, invariate.
+
+## Cosa ho fatto — Lucio (17 settembre)
+
+Ramo **`feat/mappa-88-nil-e-base-pro`**, 8 commit, PR aperta. **Quattro
+migrazioni applicate in produzione oggi: 084, 085, 086, 087.** Advisor
+rieseguiti dopo: nessun rilievo nuovo, resta solo il `Leaked Password
+Protection` di sempre (vuole il piano Pro).
+
+- **084 — Milano da 28 zone a 88 nuclei.** `city_zones` è ora la griglia dei
+  NIL del Comune (ds964, CC-BY), centro calcolato dal poligono. I 28 nomi corti
+  restano in `src/lib/zones.ts` (area di André, non toccata) e vivono come
+  `city_zones.group_slug`: `coverage_keys_for` emette anche il gettone del
+  gruppo, quindi una richiesta che dice «Navigli» incontra ancora chi copre
+  Ronchetto sul Naviglio. **In produzione: 88 zone, 35 con gruppo, 28 gruppi.**
+  L'unica copertura esistente si è ricalcolata da sola sul cerchio: 47 nuclei,
+  57 gettoni pubblicati.
+- **085 — la base del professionista.** `professionals` ha comune (codice
+  ISTAT), provincia, regione e CAP. Colonne che accettano il vuoto: **chi era
+  già iscritto non si blocca**, gli arriva una voce nuova nella checklist del
+  profilo. Nel modulo di iscrizione il CAP è obbligatorio e il comune si sceglie
+  da elenco, non si scrive.
+- **086 — i 7.904 comuni italiani in database**, con `comuni_nel_cerchio()` e
+  `cities.comune_istat`. In produzione: 7.904 righe, 7.856 con coordinate, 133
+  in provincia di Milano, Milano con 42 CAP.
+- **087 — la copertura impara il comune.** Il cerchio produce anche i comuni che
+  tocca e il gettone `comune:<istat>` entra nel confronto. Un cerchio che tocca
+  Milano NON dichiara «comune: Milano»: lì vale la griglia fine.
+
+- **La mappa esce da Milano**: confini comunali ISTAT (CC BY 4.0) in 107 file,
+  uno per provincia, in `public/geo/province/`. Le aree si scelgono
+  cliccandole; il click resta della mappa e a dire quale area è stata toccata è
+  un point-in-polygon, perché tracciati SVG che prendono gli eventi rompono il
+  trascinamento.
+
+- **L'Italia sotto la mappa** (ramo `feat/mappa-italia`, da mergiare).
+  `public/geo/italia.geojson`: 110 forme di provincia, 138 KB compressi,
+  caricate una volta sola e accese a ogni ingrandimento. Sopra, i comuni delle
+  province che stanno nell'inquadratura — **fino a sei insieme, non più una
+  sola**: chi lavora a Monza copre anche Milano e Como. Sotto lo zoom 8 i
+  comuni non si caricano affatto. Le genera
+  `scripts/build_italia_province.py`; 13 prove nuove in `src/lib/italia.test.ts`.
+- **`/admin/copertura`** (stesso ramo): mappa + tabella dei professionisti per
+  comune, con l'elenco dei **buchi** (richieste senza copertura) e due export,
+  SVG della mappa e CSV della tabella, per le presentazioni. Solo admin, non
+  CS. **Da verificare in locale e in produzione dopo il merge: non ho potuto
+  avviare il server di sviluppo da questa sessione.**
+
+- **La mappa strappava, e adesso no** (stesso ramo). Cinque misure: i comuni
+  non si disegnano sotto lo zoom 8 (erano una macchia grigia sul nord Italia);
+  i vertici si proiettano una volta sola in Mercatore e a ogni fotogramma resta
+  una moltiplicazione; un tracciato SVG per piano invece di uno per forma (da
+  ~880 `setAttribute` a tre); si arrotonda al pixel saltando i doppioni; e il
+  riquadro filtra prima del point-in-polygon, che girava a ogni movimento del
+  mouse. Sul banco di prova: **12,2 → 1,0 ms** a vista nazionale, **5,2 → 0,2**
+  a vista cittadina, senza contare il DOM.
+
+## Fine giornata: cosa è applicato, e una deriva trovata
+
+**Applicate tutte e sei: 084, 085, 086, 087, 088, 089.** Advisor rieseguiti dopo
+l'ultima. Verificato sui dati veri: 88 zone a Milano, 7.904 comuni, tutte e 10
+le richieste esistenti hanno il loro comune (Milano), `professionals_score` ha
+la firma nuova a cinque argomenti. Il sito è in produzione: `/come-funziona`
+dice «poi chi copre il tuo comune» e `/geo/province/MI.geojson` risponde.
+
+**IL CONTROLLO DI DERIVA DICE CHE LA PRODUZIONE È INDIETRO DI TRE MIGRAZIONI.**
+Ricostruito lo schema dai soli file del repo e confrontato con la produzione,
+mancano in produzione:
+
+| cosa | da dove | stato in produzione |
+|---|---|---|
+| `requests.quote_mode`, `requests.scope` | 082 | assenti |
+| `subservices.quote_level`, `quote_fields`, `superseded_by` | 082/081 | assenti |
+| tabella `subservice_migration_review` | 081 | assente |
+| funzione `canonical_subservice_id` | 081 | assente |
+| deduplicazione dei 7 sotto-servizi doppi | 081 | non fatta: 120 righe |
+
+Cioè **081, 082 e 083 sono su `main` ma non sono state applicate**. Il codice del
+quote intake è quindi deployato sopra uno schema che non ha le sue colonne: se
+una pagina le legge, risponde errore. Non è roba nostra — è l'iniziativa quote
+flow di André — ma andava detta il giorno in cui si scopre, non il giorno in cui
+un cliente ci sbatte contro.
+
+**Due rilievi nuovi degli advisor**, e sono la stessa cosa scritta due volte:
+`professionals_score` è `SECURITY DEFINER` ed è chiamabile da `anon` e da
+`authenticated` via `/rest/v1/rpc`. Non è una novità della 089: i permessi sono
+identici a quelli che la 072 aveva dato il 13 settembre, e la funzione serve
+proprio a far ordinare gli elenchi pubblici. Va deciso se lasciarla così
+(scrivendo perché, come si è fatto per le funzioni della 057) o spostarla.
+
+## Cosa deve sapere André
+
+- **Le quattro migrazioni sono già applicate in produzione**, e il codice che le
+  usa è sulla PR, non ancora in `main`. Fino al merge il sito vive con lo schema
+  nuovo e il codice vecchio: regge, perché tutte le colonne nuove accettano il
+  vuoto e le funzioni vecchie continuano a esistere.
+- **Per applicare il seed dei comuni ho acceso l'estensione `http` e l'ho spenta
+  subito dopo** (il canale delle migrazioni non regge 731 KB in una volta; il
+  file è pinnato al commit c4b500e). Verificato che sia spenta: `select count(*)
+  from pg_extension where extname='http'` torna 0.
+- `src/lib/zones.ts` **non è stata toccata**: il percorso del cliente funziona
+  esattamente come prima.
+- **Trappola nuova, vale per tutti:** la 084 contiene un `create or replace` di
+  `private.coverage_keys_for`. Rigiocarla dopo la 087 riporta indietro la
+  funzione e i gettoni escono monchi, senza un solo errore.
+
+## Cosa è a metà — 17 settembre
+
+- **`professionals_score` (072) non pesa i gettoni `comune:`**: oggi un incontro
+  per comune ordina come se valesse zero. È il prossimo giro.
+- **La chat del cliente offre ancora tre città.** Finché non cambia, un
+  professionista che copre Bergamo non riceve richieste da lì. Il CAP nella
+  richiesta però esiste già (046): da lì al comune è una riga, e quella parte si
+  può fare senza toccare `BobChat` — il passo «in che città?» invece è di André.
+- **16 comuni senza confine disegnato** (fusioni successive al nostro elenco
+  ISTAT 2020) e **26 col centro fuori dalla propria forma** (comuni fatti di
+  pezzi separati): entrambe scritte in `docs/NOTE_E_DECISIONI.md`.
+- **La riga RoPA A22** («Base del professionista») è scritta ma **da rileggere**.
+
+---
+
 # Passaggio di consegne — 14 settembre 2026 (Lucio, con Claude)
 
 > Sostituisce quello del 12 settembre sera e ne porta avanti tutte le voci

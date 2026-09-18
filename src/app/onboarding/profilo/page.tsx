@@ -33,15 +33,26 @@
 // esiste (DATA_COMPLIANCE §2: minimizzazione). Stessa finalità e stessa riga
 // di RoPA della 051, nessun trattamento nuovo.
 //
-// PRIVACY (DATA_COMPLIANCE §2): base giuridica contratto per mestiere/città/
-// zona/esperienza; heard_from è facoltativo (legittimo interesse, metrica di
-// canale). Retention: vita dell'account, cancellazione a cascata. Riga RoPA
-// in docs/legal/ROPA.md nello stesso commit.
+// DOVE HAI LA BASE, dal 17/09 (migrazione 085). Città e «zona» a testo libero
+// sono diventate comune scelto da elenco ISTAT + CAP obbligatorio: la zona
+// libera produceva «zona 9», «Niguarda» e «nord Milano», tre risposte che non
+// si confrontano con niente e da cui non si può inquadrare una mappa. Il CAP
+// è obbligatorio qui e facoltativo in database, perché chi era già iscritto
+// non va bloccato: a lui arriva il promemoria nel profilo.
+// La città di Bob non sparisce, si ricava: per chi sta a Sesto San Giovanni
+// resta Milano, ed è la sola cosa che dice in quale elenco compari. Quando non
+// si ricava — un idraulico di Bari — la si chiede, invece di sceglierne una.
+//
+// PRIVACY (DATA_COMPLIANCE §2): base giuridica contratto per mestiere/comune/
+// CAP/esperienza; heard_from è facoltativo (legittimo interesse, metrica di
+// canale). Retention: vita dell'account, cancellazione a cascata. Righe RoPA
+// A15 e A22 in docs/legal/ROPA.md.
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { LogoMark } from "@/components/Logo";
+import SceltaComune, { type ComuneScelto } from "@/components/SceltaComune";
 
 interface CityRow {
   id: string;
@@ -114,12 +125,35 @@ function ProfiloInner() {
   const [profession, setProfession] = useState("");
   const [professionAltro, setProfessionAltro] = useState("");
   const [cityId, setCityId] = useState("");
-  const [zone, setZone] = useState("");
+  const [comune, setComune] = useState<ComuneScelto | null>(null);
+  const [cap, setCap] = useState("");
   const [years, setYears] = useState("");
   const [heardFrom, setHeardFrom] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // LA CITTÀ DI BOB NON È IL COMUNE, E NON SEMPRE COMBACIA.
+  // `professionals.city_id` dice in quale elenco di Bob compari; il comune dice
+  // dove hai la base. Per chi sta a Milano sono la stessa cosa, per chi sta a
+  // Sesto San Giovanni no: la sua città di Bob è Milano lo stesso, perché è lì
+  // che i clienti cercano. Quando non si ricava — un idraulico di Bari, oggi —
+  // la si chiede, invece di metterne una a caso.
+  const cittaDerivata = (() => {
+    if (!comune) return "";
+    const perNome = cities.find(
+      (c) => c.name.toLowerCase() === comune.nome.toLowerCase()
+    );
+    if (perNome) return perNome.id;
+    const perProvincia = cities.find(
+      (c) => c.name.toLowerCase() === comune.provincia.toLowerCase()
+    );
+    return perProvincia?.id ?? "";
+  })();
+
+  useEffect(() => {
+    if (cittaDerivata) setCityId(cittaDerivata);
+  }, [cittaDerivata]);
 
   useEffect(() => {
     (async () => {
@@ -205,8 +239,20 @@ function ProfiloInner() {
         setSubmitting(false);
         return;
       }
+      if (!comune) {
+        setError("Scegli il comune dove hai la tua base: si cerca scrivendo.");
+        setSubmitting(false);
+        return;
+      }
+      if (!/^[0-9]{5}$/.test(cap)) {
+        setError("Il CAP è di cinque cifre, per esempio 20159.");
+        setSubmitting(false);
+        return;
+      }
       if (!cityId) {
-        setError("Scegli la città in cui lavori.");
+        setError(
+          "Dicci in quale città di Bob vuoi comparire: dal tuo comune non riesco a ricavarla."
+        );
         setSubmitting(false);
         return;
       }
@@ -216,8 +262,10 @@ function ProfiloInner() {
         user_id: userId,
         role: "professional",
         profession: professionValue,
-        city: cities.find((c) => c.id === cityId)?.name ?? null,
-        zone: zone.trim() || null,
+        city: comune?.nome ?? cities.find((c) => c.id === cityId)?.name ?? null,
+        // `zone` era testo libero: adesso ci finisce il CAP, che è la stessa
+        // informazione con una forma che si può confrontare.
+        zone: cap || null,
         years_experience: years ? Number(years) : null,
         heard_from: heardFrom || null,
         chosen_plan: piano,
@@ -237,6 +285,11 @@ function ProfiloInner() {
           .insert({
             user_id: userId,
             city_id: cityId,
+            comune_istat: comune.istat,
+            comune_name: comune.nome,
+            province: comune.provincia,
+            region: comune.regione,
+            postal_code: cap,
             business_name: attivita,
             years_experience: years ? Number(years) : null,
             verification_status: "unverified",
@@ -251,7 +304,16 @@ function ProfiloInner() {
         // senso riscrivere (città ed esperienza si cambiano da /impostazioni).
         const { error: updErr } = await supabase
           .from("professionals")
-          .update({ business_name: attivita })
+          .update({
+            business_name: attivita,
+            // La base si riscrive: è l'unico posto in cui la si dichiara, e
+            // chi rifà il questionario dopo un trasloco deve poterla cambiare.
+            comune_istat: comune.istat,
+            comune_name: comune.nome,
+            province: comune.provincia,
+            region: comune.regione,
+            postal_code: cap,
+          })
           .eq("id", professionalId);
         if (updErr) throw updErr;
       }
@@ -401,42 +463,40 @@ function ProfiloInner() {
               )}
             </div>
 
-            <div>
-              <label className="label-bob" htmlFor="city">
-                In che città lavori?
-              </label>
-              <select
-                id="city"
-                value={cityId}
-                onChange={(e) => setCityId(e.target.value)}
-                className="input-bob"
-                data-testid="input-city"
-                required
-              >
-                <option value="">Scegli la città…</option>
-                {cities.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.status !== "active" ? " (prossimamente)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <SceltaComune
+              comune={comune}
+              cap={cap}
+              onComune={setComune}
+              onCap={setCap}
+            />
 
-            <div>
-              <label className="label-bob" htmlFor="zone">
-                Zona o quartiere <span className="font-normal text-bob-ink/65">(facoltativo)</span>
-              </label>
-              <input
-                id="zone"
-                type="text"
-                value={zone}
-                onChange={(e) => setZone(e.target.value)}
-                className="input-bob"
-                placeholder="Es. Isola, Navigli, hinterland nord…"
-                data-testid="input-zone"
-              />
-            </div>
+            {comune && !cittaDerivata && (
+              <div>
+                <label className="label-bob" htmlFor="city">
+                  In quale città di Bob vuoi comparire?
+                </label>
+                <select
+                  id="city"
+                  value={cityId}
+                  onChange={(e) => setCityId(e.target.value)}
+                  className="input-bob"
+                  data-testid="input-city"
+                  required
+                >
+                  <option value="">Scegli la città…</option>
+                  {cities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.status !== "active" ? " (prossimamente)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-bob-ink/65">
+                  {comune.nome} è fuori dalle città dove Bob è aperto: dicci
+                  dove vuoi comparire intanto che arriviamo anche lì.
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="label-bob" htmlFor="phone">
