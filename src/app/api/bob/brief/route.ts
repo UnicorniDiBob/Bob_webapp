@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { EMPTY_BRIEF, type JobBrief } from "@/lib/bob";
+import { EMPTY_BRIEF, validateScope, type JobBrief } from "@/lib/bob";
+import type { QuoteField } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
 // Salva il job brief completato (una riga per chat conclusa).
 // È il fondamento dati del ranking: logga cosa chiedono i clienti e come.
 // Scrittura via service role: la tabella job_briefs non ha policy di insert.
+//
+// QUESTA ROUTE NON HA AUTENTICAZIONE (G20-G22): chi la chiama non è
+// necessariamente passato dalla chat, quindi non ci si può fidare che
+// scope sia già stato filtrato da mergeBrief lato client. subtaskSlug va
+// riletto dal catalogo — non solo per sapere se esiste, ma per avere
+// l'elenco di quote_fields con cui filtrare scope prima di scriverlo.
 export async function POST(request: Request) {
   let body: { brief?: JobBrief; source?: string };
   try {
@@ -35,14 +42,37 @@ export async function POST(request: Request) {
     userId = null;
   }
 
+  const admin = createServiceClient(url, serviceKey);
+
+  // subtaskSlug e le sue quote_fields sono la fonte di verità per filtrare
+  // scope, non quello che il client dichiara di aver già validato. Uno slug
+  // sconosciuto o superseded (081) non viene scartato con un errore — non
+  // blocchiamo la UX per questo — ma smette di essere fidato: subtask_slug
+  // e scope finiscono entrambi vuoti, come se non fosse mai stato scelto.
+  let subtaskSlug = brief.subtaskSlug;
+  let quoteFields: QuoteField[] = [];
+  if (subtaskSlug) {
+    const { data: sub } = await admin
+      .from("subservices")
+      .select("quote_fields")
+      .eq("slug", subtaskSlug)
+      .is("superseded_by", null)
+      .maybeSingle();
+    if (sub) {
+      quoteFields = (sub.quote_fields as QuoteField[] | null) ?? [];
+    } else {
+      subtaskSlug = null;
+    }
+  }
+  const scope = validateScope(brief.scope ?? {}, quoteFields);
+
   try {
-    const admin = createServiceClient(url, serviceKey);
     const { data, error } = await admin
       .from("job_briefs")
       .insert({
         user_id: userId,
         service_slug: brief.serviceSlug,
-        subtask_slug: brief.subtaskSlug,
+        subtask_slug: subtaskSlug,
         severity: brief.severity,
         urgency: brief.urgency,
         summary: brief.summary,
@@ -54,7 +84,7 @@ export async function POST(request: Request) {
         budget_flexible: brief.budgetFlexible ?? false,
         city_slug: brief.citySlug,
         zone: brief.zone,
-        scope: brief.scope ?? {},
+        scope,
         red_flags: brief.redFlags ?? [],
         photos: brief.photos ?? [],
         field_meta: brief.fieldMeta ?? {},

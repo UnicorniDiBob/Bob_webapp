@@ -7,6 +7,7 @@ import {
   buildBriefTool,
   mergeBrief,
   ruleBasedDecision,
+  fieldsForSubtask,
   EMPTY_BRIEF,
   type BobDecision,
   type BobMessage,
@@ -128,19 +129,29 @@ export async function POST(request: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   // Nessuna chiave configurata: fallback a regole (l'app funziona comunque).
+  // Loggato apposta: per tre mesi questo ramo e' scattato ad ogni chat senza
+  // lasciare traccia da nessuna parte, e job_briefs.source non lo diceva
+  // nemmeno (vedi PR #80 — il client non rimandava mai il campo indietro).
   if (!apiKey) {
+    console.error("[bob/chat] ANTHROPIC_API_KEY assente: rispondo solo con le regole, nessuna chiamata a Claude.");
     const decision = ruleBasedDecision(messages, services, subservices, prev);
     return NextResponse.json({ ...decision, source: "rules" });
   }
 
   try {
     const client = new Anthropic({ apiKey });
-    const tool = buildBriefTool(services, subservices);
+    // Le chiavi valide per il sotto-servizio già noto da un turno precedente
+    // (spec §3, Fase 3): se prev.subtaskSlug non è ancora impostato, questa
+    // è [] e sia il prompt sia lo schema restano nella modalità "non lo so
+    // ancora" — non un elenco vuoto interpretato come "nessuna chiave è
+    // ammessa mai".
+    const candidateFields = fieldsForSubtask(prev.subtaskSlug, subservices);
+    const tool = buildBriefTool(services, subservices, candidateFields);
     const completion = await client.messages.create({
-      model: "claude-3-5-haiku-latest",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1000,
       temperature: 0.4,
-      system: buildSystemPrompt(services, subservices),
+      system: buildSystemPrompt(services, subservices, candidateFields),
       tools: [tool as Anthropic.Tool],
       tool_choice: { type: "tool", name: "update_job_brief" },
       messages: toAnthropicMessages(messages),
@@ -150,6 +161,10 @@ export async function POST(request: Request) {
       (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
     );
     if (!toolBlock) {
+      console.error(
+        "[bob/chat] Claude ha risposto senza tool_use, fallback a regole:",
+        JSON.stringify(completion.content)
+      );
       const fallback = ruleBasedDecision(messages, services, subservices, prev);
       return NextResponse.json({ ...fallback, source: "rules-fallback" });
     }
@@ -201,8 +216,12 @@ export async function POST(request: Request) {
     };
 
     return NextResponse.json({ ...decision, source: "ai" });
-  } catch {
-    // Errore API (chiave non valida, rate limit, ecc.): fallback a regole.
+  } catch (err) {
+    // Errore API (chiave non valida, modello inesistente, rate limit, ecc.):
+    // fallback a regole. L'errore vero si logga — prima veniva scartato in
+    // silenzio, ed e' esattamente cosi' che un model id ritirato e' rimasto
+    // invisibile per mesi (vedi PR #80).
+    console.error("[bob/chat] eccezione nella chiamata a Claude, fallback a regole:", err);
     const fallback = ruleBasedDecision(messages, services, subservices, prev);
     return NextResponse.json({ ...fallback, source: "rules-error" });
   }

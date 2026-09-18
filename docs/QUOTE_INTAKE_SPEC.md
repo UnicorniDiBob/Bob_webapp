@@ -19,9 +19,13 @@ consume, and nothing more.
 Measured against production Supabase `bijgitnulucdzluqjxrx` on 16 September 2026. Not from memory,
 not from a board.
 
+**Amended 17 September, Phase 3.** The reading below was wrong about *why* the table looks like
+this. Left in place rather than rewritten from scratch, because the raw numbers are still real and
+still the right evidence — only the causal story attached to them was wrong.
+
 | | |
 |---|---|
-| `job_briefs` rows | 8, all `source = 'ai'` |
+| `job_briefs` rows | 8, `source = 'ai'` on all eight — **see note below, this is not what it looks like** |
 | …with `summary` / `severity` | 7 / 8 |
 | …with `subtask_slug` | **0** |
 | …with `scope` populated | **0** |
@@ -35,11 +39,38 @@ not from a board.
 | quote / preventivo entity | does not exist (G41) |
 | latest migration | `080_verifica_ordine_rinnovo_e_sla` |
 
-**Reading of that table.** The storage is built and empty. `job_briefs` has 21 columns and carries
-two of them. The reason is in the system prompt in `src/lib/bob.ts`: Bob is told to ask for "the
-single most useful scope key" but is given no list of keys, so it invents free-form snake_case or
-skips the field entirely. `QuoteDialog` then ships a free-text paragraph to N professionals, and
-that paragraph is the whole brief the professional prices from.
+**The LLM path in `/api/bob/chat` has never executed, anywhere.** `ANTHROPIC_API_KEY` has never
+existed — not in `.env.local`, not on Vercel development, not on Vercel production. Every brief
+this project has ever produced, including these eight, came from `ruleBasedDecision` (the
+keyword-and-severity fallback in `src/lib/bob.ts`), never from Bob's LLM-driven understanding. The
+original reading below blamed the system prompt for asking for "the single most useful scope key"
+with no key list attached. That diagnosis is wrong: the prompt was never sent to anything, because
+`chat/route.ts`'s `if (!apiKey)` branch fires every single time and returns before the prompt is
+even built.
+
+`source = 'ai'` on all eight rows is **not evidence the LLM ran** — it's a second, independent bug.
+`BobChat.tsx` never reads the `source` field back from `/api/bob/chat`'s response, and its later
+call to `/api/bob/brief` never sends one either, so `brief/route.ts`'s
+`body.source === "rules" ? "rules" : "ai"` always sees `undefined` and always falls through to
+`"ai"`. That ternary would have written `'ai'` no matter which of the four possible decision paths
+produced the brief. The column has never been a trustworthy signal, independent of the key ever
+existing.
+
+Given that, 0/8 `subtask_slug` and 0/8 `scope` need no theory about prompt wording at all:
+`ruleBasedDecision` only ever sets `serviceSlug`, `severity` and `summary` — it has no branch that
+touches `subtaskSlug` or `scope`. Running only that path, every time, produces exactly this table.
+
+**What this changes and what it doesn't.** The structured-intake work this spec describes —
+Phases 1-5 — is still correct and still needed: once a real key exists, Bob's LLM path will hit
+the same free-form-scope trap the original diagnosis described, because the tool schema and system
+prompt genuinely did invite it before Phase 3. But until 17 September this was **untested code
+fixing a bug nothing had ever observed happen**, not a fix to observed production behaviour — the
+observed behaviour (empty scope, no subtask) had a simpler, complete explanation that had nothing
+to do with prompt wording. Two things follow: the fallback's three-months-silent failure mode is
+itself worth fixing (proposed, not yet built, as of Phase 3 — a log line per fallback branch, and
+threading the real `source` value through so the column stops lying); and Phase 3's acceptance test
+— a live conversation ending in a `job_briefs` row with a real `subtask_slug` and non-empty `scope`
+— cannot be run until a real `ANTHROPIC_API_KEY` exists somewhere this app can read it.
 
 Nothing needs to be invented for storage. What is missing is a per-sub-task definition of what to
 ask, and a UI step that collects it without being a form.

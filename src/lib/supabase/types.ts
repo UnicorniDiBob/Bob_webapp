@@ -35,6 +35,40 @@ export interface BookingField {
   help?: string;
 }
 
+// Il livello di preventivabilità dichiarato dal catalogo per un sotto-servizio
+// (spec §2, migration 082). Il risolutore (src/lib/quoting.ts) può solo
+// abbassarlo per una richiesta specifica, mai alzarlo.
+export type QuoteLevel = "bookable" | "range" | "assisted" | "survey";
+
+// La derivazione da una risposta "non lo so" (proxy da profano) a un valore
+// numerico stimato, per campi come mq_approx (spec §3).
+export interface QuoteFieldProxy {
+  label: string;
+  type: "select";
+  options: string[];
+  derive: Record<string, number>;
+}
+
+// Un campo dell'intake del preventivo, definito per subservice (spec §3,
+// migration 082/083). Stessa forma di BookingField ma colonna e scopo
+// diversi apposta: BookingField è della prenotazione diretta (rotta in
+// produzione, mig 028), QuoteField è del preventivo strutturato — non vanno
+// confusi né uniti.
+export interface QuoteField {
+  key: string;
+  type: "number" | "select" | "bool" | "text";
+  unit?: string;
+  label: string;
+  required: boolean;
+  is_billable_unit: boolean;
+  pro_visible: boolean;
+  unknown_ok: boolean;
+  options?: string[];
+  proxy?: QuoteFieldProxy;
+  photo_prompt?: string;
+  ask_if?: Record<string, string | number | boolean>;
+}
+
 // Limiti foto portfolio per tier (null = illimitato). Fonte di verità: trigger DB.
 export const PORTFOLIO_LIMITS: Record<SubscriptionTier, number | null> = {
   free: 0,
@@ -86,6 +120,9 @@ export interface Subservice {
   default_rate_unit: RateUnit | null;
   // Deduplicazione (migration 090): valorizzato solo sulle righe legacy.
   superseded_by: string | null;
+  // Intake del preventivo (spec §2/§3, migration 082/083).
+  quote_level: QuoteLevel;
+  quote_fields: QuoteField[];
 }
 
 export interface Profile {
