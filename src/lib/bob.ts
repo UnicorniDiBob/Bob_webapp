@@ -323,7 +323,7 @@ Regole per il brief:
 
 Se il messaggio contiene una FOTO: descrivi brevemente cosa vedi ("Dalla foto vedo…"), usa la foto per compilare servizio, sotto-servizio, severity e scope (source="photo"), compila photoCaption, e chiedi conferma di ciò che hai dedotto invece di fare altre domande.
 
-Quando hai serviceSlug + subtaskSlug + severity con confidence almeno media (o hai esaurito il budget di domande): usa next="city", nella reply conferma in una frase cosa hai capito e chiedi in che città serve. Compila anche shortlistReason (1-2 frasi su cosa cercherai) e suggestedMessage (messaggio pronto per il professionista, in prima persona del cliente, con i dettagli utili del brief).`;
+Quando hai serviceSlug + subtaskSlug + severity con confidence almeno media (o hai esaurito il budget di domande): usa next="city", nella reply conferma in una frase cosa hai capito — NON chiedere ancora la città: se c'è una scheda lavoro da confermare viene subito dopo, e chiede lei la città alla fine. Compila anche shortlistReason (1-2 frasi su cosa cercherai) e suggestedMessage (messaggio pronto per il professionista, in prima persona del cliente, con i dettagli utili del brief).`;
 }
 
 // Lo schema JSON di "scope" per il tool: se il sotto-servizio candidato è

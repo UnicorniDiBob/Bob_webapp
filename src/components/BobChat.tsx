@@ -3,11 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Camera, MapPin } from "lucide-react";
-import type { City, Service, ProfessionalCard } from "@/lib/supabase/types";
+import type {
+  City,
+  Service,
+  ProfessionalCard,
+  QuoteField,
+} from "@/lib/supabase/types";
 import { EMPTY_BRIEF } from "@/lib/bob";
 import type {
   BobMessage,
   BriefUrgency,
+  FieldMeta,
   JobBrief,
   Severity,
 } from "@/lib/bob";
@@ -19,6 +25,7 @@ import {
 import { Stars, PriceTag, VerificationLevelBadge } from "./ui";
 import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
+import { SchedaLavoro, type Scope } from "./SchedaLavoro";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
 import { withArticle, afterDi } from "@/lib/italian";
@@ -28,6 +35,7 @@ import { createClient } from "@/lib/supabase/client";
 type Step =
   | "intent"
   | "chat" // conversazione intelligente con Bob
+  | "scheda" // scheda lavoro: conferma i campi del sotto-servizio (spec §5, stadi B/C)
   | "city"
   | "waitlist" // città non attiva: offriamo l'avviso email invece di dirottare su Milano
   | "zone" // quartiere: la posizione grossolana che il pro vede prima di essere scelto (mig 045)
@@ -113,6 +121,7 @@ interface ChatDraft {
   brief: JobBrief;
   collected: Collected;
   subtaskOptions: SubtaskOption[];
+  quoteFields: QuoteField[];
   results: ProfessionalCard[];
   selectedIds: string[];
   waitlistCity: { slug: string; name: string } | null;
@@ -138,6 +147,10 @@ export function BobChat({
   const [brief, setBrief] = useState<JobBrief>(EMPTY_BRIEF);
   const [subtaskOptions, setSubtaskOptions] = useState<SubtaskOption[]>([]);
   const [editingSubtask, setEditingSubtask] = useState(false);
+  // Campi della scheda lavoro per il subtaskSlug risolto in questo turno
+  // (spec §5). Vuoto quando il fallback a regole ha risposto: non offre
+  // mai una scheda vuota (vedi bob.ts, BobDecision.quoteFields).
+  const [quoteFields, setQuoteFields] = useState<QuoteField[]>([]);
   const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
   const [capInput, setCapInput] = useState("");
   const [capError, setCapError] = useState<string | null>(null);
@@ -186,6 +199,7 @@ export function BobChat({
       setBrief(draft.brief);
       setCollected(draft.collected ?? {});
       setSubtaskOptions(draft.subtaskOptions ?? []);
+      setQuoteFields(draft.quoteFields ?? []);
       setResults(draft.results ?? []);
       setSelected(new Set(draft.selectedIds ?? []));
       setWaitlistCity(draft.waitlistCity ?? null);
@@ -283,6 +297,7 @@ export function BobChat({
         brief,
         collected,
         subtaskOptions,
+        quoteFields,
         results,
         selectedIds: Array.from(selected),
         waitlistCity,
@@ -292,7 +307,7 @@ export function BobChat({
     } catch {
       // quota piena o storage negato: la chat funziona comunque
     }
-  }, [step, messages, brief, collected, subtaskOptions, results, selected, waitlistCity, briefId]);
+  }, [step, messages, brief, collected, subtaskOptions, quoteFields, results, selected, waitlistCity, briefId]);
 
   function bobSay(text: string) {
     setMessages((m) => [...m, { from: "bob", text }]);
@@ -377,6 +392,10 @@ export function BobChat({
       if (Array.isArray(data.subtaskOptions)) {
         setSubtaskOptions(data.subtaskOptions as SubtaskOption[]);
       }
+      const fields: QuoteField[] = Array.isArray(data.quoteFields)
+        ? (data.quoteFields as QuoteField[])
+        : [];
+      setQuoteFields(fields);
 
       const svc = b.serviceSlug
         ? services.find((s) => s.slug === b.serviceSlug)
@@ -392,7 +411,10 @@ export function BobChat({
       bobSay(data.reply ?? "Raccontami meglio cosa ti serve.");
 
       if (data.next === "city") {
-        setStep("city");
+        // La scheda lavoro (spec §5) si interpone quando c'e' un
+        // sotto-servizio con campi da confermare; il fallback a regole non
+        // popola mai quoteFields, quindi non offre mai una scheda vuota.
+        setStep(fields.length > 0 ? "scheda" : "city");
       } else {
         setStep("chat");
       }
@@ -417,6 +439,19 @@ export function BobChat({
       },
     }));
     setEditingSubtask(false);
+  }
+
+  // Fine della scheda lavoro (stadio B confermato, stadio C completato o
+  // saltato): lo scope raccolto entra nel brief e solo ora si chiede la
+  // città — prima l'avrebbe chiesto la reply dell'LLM, in mezzo alla scheda.
+  function completeScheda(scope: Scope, meta: Record<string, FieldMeta>) {
+    setBrief((b) => ({
+      ...b,
+      scope,
+      fieldMeta: { ...b.fieldMeta, ...meta },
+    }));
+    bobSay("Perfetto, tengo tutto a mente. In che città ti serve?");
+    setStep("city");
   }
 
   function correctSeverity(sev: Severity) {
@@ -720,6 +755,7 @@ export function BobChat({
     setStep("intent");
     setBrief(EMPTY_BRIEF);
     setSubtaskOptions([]);
+    setQuoteFields([]);
     setEditingSubtask(false);
     setPendingPhoto(null);
     setWaitlistCity(null);
@@ -918,6 +954,21 @@ export function BobChat({
               </p>
             )}
           </div>
+        )}
+
+        {/* scheda lavoro: conferma i campi del sotto-servizio (spec §5) */}
+        {step === "scheda" && brief.subtaskSlug && quoteFields.length > 0 && (
+          <SchedaLavoro
+            key={brief.subtaskSlug}
+            subtaskName={
+              subtaskOptions.find((o) => o.slug === brief.subtaskSlug)?.name ??
+              brief.subtaskSlug
+            }
+            quoteFields={quoteFields}
+            initialScope={brief.scope}
+            initialFieldMeta={brief.fieldMeta}
+            onConfirm={completeScheda}
+          />
         )}
 
         {/* città non attiva: waitlist inline al posto del dirottamento */}
