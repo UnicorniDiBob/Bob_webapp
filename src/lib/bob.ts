@@ -98,6 +98,11 @@ export interface BobDecision {
   suggestedMessage?: string | null;
   // Opzioni di sotto-servizio per la recap card (solo quando next="city").
   subtaskOptions?: { slug: string; name: string }[];
+  // Le quote_fields del subtaskSlug risolto in questo turno (Fase 4, spec
+  // §5): la scheda lavoro le usa per sapere cosa mostrare. Assente/vuoto se
+  // il sotto-servizio non è ancora noto — ruleBasedDecision non lo imposta
+  // mai, quindi il fallback a regole non offre mai una scheda vuota.
+  quoteFields?: QuoteField[];
 }
 
 // Riferimenti catalogo passati all'LLM per ancorare le sue scelte.

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { resolveQuoteMode, resolveQuoteLevel, type QuoteResolverInput } from "./quoting";
+import {
+  resolveQuoteMode,
+  resolveQuoteLevel,
+  resolveQuoteModeFromScope,
+  type QuoteResolverInput,
+  type ScopeQuoteModeInput,
+} from "./quoting";
 
 // Un default innocuo, sovrascritto caso per caso, cosi' ogni test dichiara
 // solo quello che gli serve davvero (spec §2.1, una riga della tabella).
@@ -245,5 +251,82 @@ describe("nessuna regola scatta — la scala non si tocca", () => {
     expect(
       resolveQuoteMode(baseInput({ subtaskSlug: "wc-sanitari", defaultQuoteLevel: "assisted" }))
     ).toBe("assisted");
+  });
+});
+
+describe("resolveQuoteModeFromScope — il ponte fra scope e i nomi del risolutore", () => {
+  function baseScopeInput(overrides: Partial<ScopeQuoteModeInput>): ScopeQuoteModeInput {
+    return {
+      subtaskSlug: "perdita-rubinetto-sifone",
+      defaultQuoteLevel: "assisted",
+      quoteFields: [
+        { key: "fixture", is_billable_unit: false },
+        { key: "item_count", is_billable_unit: true },
+      ],
+      scope: {},
+      ...overrides,
+    };
+  }
+
+  it("individua la chiave is_billable_unit per la regola locale commerciale", () => {
+    expect(
+      resolveQuoteModeFromScope(
+        baseScopeInput({
+          subtaskSlug: "wc-sanitari",
+          defaultQuoteLevel: "range",
+          propertyType: "ufficio_commerciale",
+          scope: {}, // item_count non dichiarato
+        })
+      )
+    ).toBe("assisted");
+  });
+
+  it("non abbassa se la quantità è nello scope", () => {
+    expect(
+      resolveQuoteModeFromScope(
+        baseScopeInput({
+          subtaskSlug: "wc-sanitari",
+          defaultQuoteLevel: "range",
+          propertyType: "ufficio_commerciale",
+          scope: { item_count: 2 },
+        })
+      )
+    ).toBe("range");
+  });
+
+  it("legge mold_present e mq_approx dallo scope per tinteggiatura-interni", () => {
+    expect(
+      resolveQuoteModeFromScope(
+        baseScopeInput({
+          subtaskSlug: "tinteggiatura-interni",
+          defaultQuoteLevel: "range",
+          scope: { mold_present: true },
+        })
+      )
+    ).toBe("survey");
+  });
+
+  it("passa attraverso il pre-check emergenza", () => {
+    expect(
+      resolveQuoteModeFromScope(
+        baseScopeInput({ redFlags: ["danno_in_corso"] })
+      )
+    ).toBe("dispatch");
+  });
+
+  it("un campo di scope non numerico/non booleano nel posto sbagliato non fa scattare la regola", () => {
+    expect(
+      resolveQuoteModeFromScope(
+        baseScopeInput({
+          subtaskSlug: "tinteggiatura-interni",
+          defaultQuoteLevel: "range",
+          // mq_approx dichiarato apposta: isola il caso da testare (mold_present
+          // di tipo sbagliato) dall'altra regola di tinteggiatura-interni
+          // (mq_approx sconosciuto e nessuna foto), che altrimenti scatterebbe
+          // comunque e renderebbe il test un falso positivo.
+          scope: { mold_present: "forse", mq_approx: 40 },
+        })
+      )
+    ).toBe("range");
   });
 });

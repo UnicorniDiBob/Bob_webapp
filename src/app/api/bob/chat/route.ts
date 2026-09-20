@@ -213,6 +213,10 @@ export async function POST(request: Request) {
               .filter((x) => x.serviceSlug === brief.serviceSlug)
               .map((x) => ({ slug: x.slug, name: x.name }))
           : undefined,
+      // La scheda lavoro (Fase 4) ne ha bisogno solo quando si passa alla
+      // città: prima sarebbe un dato pronto ma inutile ad ogni turno.
+      quoteFields:
+        next === "city" ? fieldsForSubtask(brief.subtaskSlug, subservices) : undefined,
     };
 
     return NextResponse.json({ ...decision, source: "ai" });
