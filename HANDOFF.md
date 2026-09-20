@@ -1,3 +1,66 @@
+# Passaggio di consegne — 20 settembre 2026 (Lucio, con Claude)
+
+> La giornata di oggi in cima. Le voci del 18 settembre e quelle portate avanti
+> restano sotto, invariate.
+
+## Cosa ho fatto — Lucio (20 settembre)
+
+Ramo `feat/tos-verifica-e-tetto-cessazione`, **non ancora unito**. Chiude i due
+punti aperti del blocco «Livelli di verifica» nel Piano.
+
+- **L'SLA di esame entra nei ToS pro** (`src/components/TermsContent.tsx`, nuova
+  sezione 9, versione dei termini `2026-09-v2`): termine di 5 giorni lavorativi
+  con decorrenza e sospensione, durata e rinnovo, finestra di ricontrollo, effetti
+  della cessazione della P.IVA, natura reversibile della perdita di visibilità
+  dell'etichetta e riserva umana sulla revoca del livello. Le tre cifre del testo
+  sono le stesse di `src/lib/vat.ts` — se una cambia di là e non qui, i termini
+  dichiarano il falso. **Regola di escalation sullo sforamento: decisa di NON
+  farla** (20/09); il costo dello sforamento lo paga il tetto qui sotto.
+- **Il tetto sui casi di cessazione** (`094_tetto_esame_cessazione.sql`,
+  `tettoRicontrollo()`): dalla 080 «la palla è nostra» teneva acceso il badge
+  senza limite, anche su una partita IVA che il registro dà per spenta. Adesso
+  l'etichetta si spegne comunque 14 giorni dopo l'apertura del caso (7 di finestra
+  + 7 del nostro esame). Solo motivo `cessazione`; il livello resta una decisione
+  umana.
+- **Primo test su `src/lib/vat.ts`** (`vat.test.ts`, 21 casi): la caduta del badge
+  non era mai stata esercitata, in produzione c'è un solo pro verificato e scade
+  nel 2027.
+
+## Cosa è a metà / da sapere — Lucio (20 settembre)
+
+- **LA 089 HA RIPORTATO INDIETRO IL PUNTEGGIO, ED È VIVO ADESSO.** `professionals_score`
+  è stata riscritta il 17/09 copiando il corpo della 072 («copiato, non riscritto»,
+  dice il suo commento). Fra 072 e 089 quel corpo era cambiato tre volte, e in
+  produzione da tre giorni: la voce verifica legge di nuovo `verification_status`
+  (l'interruttore manuale) invece del livello e della caduta del badge (080) —
+  cioè per l'ORDINE il badge scaduto pesa ancora; il prezzo torna a guardare solo
+  `min_price` (077 persa); il tempo di risposta si ricalcola da `request_messages`
+  invece di leggere `professional_signals` (075 persa); e la funzione è tornata
+  `SECURITY DEFINER` dopo che la 075 l'aveva portata a `INVOKER`. La 094 la
+  ricompone: 075 + 077 + 080 + 089 + il tetto. **Finché la 094 non è applicata,
+  l'ordinamento in produzione non è quello pubblicato su /come-funziona#ordine.**
+- **La nuova versione dei ToS non è ancora stata preavvisata.** Il nostro stesso
+  testo promette ai professionisti almeno 15 giorni di preavviso per le modifiche
+  (Reg. P2B art. 3): `TERMS_VERSION` la registra solo alle nuove iscrizioni, quindi
+  il testo nuovo va comunicato prima di considerarlo opponibile a chi c'è già.
+  E resta una bozza da far rivedere a un legale (blocco 23).
+- **Il tetto è provato in laboratorio, non sul vivo**: ricostruito lo schema dai
+  soli file del repo (`scripts/schema_check.sh`, 0 errori) e verificato che un caso
+  di cessazione aperto da 20 giorni e in esame vale 0 punti verifica, uno da 3
+  giorni ne vale 5, e una scadenza annuale in esame da 20 giorni resta a 5. In
+  produzione non c'è nessun caso in coda né in ricontrollo.
+- **La 093 è ancora da applicare** (PR #86 di André): l'impronta dello schema
+  ricostruito non coinciderà con la produzione finché 093 e 094 non sono applicate.
+
+## Cosa ho applicato in produzione — Lucio (20 settembre)
+
+**Niente.** Nessuna migrazione applicata, nessun merge: il ramo è locale finché non
+passa la CI. La 094 va applicata **dopo** che la PR è unita, e subito dopo vanno
+rilanciati gli advisor di sicurezza (la funzione torna a `SECURITY INVOKER`, quindi
+un rilievo in meno, non uno in più).
+
+---
+
 # Passaggio di consegne — 18 settembre 2026 (André, con Claude)
 
 > Aggiunge la giornata di oggi in cima. Le voci del 17 settembre e quelle

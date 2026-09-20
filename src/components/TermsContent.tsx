@@ -9,10 +9,10 @@ import { COMPANY } from "@/lib/company";
  * profile_private.terms_version all'iscrizione, così sappiamo quale testo
  * ciascun utente ha accettato.
  */
-export const TERMS_VERSION = "2026-07-v1";
+export const TERMS_VERSION = "2026-09-v2";
 
 /** Etichetta leggibile della data di aggiornamento. */
-export const TERMS_UPDATED = "Luglio 2026";
+export const TERMS_UPDATED = "Settembre 2026";
 
 export type TermsAudience = "customer" | "professional";
 
@@ -256,7 +256,102 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
       </LegalSection>
 
       {isPro && (
-        <LegalSection title="9. Come vengono ordinati i risultati">
+        <LegalSection title="9. Verifica del profilo: livelli, tempi ed effetti">
+          {/* QUESTA SEZIONE E' LA COPIA CONTRATTUALE DI REGOLE CHE ESISTONO GIA'
+              NEL CODICE, E LE TRE CIFRE DEVONO RESTARE LE STESSE:
+              SLA_VERIFICA_GIORNI_LAVORATIVI (5), FINESTRA_RICONTROLLO_GIORNI (7)
+              e TETTO_CESSAZIONE_GIORNI (14), tutte in src/lib/vat.ts, con le
+              gemelle in SQL nelle migrazioni 078/079/080/094. Se una cifra
+              cambia di la' e non qui, i termini dichiarano il falso: e' un
+              impegno contrattuale verso un utente business, non una nota
+              informativa (Reg. UE 2019/1150, art. 3 e 4).
+
+              ⚠️ Testo da far rivedere a un legale prima del lancio: qui si
+              assume un termine di esame e si descrive una restrizione. */}
+          <p>
+            La verifica è un <strong>controllo documentale riferito alla data in
+            cui è svolto</strong>, effettuato sulle risultanze delle banche dati
+            pubbliche consultabili e sugli eventuali documenti che ci trasmetti.
+            Non costituisce certificazione ai sensi di norme tecniche, né
+            attestazione di qualità, idoneità al singolo lavoro, solvibilità o
+            regolarità fiscale e contributiva. L&apos;etichetta esposta sul
+            profilo indica esclusivamente il livello raggiunto e la data del
+            controllo.
+          </p>
+          <p>
+            <strong>Termine di esame.</strong> BOB si impegna a concludere
+            l&apos;esame della richiesta di verifica entro{" "}
+            <strong>5 (cinque) giorni lavorativi</strong>, decorrenti dal giorno
+            in cui l&apos;esame compete a BOB, ossia dalla ricezione della
+            richiesta ovvero dalla ricezione della documentazione integrativa
+            richiesta. Il termine resta sospeso per tutto il tempo in cui la
+            pratica è in attesa di un adempimento a tuo carico. Il termine ha
+            natura ordinatoria: il suo decorso non comporta accoglimento né
+            rigetto automatico della richiesta. Finché la pratica è in esame
+            presso BOB, il livello già riconosciuto e la relativa etichetta{" "}
+            <strong>non decadono per effetto del solo decorso del tempo</strong>,
+            salvo quanto previsto al capoverso «Cessazione della partita IVA».
+          </p>
+          <p>
+            <strong>Durata e rinnovo.</strong> La verifica ha validità di{" "}
+            <strong>12 (dodici) mesi</strong> dalla data del controllo. Prima
+            della scadenza ti avvisiamo con un preavviso di almeno{" "}
+            <strong>30 (trenta) giorni</strong> e apriamo d&apos;ufficio un
+            procedimento di ricontrollo. Se il controllo dà esito positivo la
+            validità decorre nuovamente per pari durata, senza alcun
+            adempimento a tuo carico.
+          </p>
+          <p>
+            <strong>Ricontrollo e termine per il riscontro.</strong> Il
+            ricontrollo può essere aperto per scadenza della validità, per
+            risultanze che indichino la cessazione della partita IVA o una
+            procedura in corso, ovvero per difformità fra l&apos;intestazione
+            della partita IVA e i dati del profilo. Dall&apos;apertura del
+            procedimento disponi di <strong>7 (sette) giorni di calendario</strong>{" "}
+            per fornire riscontro o la documentazione richiesta. Decorso tale
+            termine senza riscontro, l&apos;etichetta cessa di essere visibile
+            ai clienti e il profilo è presentato come «Iscritto».
+          </p>
+          <p>
+            <strong>Cessazione della partita IVA.</strong> Sei tenuto a
+            comunicarci senza indugio la cessazione o sospensione della partita
+            IVA. Quando le risultanze indicano che la partita IVA con cui sei
+            verificato non è più attiva, apriamo un ricontrollo per tale motivo
+            e, <strong>in deroga a quanto previsto al capoverso «Termine di
+            esame»</strong>, l&apos;etichetta cessa comunque di essere visibile
+            decorsi <strong>14 (quattordici) giorni di calendario</strong>{" "}
+            dall&apos;apertura del procedimento, anche qualora la pratica sia
+            ancora in esame presso BOB. Il termine corrisponde alla somma del
+            termine per il tuo riscontro e del termine di esame, e risponde
+            all&apos;esigenza di non rappresentare ai clienti come attuale una
+            verifica smentita dalle risultanze.
+          </p>
+          <p>
+            <strong>Natura delle misure e intervento umano.</strong> La cessata
+            visibilità dell&apos;etichetta è misura{" "}
+            <strong>reversibile e di sola rappresentazione</strong>: non
+            comporta la perdita del livello riconosciuto, non limita
+            l&apos;accesso al servizio e viene meno automaticamente non appena
+            il controllo dà esito positivo. La{" "}
+            <strong>revoca del livello</strong> è invece adottata da una persona
+            fisica, è motivata per iscritto e ti è comunicata con
+            l&apos;indicazione dei motivi e delle possibilità di riesame; non
+            sei soggetto a decisioni fondate unicamente su trattamenti
+            automatizzati che ti riguardino in modo significativo. Restano ferme
+            le garanzie di preavviso e motivazione previste dal Regolamento (UE)
+            2019/1150 e le tutele di cui alla sezione «Segnalazioni e reclami».
+          </p>
+          <p>
+            Il livello di verifica concorre, insieme agli altri parametri, alla
+            formazione del punteggio che determina l&apos;ordine di
+            presentazione dei profili, nei termini indicati alla sezione
+            successiva.
+          </p>
+        </LegalSection>
+      )}
+
+      {isPro && (
+        <LegalSection title="10. Come vengono ordinati i risultati">
           {/* QUESTO TESTO DEVE DIRE LA STESSA COSA DI /come-funziona#ordine.
               Sono le due dichiarazioni pubbliche sullo stesso meccanismo: una
               verso i clienti (art. 22 c. 4-bis Cod. Cons.), una verso i
@@ -310,7 +405,7 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
         </LegalSection>
       )}
 
-      <LegalSection title={isPro ? "10. Responsabilità" : "9. Responsabilità"}>
+      <LegalSection title={isPro ? "11. Responsabilità" : "9. Responsabilità"}>
         <p>
           BOB fornisce la piattaforma con la diligenza dovuta, senza garantire
           che il servizio sia ininterrotto o privo di errori né la veridicità
@@ -334,7 +429,7 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
         </p>
       </LegalSection>
 
-      <LegalSection title={isPro ? "11. Segnalazioni e reclami" : "10. Segnalazioni"}>
+      <LegalSection title={isPro ? "12. Segnalazioni e reclami" : "10. Segnalazioni"}>
         <p>
           Se ritieni che un contenuto o un profilo violi la legge o questi
           termini, scrivi a{" "}
@@ -360,7 +455,7 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
         )}
       </LegalSection>
 
-      <LegalSection title={isPro ? "12. Recesso e cancellazione" : "11. Recesso e cancellazione"}>
+      <LegalSection title={isPro ? "13. Recesso e cancellazione" : "11. Recesso e cancellazione"}>
         <p>
           Puoi chiudere il tuo account in ogni momento dalle impostazioni o
           scrivendo a{" "}
@@ -375,7 +470,7 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
         </p>
       </LegalSection>
 
-      <LegalSection title={isPro ? "13. Modifiche" : "12. Modifiche"}>
+      <LegalSection title={isPro ? "14. Modifiche" : "12. Modifiche"}>
         <p>
           Potremo aggiornare questi termini per motivi normativi, tecnici o di
           servizio.
@@ -385,7 +480,7 @@ export function TermsContent({ audience }: { audience: TermsAudience }) {
         </p>
       </LegalSection>
 
-      <LegalSection title={isPro ? "14. Legge applicabile e foro" : "13. Legge applicabile e foro"}>
+      <LegalSection title={isPro ? "15. Legge applicabile e foro" : "13. Legge applicabile e foro"}>
         <p>
           Si applica la <strong>legge italiana</strong>.{" "}
           {isPro

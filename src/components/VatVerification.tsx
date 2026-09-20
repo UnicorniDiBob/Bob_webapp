@@ -23,6 +23,7 @@ import {
   fraseEtichettaFinoAl,
   livelloVisibile,
   scadenzaBadge,
+  tettoRicontrollo,
   normalizeVat,
   MOTIVO_RICONTROLLO_TESTO,
   MOTIVO_RICONTROLLO_TITOLO,
@@ -181,11 +182,20 @@ export default function VatVerification({
     row?.recheck_opened_at ?? null
   );
   const inEsame = row?.vat_review_opened_at != null;
+  // IL TETTO (094): su un caso aperto per cessazione «la palla e' da noi» non
+  // tiene accesa l'etichetta all'infinito. Quando c'e', e' LUI la data da
+  // scrivere mentre esaminiamo: l'altra e' gia' passata.
+  const tetto = tettoRicontrollo(
+    row?.recheck_opened_at ?? null,
+    row?.recheck_reason ?? null
+  );
   const level: VerificationLevel = livelloVisibile(
     row?.level ?? "none",
     spegneIl,
-    inEsame
+    inEsame,
+    tetto
   );
+  const spegneMostrato = inEsame && tetto ? tetto : spegneIl;
   const review = row?.vat_review_state ?? null;
   const verified = level === "vat_verified" || level === "documents_verified";
   // Il form resta disponibile in ogni stato tranne "già verificato" (e lì
@@ -232,9 +242,14 @@ export default function VatVerification({
               {fraseEtichettaFinoAl(fmtDate(spegneIl))}
             </p>
           )}
-          {inEsame && (
+          {inEsame && !tetto && (
             <p className="mt-1 text-emerald-700/90">
               {"Stiamo guardando la tua pratica: finché la palla è da noi l'etichetta resta accesa, anche se intanto la data passa."}
+            </p>
+          )}
+          {inEsame && tetto && (
+            <p className="mt-1 text-emerald-700/90" data-testid="vat-tetto-esame">
+              {`Stiamo guardando la tua pratica e l'etichetta resta accesa mentre la esaminiamo. ${fraseEtichettaFinoAl(fmtDate(tetto), true)}`}
             </p>
           )}
         </div>
@@ -279,12 +294,12 @@ export default function VatVerification({
               (row?.recheck_reason ?? "scadenza") as keyof typeof MOTIVO_RICONTROLLO_TESTO
             ] ?? MOTIVO_RICONTROLLO_TESTO.scadenza}
           </p>
-          {spegneIl && (
+          {spegneMostrato && (
             <p
               className="mt-1 font-medium text-orange-900"
               data-testid="vat-ricontrollo-fino-al"
             >
-              {fraseEtichettaFinoAl(fmtDate(spegneIl), true)}
+              {fraseEtichettaFinoAl(fmtDate(spegneMostrato), true)}
             </p>
           )}
           {row?.vat_review_note && (

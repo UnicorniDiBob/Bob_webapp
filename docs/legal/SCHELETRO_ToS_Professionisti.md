@@ -134,10 +134,16 @@ D.Lgs. 206/2005 (obblighi del professionista verso il consumatore, artt. 49 ss. 
 verifichiamo (nuovo livello) o resta autodichiarata? (decisione A2).
 
 ### Art. 10 — Livelli di verifica: contenuto e conseguenze
-**[DA INSERIRE]** Tabella dei tre livelli (requisiti, controllo svolto, fonte,
-data esposta); requisiti minimi per categoria; conseguenze operative di ciascun
-livello (visibilità, accesso ai contatti, funzionalità sbloccate); procedura di
-upgrade; SLA di esame; effetti del declassamento.
+**[SCRITTO 20/09]** Termine di esame (5 giorni lavorativi, decorrenza e
+sospensione), durata e rinnovo (12 mesi, preavviso 30 giorni), ricontrollo e
+finestra di 7 giorni, effetti della cessazione della P.IVA col tetto dei 14
+giorni, natura reversibile della perdita di visibilità dell'etichetta e riserva
+di decisione umana sulla revoca del livello: tutto nella sezione 9 del testo
+pubblicato (`src/components/TermsContent.tsx`, versione 2026-09-v2).
+**[DA INSERIRE]** Resta: la tabella dei tre livelli (requisiti, controllo
+svolto, fonte, data esposta); i requisiti minimi per categoria; le conseguenze
+operative di ciascun livello (visibilità, accesso ai contatti, funzionalità
+sbloccate); la procedura di upgrade.
 **[NORME]** Art. 30 DSA; D.Lgs. 32/2023 (DAC7); art. 4 P2B (le restrizioni
 d'accesso vanno motivate).
 **[DECIDERE]** Tutto il blocco A1 della checklist — **bloccante per il codice del
