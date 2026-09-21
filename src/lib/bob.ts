@@ -97,7 +97,10 @@ export interface BobDecision {
   shortlistReason?: string | null;
   suggestedMessage?: string | null;
   // Opzioni di sotto-servizio per la recap card (solo quando next="city").
-  subtaskOptions?: { slug: string; name: string }[];
+  // quoteFields viaggia con ogni opzione apposta: quando il cliente corregge
+  // il sotto-servizio dalla recap card, la scheda lavoro deve potersi
+  // ricalcolare senza un secondo giro di rete (Fase 4, correctSubtask).
+  subtaskOptions?: { slug: string; name: string; quoteFields: QuoteField[] }[];
   // Le quote_fields del subtaskSlug risolto in questo turno (Fase 4, spec
   // §5): la scheda lavoro le usa per sapere cosa mostrare. Assente/vuoto se
   // il sotto-servizio non è ancora noto — ruleBasedDecision non lo imposta
@@ -584,7 +587,7 @@ export function ruleBasedDecision(
     suggestedMessage: `Ciao, ho bisogno ${svcNeed}. ${brief.summary ?? text}. Sei disponibile?`,
     subtaskOptions: subservices
       .filter((x) => x.serviceSlug === slug)
-      .map((x) => ({ slug: x.slug, name: x.name })),
+      .map((x) => ({ slug: x.slug, name: x.name, quoteFields: x.quoteFields ?? [] })),
   };
 }
 

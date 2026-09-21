@@ -211,13 +211,28 @@ export async function POST(request: Request) {
         next === "city" && brief.serviceSlug
           ? subservices
               .filter((x) => x.serviceSlug === brief.serviceSlug)
-              .map((x) => ({ slug: x.slug, name: x.name }))
+              .map((x) => ({
+                slug: x.slug,
+                name: x.name,
+                quoteFields: x.quoteFields ?? [],
+              }))
           : undefined,
       // La scheda lavoro (Fase 4) ne ha bisogno solo quando si passa alla
       // città: prima sarebbe un dato pronto ma inutile ad ogni turno.
       quoteFields:
         next === "city" ? fieldsForSubtask(brief.subtaskSlug, subservices) : undefined,
     };
+
+    // TEMP DIAGNOSTICA (issue scheda mai apparsa, 20/09): da togliere dopo.
+    console.error(
+      "[bob/chat][DIAG]",
+      JSON.stringify({
+        next,
+        subtaskSlug: brief.subtaskSlug,
+        serviceSlug: brief.serviceSlug,
+        quoteFieldsCount: decision.quoteFields?.length ?? null,
+      })
+    );
 
     return NextResponse.json({ ...decision, source: "ai" });
   } catch (err) {

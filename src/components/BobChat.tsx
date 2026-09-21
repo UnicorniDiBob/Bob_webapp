@@ -60,6 +60,7 @@ interface PendingPhoto {
 interface SubtaskOption {
   slug: string;
   name: string;
+  quoteFields: QuoteField[];
 }
 
 // Indirizzo salvato nell'account cliente (customer_addresses, migration 020).
@@ -182,6 +183,15 @@ export function BobChat({
       behavior: "smooth",
     });
   }, [messages, results, step, thinking]);
+
+  // TEMP DIAGNOSTICA (issue scheda mai apparsa, 20/09): da togliere dopo.
+  useEffect(() => {
+    console.log("[BobChat][DIAG]", {
+      step,
+      quoteFieldsLen: quoteFields.length,
+      subtaskSlug: brief.subtaskSlug,
+    });
+  }, [step, quoteFields, brief.subtaskSlug]);
 
   // Ripristina il draft al mount (solo client, evita mismatch di hydration).
   useEffect(() => {
@@ -429,6 +439,12 @@ export function BobChat({
   }
 
   // Correzioni one-tap dalla recap card (source: option_click).
+  // Una correzione lasciata a meta' - il chip aggiornato ma la scheda ferma
+  // sui campi del sotto-servizio sbagliato, o del tutto assente - e' peggio
+  // di non correggere: quoteFields e step vanno ricalcolati qui, non solo
+  // brief.subtaskSlug (bug del 20-21 settembre: correctSubtask non li
+  // toccava, e "mai una scheda vuota" restava vero per sempre una volta
+  // atterrati su un sotto-servizio senza campi).
   function correctSubtask(opt: SubtaskOption) {
     setBrief((b) => ({
       ...b,
@@ -439,6 +455,8 @@ export function BobChat({
       },
     }));
     setEditingSubtask(false);
+    setQuoteFields(opt.quoteFields);
+    setStep(opt.quoteFields.length > 0 ? "scheda" : "city");
   }
 
   // Fine della scheda lavoro (stadio B confermato, stadio C completato o
