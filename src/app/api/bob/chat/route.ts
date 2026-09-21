@@ -223,17 +223,6 @@ export async function POST(request: Request) {
         next === "city" ? fieldsForSubtask(brief.subtaskSlug, subservices) : undefined,
     };
 
-    // TEMP DIAGNOSTICA (issue scheda mai apparsa, 20/09): da togliere dopo.
-    console.error(
-      "[bob/chat][DIAG]",
-      JSON.stringify({
-        next,
-        subtaskSlug: brief.subtaskSlug,
-        serviceSlug: brief.serviceSlug,
-        quoteFieldsCount: decision.quoteFields?.length ?? null,
-      })
-    );
-
     return NextResponse.json({ ...decision, source: "ai" });
   } catch (err) {
     // Errore API (chiave non valida, modello inesistente, rate limit, ecc.):

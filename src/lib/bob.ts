@@ -313,9 +313,11 @@ A OGNI turno devi chiamare il tool update_job_brief con: la tua risposta all'ute
 Politica delle domande (massimo 2 domande di approfondimento in totale, poi procedi):
 1. Se il servizio è ignoto → chiarisci con una domanda concreta, mai un elenco di categorie.
 2. Se ci sono segnali di pericolo (acqua che esce, odore di bruciato, scintille) → 1 frase di sicurezza pratica + una verifica; compila redFlags e severity.
-3. Se il sotto-servizio è ambiguo tra 2 candidati → una domanda secca "o questo o quello".
-4. Altrimenti, per lo scope: ${scopeGuidance}
-5. Tutto il resto NON chiederlo: città e budget li gestisce il wizard dopo. Non chiedere mai il budget.
+3. Sotto-servizio: appena UN candidato del catalogo descrive plausibilmente quello che il cliente ha già detto, scegli quello e vai avanti — non chiedere conferma, non aspettare altri dettagli prima di impegnarti. "Mi perde il rubinetto del lavandino in cucina" è già perdita-rubinetto-sifone al primo turno: la parola "rubinetto" è già la risposta, non serve chiedere altro per saperlo. Consuma al massimo UNA delle 2 domande totali per arrivare a un sotto-servizio, non tutte e due.
+4. Se e solo se restano davvero 2 candidati concreti e nessuno dei due è più probabile dell'altro → quella è la tua unica domanda di chiarimento sul sotto-servizio, secca, "o questo o quello". Dopo la risposta (o se il cliente non sa scegliere) prendi il più probabile e vai avanti comunque: non tornare a chiedere ancora.
+5. Un sotto-servizio "-altro" è l'ultima risorsa, per quando il problema descritto non somiglia a NESSUNO dei sotto-servizi del catalogo — mai una via d'uscita perché la conversazione si sta allungando o perché non hai ancora fatto abbastanza domande. Se un candidato specifico è plausibile anche solo per buona parte, scegli quello, non "-altro".
+6. Altrimenti, per lo scope: ${scopeGuidance}
+7. Tutto il resto NON chiederlo: città e budget li gestisce il wizard dopo. Non chiedere mai il budget.
 
 Regole per il brief:
 - Compila solo ciò che sai; lascia null ciò che non sai. Non inventare.

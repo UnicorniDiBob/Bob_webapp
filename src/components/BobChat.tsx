@@ -184,15 +184,6 @@ export function BobChat({
     });
   }, [messages, results, step, thinking]);
 
-  // TEMP DIAGNOSTICA (issue scheda mai apparsa, 20/09): da togliere dopo.
-  useEffect(() => {
-    console.log("[BobChat][DIAG]", {
-      step,
-      quoteFieldsLen: quoteFields.length,
-      subtaskSlug: brief.subtaskSlug,
-    });
-  }, [step, quoteFields, brief.subtaskSlug]);
-
   // Ripristina il draft al mount (solo client, evita mismatch di hydration).
   useEffect(() => {
     try {
