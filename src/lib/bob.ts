@@ -172,6 +172,27 @@ export function fieldsForSubtask(
   return subservices.find((x) => x.slug === subtaskSlug)?.quoteFields ?? [];
 }
 
+// Le quote_fields di TUTTI i sotto-servizi di un servizio, quando il
+// sotto-servizio esatto non è ancora noto ma il servizio sì (o si può
+// indovinare dal testo). Serve solo come riferimento nel prompt — mai come
+// schema stretto del tool, perché la stessa chiave (es. "intervento") ha
+// opzioni diverse da un sotto-servizio all'altro e non si può unificare in
+// un'unica proprietà. Il modello legge questo elenco per capire quali nomi
+// di chiave esistono nella famiglia, sceglie quelle del sotto-servizio che
+// sta per assegnare, e validateScope scarta lato server tutto il resto —
+// vedi buildSystemPrompt, scopeGuidance.
+export function fieldsForService(
+  serviceSlug: string | null,
+  subservices: SubserviceRef[]
+): { slug: string; name: string; quoteFields: QuoteField[] }[] {
+  if (!serviceSlug) return [];
+  return subservices
+    .filter(
+      (x) => x.serviceSlug === serviceSlug && (x.quoteFields?.length ?? 0) > 0
+    )
+    .map((x) => ({ slug: x.slug, name: x.name, quoteFields: x.quoteFields ?? [] }));
+}
+
 // Limite generico in assenza di un min/max per campo nel catalogo (la spec
 // §3.1 lo dà come esempio — "mq_approx tra 5 e 2000" — non come vincolo
 // salvato per ogni campo). Fino a quando quote_fields non porta i suoi
@@ -268,7 +289,15 @@ export function validateScope(
 export function buildSystemPrompt(
   services: ServiceRef[],
   subservices: SubserviceRef[],
-  candidateFields: QuoteField[] = []
+  candidateFields: QuoteField[] = [],
+  // Le quote_fields di tutti i sotto-servizi del servizio già noto (o
+  // indovinato dal testo), quando il sotto-servizio esatto non lo è ancora.
+  // Senza questo, il turno in cui il modello assegna il sotto-servizio per
+  // la prima volta non ha alcun riferimento sulle sue chiavi e non può
+  // compilare scope da quel che il cliente ha appena scritto — la scheda
+  // arriva vuota anche quando la risposta era già nel messaggio di apertura
+  // (regressione del 22 settembre, vedi fieldsForService).
+  serviceFieldsHint: { slug: string; name: string; quoteFields: QuoteField[] }[] = []
 ): string {
   const catalog = services
     .map((s) => {
@@ -299,7 +328,26 @@ export function buildSystemPrompt(
           .join(
             "\n"
           )}\nNON fare NESSUNA domanda su queste chiavi, nemmeno una — la scheda lavoro le chiede subito dopo, con un tap ciascuna, ed è quello il posto giusto: chiederle anche in chat significa farle chiedere due volte. Se la risposta è già dentro un messaggio del cliente (anche il primo), compilala nel campo scope con la source giusta (user_text/photo/inferred); se non c'è, lasciala null e vai avanti comunque — resterà scoperta finché non la conferma la scheda. Non usare NESSUN'ALTRA chiave.`
-      : `Il sotto-servizio non è ancora chiaro (vedi le regole sul servizio e sul sotto-servizio qui sopra): chiariscilo prima. Finché serviceSlug + subtaskSlug non sono noti, lascia scope vuoto — non riceverai un elenco di chiavi valide finché non lo sono.
+      : serviceFieldsHint.length > 0
+        ? `Il sotto-servizio esatto non è ancora assegnato, ma è quasi certamente uno di questi (stesso servizio) — le loro chiavi di scope, per riferimento:
+${serviceFieldsHint
+  .map(
+    (s) =>
+      `  - ${s.slug}: ${s.quoteFields
+        .map(
+          (f) =>
+            `${f.key}${
+              f.type === "select"
+                ? ` (una di: ${(f.options ?? []).join(", ")})`
+                : ` (${f.type})`
+            }`
+        )
+        .join(", ")}`
+  )
+  .join(
+    "\n"
+  )}\nSe in QUESTO turno assegni tu stesso il sotto-servizio (punto 3) e il messaggio del cliente contiene già la risposta a una delle chiavi DI QUEL sotto-servizio specifico (non di un altro elencato qui sopra), compilala subito in scope — non aspettare il turno successivo, è esattamente il caso per cui questo elenco esiste. Non inventare un valore che il cliente non ha detto. NON fare NESSUNA domanda su queste chiavi, in nessun caso: restano da confermare nella scheda lavoro, mai in chat.`
+        : `Il sotto-servizio non è ancora chiaro (vedi le regole sul servizio e sul sotto-servizio qui sopra): chiariscilo prima. Finché serviceSlug + subtaskSlug non sono noti, lascia scope vuoto — non riceverai un elenco di chiavi valide finché non lo sono.
 
 ATTENZIONE se stai per assegnare tu stesso il sotto-servizio in QUESTO turno (punto 3): non hai ancora davanti l'elenco delle sue chiavi di scope, quindi non puoi sapere se la domanda che stai per fare ne duplica una. Non improvvisarla: in questo turno chiedi solo quello che le regole 1, 2 e 4 ti autorizzano esplicitamente (servizio ignoto, pericolo, ambiguità fra 2 sotto-servizi). Se hai già servizio + sotto-servizio + severity, non fare NESSUN'ALTRA domanda anche se non hai ancora scope: passa direttamente a next="city".`;
 
@@ -347,7 +395,7 @@ function buildScopeSchema(candidateFields: QuoteField[]) {
     return {
       type: "object" as const,
       description:
-        "Il sotto-servizio non è ancora noto: lascia questo oggetto vuoto.",
+        "Il sotto-servizio non ha ancora un elenco di chiavi validato in questo turno. Se lo stai assegnando proprio ora (vedi le istruzioni sopra) e il messaggio del cliente contiene già la risposta a uno dei suoi campi tipici, puoi comunque scriverla qui con la chiave che ti sembra più corretta: il server scarta ogni chiave che non appartiene davvero al sotto-servizio risolto. Altrimenti lascia l'oggetto vuoto.",
     };
   }
   const properties: Record<string, Record<string, unknown>> = {};

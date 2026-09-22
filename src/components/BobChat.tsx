@@ -886,90 +886,131 @@ export function BobChat({
         )}
 
         {/* recap card: cosa Bob ha capito, correggibile con un tap.
-            Non allo stadio "scheda": la scheda ripete la stessa cosa nel
-            suo titolo, con la sua correzione inline - due card che dicono
-            la stessa frase sono una, non due (vedi SchedaLavoro.tsx). */}
+            Non allo stadio "scheda" (la scheda lo dice gia' nel suo
+            titolo, con la sua correzione inline - vedi SchedaLavoro.tsx),
+            e non più a NESSUNO stadio successivo (città, zona, urgenza,
+            budget, risultati) quando una scheda è esistita per questa
+            conversazione: l'ha già chiesto lei una volta, ripeterlo a ogni
+            passo successivo è la stessa ridondanza spostata più avanti,
+            non tolta. Resta come unico ripiego quando non c'è mai stata
+            una scheda da mostrare (quoteFields vuoto per tutta la
+            conversazione, es. un sotto-servizio senza campi). */}
         {step !== "intent" &&
           step !== "chat" &&
           step !== "scheda" &&
-          brief.serviceSlug && (
-          <div
-            className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
-            data-testid="brief-recap"
-          >
-            <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
-              Ecco cosa ho capito
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {collected.serviceName && (
-                <span className="chip bg-bob-indigo-50 text-bob-indigo">
-                  {collected.serviceName}
-                </span>
-              )}
-              {brief.subtaskSlug && !editingSubtask && (
-                <button
-                  onClick={() =>
-                    subtaskOptions.length > 0 && setEditingSubtask(true)
-                  }
-                  className="chip bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100"
-                  data-testid="chip-subtask"
-                  title="Tocca per correggere"
-                >
-                  {subtaskOptions.find((o) => o.slug === brief.subtaskSlug)
-                    ?.name ?? brief.subtaskSlug}
-                  {subtaskOptions.length > 0 && (
-                    <span className="ml-1 text-bob-indigo/50">✎</span>
-                  )}
-                </button>
-              )}
-              {collected.cityName && (
-                <span className="chip bg-bob-indigo-50 text-bob-indigo">
-                  {collected.cityName}
-                </span>
-              )}
-            </div>
-            {editingSubtask && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {subtaskOptions.map((o) => (
+          brief.serviceSlug &&
+          (quoteFields.length === 0 ? (
+            <div
+              className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
+              data-testid="brief-recap"
+            >
+              <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
+                Ecco cosa ho capito
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {collected.serviceName && (
+                  <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                    {collected.serviceName}
+                  </span>
+                )}
+                {brief.subtaskSlug && !editingSubtask && (
                   <button
-                    key={o.slug}
-                    onClick={() => correctSubtask(o)}
-                    className={`chip ${
-                      o.slug === brief.subtaskSlug
-                        ? "bg-bob-indigo text-white"
-                        : "hover:bg-bob-indigo-100"
-                    }`}
-                    data-testid={`chip-subtask-${o.slug}`}
+                    onClick={() =>
+                      subtaskOptions.length > 0 && setEditingSubtask(true)
+                    }
+                    className="chip bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100"
+                    data-testid="chip-subtask"
+                    title="Tocca per correggere"
                   >
-                    {o.name}
+                    {subtaskOptions.find((o) => o.slug === brief.subtaskSlug)
+                      ?.name ?? brief.subtaskSlug}
+                    {subtaskOptions.length > 0 && (
+                      <span className="ml-1 text-bob-indigo/50">✎</span>
+                    )}
+                  </button>
+                )}
+                {collected.cityName && (
+                  <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                    {collected.cityName}
+                  </span>
+                )}
+              </div>
+              {editingSubtask && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {subtaskOptions.map((o) => (
+                    <button
+                      key={o.slug}
+                      onClick={() => correctSubtask(o)}
+                      className={`chip ${
+                        o.slug === brief.subtaskSlug
+                          ? "bg-bob-indigo text-white"
+                          : "hover:bg-bob-indigo-100"
+                      }`}
+                      data-testid={`chip-subtask-${o.slug}`}
+                    >
+                      {o.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {(["alta", "media", "bassa"] as Severity[]).map((sev) => (
+                  <button
+                    key={sev}
+                    onClick={() => correctSeverity(sev)}
+                    className={`chip text-xs ${
+                      brief.severity === sev
+                        ? "bg-bob-indigo text-white"
+                        : "text-bob-ink/65 hover:bg-bob-indigo-100"
+                    }`}
+                    data-testid={`chip-severity-${sev}`}
+                  >
+                    {SEVERITY_LABELS[sev]}
                   </button>
                 ))}
               </div>
-            )}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {(["alta", "media", "bassa"] as Severity[]).map((sev) => (
-                <button
-                  key={sev}
-                  onClick={() => correctSeverity(sev)}
-                  className={`chip text-xs ${
-                    brief.severity === sev
-                      ? "bg-bob-indigo text-white"
-                      : "text-bob-ink/65 hover:bg-bob-indigo-100"
-                  }`}
-                  data-testid={`chip-severity-${sev}`}
-                >
-                  {SEVERITY_LABELS[sev]}
-                </button>
-              ))}
+              {brief.photos.length > 0 && brief.photos[0].aiCaption && (
+                <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/65">
+                  <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span>{brief.photos[0].aiCaption}</span>
+                </p>
+              )}
             </div>
-            {brief.photos.length > 0 && brief.photos[0].aiCaption && (
-              <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/65">
-                <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                <span>{brief.photos[0].aiCaption}</span>
-              </p>
-            )}
-          </div>
-        )}
+          ) : (
+            // La scheda ha già confermato servizio + sotto-servizio: qui
+            // resta solo quello che la scheda NON copre e che può ancora
+            // valere la pena correggere più avanti nel flusso.
+            (brief.severity ||
+              (brief.photos.length > 0 && brief.photos[0].aiCaption)) && (
+              <div
+                className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
+                data-testid="brief-recap-slim"
+              >
+                <div className="flex flex-wrap gap-1.5">
+                  {(["alta", "media", "bassa"] as Severity[]).map((sev) => (
+                    <button
+                      key={sev}
+                      onClick={() => correctSeverity(sev)}
+                      className={`chip text-xs ${
+                        brief.severity === sev
+                          ? "bg-bob-indigo text-white"
+                          : "text-bob-ink/65 hover:bg-bob-indigo-100"
+                      }`}
+                      data-testid={`chip-severity-${sev}`}
+                    >
+                      {SEVERITY_LABELS[sev]}
+                    </button>
+                  ))}
+                </div>
+                {brief.photos.length > 0 && brief.photos[0].aiCaption && (
+                  <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/65">
+                    <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span>{brief.photos[0].aiCaption}</span>
+                  </p>
+                )}
+              </div>
+            )
+          ))}
 
         {/* scheda lavoro: conferma i campi del sotto-servizio (spec §5) */}
         {step === "scheda" && brief.subtaskSlug && quoteFields.length > 0 && (
