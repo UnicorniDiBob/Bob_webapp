@@ -187,7 +187,20 @@ export async function POST(request: Request) {
       brief = { ...brief, photos: [...brief.photos, { storagePath, aiCaption }] };
     }
 
-    const next: BobDecision["next"] = input.next === "city" ? "city" : "ask";
+    const modelNext = input.next === "city" ? "city" : "ask";
+    // Backstop deterministico: una volta noti servizio + sotto-servizio +
+    // severity non c'e' piu' nessuna domanda legittima (vedi bob.ts, politica
+    // delle domande) - tocca alla scheda lavoro. Il modello a volte ne fa
+    // comunque una in piu', soprattutto nel turno in cui risolve il
+    // sotto-servizio per la prima volta (non ha ancora l'elenco delle sue
+    // chiavi di scope per sapere se la sta duplicando, vedi scopeGuidance).
+    // La sua reply puo' restare una domanda testuale, ma la conversazione
+    // non aspetta piu' la risposta: la scheda prende il testimone subito.
+    const next: BobDecision["next"] =
+      modelNext === "city" ||
+      (brief.serviceSlug && brief.subtaskSlug && brief.severity)
+        ? "city"
+        : "ask";
     const reply =
       typeof input.reply === "string" && input.reply.trim()
         ? input.reply.trim()
