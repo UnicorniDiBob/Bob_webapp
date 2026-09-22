@@ -1,3 +1,32 @@
+# Passaggio di consegne — 22 settembre 2026 (André, con Claude)
+
+> Sessione in corso (scheda lavoro, Fase 4): non ancora chiusa, PR non
+> ancora aperta. Questa voce si aggiorna quando la sessione finisce
+> davvero. Nel frattempo, una cosa emersa oggi che serve segnare subito.
+
+## Per Lucio — traccia sua, non mia
+
+**CAP come domanda primaria del passo zona: proposto e ritirato oggi**, non
+costruito. `requests.postal_code` (046) è display-only — non entra in
+`coverage_keys_for`, a differenza di `zone_slug`. Renderlo la domanda di
+default avrebbe indebolito il matching senza che si vedesse in nessuna
+schermata. Dettaglio completo, coi comandi per riverificarlo, in
+`docs/NOTE_E_DECISIONI.md`, voce 22/09.
+
+Se un giorno si vuole fare davvero: prima il wiring di `postal_code` (o la
+sua conversione) dentro il matching — è codice tuo, cambia chi vede quali
+richieste — **poi**, separatamente, una fonte vera di CAP→quartiere per
+Milano, sourced come i dati NIL dell'84 (dataset ufficiale, licenza
+tracciata), mai un elenco scritto a mano. Non è iniziata né l'una né
+l'altra.
+
+Quello che invece è stato fatto oggi, lato mio: l'indirizzo salvato del
+cliente porta ora zona/CAP autodichiarati (migrazione 095, non ancora
+applicata), chiesti una volta al salvataggio — non tocca il matching, non
+tocca il tuo codice.
+
+---
+
 # Passaggio di consegne — 17 settembre 2026 (Lucio, con Claude)
 
 > Aggiunge la giornata di oggi in cima. Le voci del 14 settembre e quelle

@@ -70,6 +70,10 @@ interface SavedAddress {
   address_line: string;
   city_slug: string | null;
   is_default: boolean;
+  // Zona/CAP autodichiarati al salvataggio (mig 095): se presenti, Bob non
+  // chiede più "in che zona?" quando questo indirizzo viene scelto in chat.
+  zone_slug: string | null;
+  postal_code: string | null;
 }
 
 interface Collected {
@@ -279,7 +283,7 @@ export function BobChat({
       const supabase = createClient();
       const { data } = await supabase
         .from("customer_addresses")
-        .select("id,label,address_line,city_slug,is_default")
+        .select("id,label,address_line,city_slug,is_default,zone_slug,postal_code")
         .order("is_default", { ascending: false })
         .order("created_at", { ascending: true });
       setSavedAddresses((data as SavedAddress[]) ?? []);
@@ -595,7 +599,20 @@ export function BobChat({
       address: a.address_line,
       citySlug: city.slug,
       cityName: city.name,
+      ...(a.zone_slug
+        ? { zoneSlug: a.zone_slug }
+        : a.postal_code
+          ? { postalCode: a.postal_code }
+          : {}),
     }));
+    // Zona o CAP dichiarati una volta al salvataggio dell'indirizzo (mig
+    // 095): non richiederli di nuovo qui, stesso trattamento di un chip
+    // toccato a mano (pickZone/submitCap).
+    if (a.zone_slug || a.postal_code) {
+      bobSay("Quando ti servirebbe?");
+      setStep("urgency");
+      return;
+    }
     askZoneOrUrgency(city.slug);
   }
 

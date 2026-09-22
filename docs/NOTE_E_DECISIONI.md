@@ -6,6 +6,54 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 
 ---
 
+## 2026-09-22 · Perché il CAP non può diventare la domanda primaria del passo zona, non ancora (decisione di André, con Claude)
+
+**Proposto e ritirato nella stessa sessione**: durante il lavoro sulla scheda
+lavoro (Fase 4) André ha proposto di invertire il passo "zona" di `BobChat` —
+CAP come domanda principale, i 28 chip di quartiere come ripiego, invece del
+contrario di oggi (045/046). Prima di costruirlo, verificato che cosa succede
+davvero ai due valori dopo che il cliente li dà:
+
+- `requests.zone_slug` entra in `coverage_keys_for` (vedi `SPEC_comune_nella_chat.md`
+  §"Il confronto") ed è un gettone che decide QUALI professionisti vedono la
+  richiesta — pesa nel matching.
+- `requests.postal_code` (046) **non entra in nessuna query di copertura o
+  ordinamento**. `grep -rn postal_code src/lib src/app/api` mostra un solo
+  consumo: `src/app/api/pro/request-summary/route.ts` lo rilegge per
+  mostrarlo al professionista. È testo da leggere, non un segnale che
+  restringe l'elenco — la 046 lo dice già nel suo commento ("il professionista
+  legge «Milano 20159» senza il «~4 km da te»"), ma è facile dimenticarlo
+  guardando solo la UI.
+
+**Conseguenza:** rendere il CAP la risposta di default avrebbe silenziosamente
+indebolito il matching per chiunque rispondesse con un CAP invece di un
+quartiere — un regresso di funzionalità nascosto dentro quello che sembrava un
+riordino di interfaccia.
+
+**Cosa servirebbe prima di poterlo fare, entrambe le cose, non una sola:**
+1. Wiring: far entrare `postal_code` in `coverage_keys_for` (o convertirlo in
+   `zone_slug` a monte) — cambia la logica di matching, quindi è traccia di
+   Lucio, non un ritocco di `BobChat`.
+2. Una fonte reale di CAP→quartiere per Milano, sourced come i dati NIL
+   dell'84 (dataset ufficiale, licenza tracciata, generatore verificabile) —
+   mai un elenco scritto a memoria. Oggi in `public/geo/` ci sono i confini
+   NIL e provinciali, NESSUN confine di CAP: le due geometrie non coincidono
+   (un CAP può attraversare più NIL e viceversa), quindi non si deriva
+   dall'una l'altra senza il dato vero.
+
+**Cosa si è fatto invece, nella stessa sessione**: l'indirizzo salvato del
+cliente (`customer_addresses`, migrazione 095) porta ora zona e CAP
+autodichiarati, chiesti una volta al salvataggio — non ricavati
+dall'indirizzo, stesso principio di 045/046. Quando il cliente sceglie un
+indirizzo salvato che già li ha, Bob salta la domanda in chat. Il passo zona
+resta com'è per chi non ha un indirizzo salvato con quel dato.
+
+**Se questa proposta ritorna** (interfaccia più snella, "il CAP lo sanno
+tutti"): il punto 1 va risolto per primo, verificabile con lo stesso `grep`
+di sopra che restituisce più di una riga.
+
+---
+
 ## 2026-09-14 · Verifica: cosa vede il pro mentre aspetta, e dove vanno scritte le regole dell'abbonamento (decisioni di Lucio)
 
 **La barretta dell'SLA entra solo quando il controllo automatico non passa.**
