@@ -1442,6 +1442,12 @@ export function BobChat({
             briefId,
             // (6b) il brief sa gia' quale lavoro e': non buttarlo via qui
             subserviceSlug: brief.subtaskSlug ?? null,
+            // Scheda lavoro (Fase 4): scope gia' validato in chat, +
+            // quello che serve al risolutore di quote_mode (spec §2)
+            scope: brief.scope,
+            redFlags: brief.redFlags,
+            propertyType: brief.propertyType,
+            hasPhoto: brief.photos.length > 0,
           }}
           onClose={() => setRequestFor(null)}
         />
@@ -1467,6 +1473,12 @@ export function BobChat({
             // (045/046) posizione grossolana, visibile ai pro prima della scelta
             zoneSlug: collected.zoneSlug ?? null,
             postalCode: collected.postalCode ?? null,
+            // Scheda lavoro (Fase 4): scope gia' validato in chat, +
+            // quello che serve al risolutore di quote_mode (spec §2)
+            scope: brief.scope,
+            redFlags: brief.redFlags,
+            propertyType: brief.propertyType,
+            hasPhoto: brief.photos.length > 0,
           }}
           onClose={() => setQuoteOpen(false)}
         />

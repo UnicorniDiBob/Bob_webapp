@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "./AuthProvider";
 import { notifyEvent } from "@/lib/notify";
 import { CircleCheck } from "lucide-react";
-import type { ProfessionalCard } from "@/lib/supabase/types";
+import type { ProfessionalCard, QuoteField } from "@/lib/supabase/types";
+import { resolveQuoteModeFromScope, type QuoteLevel } from "@/lib/quoting";
 
 interface RequestContext {
   citySlug?: string;
@@ -31,6 +32,14 @@ interface RequestContext {
   zoneSlug?: string | null;
   // (046) ripiego del quartiere: cinque cifre, stessa grana
   postalCode?: string | null;
+  // Scheda lavoro (Fase 4, spec §3/§5): le risposte raccolte per chiave,
+  // già validate contro quote_fields dal server durante la chat. Viaggia
+  // qui invariata fino a requests.scope — nessuna nuova validazione, quella
+  // è già avvenuta in /api/bob/chat.
+  scope?: Record<string, string | number | boolean> | null;
+  redFlags?: string[] | null;
+  propertyType?: string | null;
+  hasPhoto?: boolean;
 }
 
 export function RequestDialog({
@@ -89,19 +98,27 @@ export function RequestDialog({
    * (6b) L'intervento vale solo dentro il suo mestiere: se la coppia non
    * torna — il cliente cercava un lavoro di un altro mestiere — resta NULL,
    * che e' meglio di un intervento sbagliato scritto sulla richiesta.
+   *
+   * Porta anche quote_level e quote_fields: servono al risolutore di
+   * quote_mode (src/lib/quoting.ts, spec §2), non solo all'id da scrivere.
    */
-  async function resolveSubserviceId(
+  async function resolveSubservice(
     serviceId: string,
     slug?: string | null
-  ): Promise<string | null> {
+  ): Promise<{ id: string; quoteLevel: QuoteLevel; quoteFields: QuoteField[] } | null> {
     if (!slug) return null;
     const { data } = await supabase
       .from("subservices")
-      .select("id")
+      .select("id, quote_level, quote_fields")
       .eq("slug", slug)
       .eq("service_id", serviceId)
       .maybeSingle();
-    return (data?.id as string) ?? null;
+    if (!data) return null;
+    return {
+      id: data.id as string,
+      quoteLevel: (data.quote_level as QuoteLevel) ?? "survey",
+      quoteFields: (data.quote_fields as QuoteField[]) ?? [],
+    };
   }
 
   async function submit() {
@@ -129,10 +146,29 @@ export function RequestDialog({
         return;
       }
 
-      const subserviceId = await resolveSubserviceId(
+      const subservice = await resolveSubservice(
         serviceId,
         context.subserviceSlug
       );
+      const scope = context.scope ?? {};
+      // Fuori dalla scala se il sotto-servizio non si e' risolto: senza
+      // quote_level di default il risolutore non ha niente da abbassare.
+      const quoteMode =
+        subservice && context.subserviceSlug
+          ? resolveQuoteModeFromScope({
+              subtaskSlug: context.subserviceSlug,
+              defaultQuoteLevel: subservice.quoteLevel,
+              quoteFields: subservice.quoteFields.map((f) => ({
+                key: f.key,
+                is_billable_unit: f.is_billable_unit,
+              })),
+              scope,
+              redFlags: context.redFlags,
+              urgency: context.urgency,
+              propertyType: context.propertyType,
+              hasPhoto: context.hasPhoto,
+            })
+          : null;
 
       const { data: req, error: reqErr } = await supabase
         .from("requests")
@@ -140,7 +176,9 @@ export function RequestDialog({
           customer_id: user.id,
           city_id: cityId,
           service_id: serviceId,
-          subservice_id: subserviceId,
+          subservice_id: subservice?.id ?? null,
+          scope,
+          quote_mode: quoteMode,
           status: "sent",
           problem_description: context.problem ?? message,
           urgency: context.urgency ?? null,
