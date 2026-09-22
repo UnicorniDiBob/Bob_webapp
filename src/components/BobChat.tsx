@@ -885,8 +885,14 @@ export function BobChat({
           </div>
         )}
 
-        {/* recap card: cosa Bob ha capito, correggibile con un tap */}
-        {step !== "intent" && step !== "chat" && brief.serviceSlug && (
+        {/* recap card: cosa Bob ha capito, correggibile con un tap.
+            Non allo stadio "scheda": la scheda ripete la stessa cosa nel
+            suo titolo, con la sua correzione inline - due card che dicono
+            la stessa frase sono una, non due (vedi SchedaLavoro.tsx). */}
+        {step !== "intent" &&
+          step !== "chat" &&
+          step !== "scheda" &&
+          brief.serviceSlug && (
           <div
             className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
             data-testid="brief-recap"
@@ -977,6 +983,12 @@ export function BobChat({
             initialScope={brief.scope}
             initialFieldMeta={brief.fieldMeta}
             onConfirm={completeScheda}
+            subtaskSlug={brief.subtaskSlug}
+            subtaskOptions={subtaskOptions}
+            onCorrectSubtask={correctSubtask}
+            severity={brief.severity}
+            onCorrectSeverity={correctSeverity}
+            photoCaption={brief.photos[0]?.aiCaption}
           />
         )}
 

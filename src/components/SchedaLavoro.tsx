@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Camera } from "lucide-react";
 import type { QuoteField } from "@/lib/supabase/types";
-import type { FieldMeta } from "@/lib/bob";
+import type { FieldMeta, Severity } from "@/lib/bob";
+import { SEVERITY_LABELS } from "@/lib/matching";
 
 // Stadio B/C della scheda lavoro (QUOTE_INTAKE_SPEC §5): non un form, una
 // conferma. Bob mostra i campi che ha già valorizzato (stadio B, "conferma,
@@ -12,12 +14,28 @@ import type { FieldMeta } from "@/lib/bob";
 
 export type Scope = Record<string, string | number | boolean>;
 
+interface SubtaskOption {
+  slug: string;
+  name: string;
+  quoteFields: QuoteField[];
+}
+
 interface SchedaLavoroProps {
   subtaskName: string;
   quoteFields: QuoteField[];
   initialScope: Scope;
   initialFieldMeta: Record<string, FieldMeta>;
   onConfirm: (scope: Scope, fieldMeta: Record<string, FieldMeta>) => void;
+  // La recap card diceva servizio + sotto-servizio, e questa scheda li
+  // ripeteva nell'intestazione: due card, la stessa frase. Ora la
+  // correzione del sotto-servizio e della severity vive qui, non in una
+  // seconda card sopra — un solo posto che dice "cosa ho capito".
+  subtaskSlug: string;
+  subtaskOptions: SubtaskOption[];
+  onCorrectSubtask: (opt: SubtaskOption) => void;
+  severity: Severity | null;
+  onCorrectSeverity: (sev: Severity) => void;
+  photoCaption?: string | null;
 }
 
 function fieldVisible(field: QuoteField, scope: Scope): boolean {
@@ -31,6 +49,12 @@ export function SchedaLavoro({
   initialScope,
   initialFieldMeta,
   onConfirm,
+  subtaskSlug,
+  subtaskOptions,
+  onCorrectSubtask,
+  severity,
+  onCorrectSeverity,
+  photoCaption,
 }: SchedaLavoroProps) {
   const [scope, setScope] = useState<Scope>(initialScope);
   const [fieldMeta, setFieldMeta] = useState<Record<string, FieldMeta>>(
@@ -39,6 +63,7 @@ export function SchedaLavoro({
   const [unknownKeys, setUnknownKeys] = useState<Set<string>>(new Set());
   const [stage, setStage] = useState<"confirm" | "precision">("confirm");
   const [precisionOpen, setPrecisionOpen] = useState(false);
+  const [editingSubtask, setEditingSubtask] = useState(false);
 
   function isGuess(key: string): boolean {
     return scope[key] !== undefined && fieldMeta[key]?.source !== "option_click";
@@ -109,12 +134,69 @@ export function SchedaLavoro({
       className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
       data-testid="scheda-lavoro"
     >
-      <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
-        Scheda lavoro — {subtaskName}
-      </p>
+      {subtaskOptions.length > 0 && !editingSubtask ? (
+        <button
+          onClick={() => setEditingSubtask(true)}
+          className="text-left text-2xs font-semibold uppercase tracking-wide text-bob-ink/65 hover:text-bob-indigo"
+          data-testid="scheda-subtask-edit"
+          title="Tocca per correggere il sotto-servizio"
+        >
+          Scheda lavoro — {subtaskName}{" "}
+          <span className="normal-case text-bob-indigo/50">✎</span>
+        </button>
+      ) : (
+        <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
+          Scheda lavoro — {subtaskName}
+        </p>
+      )}
+      {editingSubtask && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {subtaskOptions.map((o) => (
+            <button
+              key={o.slug}
+              onClick={() => {
+                setEditingSubtask(false);
+                onCorrectSubtask(o);
+              }}
+              className={`chip ${
+                o.slug === subtaskSlug
+                  ? "bg-bob-indigo text-white"
+                  : "hover:bg-bob-indigo-100"
+              }`}
+              data-testid={`scheda-subtask-option-${o.slug}`}
+            >
+              {o.name}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="mt-1 text-xs text-bob-ink/70">
         Controlla quello che ho capito: tocca un campo per correggerlo.
       </p>
+      {severity && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {(["alta", "media", "bassa"] as Severity[]).map((sev) => (
+            <button
+              key={sev}
+              onClick={() => onCorrectSeverity(sev)}
+              className={`chip text-xs ${
+                severity === sev
+                  ? "bg-bob-indigo text-white"
+                  : "text-bob-ink/65 hover:bg-bob-indigo-100"
+              }`}
+              data-testid={`scheda-severity-${sev}`}
+            >
+              {SEVERITY_LABELS[sev]}
+            </button>
+          ))}
+        </div>
+      )}
+      {photoCaption && (
+        <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/65">
+          <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+          <span>{photoCaption}</span>
+        </p>
+      )}
 
       {stageBFields.length > 0 && (
         <div className="mt-3 flex flex-col gap-3">
@@ -130,16 +212,6 @@ export function SchedaLavoro({
             />
           ))}
         </div>
-      )}
-
-      {stage === "confirm" && (
-        <button
-          onClick={confirmStageB}
-          className="btn-primary mt-3 w-full py-2.5 text-sm"
-          data-testid="scheda-confirm"
-        >
-          Confermo, va bene così
-        </button>
       )}
 
       {stage === "precision" && (
@@ -178,23 +250,42 @@ export function SchedaLavoro({
               ))}
             </div>
           )}
+        </div>
+      )}
 
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={finish}
-              className="btn-secondary flex-1 py-2.5 text-xs"
-              data-testid="scheda-skip"
-            >
-              Salta, ho fretta
-            </button>
-            <button
-              onClick={finish}
-              className="btn-primary flex-1 py-2.5 text-xs"
-              data-testid="scheda-continue"
-            >
-              Continua
-            </button>
-          </div>
+      {/* Sticky sul fondo del pannello chat (overflow-y-auto in BobChat.tsx):
+          una scheda con molti campi puo' superare i 460px del riquadro, e lo
+          skip di stadio C "sempre disponibile" (spec §5) non lo e' se serve
+          scorrere per trovarlo. Vale anche per la conferma di stadio B, stessa
+          ragione. */}
+      {stage === "confirm" && (
+        <div className="sticky bottom-0 -mx-3.5 -mb-3.5 mt-3 bg-white px-3.5 pb-3.5 pt-2">
+          <button
+            onClick={confirmStageB}
+            className="btn-primary w-full py-2.5 text-sm"
+            data-testid="scheda-confirm"
+          >
+            Confermo, va bene così
+          </button>
+        </div>
+      )}
+
+      {stage === "precision" && (
+        <div className="sticky bottom-0 -mx-3.5 -mb-3.5 mt-3 flex gap-2 bg-white px-3.5 pb-3.5 pt-2">
+          <button
+            onClick={finish}
+            className="btn-secondary flex-1 py-2.5 text-xs"
+            data-testid="scheda-skip"
+          >
+            Salta, ho fretta
+          </button>
+          <button
+            onClick={finish}
+            className="btn-primary flex-1 py-2.5 text-xs"
+            data-testid="scheda-continue"
+          >
+            Continua
+          </button>
         </div>
       )}
     </div>
