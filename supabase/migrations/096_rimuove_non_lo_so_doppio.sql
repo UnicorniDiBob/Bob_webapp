@@ -1,4 +1,19 @@
--- 094_rimuove_non_lo_so_doppio.sql
+-- 096_rimuove_non_lo_so_doppio.sql
+--
+-- RINUMERATA DA 094 A 096 PRIMA DEL MERGE (24 settembre). Il numero 094
+-- era già preso da `094_tetto_esame_cessazione.sql`, su `main` dal 20
+-- settembre: l'ho scelto guardando un `ls` di un clone locale indietro di
+-- sei commit, senza `git fetch` — esattamente la trappola scritta
+-- nell'handoff ("un numero di migrazione si prende dalla storia applicata
+-- E dai rami spinti").
+--
+-- ATTENZIONE, STORICO DISALLINEATO: in produzione questa migrazione è
+-- stata applicata il 22 settembre col numero vecchio, quindi lo storico di
+-- Supabase la elenca come `094_rimuove_non_lo_so_doppio`. È solo
+-- l'etichetta a non coincidere — l'effetto sui dati è applicato e
+-- verificato (zero opzioni "non lo so" duplicate sul catalogo). Essendo
+-- idempotente, rieseguirla con questo numero è un no-op che riallinea lo
+-- storico: farlo o lasciare questa nota è indifferente per i dati.
 --
 -- La scheda lavoro (SchedaLavoro.tsx, FieldRow) aggiunge gia' da sola un
 -- chip "Non lo so" per ogni campo select con unknown_ok=true. La 092 aveva

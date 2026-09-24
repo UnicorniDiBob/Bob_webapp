@@ -150,6 +150,7 @@ type RawProfessionalRow = {
   verification_level: VerificationLevel | null;
   verification_level_at: string | null;
   verification_badge_until: string | null;
+  verification_badge_max_until: string | null;
   verification_under_review: boolean | null;
   response_time_label: string | null;
   cities: { name: string; slug: string } | null;
@@ -184,6 +185,7 @@ const PROFESSIONAL_SELECT = `
   verification_level,
   verification_level_at,
   verification_badge_until,
+  verification_badge_max_until,
   verification_under_review,
   response_time_label,
   city_id,
@@ -346,13 +348,17 @@ function toCard(
       row.verification_level ?? "none",
       row.verification_status,
       row.verification_badge_until,
-      row.verification_under_review ?? false
+      row.verification_under_review ?? false,
+      row.verification_badge_max_until
     ),
     // Scaduta: via anche la data, se no la scheda direbbe «Iscritto · 12 set»,
-    // cioe' mostrerebbe la prova di una verifica che non vale piu'.
+    // cioe' mostrerebbe la prova di una verifica che non vale piu'. Il tetto
+    // (094) la toglie anche mentre il caso aspetta noi: se l'etichetta e'
+    // spenta, la data che la provava non ha piu' niente da provare.
     verifiedAt:
-      verificaScaduta(row.verification_badge_until) &&
-      !(row.verification_under_review ?? false)
+      verificaScaduta(row.verification_badge_max_until) ||
+      (verificaScaduta(row.verification_badge_until) &&
+        !(row.verification_under_review ?? false))
         ? null
         : row.verification_level_at,
     responseTimeLabel: row.response_time_label,

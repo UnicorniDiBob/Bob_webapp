@@ -53,6 +53,7 @@ import {
   fraseEtichettaFinoAl,
   scadenzaBadge,
   statoScadenza,
+  tettoRicontrollo,
   type MotivoRicontrollo,
 } from "@/lib/vat";
 
@@ -260,7 +261,7 @@ export async function caricaNotifiche(
       .eq("professional_id", rigaPro.id),
     supabase
       .from("professional_verification")
-      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, vat_expires_at, recheck_reason, recheck_opened_at")
+      .select("level, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, vat_expires_at, recheck_reason, recheck_opened_at, vat_review_opened_at")
       .eq("professional_id", rigaPro.id)
       .maybeSingle(),
   ]);
@@ -311,6 +312,7 @@ export async function caricaNotifiche(
         vat_expires_at: string | null;
         recheck_reason: string | null;
         recheck_opened_at: string | null;
+        vat_review_opened_at: string | null;
       } | null);
   // Se la lettura della verifica fallisce non sappiamo niente, e tacere e'
   // meglio che sbagliare: senza questa riga un errore qualsiasi sulla query
@@ -361,10 +363,17 @@ export async function caricaNotifiche(
     // non conteneva nessuna data, mentre la regola di lettura (mig 080) spegne
     // l'etichetta alla fine della finestra. Un preavviso senza data non e' un
     // preavviso.
-    const spegne = scadenzaBadge(
-      v?.vat_expires_at ?? null,
-      v?.recheck_opened_at ?? null
-    );
+    // IL TETTO SUI CASI DI CESSAZIONE (094). Finche' la pratica aspetta noi la
+    // data della finestra non morde (regola 3 della 080), ma su una cessazione
+    // l'etichetta si spegne comunque al tetto: mentre esaminiamo e' quella la
+    // data vera, ed e' quella che va scritta. Scrivere l'altra sarebbe un
+    // preavviso di un giorno in cui non succede niente.
+    const tetto = tettoRicontrollo(v?.recheck_opened_at ?? null, motivo);
+    const inEsame = v?.vat_review_opened_at != null;
+    const spegne =
+      inEsame && tetto
+        ? tetto
+        : scadenzaBadge(v?.vat_expires_at ?? null, v?.recheck_opened_at ?? null);
     out.push({
       id: `verifica:ricontrollo:${motivo}`,
       livello: motivo === "scadenza" ? "avviso" : "azione",

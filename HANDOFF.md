@@ -1,14 +1,14 @@
 # Passaggio di consegne — 24 settembre 2026 (André, con Claude)
 
-> Sostituisce la voce del 22. Le voci di Lucio del 17 settembre e tutto
+> La giornata di oggi in cima. La voce di Lucio del 20 settembre e tutto
 > quello che sta sotto restano invariati; quello che è a metà si porta
 > avanti, non si butta.
 
 ## Cosa ho fatto — André (21-24 settembre)
 
 **La scheda lavoro è viva: Fasi 0-4 chiuse.** Ramo `feat/scheda-lavoro`,
-11 commit, PR aperta. La barra della Fase 4 è stata superata su dati veri —
-la richiesta `5a431a74-7e44-4f27-9572-38aca2232ecd` porta `subservice_id`
+PR #89. La barra della Fase 4 è stata superata su dati veri — la richiesta
+`5a431a74-7e44-4f27-9572-38aca2232ecd` porta `subservice_id`
 perdita-rubinetto-sifone, `scope` `{"fixture":"rubinetto","leak_active":true}`
 e `quote_mode` `assisted`.
 
@@ -17,16 +17,18 @@ e `quote_mode` `assisted`.
   `brief.subtaskSlug`, senza ricalcolare `quoteFields` né riportare `step`
   a `"scheda"` — chi correggeva restava bloccato sulla vecchia card per il
   resto della conversazione. Riprodotto dal vivo prima di toccare il codice.
-- **Il `-altro` era un vicolo cieco per costruzione** (093): i cinque
+- **Il `-altro` era un vicolo cieco per costruzione**: i cinque
   sotto-servizi "-altro" del core five avevano `quote_fields` vuoto, quindi
   il client — giustamente, "mai una scheda vuota" — saltava la scheda per
-  sempre. Ora hanno il fallback generico a tre campi.
+  sempre. Chiuso dalla 093, che era già su `main` (vedi sotto, numerazione).
 - **Bob faceva le domande della scheda** (leak_active, fixture) e poi la
   scheda le richiedeva con un tap. Riscritta la politica delle domande, più
   un **backstop deterministico** in `/api/bob/chat`: noti servizio +
   sotto-servizio + severity, `next="city"` sempre, qualunque cosa decida il
   modello, e la reply testuale viene sostituita da una frase neutra così non
-  resta una domanda appesa sopra la card che chiede la stessa cosa.
+  resta una domanda appesa sopra la card che chiede la stessa cosa. Tre giri
+  di prompt sempre più espliciti avevano ridotto ma non azzerato il caso:
+  Haiku non rispetta il vincolo al 100%, quindi la garanzia sta nel codice.
 - **Poi la scheda arrivava vuota** — regressione introdotta dal backstop
   stesso: `candidateFields` si calcola da `prev.subtaskSlug`, sempre un
   turno indietro, quindi nel turno in cui il modello assegna il
@@ -35,10 +37,12 @@ e `quote_mode` `assisted`.
   ancora noto, il prompt riceve le chiavi di tutti i sotto-servizi del
   servizio (noto o indovinato dal testo) come **riferimento**, non come
   schema stretto — `validateScope` scarta lato server quelle che non
-  appartengono al sotto-servizio risolto.
-- **094**: `"non lo so"` era seminato come opzione letterale su 11 chiavi
+  appartengono al sotto-servizio risolto. Verificato su 6 conversazioni:
+  1-2 campi su 4-5 arrivano pre-compilati in ognuna, prima erano 0.
+- **096**: `"non lo so"` era seminato come opzione letterale su 11 chiavi
   (14 righe) e il componente ne aggiunge già uno suo — due chip identici
-  sullo stesso campo. Correzione sistemica, non un elenco di slug.
+  sullo stesso campo. Correzione sistemica su tutto il catalogo, non un
+  elenco di slug.
 - **Interfaccia**: stadio B e C sticky sul fondo del pannello (lo skip di
   stadio C era tagliato dal bordo a 390px); recap card e scheda non dicono
   più la stessa frase — il titolo della scheda è diventato lui stesso il
@@ -50,16 +54,34 @@ e `quote_mode` `assisted`.
 
 ## Cosa ho applicato in produzione che Lucio deve sapere
 
-- **093, 094 e 095 applicate**, in quest'ordine. Advisor di sicurezza
-  rieseguiti dopo: **nessun rilievo nuovo**. Restano i tre di sempre —
-  `professionals_score` SECURITY DEFINER richiamabile da `anon` e da
-  `authenticated` (è la 072/089, non queste), e la Leaked Password
+- **Applicate 093, la mia "non lo so" e la 095.** Advisor di sicurezza
+  rieseguiti dopo l'ultima: **nessun rilievo nuovo**. Restano i tre di
+  sempre — `professionals_score` SECURITY DEFINER richiamabile da `anon` e
+  da `authenticated` (è la 072/089, non queste), e la Leaked Password
   Protection che vuole il piano Pro.
 - **Migrazioni applicate PRIMA del merge, di proposito**: sono tutte
   additive o solo dati, quindi la produzione gira con schema nuovo e codice
   vecchio senza rompersi. È l'ordine che Lucio aveva indicato il 12
   settembre dopo la finestra in cui `/impostazioni/verifica` diceva "Non
   verificato" a un professionista verificato.
+- **NUMERAZIONE: ho sbagliato, ed è la trappola già scritta qui sotto.**
+  Ho preso i numeri da un `ls` del clone locale senza fare prima
+  `git fetch`, e il clone era indietro di sei commit. Conseguenze, tutte
+  corrette nella PR #89 prima del merge:
+  - **La mia 093 era un doppione della 093 già su `main`** (stesso nome,
+    stesso identico effetto sui cinque `-altro`, prosa diversa). Tenuta
+    quella di `main`, buttata la mia. Nessun effetto sui dati: sono
+    idempotenti e fanno la stessa cosa.
+  - **La mia 094 collideva con la `094_tetto_esame_cessazione` di Lucio**,
+    già su `main` e non ancora applicata. La mia è stata **rinumerata
+    096** (`096_rimuove_non_lo_so_doppio.sql`).
+  - **In produzione quella migrazione risulta applicata come `094`**
+    (22/09), perché applicata col numero vecchio. Il file adesso dice 096.
+    È solo l'etichetta nello storico a non coincidere: l'effetto è
+    applicato e la migrazione è idempotente, quindi **rieseguirla come 096
+    è un no-op** che allinea lo storico. Da decidere se farlo o lasciare la
+    nota; l'effetto sui dati non cambia in nessuno dei due casi.
+  - La **095 non collide** con niente e resta 095.
 - **`ANTHROPIC_API_KEY` resta volutamente FUORI da Vercel**, sia produzione
   sia development. Sta solo in `.env.local`. Finché `/api/bob/chat` non ha
   un rate limit (G20-G22, P1.5), la chiave in produzione è una bolletta
@@ -72,17 +94,21 @@ e `quote_mode` `assisted`.
   aggiunge zona e CAP al salvataggio, ma chi ha già un indirizzo salvato non
   ha modo di aggiungerglieli se non cancellando e riscrivendo. Serve un
   percorso di modifica in `/impostazioni/indirizzi`.
-- **`request-summary` non logga niente**: è l'ultima superficie di Bob senza
-  una riga per ramo, ed è lo stesso buco che ha tenuto invisibile per tre
-  mesi il fallback di `/api/bob/chat`.
-- **`source` non viaggia fino a `/api/bob/brief`**: `job_briefs.source` dice
-  ancora `'ai'` qualunque ramo abbia prodotto il brief. La PR #80 ha
-  sistemato il lato chat, non questo.
 - **Il passo "quando" non ha un default**: la severity ce l'ha, il timing
   no. Va messo "Questa settimana".
 - **A 390px la mascotte si prende il 40% dell'altezza** prima che la chat
   cominci: su mobile il primo schermo è quasi tutto Bob che saluta. Passata
   mobile da fare, non un ritocco.
+- **Le regole di aggravamento di `quoting.ts` sono provate solo dai test**
+  (26 casi in `quoting.test.ts`): dal vivo è passato solo il ramo felice,
+  `assisted`. `dispatch`, muffa → `survey`, caldaia senza modello e locale
+  commerciale senza quantità non sono mai stati esercitati su una richiesta
+  vera.
+
+> **Chiuse da `main`, non da me** (commit «tre seguiti alla diagnosi del
+> model id»): il log per ramo di `request-summary` e il passaggio di
+> `source` fino a `/api/bob/brief`. Erano nella mia lista di aperti fino a
+> stamattina — le ho tolte dopo aver letto il diff di `main`, non a memoria.
 
 ## Per Lucio — traccia sua, non mia
 
@@ -102,6 +128,133 @@ tracciata, generatore verificabile), mai un elenco scritto a memoria. In
 `public/geo/` ci sono i confini NIL e provinciali, **nessun confine di
 CAP**: le due geometrie non coincidono, quindi l'una non si deriva
 dall'altra. Non è iniziata né l'una né l'altra.
+
+---
+
+# Passaggio di consegne — 20 settembre 2026 (Lucio, con Claude)
+
+> La giornata di oggi in cima. Le voci del 18 settembre e quelle portate avanti
+> restano sotto, invariate.
+
+## Cosa ho fatto — Lucio (20 settembre)
+
+Ramo `feat/tos-verifica-e-tetto-cessazione`, **non ancora unito**. Chiude i due
+punti aperti del blocco «Livelli di verifica» nel Piano.
+
+- **L'SLA di esame entra nei ToS pro** (`src/components/TermsContent.tsx`, nuova
+  sezione 9, versione dei termini `2026-09-v2`): termine di 5 giorni lavorativi
+  con decorrenza e sospensione, durata e rinnovo, finestra di ricontrollo, effetti
+  della cessazione della P.IVA, natura reversibile della perdita di visibilità
+  dell'etichetta e riserva umana sulla revoca del livello. Le tre cifre del testo
+  sono le stesse di `src/lib/vat.ts` — se una cambia di là e non qui, i termini
+  dichiarano il falso. **Regola di escalation sullo sforamento: decisa di NON
+  farla** (20/09); il costo dello sforamento lo paga il tetto qui sotto.
+- **Il tetto sui casi di cessazione** (`094_tetto_esame_cessazione.sql`,
+  `tettoRicontrollo()`): dalla 080 «la palla è nostra» teneva acceso il badge
+  senza limite, anche su una partita IVA che il registro dà per spenta. Adesso
+  l'etichetta si spegne comunque 14 giorni dopo l'apertura del caso (7 di finestra
+  + 7 del nostro esame). Solo motivo `cessazione`; il livello resta una decisione
+  umana.
+- **Primo test su `src/lib/vat.ts`** (`vat.test.ts`, 21 casi): la caduta del badge
+  non era mai stata esercitata, in produzione c'è un solo pro verificato e scade
+  nel 2027.
+
+## Cosa è a metà / da sapere — Lucio (20 settembre)
+
+- **LA 089 HA RIPORTATO INDIETRO IL PUNTEGGIO, ED È VIVO ADESSO.** `professionals_score`
+  è stata riscritta il 17/09 copiando il corpo della 072 («copiato, non riscritto»,
+  dice il suo commento). Fra 072 e 089 quel corpo era cambiato tre volte, e in
+  produzione da tre giorni: la voce verifica legge di nuovo `verification_status`
+  (l'interruttore manuale) invece del livello e della caduta del badge (080) —
+  cioè per l'ORDINE il badge scaduto pesa ancora; il prezzo torna a guardare solo
+  `min_price` (077 persa); il tempo di risposta si ricalcola da `request_messages`
+  invece di leggere `professional_signals` (075 persa); e la funzione è tornata
+  `SECURITY DEFINER` dopo che la 075 l'aveva portata a `INVOKER`. La 094 la
+  ricompone: 075 + 077 + 080 + 089 + il tetto. **Finché la 094 non è applicata,
+  l'ordinamento in produzione non è quello pubblicato su /come-funziona#ordine.**
+- **La nuova versione dei ToS non è ancora stata preavvisata.** Il nostro stesso
+  testo promette ai professionisti almeno 15 giorni di preavviso per le modifiche
+  (Reg. P2B art. 3): `TERMS_VERSION` la registra solo alle nuove iscrizioni, quindi
+  il testo nuovo va comunicato prima di considerarlo opponibile a chi c'è già.
+  E resta una bozza da far rivedere a un legale (blocco 23).
+- **Il tetto è provato in laboratorio, non sul vivo**: ricostruito lo schema dai
+  soli file del repo (`scripts/schema_check.sh`, 0 errori) e verificato che un caso
+  di cessazione aperto da 20 giorni e in esame vale 0 punti verifica, uno da 3
+  giorni ne vale 5, e una scadenza annuale in esame da 20 giorni resta a 5. In
+  produzione non c'è nessun caso in coda né in ricontrollo.
+- **La 093 è ancora da applicare** (PR #86 di André): l'impronta dello schema
+  ricostruito non coinciderà con la produzione finché 093 e 094 non sono applicate.
+
+## Cosa ho applicato in produzione — Lucio (20 settembre)
+
+**Niente.** Nessuna migrazione applicata, nessun merge: il ramo è locale finché non
+passa la CI. La 094 va applicata **dopo** che la PR è unita, e subito dopo vanno
+rilanciati gli advisor di sicurezza (la funzione torna a `SECURITY INVOKER`, quindi
+un rilievo in meno, non uno in più).
+
+---
+
+# Passaggio di consegne — 18 settembre 2026 (André, con Claude)
+
+> Aggiunge la giornata di oggi in cima. Le voci del 17 settembre e quelle
+> portate avanti restano sotto, invariate.
+
+## Cosa ho fatto — André (18 settembre)
+
+Fasi 0-3 del flusso preventivo strutturato (`docs/QUOTE_INTAKE_SPEC.md`)
+chiuse e mergiate: PR #76-80, #84-86. **Migrazioni 090, 091, 092 applicate
+in produzione e verificate** (090 dedup sotto-servizi, 091 schema
+quote_level/quote_fields/scope/quote_mode, 092 semina dei campi per i
+cinque servizi core + fallback generico per gli altri dieci). **093
+ancora NON applicata** (PR #86, aperta): il fallback generico anche per i
+cinque "-altro" dei servizi core, mancato nella 092.
+
+- **Fase 0-1 — deduplicazione e schema.** Sei sotto-servizi legacy
+  (non otto: la spec originale contava male) alias verso i canonici via
+  `subservices.superseded_by`, mai cancellati — sei righe
+  `professional_services` reali toccate, tutte di professionisti demo
+  (nessuna di FOTOPRO-MILANO). Due mappature editoriali corrette in
+  review prima dell'apply (`sostituzione-rubinetteria` non è un
+  doppione; `pulizie-appartamenti` → `ordinarie-ricorrenti`, non
+  `profonda-una-tantum` — l'identità dei booking_fields era un
+  artefatto della semina, non una prova).
+- **Fase 2 — risolutore.** `src/lib/quoting.ts`, puro, 28 test. Nessun
+  test runner esisteva nel repo: aggiunto Vitest da zero (config, script,
+  passo CI).
+- **Fase 3 — scope vincolato, e un bug più grosso trovato per strada.**
+  `ANTHROPIC_API_KEY` non è mai esistita in nessun ambiente per tre mesi:
+  il percorso LLM di `/api/bob/chat` non ha mai girato, tutti gli 8
+  `job_briefs` di produzione venivano da `ruleBasedDecision`. Con la
+  chiave finalmente configurata, il test di accettazione dal vivo ha
+  trovato un SECONDO bug indipendente: il model id `claude-3-5-haiku-
+  latest` è ritirato (404 sull'API), e i tre rami di fallback di
+  `chat/route.ts` erano completamente silenziosi — tre mesi di errori
+  mai loggati da nessuna parte. Corretto il model id (in `chat/route.ts`
+  e nel gemello `pro/request-summary/route.ts`, stesso bug), aggiunta
+  logging permanente ai rami di fallback in entrambi i file, e sistemato
+  `job_briefs.source` (diceva sempre `'ai'` per un bug di verso nel
+  ternario di `brief/route.ts` più il client che non rimandava mai il
+  campo). **Verificato dal vivo contro produzione**: una conversazione
+  vera ("mi perde il rubinetto del lavandino in cucina") ha prodotto
+  `job_briefs` con `subtask_slug` e `scope` popolati per la prima volta
+  in assoluto.
+
+**ANTHROPIC_API_KEY resta deliberatamente NON impostata su Vercel.** La
+chiave è valida (verificata con una chiamata diretta all'API, HTTP 200) e
+vive solo in locale per i test. `/api/bob/chat` non ha autenticazione, né
+rate limit, né tetto sul payload (G20-G22, mai risolto) — accendere la
+chiave in produzione prima che il rate limit esista vuol dire esporre un
+endpoint che chiama un LLM a pagamento senza nessun limite a chi lo trova.
+Non è un dimenticato: è un cancello tenuto chiuso apposta. Chi imposta la
+chiave su Vercel prima del rate limit deve saperlo.
+
+## Cosa è a metà
+
+Fase 4 (scheda lavoro, `SchedaLavoro.tsx`) e Fase 5 (rendering lato pro)
+non ancora iniziate — partono da qui. Nella spec restano aperti: il
+`goal` di personal-trainer (Art. 9, consenso non ancora deciso), e ora
+anche `personal-trainer.what_exactly` come superficie indiretta (testo
+libero obbligatorio, segnalata ma non risolta nella 092).
 
 ---
 

@@ -40,7 +40,10 @@ async function buildSummary(
   const city = req.cities?.name ?? "";
 
   if (!apiKey) {
-    // Fallback senza AI: testo strutturato
+    // Fallback senza AI: testo strutturato. Loggato come in /api/bob/chat
+    // (PR #80): lo stesso ramo silenzioso ha nascosto un model id ritirato
+    // per mesi li', prima che un log lo rendesse visibile in un turno.
+    console.error("[pro/request-summary] ANTHROPIC_API_KEY assente: riassunto senza AI.");
     return {
       summary: `Richiesta di ${service}${city ? ` a ${city}` : ""}. Urgenza: ${urgency}. Budget: ${budget}. Descrizione: ${desc.slice(0, 200)}.`,
       draftReply: `Ciao! Ho ricevuto la tua richiesta di ${service.toLowerCase()}. Posso aiutarti: sono disponibile per un sopralluogo. Mi fai sapere quando sei libero?`,
@@ -75,8 +78,11 @@ async function buildSummary(
         draftReply: typeof obj.draftReply === "string" ? obj.draftReply : `Ciao! Ho ricevuto la tua richiesta, sono disponibile. Quando possiamo sentirci?`,
       };
     }
-  } catch {
-    // ignora errori AI, usiamo fallback
+    console.error("[pro/request-summary] Claude ha risposto senza un JSON riconoscibile, fallback senza AI:", raw);
+  } catch (err) {
+    // Errore API (chiave non valida, modello inesistente, rate limit, ecc.):
+    // fallback senza AI. L'errore vero si logga invece di sparire.
+    console.error("[pro/request-summary] eccezione nella chiamata a Claude, fallback senza AI:", err);
   }
 
   return {

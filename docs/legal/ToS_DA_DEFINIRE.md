@@ -22,14 +22,23 @@ esclusioni, P2B), ma **incompleta**. Sotto: prima le decisioni di business
 - [ ] **Quali categorie richiedono quale livello**: elenco esplicito. Le 5 core
       (idraulico, elettricista, ecc.) → Pro obbligatorio? Pro+ per gli impianti
       DM 37/2008?
-- [ ] **Validità temporale della verifica**: scade? ogni quanto ri-verifichiamo?
-      (senza una regola, il badge invecchia e la nostra dichiarazione diventa
-      falsa → rischio pratica ingannevole).
-- [ ] **Cosa accade se la P.IVA cessa**: declassamento automatico? avviso? grace
-      period? chi lo decide (regola: human in the loop)?
-- [ ] **SLA di verifica**: entro quanto rispondiamo a una richiesta di
-      verifica/upgrade? (la roadmap 10.4 ipotizza 48h: se lo scriviamo, è un
-      impegno contrattuale).
+- [x] **Validità temporale della verifica** — DECISO 12/09, SCRITTO NEI ToS 20/09
+      (sezione 9 del testo pro, «Durata e rinnovo»): 12 mesi dal controllo,
+      preavviso 30 giorni, ricontrollo d'ufficio, rinnovo automatico all'esito
+      positivo. Cifre in `src/lib/vat.ts`, migrazioni 078/079/080.
+- [x] **Cosa accade se la P.IVA cessa** — DECISO 13/09, COMPLETATO 20/09, SCRITTO
+      NEI ToS (sezione 9, «Cessazione della partita IVA»): nessun declassamento
+      automatico — il LIVELLO lo toglie una persona con motivazione scritta —
+      ma l'etichetta cessa di essere visibile dopo 7 giorni senza riscontro e,
+      con la 094, comunque dopo 14 giorni dall'apertura del caso anche se la
+      pratica è ancora da noi. Misura reversibile, di sola rappresentazione.
+- [x] **SLA di verifica** — DECISO 12/09 (5 giorni lavorativi, non 48h), MISURATO
+      dalla 080, SCRITTO NEI ToS 20/09 (sezione 9, «Termine di esame»): decorre
+      da quando l'esame compete a noi, si sospende quando aspettiamo il
+      professionista, ha natura ordinatoria. È un impegno contrattuale: la cifra
+      vive in `SLA_VERIFICA_GIORNI_LAVORATIVI` e non può divergere dal testo.
+      NON esiste una regola di escalation allo sforamento, ed è una scelta
+      (20/09): il costo dello sforamento lo paga il tetto sulle cessazioni.
 - [ ] **Lavoratori occasionali senza P.IVA**: dentro come "Iscritto" per sempre,
       o fuori? (decisione già proposta in `NOTE_E_DECISIONI.md`, mai ratificata).
 

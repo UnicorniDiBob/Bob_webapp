@@ -170,6 +170,12 @@ export function BobChat({
   // Id del brief salvato: viaggia con la richiesta così il pro riceve
   // il contesto raccolto da Bob (foto incluse).
   const [briefId, setBriefId] = useState<string | null>(null);
+  // Da quale ramo di /api/bob/chat viene l'ULTIMO turno che ha aggiornato il
+  // brief: 'ai' solo se Claude ha davvero risposto con un tool_use. Prima non
+  // veniva letto qui, quindi job_briefs.source diceva sempre 'ai' anche
+  // quando il percorso vero era il fallback a regole — la seconda meta' del
+  // bug diagnosticato nella PR #80.
+  const [briefSource, setBriefSource] = useState<string | null>(null);
   const [collected, setCollected] = useState<Collected>({});
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -394,6 +400,9 @@ export function BobChat({
       const data = await res.json();
       const b: JobBrief = data.brief ?? brief;
       setBrief(b);
+      if (typeof data.source === "string") {
+        setBriefSource(data.source);
+      }
       if (Array.isArray(data.subtaskOptions)) {
         setSubtaskOptions(data.subtaskOptions as SubtaskOption[]);
       }
@@ -697,7 +706,7 @@ export function BobChat({
     fetch("/api/bob/brief", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ brief: finalBrief }),
+      body: JSON.stringify({ brief: finalBrief, source: briefSource }),
     })
       .then((r) => r.json())
       .then((d) => {

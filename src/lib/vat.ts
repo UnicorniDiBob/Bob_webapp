@@ -48,6 +48,23 @@ export const VALIDITA_VERIFICA_MESI = 12;
  */
 export const FINESTRA_RICONTROLLO_GIORNI = 7;
 
+/**
+ * IL TETTO SUI CASI DI CESSAZIONE: 14 giorni dall'apertura del caso (20/09,
+ * Lucio — mig 094). La regola 3 della 080 dice che il badge tiene finche' il
+ * caso aspetta NOI, e su una scadenza annuale e' giusta: chi ha risposto non
+ * paga la nostra lentezza. Su una cessazione no: li' il registro dice gia' che
+ * la partita IVA non risulta attiva, e senza un limite l'etichetta
+ * «Verificato» resterebbe accesa ai clienti per tutto il tempo che ci mettiamo
+ * a guardare il caso. Non e' un numero nuovo: sono la finestra del
+ * professionista (7) piu' i 5 giorni lavorativi del nostro esame, che in
+ * giorni solari sono 7. Oltre quel giorno lo sforamento lo paghiamo noi in
+ * visibilita' promessa, non il cliente in informazione falsa.
+ *
+ * Il LIVELLO non si tocca: lo toglie una persona, con motivazione scritta.
+ * Questa e' una regola di lettura, reversibile come tutte le altre.
+ */
+export const TETTO_CESSAZIONE_GIORNI = 14;
+
 /** Da quanti giorni prima lo diciamo nella campanella. */
 export const PREAVVISO_SCADENZA_GIORNI = 30;
 
@@ -333,7 +350,8 @@ export function publicVerificationLevel(
   level: VerificationLevel,
   staffStatus: "unverified" | "pending" | "verified",
   scadenza: string | null = null,
-  inEsame: boolean = false
+  inEsame: boolean = false,
+  tetto: string | null = null
 ): VerificationLevel {
   // SCADUTA = NON VERIFICATA, per chi guarda. Il livello nel database resta
   // dov'e': lo toglie una persona dalla coda Ricontrollo, con motivazione
@@ -342,7 +360,7 @@ export function publicVerificationLevel(
   // preavviso di questa perdita (Reg. P2B art. 4). La stessa regola vale per i
   // punti dell'ordinamento, nella migrazione 081: se divergono, la scheda dice
   // una cosa e l'ordine ne fa un'altra.
-  const vivo = livelloVisibile(level, scadenza, inEsame);
+  const vivo = livelloVisibile(level, scadenza, inEsame, tetto);
   if (vivo === "none") return "none";
   if (level === "documents_verified" && staffStatus !== "verified") {
     return "vat_verified";
@@ -374,6 +392,27 @@ function addGiorni(iso: string, n: number): string | null {
 }
 
 /**
+ * Il giorno in cui l'etichetta si spegne ANCHE se il caso aspetta noi.
+ *
+ * Solo per i casi aperti per cessazione: negli altri tre motivi il registro non
+ * dice che la partita IVA e' spenta, dice che va riguardata, e la regola della
+ * 080 basta. null quando il tetto non si applica — e null significa «nessun
+ * tetto», non «gia' scaduto».
+ *
+ * Regola gemella in SQL: professionals.verification_badge_max_until, tenuta dal
+ * trigger sync_verification_level (mig 094). Se una delle due cambia senza
+ * l'altra, la scheda pubblica e l'ordinamento dicono cose diverse sullo stesso
+ * profilo.
+ */
+export function tettoRicontrollo(
+  ricontrolloApertoIl: string | null,
+  motivo: MotivoRicontrollo | string | null
+): string | null {
+  if (!ricontrolloApertoIl || motivo !== "cessazione") return null;
+  return addGiorni(ricontrolloApertoIl, TETTO_CESSAZIONE_GIORNI);
+}
+
+/**
  * Il livello da MOSTRARE, scadenza compresa e senza il gate dello staff.
  *
  * Lo usano le pagine del professionista, dove il commento dice da sempre «qui
@@ -384,8 +423,13 @@ function addGiorni(iso: string, n: number): string | null {
 export function livelloVisibile(
   level: VerificationLevel,
   scadenza: string | null,
-  inEsame: boolean = false
+  inEsame: boolean = false,
+  tetto: string | null = null
 ): VerificationLevel {
+  // IL TETTO VIENE PRIMA DI TUTTO (094). Su un caso di cessazione «la palla e'
+  // nostra» non e' piu' una ragione sufficiente per tenere accesa l'etichetta:
+  // oltre il tetto si spegne comunque. Vedi tettoRicontrollo().
+  if (tetto && verificaScaduta(tetto)) return "none";
   // LA SCADENZA NON MORDE MENTRE LA PALLA E' DA NOI (13/09, Lucio). Chi carica
   // i documenti l'ultimo giorno utile non puo' perdere l'etichetta per il tempo
   // che ci mettiamo NOI a guardarli: quella verifica non e' scaduta per colpa

@@ -35,7 +35,7 @@ import {
   UpgradeNeeded,
 } from "@/components/SectionStates";
 import { VerificationLevelBadge } from "@/components/ui";
-import { livelloVisibile, scadenzaBadge } from "@/lib/vat";
+import { livelloVisibile, scadenzaBadge, tettoRicontrollo } from "@/lib/vat";
 import VatVerification from "@/components/VatVerification";
 import VerificationDocuments from "@/components/VerificationDocuments";
 
@@ -62,7 +62,7 @@ export default function VerificaPage() {
     (async () => {
       const { data } = await supabase
         .from("professional_verification")
-        .select("level, vat_checked_at, vat_expires_at, vat_review_opened_at, recheck_opened_at")
+        .select("level, vat_checked_at, vat_expires_at, vat_review_opened_at, recheck_opened_at, recheck_reason")
         .eq("professional_id", pro.id)
         .maybeSingle();
       if (!active) return;
@@ -74,7 +74,13 @@ export default function VerificaPage() {
           (v.vat_expires_at as string) ?? null,
           (v.recheck_opened_at as string) ?? null
         ),
-        v.vat_review_opened_at != null
+        v.vat_review_opened_at != null,
+        // Il tetto sui casi di cessazione (094): oltre quel giorno l'etichetta
+        // si spegne anche se la pratica e' ancora sul nostro tavolo.
+        tettoRicontrollo(
+          (v.recheck_opened_at as string) ?? null,
+          (v.recheck_reason as string) ?? null
+        )
       ) as Livello;
       setLivello(vivo);
       setVerificatoIl(vivo === "none" ? null : ((v.vat_checked_at as string) ?? null));
