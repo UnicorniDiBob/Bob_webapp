@@ -88,12 +88,30 @@ export const MAX_BODY_BYTES: Record<Route, number> = {
   brief: 64 * 1024,
 };
 
-// Timeout stretto sul controllo stesso: se Postgres è lento SOLO su questa
-// tabella (non sull'intero progetto, altrimenti la rotta è già rotta per
-// altri motivi — vedi migrazione 097), la richiesta degrada in fretta a un
+// Timeout sul controllo stesso: se Postgres è lento SOLO su questa tabella
+// (non sull'intero progetto, altrimenti la rotta è già rotta per altri
+// motivi — vedi migrazione 097), la richiesta degrada in fretta a un
 // 429/rules invece di restare appesa per la durata piena della chiamata a
 // Claude.
-const CHECK_TIMEOUT_MS = 500;
+//
+// 500ms ERA TROPPO STRETTO — trovato in produzione, non a tavolino
+// (verifica dal vivo su meetonda.com, 24/09): 2 richieste reali su 3 hanno
+// preso il ramo "chiudo" per timeout, ma la riga in rate_limit_counters
+// mostrava count=1, ben dentro il limite — la RPC era arrivata, solo dopo
+// i 500ms. Non avevo un numero reale di round-trip Vercel→Supabase per
+// scegliere questo valore la prima volta, l'ho stimato sul solo dev
+// locale. 2000ms è un margine di sicurezza vero, non un altro numero
+// scelto a occhio: resta comunque piccolo contro il budget della rotta
+// (la chiamata a Claude da sola impiega 1-4s, il timeout di funzione
+// Vercel è 300s di default) — e checkActorRateLimit/checkGlobalDailyCap
+// loggano ora il tempo reale impiegato quando il controllo fallisce o va
+// oltre META' di questo tetto, cosi' la prossima volta il numero si
+// corregge da un log vero, non di nuovo a occhio.
+const CHECK_TIMEOUT_MS = 2000;
+// Soglia di allarme: un controllo riuscito ma piu' lento della meta' del
+// timeout è un segnale che il margine si sta consumando, prima che diventi
+// un fallimento vero.
+const SLOW_CHECK_WARN_MS = CHECK_TIMEOUT_MS / 2;
 
 /**
  * L'IP del chiamante da x-forwarded-for (Vercel lo imposta al bordo della
@@ -157,20 +175,39 @@ export async function readBodyWithLimit(
   return { ok: true, text: new TextDecoder().decode(merged) };
 }
 
+interface TimedResult<T> {
+  value: T | null;
+  elapsedMs: number;
+  timedOut: boolean;
+  rejection?: unknown;
+}
+
+// Porta anche il tempo impiegato, non solo il risultato: senza quello, la
+// prossima volta che questo timeout si rivela sbagliato si torna a
+// indovinare invece di leggere un numero vero (vedi il commento su
+// CHECK_TIMEOUT_MS — è la lezione di questa stessa funzione).
 async function withTimeout<T>(
   promise: PromiseLike<T>,
   ms: number
-): Promise<T | null> {
+): Promise<TimedResult<T>> {
+  const startedAt = Date.now();
   return new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(null), ms);
+    const timer = setTimeout(() => {
+      resolve({ value: null, elapsedMs: Date.now() - startedAt, timedOut: true });
+    }, ms);
     Promise.resolve(promise).then(
       (value) => {
         clearTimeout(timer);
-        resolve(value);
+        resolve({ value, elapsedMs: Date.now() - startedAt, timedOut: false });
       },
-      () => {
+      (rejection) => {
         clearTimeout(timer);
-        resolve(null);
+        resolve({
+          value: null,
+          elapsedMs: Date.now() - startedAt,
+          timedOut: false,
+          rejection,
+        });
       }
     );
   });
@@ -192,7 +229,7 @@ export async function checkActorRateLimit(
   route: Route,
   limits: ActorLimits
 ): Promise<ActorRateLimitResult> {
-  const result = await withTimeout(
+  const timed = await withTimeout(
     admin.rpc("check_rate_limit", {
       p_key: key,
       p_route: route,
@@ -201,19 +238,34 @@ export async function checkActorRateLimit(
     }),
     CHECK_TIMEOUT_MS
   );
+  const result = timed.value;
 
-  if (!result || result.error || !result.data || !result.data[0]) {
-    if (result?.error) {
-      console.error(
-        `[rate-limit] check_rate_limit fallito per ${route}, chiudo (nego):`,
-        result.error
-      );
-    } else {
-      console.error(
-        `[rate-limit] check_rate_limit senza risposta entro ${CHECK_TIMEOUT_MS}ms per ${route}, chiudo (nego).`
-      );
-    }
+  if (timed.timedOut) {
+    console.error(
+      `[rate-limit] check_rate_limit oltre i ${CHECK_TIMEOUT_MS}ms per ${route} (nessuna risposta), chiudo (nego).`
+    );
     return { allowed: false, retryAfterSeconds: 60 };
+  }
+  if (timed.rejection) {
+    console.error(
+      `[rate-limit] check_rate_limit rifiutata per ${route} dopo ${timed.elapsedMs}ms, chiudo (nego):`,
+      timed.rejection
+    );
+    return { allowed: false, retryAfterSeconds: 60 };
+  }
+  if (!result || result.error || !result.data || !result.data[0]) {
+    console.error(
+      `[rate-limit] check_rate_limit fallito per ${route} dopo ${timed.elapsedMs}ms, chiudo (nego):`,
+      result?.error
+    );
+    return { allowed: false, retryAfterSeconds: 60 };
+  }
+  if (timed.elapsedMs > SLOW_CHECK_WARN_MS) {
+    // Riuscito, ma lento: non un fallimento, ma il margine verso
+    // CHECK_TIMEOUT_MS si sta consumando - vedi il commento sulla costante.
+    console.error(
+      `[rate-limit] check_rate_limit lento per ${route}: ${timed.elapsedMs}ms (tetto ${CHECK_TIMEOUT_MS}ms).`
+    );
   }
 
   const row = result.data[0] as {
@@ -237,26 +289,39 @@ export async function checkGlobalDailyCap(
   route: Route,
   dailyLimit: number
 ): Promise<boolean> {
-  const result = await withTimeout(
+  const timed = await withTimeout(
     admin.rpc("check_global_daily_cap", {
       p_route: route,
       p_daily_limit: dailyLimit,
     }),
     CHECK_TIMEOUT_MS
   );
+  const result = timed.value;
 
-  if (!result || result.error || typeof result.data !== "boolean") {
-    if (result?.error) {
-      console.error(
-        `[rate-limit] check_global_daily_cap fallito per ${route}, tratto come tetto raggiunto:`,
-        result.error
-      );
-    } else {
-      console.error(
-        `[rate-limit] check_global_daily_cap senza risposta entro ${CHECK_TIMEOUT_MS}ms per ${route}, tratto come tetto raggiunto.`
-      );
-    }
+  if (timed.timedOut) {
+    console.error(
+      `[rate-limit] check_global_daily_cap oltre i ${CHECK_TIMEOUT_MS}ms per ${route} (nessuna risposta), tratto come tetto raggiunto.`
+    );
     return false;
+  }
+  if (timed.rejection) {
+    console.error(
+      `[rate-limit] check_global_daily_cap rifiutata per ${route} dopo ${timed.elapsedMs}ms, tratto come tetto raggiunto:`,
+      timed.rejection
+    );
+    return false;
+  }
+  if (!result || result.error || typeof result.data !== "boolean") {
+    console.error(
+      `[rate-limit] check_global_daily_cap fallito per ${route} dopo ${timed.elapsedMs}ms, tratto come tetto raggiunto:`,
+      result?.error
+    );
+    return false;
+  }
+  if (timed.elapsedMs > SLOW_CHECK_WARN_MS) {
+    console.error(
+      `[rate-limit] check_global_daily_cap lento per ${route}: ${timed.elapsedMs}ms (tetto ${CHECK_TIMEOUT_MS}ms).`
+    );
   }
 
   return result.data;
