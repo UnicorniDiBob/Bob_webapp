@@ -77,13 +77,23 @@ e `quote_mode` `assisted`.
     già su `main` e — scoperto risistemando questo — **mai applicata**
     (vedi issue #90 qui sotto). La mia è stata **rinumerata 096**
     (`096_rimuove_non_lo_so_doppio.sql`).
-  - **In produzione quella migrazione risulta applicata come `094`**
-    (22/09), perché applicata col numero vecchio. Il file adesso dice 096.
-    **Non va rieseguita come 096**: `apply_migration` inserisce per
-    timestamp, quindi due esecuzioni con nomi diversi produrrebbero due
-    righe nello storico per un solo file applicato una volta sola. André
-    corregge l'etichetta della riga esistente direttamente su Supabase —
-    una riga, storico che torna a combaciare col repo.
+  - **In produzione quella migrazione era applicata come `094`** (22/09),
+    perché applicata col numero vecchio, mentre il file nel repo diceva già
+    096. **Non rieseguita**: `apply_migration` inserisce per timestamp, e
+    una seconda esecuzione con un nome diverso avrebbe prodotto due righe
+    nello storico per un solo file applicato una volta sola. **André ha
+    corretto l'etichetta della riga esistente direttamente su Supabase**:
+
+    ```sql
+    update supabase_migrations.schema_migrations
+       set name = '096_rimuove_non_lo_so_doppio'
+     where version = '20260922082028';
+    ```
+
+    Verificato dopo: `list_migrations` mostra 090, 091, 092, 093, 095, 096 —
+    una riga per file, storico allineato al repo. Il buco che resta sul
+    numero 094 è il gap di Lucio (`094_tetto_esame_cessazione`, issue #90),
+    non una migrazione nostra mancante.
   - La **095 non collide** con niente e resta 095.
 - **`ANTHROPIC_API_KEY` resta volutamente FUORI da Vercel**, sia produzione
   sia development. Sta solo in `.env.local`. Finché `/api/bob/chat` non ha
