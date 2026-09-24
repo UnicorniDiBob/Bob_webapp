@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import { getServices, getAllSubservices } from "@/lib/data";
 import { guessServiceSlug } from "@/lib/matching";
+import {
+  checkActorRateLimit,
+  checkGlobalDailyCap,
+  extractClientIp,
+  readBodyWithLimit,
+  ACTOR_LIMITS,
+  GLOBAL_DAILY_CAP_CHAT,
+  MAX_BODY_BYTES,
+} from "@/lib/rate-limit";
 import {
   buildSystemPrompt,
   buildBriefTool,
@@ -94,11 +104,74 @@ function toAnthropicMessages(
 }
 
 export async function POST(request: Request) {
+  // Tetto al payload PRIMA di leggere qualunque cosa (Fase 5, P1.5): una
+  // sola foto per turno, gia' ridotta lato client - vedi rate-limit.ts per
+  // il perche' di 2MB.
+  const bodyRead = await readBodyWithLimit(request, MAX_BODY_BYTES.chat);
+  if (!bodyRead.ok) {
+    return NextResponse.json(
+      { error: "Corpo della richiesta troppo grande" },
+      { status: 413 }
+    );
+  }
+
   let body: ChatBody;
   try {
-    body = (await request.json()) as ChatBody;
+    body = JSON.parse(bodyRead.text) as ChatBody;
   } catch {
     return NextResponse.json({ error: "Body non valido" }, { status: 400 });
+  }
+
+  // Limite di frequenza per attore (Fase 5, P1.5): loggato = il suo
+  // account, anonimo = il suo IP. Un IP falso valore e' gia' il default
+  // sicuro di extractClientIp ("unknown") - tutti gli anonimi senza IP
+  // leggibile condividono lo stesso contatore, il che li limita PIU'
+  // stretto, non meno: comportamento accettabile per un caso limite.
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const admin =
+    url && serviceKey ? createServiceClient(url, serviceKey) : null;
+
+  let actorKey = `ip:${extractClientIp(request)}`;
+  try {
+    const supabase = createServerClient();
+    const { data } = await supabase.auth.getUser();
+    if (data.user?.id) actorKey = `user:${data.user.id}`;
+  } catch {
+    // Nessuna sessione leggibile: resta l'IP, comportamento invariato.
+  }
+  const isAuthenticated = actorKey.startsWith("user:");
+  const actorLimits = isAuthenticated
+    ? ACTOR_LIMITS.chat.authenticated
+    : ACTOR_LIMITS.chat.anonymous;
+
+  if (!admin) {
+    // Senza service role il controllo non puo' nemmeno partire: chiude
+    // (nega), stessa regola di quando il controllo risponde con un errore
+    // - vedi rate-limit.ts.
+    console.error(
+      "[bob/chat] service role assente: limite di frequenza chiuso (nego)."
+    );
+    return NextResponse.json(
+      { error: "Servizio temporaneamente non disponibile" },
+      { status: 503 }
+    );
+  }
+
+  const actorCheck = await checkActorRateLimit(
+    admin,
+    actorKey,
+    "chat",
+    actorLimits
+  );
+  if (!actorCheck.allowed) {
+    return NextResponse.json(
+      { error: "Troppe richieste, riprova fra poco" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(actorCheck.retryAfterSeconds) },
+      }
+    );
   }
 
   const messages = Array.isArray(body.messages) ? body.messages : [];
@@ -136,6 +209,24 @@ export async function POST(request: Request) {
   // nemmeno (vedi PR #80 — il client non rimandava mai il campo indietro).
   if (!apiKey) {
     console.error("[bob/chat] ANTHROPIC_API_KEY assente: rispondo solo con le regole, nessuna chiamata a Claude.");
+    const decision = ruleBasedDecision(messages, services, subservices, prev);
+    return NextResponse.json({ ...decision, source: "rules" });
+  }
+
+  // Tetto giornaliero aggregato (Fase 5, P1.5): rotto, nessun errore per il
+  // cliente - si degrada a ruleBasedDecision esattamente come sopra, e lo
+  // stesso log dice il perche'. Il limite per attore, appena passato, limita
+  // UN chiamante; questo limita la spesa TOTALE della rotta, indipendente da
+  // chi chiama (rate-limit.ts ha il ragionamento sul numero).
+  const withinDailyCap = await checkGlobalDailyCap(
+    admin,
+    "chat",
+    GLOBAL_DAILY_CAP_CHAT
+  );
+  if (!withinDailyCap) {
+    console.error(
+      `[bob/chat] tetto giornaliero globale (${GLOBAL_DAILY_CAP_CHAT}) raggiunto: rispondo solo con le regole, nessuna chiamata a Claude.`
+    );
     const decision = ruleBasedDecision(messages, services, subservices, prev);
     return NextResponse.json({ ...decision, source: "rules" });
   }
