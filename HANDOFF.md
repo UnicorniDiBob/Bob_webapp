@@ -6,8 +6,9 @@
 
 ## Cosa ho fatto — André (21-24 settembre)
 
-**La scheda lavoro è viva: Fasi 0-4 chiuse.** Ramo `feat/scheda-lavoro`,
-PR #89. La barra della Fase 4 è stata superata su dati veri — la richiesta
+**La scheda lavoro è viva: Fasi 0-4 chiuse.** PR #89 mergiata in `main`
+(`72b1576`), ramo cancellato. La barra della Fase 4 è stata superata su dati
+veri — la richiesta
 `5a431a74-7e44-4f27-9572-38aca2232ecd` porta `subservice_id`
 perdita-rubinetto-sifone, `scope` `{"fixture":"rubinetto","leak_active":true}`
 e `quote_mode` `assisted`.
@@ -73,20 +74,41 @@ e `quote_mode` `assisted`.
     quella di `main`, buttata la mia. Nessun effetto sui dati: sono
     idempotenti e fanno la stessa cosa.
   - **La mia 094 collideva con la `094_tetto_esame_cessazione` di Lucio**,
-    già su `main` e non ancora applicata. La mia è stata **rinumerata
-    096** (`096_rimuove_non_lo_so_doppio.sql`).
+    già su `main` e — scoperto risistemando questo — **mai applicata**
+    (vedi issue #90 qui sotto). La mia è stata **rinumerata 096**
+    (`096_rimuove_non_lo_so_doppio.sql`).
   - **In produzione quella migrazione risulta applicata come `094`**
     (22/09), perché applicata col numero vecchio. Il file adesso dice 096.
-    È solo l'etichetta nello storico a non coincidere: l'effetto è
-    applicato e la migrazione è idempotente, quindi **rieseguirla come 096
-    è un no-op** che allinea lo storico. Da decidere se farlo o lasciare la
-    nota; l'effetto sui dati non cambia in nessuno dei due casi.
+    **Non va rieseguita come 096**: `apply_migration` inserisce per
+    timestamp, quindi due esecuzioni con nomi diversi produrrebbero due
+    righe nello storico per un solo file applicato una volta sola. André
+    corregge l'etichetta della riga esistente direttamente su Supabase —
+    una riga, storico che torna a combaciare col repo.
   - La **095 non collide** con niente e resta 095.
 - **`ANTHROPIC_API_KEY` resta volutamente FUORI da Vercel**, sia produzione
   sia development. Sta solo in `.env.local`. Finché `/api/bob/chat` non ha
   un rate limit (G20-G22, P1.5), la chiave in produzione è una bolletta
   aperta a chiunque: la chat in produzione continua a girare sul fallback a
   regole. **Non aggiungerla** finché il rate limit non è spedito.
+- **La prossima fase non è il render lato pro: è il rate limit.** Tutto
+  quello scritto sopra — scheda, backstop, pre-fill, 093/095/096 — resta
+  invisibile a un cliente vero finché la chiave non può stare in Vercel, e
+  la chiave non può stare in Vercel finché `/api/bob/chat` non ha un tetto
+  alle chiamate (P1.5). Fase 5 è quello, non il rendering strutturato dei
+  campi lato professionista.
+
+## Urgente — André (24 settembre): 094 in main, non in produzione
+
+**`094_tetto_esame_cessazione.sql` è su `main` dal 20 settembre (PR #88) e
+non è mai stata applicata a Supabase.** Speculare al buco della 056 — lì il
+codice esisteva e non era in git, qui il file è in git e non è nel
+database. Verificato ora, non a memoria: `verification_badge_max_until` non
+esiste su `public.professionals` in produzione.
+
+Effetto pratico finché resta così: i ToS (`TermsContent.tsx`, versione
+`2026-09-v2`, già in `main`) dichiarano un tetto di 14 giorni sui casi di
+cessazione che il database non applica ancora. **Aperta issue #90,
+assegnata a Lucio.**
 
 ## Cosa è a metà — André (24 settembre)
 
