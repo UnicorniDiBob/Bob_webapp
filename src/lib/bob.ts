@@ -97,7 +97,15 @@ export interface BobDecision {
   shortlistReason?: string | null;
   suggestedMessage?: string | null;
   // Opzioni di sotto-servizio per la recap card (solo quando next="city").
-  subtaskOptions?: { slug: string; name: string }[];
+  // quoteFields viaggia con ogni opzione apposta: quando il cliente corregge
+  // il sotto-servizio dalla recap card, la scheda lavoro deve potersi
+  // ricalcolare senza un secondo giro di rete (Fase 4, correctSubtask).
+  subtaskOptions?: { slug: string; name: string; quoteFields: QuoteField[] }[];
+  // Le quote_fields del subtaskSlug risolto in questo turno (Fase 4, spec
+  // §5): la scheda lavoro le usa per sapere cosa mostrare. Assente/vuoto se
+  // il sotto-servizio non è ancora noto — ruleBasedDecision non lo imposta
+  // mai, quindi il fallback a regole non offre mai una scheda vuota.
+  quoteFields?: QuoteField[];
 }
 
 // Riferimenti catalogo passati all'LLM per ancorare le sue scelte.
@@ -162,6 +170,27 @@ export function fieldsForSubtask(
 ): QuoteField[] {
   if (!subtaskSlug) return [];
   return subservices.find((x) => x.slug === subtaskSlug)?.quoteFields ?? [];
+}
+
+// Le quote_fields di TUTTI i sotto-servizi di un servizio, quando il
+// sotto-servizio esatto non è ancora noto ma il servizio sì (o si può
+// indovinare dal testo). Serve solo come riferimento nel prompt — mai come
+// schema stretto del tool, perché la stessa chiave (es. "intervento") ha
+// opzioni diverse da un sotto-servizio all'altro e non si può unificare in
+// un'unica proprietà. Il modello legge questo elenco per capire quali nomi
+// di chiave esistono nella famiglia, sceglie quelle del sotto-servizio che
+// sta per assegnare, e validateScope scarta lato server tutto il resto —
+// vedi buildSystemPrompt, scopeGuidance.
+export function fieldsForService(
+  serviceSlug: string | null,
+  subservices: SubserviceRef[]
+): { slug: string; name: string; quoteFields: QuoteField[] }[] {
+  if (!serviceSlug) return [];
+  return subservices
+    .filter(
+      (x) => x.serviceSlug === serviceSlug && (x.quoteFields?.length ?? 0) > 0
+    )
+    .map((x) => ({ slug: x.slug, name: x.name, quoteFields: x.quoteFields ?? [] }));
 }
 
 // Limite generico in assenza di un min/max per campo nel catalogo (la spec
@@ -260,7 +289,15 @@ export function validateScope(
 export function buildSystemPrompt(
   services: ServiceRef[],
   subservices: SubserviceRef[],
-  candidateFields: QuoteField[] = []
+  candidateFields: QuoteField[] = [],
+  // Le quote_fields di tutti i sotto-servizi del servizio già noto (o
+  // indovinato dal testo), quando il sotto-servizio esatto non lo è ancora.
+  // Senza questo, il turno in cui il modello assegna il sotto-servizio per
+  // la prima volta non ha alcun riferimento sulle sue chiavi e non può
+  // compilare scope da quel che il cliente ha appena scritto — la scheda
+  // arriva vuota anche quando la risposta era già nel messaggio di apertura
+  // (regressione del 22 settembre, vedi fieldsForService).
+  serviceFieldsHint: { slug: string; name: string; quoteFields: QuoteField[] }[] = []
 ): string {
   const catalog = services
     .map((s) => {
@@ -290,8 +327,29 @@ export function buildSystemPrompt(
           )
           .join(
             "\n"
-          )}\nChiedi UNA di queste per turno, la più utile che non conosci ancora. Non usare NESSUN'ALTRA chiave.`
-      : `Il sotto-servizio non è ancora chiaro (vedi punti 1 e 3): chiariscilo prima. Finché serviceSlug + subtaskSlug non sono noti, lascia scope vuoto — non riceverai un elenco di chiavi valide finché non lo sono.`;
+          )}\nNON fare NESSUNA domanda su queste chiavi, nemmeno una — la scheda lavoro le chiede subito dopo, con un tap ciascuna, ed è quello il posto giusto: chiederle anche in chat significa farle chiedere due volte. Se la risposta è già dentro un messaggio del cliente (anche il primo), compilala nel campo scope con la source giusta (user_text/photo/inferred); se non c'è, lasciala null e vai avanti comunque — resterà scoperta finché non la conferma la scheda. Non usare NESSUN'ALTRA chiave.`
+      : serviceFieldsHint.length > 0
+        ? `Il sotto-servizio esatto non è ancora assegnato, ma è quasi certamente uno di questi (stesso servizio) — le loro chiavi di scope, per riferimento:
+${serviceFieldsHint
+  .map(
+    (s) =>
+      `  - ${s.slug}: ${s.quoteFields
+        .map(
+          (f) =>
+            `${f.key}${
+              f.type === "select"
+                ? ` (una di: ${(f.options ?? []).join(", ")})`
+                : ` (${f.type})`
+            }`
+        )
+        .join(", ")}`
+  )
+  .join(
+    "\n"
+  )}\nSe in QUESTO turno assegni tu stesso il sotto-servizio (punto 3) e il messaggio del cliente contiene già la risposta a una delle chiavi DI QUEL sotto-servizio specifico (non di un altro elencato qui sopra), compilala subito in scope — non aspettare il turno successivo, è esattamente il caso per cui questo elenco esiste. Non inventare un valore che il cliente non ha detto. NON fare NESSUNA domanda su queste chiavi, in nessun caso: restano da confermare nella scheda lavoro, mai in chat.`
+        : `Il sotto-servizio non è ancora chiaro (vedi le regole sul servizio e sul sotto-servizio qui sopra): chiariscilo prima. Finché serviceSlug + subtaskSlug non sono noti, lascia scope vuoto — non riceverai un elenco di chiavi valide finché non lo sono.
+
+ATTENZIONE se stai per assegnare tu stesso il sotto-servizio in QUESTO turno (punto 3): non hai ancora davanti l'elenco delle sue chiavi di scope, quindi non puoi sapere se la domanda che stai per fare ne duplica una. Non improvvisarla: in questo turno chiedi solo quello che le regole 1, 2 e 4 ti autorizzano esplicitamente (servizio ignoto, pericolo, ambiguità fra 2 sotto-servizi). Se hai già servizio + sotto-servizio + severity, non fare NESSUN'ALTRA domanda anche se non hai ancora scope: passa direttamente a next="city".`;
 
   return `Sei Bob, il concierge di un marketplace italiano che mette in contatto privati e professionisti dei servizi (idraulici, elettricisti, imbianchini, pulizie, ecc.).
 
@@ -304,21 +362,25 @@ A OGNI turno devi chiamare il tool update_job_brief con: la tua risposta all'ute
 
 Politica delle domande (massimo 2 domande di approfondimento in totale, poi procedi):
 1. Se il servizio è ignoto → chiarisci con una domanda concreta, mai un elenco di categorie.
-2. Se ci sono segnali di pericolo (acqua che esce, odore di bruciato, scintille) → 1 frase di sicurezza pratica + una verifica; compila redFlags e severity.
-3. Se il sotto-servizio è ambiguo tra 2 candidati → una domanda secca "o questo o quello".
-4. Altrimenti, per lo scope: ${scopeGuidance}
-5. Tutto il resto NON chiederlo: città e budget li gestisce il wizard dopo. Non chiedere mai il budget.
+2. Se ci sono segnali di pericolo (acqua che esce, odore di bruciato, scintille) → 1 frase di sicurezza pratica + una verifica; compila redFlags e severity. La verifica è un'azione di sicurezza immediata ("hai staccato la corrente?"), non una domanda che duplica una chiave di scope (punto 6) — quella non va mai chiesta qui, nemmeno in questa forma.
+3. Sotto-servizio: appena UN candidato del catalogo descrive plausibilmente quello che il cliente ha già detto, scegli quello e vai avanti — non chiedere conferma, non aspettare altri dettagli prima di impegnarti. "Mi perde il rubinetto del lavandino in cucina" è già perdita-rubinetto-sifone al primo turno: la parola "rubinetto" è già la risposta, non serve chiedere altro per saperlo. Consuma al massimo UNA delle 2 domande totali per arrivare a un sotto-servizio, non tutte e due.
+4. Se e solo se restano davvero 2 candidati concreti e nessuno dei due è più probabile dell'altro → quella è la tua unica domanda di chiarimento sul sotto-servizio, secca, "o questo o quello". Dopo la risposta (o se il cliente non sa scegliere) prendi il più probabile e vai avanti comunque: non tornare a chiedere ancora.
+5. Un sotto-servizio "-altro" è l'ultima risorsa, per quando il problema descritto non somiglia a NESSUNO dei sotto-servizi del catalogo — mai una via d'uscita perché la conversazione si sta allungando o perché non hai ancora fatto abbastanza domande. Se un candidato specifico è plausibile anche solo per buona parte, scegli quello, non "-altro".
+6. Per lo scope: ${scopeGuidance}
+7. Tutto il resto NON chiederlo: città e budget li gestisce il wizard dopo. Non chiedere mai il budget.
+
+Il budget di 2 domande vale per identificare servizio + sotto-servizio (punti 1 e 4). Una volta noti servizio, sotto-servizio e severity, non hai più nessuna domanda da fare: passa a next="city" nello stesso turno, anche se lo scope è ancora vuoto.
 
 Regole per il brief:
 - Compila solo ciò che sai; lascia null ciò che non sai. Non inventare.
 - Per ogni campo compilato indica in fieldMeta la confidence (high/medium/low) e la source (user_text/photo/inferred).
-- severity: "alta" = urgente/danno in corso; "media" = concreto ma non emergenza; "bassa" = pianificabile.
+- severity: "alta" = urgente/danno in corso; "media" = concreto ma non emergenza; "bassa" = pianificabile. Deducila SEMPRE da quello che il cliente ha già scritto (confidence "low" se è una stima) — non è mai oggetto di una domanda, nemmeno riformulata ("è una goccia o un flusso costante?" è la stessa domanda di leak_active vestita da domanda sulla severity, vietata allo stesso modo). Se resta davvero ambigua, usa "media": il cliente la corregge con un tap nella recap card, costa meno che chiederla.
 - summary: 1-2 frasi in prima persona del cliente.
-- scope: usa SOLO le chiavi elencate al punto 4 per il sotto-servizio corrente. Mai un'altra chiave, mai un indirizzo, un telefono o una email dentro scope — quelli si chiedono altrove.
+- scope: usa SOLO le chiavi elencate al punto 6 per il sotto-servizio corrente, e SOLO per compilare risposte già presenti nei messaggi del cliente — mai per farne oggetto di una domanda. Mai un'altra chiave, mai un indirizzo, un telefono o una email dentro scope — quelli si chiedono altrove.
 
 Se il messaggio contiene una FOTO: descrivi brevemente cosa vedi ("Dalla foto vedo…"), usa la foto per compilare servizio, sotto-servizio, severity e scope (source="photo"), compila photoCaption, e chiedi conferma di ciò che hai dedotto invece di fare altre domande.
 
-Quando hai serviceSlug + subtaskSlug + severity con confidence almeno media (o hai esaurito il budget di domande): usa next="city", nella reply conferma in una frase cosa hai capito e chiedi in che città serve. Compila anche shortlistReason (1-2 frasi su cosa cercherai) e suggestedMessage (messaggio pronto per il professionista, in prima persona del cliente, con i dettagli utili del brief).`;
+Quando hai serviceSlug + subtaskSlug + severity con confidence almeno media (o hai esaurito il budget di domande): usa next="city", nella reply conferma in una frase cosa hai capito — NON chiedere ancora la città e NON chiedere altri dettagli del lavoro: se c'è una scheda lavoro da confermare viene subito dopo, chiede lei lo scope con un tap e la città alla fine. Compila anche shortlistReason (1-2 frasi su cosa cercherai) e suggestedMessage (messaggio pronto per il professionista, in prima persona del cliente, con i dettagli utili del brief).`;
 }
 
 // Lo schema JSON di "scope" per il tool: se il sotto-servizio candidato è
@@ -333,7 +395,7 @@ function buildScopeSchema(candidateFields: QuoteField[]) {
     return {
       type: "object" as const,
       description:
-        "Il sotto-servizio non è ancora noto: lascia questo oggetto vuoto.",
+        "Il sotto-servizio non ha ancora un elenco di chiavi validato in questo turno. Se lo stai assegnando proprio ora (vedi le istruzioni sopra) e il messaggio del cliente contiene già la risposta a uno dei suoi campi tipici, puoi comunque scriverla qui con la chiave che ti sembra più corretta: il server scarta ogni chiave che non appartiene davvero al sotto-servizio risolto. Altrimenti lascia l'oggetto vuoto.",
     };
   }
   const properties: Record<string, Record<string, unknown>> = {};
@@ -579,7 +641,7 @@ export function ruleBasedDecision(
     suggestedMessage: `Ciao, ho bisogno ${svcNeed}. ${brief.summary ?? text}. Sei disponibile?`,
     subtaskOptions: subservices
       .filter((x) => x.serviceSlug === slug)
-      .map((x) => ({ slug: x.slug, name: x.name })),
+      .map((x) => ({ slug: x.slug, name: x.name, quoteFields: x.quoteFields ?? [] })),
   };
 }
 

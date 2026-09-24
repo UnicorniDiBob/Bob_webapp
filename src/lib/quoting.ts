@@ -169,3 +169,45 @@ export function resolveQuoteMode(input: QuoteResolverInput): QuoteMode {
   }
   return level;
 }
+
+/**
+ * Ponte fra uno scope generico (le risposte raccolte per chiave, spec §3) e
+ * gli input nominati che resolveQuoteMode si aspetta. Vive qui, non nei
+ * dialog che la chiamano: la corrispondenza fra chiave di scope e regola
+ * (mold_present, mq_approx, intervento, boiler_model) è la stessa logica di
+ * dominio del risolutore, non un dettaglio del componente che invia la
+ * richiesta. Resta pura: nessuna chiamata a Supabase, il chiamante gli passa
+ * quote_fields e quote_level già letti.
+ */
+export interface ScopeQuoteModeInput {
+  subtaskSlug: string;
+  defaultQuoteLevel: QuoteLevel;
+  /** Solo key e is_billable_unit servono qui: individua il campo quantità. */
+  quoteFields: { key: string; is_billable_unit: boolean }[];
+  scope: Record<string, unknown>;
+  redFlags?: string[] | null;
+  urgency?: string | null;
+  propertyType?: string | null;
+  hasPhoto?: boolean;
+}
+
+export function resolveQuoteModeFromScope(input: ScopeQuoteModeInput): QuoteMode {
+  const billableKey = input.quoteFields.find((f) => f.is_billable_unit)?.key;
+  const known = (key: string | undefined): boolean | undefined =>
+    key === undefined ? undefined : input.scope[key] !== undefined && input.scope[key] !== null;
+
+  return resolveQuoteMode({
+    subtaskSlug: input.subtaskSlug,
+    defaultQuoteLevel: input.defaultQuoteLevel,
+    redFlags: input.redFlags,
+    urgency: input.urgency,
+    moldPresent:
+      typeof input.scope.mold_present === "boolean" ? input.scope.mold_present : undefined,
+    mqApproxKnown: known("mq_approx"),
+    hasPhoto: input.hasPhoto,
+    intervento: typeof input.scope.intervento === "string" ? input.scope.intervento : undefined,
+    boilerModelKnown: known("boiler_model"),
+    propertyType: input.propertyType,
+    quantityKnown: known(billableKey),
+  });
+}

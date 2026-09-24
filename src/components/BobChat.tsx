@@ -3,11 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Camera, MapPin } from "lucide-react";
-import type { City, Service, ProfessionalCard } from "@/lib/supabase/types";
+import type {
+  City,
+  Service,
+  ProfessionalCard,
+  QuoteField,
+} from "@/lib/supabase/types";
 import { EMPTY_BRIEF } from "@/lib/bob";
 import type {
   BobMessage,
   BriefUrgency,
+  FieldMeta,
   JobBrief,
   Severity,
 } from "@/lib/bob";
@@ -19,6 +25,7 @@ import {
 import { Stars, PriceTag, VerificationLevelBadge } from "./ui";
 import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
+import { SchedaLavoro, type Scope } from "./SchedaLavoro";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
 import { withArticle, afterDi } from "@/lib/italian";
@@ -28,6 +35,7 @@ import { createClient } from "@/lib/supabase/client";
 type Step =
   | "intent"
   | "chat" // conversazione intelligente con Bob
+  | "scheda" // scheda lavoro: conferma i campi del sotto-servizio (spec §5, stadi B/C)
   | "city"
   | "waitlist" // città non attiva: offriamo l'avviso email invece di dirottare su Milano
   | "zone" // quartiere: la posizione grossolana che il pro vede prima di essere scelto (mig 045)
@@ -52,6 +60,7 @@ interface PendingPhoto {
 interface SubtaskOption {
   slug: string;
   name: string;
+  quoteFields: QuoteField[];
 }
 
 // Indirizzo salvato nell'account cliente (customer_addresses, migration 020).
@@ -61,6 +70,10 @@ interface SavedAddress {
   address_line: string;
   city_slug: string | null;
   is_default: boolean;
+  // Zona/CAP autodichiarati al salvataggio (mig 095): se presenti, Bob non
+  // chiede più "in che zona?" quando questo indirizzo viene scelto in chat.
+  zone_slug: string | null;
+  postal_code: string | null;
 }
 
 interface Collected {
@@ -113,6 +126,7 @@ interface ChatDraft {
   brief: JobBrief;
   collected: Collected;
   subtaskOptions: SubtaskOption[];
+  quoteFields: QuoteField[];
   results: ProfessionalCard[];
   selectedIds: string[];
   waitlistCity: { slug: string; name: string } | null;
@@ -138,6 +152,10 @@ export function BobChat({
   const [brief, setBrief] = useState<JobBrief>(EMPTY_BRIEF);
   const [subtaskOptions, setSubtaskOptions] = useState<SubtaskOption[]>([]);
   const [editingSubtask, setEditingSubtask] = useState(false);
+  // Campi della scheda lavoro per il subtaskSlug risolto in questo turno
+  // (spec §5). Vuoto quando il fallback a regole ha risposto: non offre
+  // mai una scheda vuota (vedi bob.ts, BobDecision.quoteFields).
+  const [quoteFields, setQuoteFields] = useState<QuoteField[]>([]);
   const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
   const [capInput, setCapInput] = useState("");
   const [capError, setCapError] = useState<string | null>(null);
@@ -192,6 +210,7 @@ export function BobChat({
       setBrief(draft.brief);
       setCollected(draft.collected ?? {});
       setSubtaskOptions(draft.subtaskOptions ?? []);
+      setQuoteFields(draft.quoteFields ?? []);
       setResults(draft.results ?? []);
       setSelected(new Set(draft.selectedIds ?? []));
       setWaitlistCity(draft.waitlistCity ?? null);
@@ -270,7 +289,7 @@ export function BobChat({
       const supabase = createClient();
       const { data } = await supabase
         .from("customer_addresses")
-        .select("id,label,address_line,city_slug,is_default")
+        .select("id,label,address_line,city_slug,is_default,zone_slug,postal_code")
         .order("is_default", { ascending: false })
         .order("created_at", { ascending: true });
       setSavedAddresses((data as SavedAddress[]) ?? []);
@@ -289,6 +308,7 @@ export function BobChat({
         brief,
         collected,
         subtaskOptions,
+        quoteFields,
         results,
         selectedIds: Array.from(selected),
         waitlistCity,
@@ -298,7 +318,7 @@ export function BobChat({
     } catch {
       // quota piena o storage negato: la chat funziona comunque
     }
-  }, [step, messages, brief, collected, subtaskOptions, results, selected, waitlistCity, briefId]);
+  }, [step, messages, brief, collected, subtaskOptions, quoteFields, results, selected, waitlistCity, briefId]);
 
   function bobSay(text: string) {
     setMessages((m) => [...m, { from: "bob", text }]);
@@ -386,6 +406,10 @@ export function BobChat({
       if (Array.isArray(data.subtaskOptions)) {
         setSubtaskOptions(data.subtaskOptions as SubtaskOption[]);
       }
+      const fields: QuoteField[] = Array.isArray(data.quoteFields)
+        ? (data.quoteFields as QuoteField[])
+        : [];
+      setQuoteFields(fields);
 
       const svc = b.serviceSlug
         ? services.find((s) => s.slug === b.serviceSlug)
@@ -401,7 +425,10 @@ export function BobChat({
       bobSay(data.reply ?? "Raccontami meglio cosa ti serve.");
 
       if (data.next === "city") {
-        setStep("city");
+        // La scheda lavoro (spec §5) si interpone quando c'e' un
+        // sotto-servizio con campi da confermare; il fallback a regole non
+        // popola mai quoteFields, quindi non offre mai una scheda vuota.
+        setStep(fields.length > 0 ? "scheda" : "city");
       } else {
         setStep("chat");
       }
@@ -416,6 +443,12 @@ export function BobChat({
   }
 
   // Correzioni one-tap dalla recap card (source: option_click).
+  // Una correzione lasciata a meta' - il chip aggiornato ma la scheda ferma
+  // sui campi del sotto-servizio sbagliato, o del tutto assente - e' peggio
+  // di non correggere: quoteFields e step vanno ricalcolati qui, non solo
+  // brief.subtaskSlug (bug del 20-21 settembre: correctSubtask non li
+  // toccava, e "mai una scheda vuota" restava vero per sempre una volta
+  // atterrati su un sotto-servizio senza campi).
   function correctSubtask(opt: SubtaskOption) {
     setBrief((b) => ({
       ...b,
@@ -426,6 +459,21 @@ export function BobChat({
       },
     }));
     setEditingSubtask(false);
+    setQuoteFields(opt.quoteFields);
+    setStep(opt.quoteFields.length > 0 ? "scheda" : "city");
+  }
+
+  // Fine della scheda lavoro (stadio B confermato, stadio C completato o
+  // saltato): lo scope raccolto entra nel brief e solo ora si chiede la
+  // città — prima l'avrebbe chiesto la reply dell'LLM, in mezzo alla scheda.
+  function completeScheda(scope: Scope, meta: Record<string, FieldMeta>) {
+    setBrief((b) => ({
+      ...b,
+      scope,
+      fieldMeta: { ...b.fieldMeta, ...meta },
+    }));
+    bobSay("Perfetto, tengo tutto a mente. In che città ti serve?");
+    setStep("city");
   }
 
   function correctSeverity(sev: Severity) {
@@ -560,7 +608,20 @@ export function BobChat({
       address: a.address_line,
       citySlug: city.slug,
       cityName: city.name,
+      ...(a.zone_slug
+        ? { zoneSlug: a.zone_slug }
+        : a.postal_code
+          ? { postalCode: a.postal_code }
+          : {}),
     }));
+    // Zona o CAP dichiarati una volta al salvataggio dell'indirizzo (mig
+    // 095): non richiederli di nuovo qui, stesso trattamento di un chip
+    // toccato a mano (pickZone/submitCap).
+    if (a.zone_slug || a.postal_code) {
+      bobSay("Quando ti servirebbe?");
+      setStep("urgency");
+      return;
+    }
     askZoneOrUrgency(city.slug);
   }
 
@@ -729,6 +790,7 @@ export function BobChat({
     setStep("intent");
     setBrief(EMPTY_BRIEF);
     setSubtaskOptions([]);
+    setQuoteFields([]);
     setEditingSubtask(false);
     setPendingPhoto(null);
     setWaitlistCity(null);
@@ -849,84 +911,152 @@ export function BobChat({
           </div>
         )}
 
-        {/* recap card: cosa Bob ha capito, correggibile con un tap */}
-        {step !== "intent" && step !== "chat" && brief.serviceSlug && (
-          <div
-            className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
-            data-testid="brief-recap"
-          >
-            <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
-              Ecco cosa ho capito
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              {collected.serviceName && (
-                <span className="chip bg-bob-indigo-50 text-bob-indigo">
-                  {collected.serviceName}
-                </span>
-              )}
-              {brief.subtaskSlug && !editingSubtask && (
-                <button
-                  onClick={() =>
-                    subtaskOptions.length > 0 && setEditingSubtask(true)
-                  }
-                  className="chip bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100"
-                  data-testid="chip-subtask"
-                  title="Tocca per correggere"
-                >
-                  {subtaskOptions.find((o) => o.slug === brief.subtaskSlug)
-                    ?.name ?? brief.subtaskSlug}
-                  {subtaskOptions.length > 0 && (
-                    <span className="ml-1 text-bob-indigo/50">✎</span>
-                  )}
-                </button>
-              )}
-              {collected.cityName && (
-                <span className="chip bg-bob-indigo-50 text-bob-indigo">
-                  {collected.cityName}
-                </span>
-              )}
-            </div>
-            {editingSubtask && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {subtaskOptions.map((o) => (
+        {/* recap card: cosa Bob ha capito, correggibile con un tap.
+            Non allo stadio "scheda" (la scheda lo dice gia' nel suo
+            titolo, con la sua correzione inline - vedi SchedaLavoro.tsx),
+            e non più a NESSUNO stadio successivo (città, zona, urgenza,
+            budget, risultati) quando una scheda è esistita per questa
+            conversazione: l'ha già chiesto lei una volta, ripeterlo a ogni
+            passo successivo è la stessa ridondanza spostata più avanti,
+            non tolta. Resta come unico ripiego quando non c'è mai stata
+            una scheda da mostrare (quoteFields vuoto per tutta la
+            conversazione, es. un sotto-servizio senza campi). */}
+        {step !== "intent" &&
+          step !== "chat" &&
+          step !== "scheda" &&
+          brief.serviceSlug &&
+          (quoteFields.length === 0 ? (
+            <div
+              className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
+              data-testid="brief-recap"
+            >
+              <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
+                Ecco cosa ho capito
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {collected.serviceName && (
+                  <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                    {collected.serviceName}
+                  </span>
+                )}
+                {brief.subtaskSlug && !editingSubtask && (
                   <button
-                    key={o.slug}
-                    onClick={() => correctSubtask(o)}
-                    className={`chip ${
-                      o.slug === brief.subtaskSlug
-                        ? "bg-bob-indigo text-white"
-                        : "hover:bg-bob-indigo-100"
-                    }`}
-                    data-testid={`chip-subtask-${o.slug}`}
+                    onClick={() =>
+                      subtaskOptions.length > 0 && setEditingSubtask(true)
+                    }
+                    className="chip bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100"
+                    data-testid="chip-subtask"
+                    title="Tocca per correggere"
                   >
-                    {o.name}
+                    {subtaskOptions.find((o) => o.slug === brief.subtaskSlug)
+                      ?.name ?? brief.subtaskSlug}
+                    {subtaskOptions.length > 0 && (
+                      <span className="ml-1 text-bob-indigo/50">✎</span>
+                    )}
+                  </button>
+                )}
+                {collected.cityName && (
+                  <span className="chip bg-bob-indigo-50 text-bob-indigo">
+                    {collected.cityName}
+                  </span>
+                )}
+              </div>
+              {editingSubtask && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {subtaskOptions.map((o) => (
+                    <button
+                      key={o.slug}
+                      onClick={() => correctSubtask(o)}
+                      className={`chip ${
+                        o.slug === brief.subtaskSlug
+                          ? "bg-bob-indigo text-white"
+                          : "hover:bg-bob-indigo-100"
+                      }`}
+                      data-testid={`chip-subtask-${o.slug}`}
+                    >
+                      {o.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {(["alta", "media", "bassa"] as Severity[]).map((sev) => (
+                  <button
+                    key={sev}
+                    onClick={() => correctSeverity(sev)}
+                    className={`chip text-xs ${
+                      brief.severity === sev
+                        ? "bg-bob-indigo text-white"
+                        : "text-bob-ink/65 hover:bg-bob-indigo-100"
+                    }`}
+                    data-testid={`chip-severity-${sev}`}
+                  >
+                    {SEVERITY_LABELS[sev]}
                   </button>
                 ))}
               </div>
-            )}
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {(["alta", "media", "bassa"] as Severity[]).map((sev) => (
-                <button
-                  key={sev}
-                  onClick={() => correctSeverity(sev)}
-                  className={`chip text-xs ${
-                    brief.severity === sev
-                      ? "bg-bob-indigo text-white"
-                      : "text-bob-ink/65 hover:bg-bob-indigo-100"
-                  }`}
-                  data-testid={`chip-severity-${sev}`}
-                >
-                  {SEVERITY_LABELS[sev]}
-                </button>
-              ))}
+              {brief.photos.length > 0 && brief.photos[0].aiCaption && (
+                <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/65">
+                  <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span>{brief.photos[0].aiCaption}</span>
+                </p>
+              )}
             </div>
-            {brief.photos.length > 0 && brief.photos[0].aiCaption && (
-              <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/65">
-                <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
-                <span>{brief.photos[0].aiCaption}</span>
-              </p>
-            )}
-          </div>
+          ) : (
+            // La scheda ha già confermato servizio + sotto-servizio: qui
+            // resta solo quello che la scheda NON copre e che può ancora
+            // valere la pena correggere più avanti nel flusso.
+            (brief.severity ||
+              (brief.photos.length > 0 && brief.photos[0].aiCaption)) && (
+              <div
+                className="rounded-2xl border border-black/5 bg-white p-3.5 shadow-sm"
+                data-testid="brief-recap-slim"
+              >
+                <div className="flex flex-wrap gap-1.5">
+                  {(["alta", "media", "bassa"] as Severity[]).map((sev) => (
+                    <button
+                      key={sev}
+                      onClick={() => correctSeverity(sev)}
+                      className={`chip text-xs ${
+                        brief.severity === sev
+                          ? "bg-bob-indigo text-white"
+                          : "text-bob-ink/65 hover:bg-bob-indigo-100"
+                      }`}
+                      data-testid={`chip-severity-${sev}`}
+                    >
+                      {SEVERITY_LABELS[sev]}
+                    </button>
+                  ))}
+                </div>
+                {brief.photos.length > 0 && brief.photos[0].aiCaption && (
+                  <p className="mt-2 flex items-start gap-1 text-xs text-bob-ink/65">
+                    <Camera className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
+                    <span>{brief.photos[0].aiCaption}</span>
+                  </p>
+                )}
+              </div>
+            )
+          ))}
+
+        {/* scheda lavoro: conferma i campi del sotto-servizio (spec §5) */}
+        {step === "scheda" && brief.subtaskSlug && quoteFields.length > 0 && (
+          <SchedaLavoro
+            key={brief.subtaskSlug}
+            subtaskName={
+              subtaskOptions.find((o) => o.slug === brief.subtaskSlug)?.name ??
+              brief.subtaskSlug
+            }
+            quoteFields={quoteFields}
+            initialScope={brief.scope}
+            initialFieldMeta={brief.fieldMeta}
+            onConfirm={completeScheda}
+            subtaskSlug={brief.subtaskSlug}
+            subtaskOptions={subtaskOptions}
+            onCorrectSubtask={correctSubtask}
+            severity={brief.severity}
+            onCorrectSeverity={correctSeverity}
+            photoCaption={brief.photos[0]?.aiCaption}
+          />
         )}
 
         {/* città non attiva: waitlist inline al posto del dirottamento */}
@@ -1379,6 +1509,12 @@ export function BobChat({
             briefId,
             // (6b) il brief sa gia' quale lavoro e': non buttarlo via qui
             subserviceSlug: brief.subtaskSlug ?? null,
+            // Scheda lavoro (Fase 4): scope gia' validato in chat, +
+            // quello che serve al risolutore di quote_mode (spec §2)
+            scope: brief.scope,
+            redFlags: brief.redFlags,
+            propertyType: brief.propertyType,
+            hasPhoto: brief.photos.length > 0,
           }}
           onClose={() => setRequestFor(null)}
         />
@@ -1404,6 +1540,12 @@ export function BobChat({
             // (045/046) posizione grossolana, visibile ai pro prima della scelta
             zoneSlug: collected.zoneSlug ?? null,
             postalCode: collected.postalCode ?? null,
+            // Scheda lavoro (Fase 4): scope gia' validato in chat, +
+            // quello che serve al risolutore di quote_mode (spec §2)
+            scope: brief.scope,
+            redFlags: brief.redFlags,
+            propertyType: brief.propertyType,
+            hasPhoto: brief.photos.length > 0,
           }}
           onClose={() => setQuoteOpen(false)}
         />

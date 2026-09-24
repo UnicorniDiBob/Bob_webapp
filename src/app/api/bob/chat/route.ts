@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { getServices, getAllSubservices } from "@/lib/data";
+import { guessServiceSlug } from "@/lib/matching";
 import {
   buildSystemPrompt,
   buildBriefTool,
   mergeBrief,
   ruleBasedDecision,
   fieldsForSubtask,
+  fieldsForService,
   EMPTY_BRIEF,
   type BobDecision,
   type BobMessage,
@@ -146,12 +148,30 @@ export async function POST(request: Request) {
     // ancora" — non un elenco vuoto interpretato come "nessuna chiave è
     // ammessa mai".
     const candidateFields = fieldsForSubtask(prev.subtaskSlug, subservices);
+    // Riferimento piu' ampio per il turno in cui il sotto-servizio non e'
+    // ancora risolto: il servizio gia' noto, o un'ipotesi dal testo
+    // dell'ultimo messaggio (stessa euristica del fallback a regole). Senza
+    // questo il modello non ha NESSUN nome di chiave a cui appoggiarsi nel
+    // turno in cui assegna il sotto-servizio, e lo scope resta vuoto anche
+    // quando la risposta era gia' nel messaggio di apertura.
+    const serviceFieldsHint =
+      candidateFields.length === 0
+        ? fieldsForService(
+            prev.serviceSlug ?? guessServiceSlug(lastUser?.content ?? ""),
+            subservices
+          )
+        : [];
     const tool = buildBriefTool(services, subservices, candidateFields);
     const completion = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1000,
       temperature: 0.4,
-      system: buildSystemPrompt(services, subservices, candidateFields),
+      system: buildSystemPrompt(
+        services,
+        subservices,
+        candidateFields,
+        serviceFieldsHint
+      ),
       tools: [tool as Anthropic.Tool],
       tool_choice: { type: "tool", name: "update_job_brief" },
       messages: toAnthropicMessages(messages),
@@ -187,9 +207,30 @@ export async function POST(request: Request) {
       brief = { ...brief, photos: [...brief.photos, { storagePath, aiCaption }] };
     }
 
-    const next: BobDecision["next"] = input.next === "city" ? "city" : "ask";
-    const reply =
-      typeof input.reply === "string" && input.reply.trim()
+    const modelNext = input.next === "city" ? "city" : "ask";
+    // Backstop deterministico: una volta noti servizio + sotto-servizio +
+    // severity non c'e' piu' nessuna domanda legittima (vedi bob.ts, politica
+    // delle domande) - tocca alla scheda lavoro. Il modello a volte ne fa
+    // comunque una in piu', soprattutto nel turno in cui risolve il
+    // sotto-servizio per la prima volta (non ha ancora l'elenco delle sue
+    // chiavi di scope per sapere se la sta duplicando, vedi scopeGuidance).
+    // La sua reply puo' restare una domanda testuale, ma la conversazione
+    // non aspetta piu' la risposta: la scheda prende il testimone subito.
+    const next: BobDecision["next"] =
+      modelNext === "city" ||
+      (brief.serviceSlug && brief.subtaskSlug && brief.severity)
+        ? "city"
+        : "ask";
+    // Se il backstop ha appena forzato next="city", la reply del modello e'
+    // stata scritta pensando di restare in ascolto (next="ask" nella sua
+    // testa) - puo' essere letteralmente una domanda ("goccia o flusso
+    // costante?") mostrata giusto sopra la scheda che chiede la stessa cosa
+    // con un tap. Non fidarsi del testo del modello in questo caso: una
+    // frase neutra, mai una domanda che nessuno aspetterà piu' una risposta.
+    const backstopFired = modelNext === "ask" && next === "city";
+    const reply = backstopFired
+      ? "Perfetto, ho capito abbastanza per andare avanti. Guarda qui sotto quello che ho capito: puoi correggere quello che non torna."
+      : typeof input.reply === "string" && input.reply.trim()
         ? input.reply.trim()
         : "Raccontami un po' meglio cosa ti serve.";
 
@@ -211,8 +252,16 @@ export async function POST(request: Request) {
         next === "city" && brief.serviceSlug
           ? subservices
               .filter((x) => x.serviceSlug === brief.serviceSlug)
-              .map((x) => ({ slug: x.slug, name: x.name }))
+              .map((x) => ({
+                slug: x.slug,
+                name: x.name,
+                quoteFields: x.quoteFields ?? [],
+              }))
           : undefined,
+      // La scheda lavoro (Fase 4) ne ha bisogno solo quando si passa alla
+      // città: prima sarebbe un dato pronto ma inutile ad ogni turno.
+      quoteFields:
+        next === "city" ? fieldsForSubtask(brief.subtaskSlug, subservices) : undefined,
     };
 
     return NextResponse.json({ ...decision, source: "ai" });

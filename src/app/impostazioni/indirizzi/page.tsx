@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { SectionHeader } from "@/components/ImpostazioniShell";
 import { SectionSkeleton, SectionError } from "@/components/SectionStates";
+import { zonesForCity, zoneLabel } from "@/lib/zones";
 
 interface CityOption {
   id: string;
@@ -30,6 +31,11 @@ interface SavedAddress {
   address_line: string;
   city_slug: string | null;
   is_default: boolean;
+  // Zona e CAP autodichiarati (mig 095): se presenti, Bob salta la domanda
+  // "in che zona?" quando questo indirizzo viene scelto in chat. Non
+  // ricavati dall'indirizzo — li dichiara il cliente qui, una volta sola.
+  zone_slug: string | null;
+  postal_code: string | null;
 }
 
 export default function IndirizziPage() {
@@ -45,6 +51,8 @@ export default function IndirizziPage() {
   const [addrLabel, setAddrLabel] = useState("Casa");
   const [addrLine, setAddrLine] = useState("");
   const [addrCity, setAddrCity] = useState("");
+  const [addrZone, setAddrZone] = useState("");
+  const [addrCap, setAddrCap] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -60,7 +68,7 @@ export default function IndirizziPage() {
     const [{ data: addr, error: aErr }, { data: cs }] = await Promise.all([
       supabase
         .from("customer_addresses")
-        .select("id,label,address_line,city_slug,is_default")
+        .select("id,label,address_line,city_slug,is_default,zone_slug,postal_code")
         .order("is_default", { ascending: false })
         .order("created_at", { ascending: true }),
       supabase.from("cities").select("id,name,slug,status").order("name"),
@@ -90,6 +98,11 @@ export default function IndirizziPage() {
       setErr("Scrivi l'indirizzo, con via e numero civico.");
       return;
     }
+    const cap = addrCap.trim();
+    if (cap && !/^[0-9]{5}$/.test(cap)) {
+      setErr("Il CAP è di cinque cifre, per esempio 20159.");
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.from("customer_addresses").insert({
       user_id: user.id,
@@ -97,12 +110,18 @@ export default function IndirizziPage() {
       address_line: line,
       city_slug: addrCity || null,
       is_default: addresses.length === 0, // il primo diventa predefinito
+      // Autodichiarati, mai ricavati dall'indirizzo (mig 095, come 045/046):
+      // se presenti, Bob salta la domanda "in che zona?" in chat.
+      zone_slug: addrZone || null,
+      postal_code: cap || null,
     });
     if (error) setErr("Non sono riuscito a salvare l'indirizzo. Riprova.");
     else {
       setAddrLine("");
       setAddrLabel("Casa");
       setAddrCity("");
+      setAddrZone("");
+      setAddrCap("");
       await load();
     }
     setSaving(false);
@@ -182,6 +201,11 @@ export default function IndirizziPage() {
                   <p className="truncate text-xs text-bob-ink/70">
                     {a.address_line}
                     {nomeCitta(a.city_slug) ? ` · ${nomeCitta(a.city_slug)}` : ""}
+                    {a.zone_slug
+                      ? ` · ${zoneLabel(a.zone_slug) ?? a.zone_slug}`
+                      : a.postal_code
+                        ? ` · ${a.postal_code}`
+                        : ""}
                   </p>
                 </div>
                 {!a.is_default && (
@@ -233,7 +257,10 @@ export default function IndirizziPage() {
             />
             <select
               value={addrCity}
-              onChange={(e) => setAddrCity(e.target.value)}
+              onChange={(e) => {
+                setAddrCity(e.target.value);
+                setAddrZone(""); // la zona vale per una città sola
+              }}
               aria-label="Città"
               className="input-bob py-2.5"
               data-testid="select-address-city"
@@ -247,6 +274,48 @@ export default function IndirizziPage() {
               ))}
             </select>
           </div>
+
+          {/* Zona e CAP: facoltativi, chiesti una volta qui invece che ogni
+              volta in chat (mig 095). Mai ricavati dall'indirizzo sopra —
+              li dichiara il cliente, come già fa in chat (045/046). */}
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_150px]">
+            {zonesForCity(addrCity).length > 0 ? (
+              <select
+                value={addrZone}
+                onChange={(e) => setAddrZone(e.target.value)}
+                aria-label="Zona (facoltativa)"
+                className="input-bob py-2.5"
+                data-testid="select-address-zone"
+              >
+                <option value="">Zona (facoltativa)…</option>
+                {zonesForCity(addrCity).map((z) => (
+                  <option key={z.slug} value={z.slug}>
+                    {z.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="self-center text-xs text-bob-ink/65">
+                {addrCity
+                  ? "Nessun elenco di zone per questa città: usa il CAP."
+                  : "Scegli la città per vedere le zone."}
+              </p>
+            )}
+            <input
+              value={addrCap}
+              onChange={(e) => setAddrCap(e.target.value)}
+              placeholder="CAP (facoltativo)"
+              aria-label="CAP (facoltativo)"
+              inputMode="numeric"
+              maxLength={5}
+              className="input-bob py-2.5"
+              data-testid="input-address-cap"
+            />
+          </div>
+          <p className="mt-1.5 text-2xs text-bob-ink/65">
+            Se li dai qui, Bob non ti chiede più la zona in chat quando scegli
+            questo indirizzo.
+          </p>
           {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
           <button
             type="submit"

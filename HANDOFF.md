@@ -1,3 +1,136 @@
+# Passaggio di consegne — 24 settembre 2026 (André, con Claude)
+
+> La giornata di oggi in cima. La voce di Lucio del 20 settembre e tutto
+> quello che sta sotto restano invariati; quello che è a metà si porta
+> avanti, non si butta.
+
+## Cosa ho fatto — André (21-24 settembre)
+
+**La scheda lavoro è viva: Fasi 0-4 chiuse.** Ramo `feat/scheda-lavoro`,
+PR #89. La barra della Fase 4 è stata superata su dati veri — la richiesta
+`5a431a74-7e44-4f27-9572-38aca2232ecd` porta `subservice_id`
+perdita-rubinetto-sifone, `scope` `{"fixture":"rubinetto","leak_active":true}`
+e `quote_mode` `assisted`.
+
+- **La scheda non si mostrava mai.** Non era l'API: `correctSubtask` (la
+  correzione del sotto-servizio dalla recap card) cambiava solo
+  `brief.subtaskSlug`, senza ricalcolare `quoteFields` né riportare `step`
+  a `"scheda"` — chi correggeva restava bloccato sulla vecchia card per il
+  resto della conversazione. Riprodotto dal vivo prima di toccare il codice.
+- **Il `-altro` era un vicolo cieco per costruzione**: i cinque
+  sotto-servizi "-altro" del core five avevano `quote_fields` vuoto, quindi
+  il client — giustamente, "mai una scheda vuota" — saltava la scheda per
+  sempre. Chiuso dalla 093, che era già su `main` (vedi sotto, numerazione).
+- **Bob faceva le domande della scheda** (leak_active, fixture) e poi la
+  scheda le richiedeva con un tap. Riscritta la politica delle domande, più
+  un **backstop deterministico** in `/api/bob/chat`: noti servizio +
+  sotto-servizio + severity, `next="city"` sempre, qualunque cosa decida il
+  modello, e la reply testuale viene sostituita da una frase neutra così non
+  resta una domanda appesa sopra la card che chiede la stessa cosa. Tre giri
+  di prompt sempre più espliciti avevano ridotto ma non azzerato il caso:
+  Haiku non rispetta il vincolo al 100%, quindi la garanzia sta nel codice.
+- **Poi la scheda arrivava vuota** — regressione introdotta dal backstop
+  stesso: `candidateFields` si calcola da `prev.subtaskSlug`, sempre un
+  turno indietro, quindi nel turno in cui il modello assegna il
+  sotto-servizio non ha l'elenco delle sue chiavi e non può compilarle.
+  Risolto con `fieldsForService` (bob.ts): quando il sotto-servizio non è
+  ancora noto, il prompt riceve le chiavi di tutti i sotto-servizi del
+  servizio (noto o indovinato dal testo) come **riferimento**, non come
+  schema stretto — `validateScope` scarta lato server quelle che non
+  appartengono al sotto-servizio risolto. Verificato su 6 conversazioni:
+  1-2 campi su 4-5 arrivano pre-compilati in ognuna, prima erano 0.
+- **096**: `"non lo so"` era seminato come opzione letterale su 11 chiavi
+  (14 righe) e il componente ne aggiunge già uno suo — due chip identici
+  sullo stesso campo. Correzione sistemica su tutto il catalogo, non un
+  elenco di slug.
+- **Interfaccia**: stadio B e C sticky sul fondo del pannello (lo skip di
+  stadio C era tagliato dal bordo a 390px); recap card e scheda non dicono
+  più la stessa frase — il titolo della scheda è diventato lui stesso il
+  punto di correzione del sotto-servizio, e la recap card completa resta
+  solo come ripiego per le conversazioni senza scheda.
+- **095**: l'indirizzo salvato porta zona e CAP autodichiarati, chiesti una
+  volta in `/impostazioni/indirizzi`. Se ci sono, Bob non chiede più "in che
+  zona?" quando quell'indirizzo viene scelto in chat.
+
+## Cosa ho applicato in produzione che Lucio deve sapere
+
+- **Applicate 093, la mia "non lo so" e la 095.** Advisor di sicurezza
+  rieseguiti dopo l'ultima: **nessun rilievo nuovo**. Restano i tre di
+  sempre — `professionals_score` SECURITY DEFINER richiamabile da `anon` e
+  da `authenticated` (è la 072/089, non queste), e la Leaked Password
+  Protection che vuole il piano Pro.
+- **Migrazioni applicate PRIMA del merge, di proposito**: sono tutte
+  additive o solo dati, quindi la produzione gira con schema nuovo e codice
+  vecchio senza rompersi. È l'ordine che Lucio aveva indicato il 12
+  settembre dopo la finestra in cui `/impostazioni/verifica` diceva "Non
+  verificato" a un professionista verificato.
+- **NUMERAZIONE: ho sbagliato, ed è la trappola già scritta qui sotto.**
+  Ho preso i numeri da un `ls` del clone locale senza fare prima
+  `git fetch`, e il clone era indietro di sei commit. Conseguenze, tutte
+  corrette nella PR #89 prima del merge:
+  - **La mia 093 era un doppione della 093 già su `main`** (stesso nome,
+    stesso identico effetto sui cinque `-altro`, prosa diversa). Tenuta
+    quella di `main`, buttata la mia. Nessun effetto sui dati: sono
+    idempotenti e fanno la stessa cosa.
+  - **La mia 094 collideva con la `094_tetto_esame_cessazione` di Lucio**,
+    già su `main` e non ancora applicata. La mia è stata **rinumerata
+    096** (`096_rimuove_non_lo_so_doppio.sql`).
+  - **In produzione quella migrazione risulta applicata come `094`**
+    (22/09), perché applicata col numero vecchio. Il file adesso dice 096.
+    È solo l'etichetta nello storico a non coincidere: l'effetto è
+    applicato e la migrazione è idempotente, quindi **rieseguirla come 096
+    è un no-op** che allinea lo storico. Da decidere se farlo o lasciare la
+    nota; l'effetto sui dati non cambia in nessuno dei due casi.
+  - La **095 non collide** con niente e resta 095.
+- **`ANTHROPIC_API_KEY` resta volutamente FUORI da Vercel**, sia produzione
+  sia development. Sta solo in `.env.local`. Finché `/api/bob/chat` non ha
+  un rate limit (G20-G22, P1.5), la chiave in produzione è una bolletta
+  aperta a chiunque: la chat in produzione continua a girare sul fallback a
+  regole. **Non aggiungerla** finché il rate limit non è spedito.
+
+## Cosa è a metà — André (24 settembre)
+
+- **Gli indirizzi salvati non si modificano, si cancellano e basta.** La 095
+  aggiunge zona e CAP al salvataggio, ma chi ha già un indirizzo salvato non
+  ha modo di aggiungerglieli se non cancellando e riscrivendo. Serve un
+  percorso di modifica in `/impostazioni/indirizzi`.
+- **Il passo "quando" non ha un default**: la severity ce l'ha, il timing
+  no. Va messo "Questa settimana".
+- **A 390px la mascotte si prende il 40% dell'altezza** prima che la chat
+  cominci: su mobile il primo schermo è quasi tutto Bob che saluta. Passata
+  mobile da fare, non un ritocco.
+- **Le regole di aggravamento di `quoting.ts` sono provate solo dai test**
+  (26 casi in `quoting.test.ts`): dal vivo è passato solo il ramo felice,
+  `assisted`. `dispatch`, muffa → `survey`, caldaia senza modello e locale
+  commerciale senza quantità non sono mai stati esercitati su una richiesta
+  vera.
+
+> **Chiuse da `main`, non da me** (commit «tre seguiti alla diagnosi del
+> model id»): il log per ramo di `request-summary` e il passaggio di
+> `source` fino a `/api/bob/brief`. Erano nella mia lista di aperti fino a
+> stamattina — le ho tolte dopo aver letto il diff di `main`, non a memoria.
+
+## Per Lucio — traccia sua, non mia
+
+**CAP come domanda primaria del passo zona: proposto e ritirato**, non
+costruito. `requests.postal_code` (046) è display-only — non entra in
+`coverage_keys_for`, a differenza di `zone_slug`: un solo consumo in tutto
+il codice, `/api/pro/request-summary`, che lo rilegge per mostrarlo.
+Renderlo la domanda di default avrebbe indebolito il matching senza che si
+vedesse in nessuna schermata. Dettaglio e comandi per riverificarlo in
+`docs/NOTE_E_DECISIONI.md`, voce 22/09.
+
+Se si vuole fare davvero servono due cose, in quest'ordine: **prima** il
+wiring di `postal_code` dentro il matching — codice tuo, cambia chi vede
+quali richieste — **poi** la tabella CAP→gruppo di zone, 42 CAP di Milano
+su 28 gruppi, sourced come i dati NIL dell'84 (dataset ufficiale, licenza
+tracciata, generatore verificabile), mai un elenco scritto a memoria. In
+`public/geo/` ci sono i confini NIL e provinciali, **nessun confine di
+CAP**: le due geometrie non coincidono, quindi l'una non si deriva
+dall'altra. Non è iniziata né l'una né l'altra.
+
+---
+
 # Passaggio di consegne — 20 settembre 2026 (Lucio, con Claude)
 
 > La giornata di oggi in cima. Le voci del 18 settembre e quelle portate avanti
