@@ -3,6 +3,13 @@ import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { EMPTY_BRIEF, validateScope, type JobBrief } from "@/lib/bob";
 import type { QuoteField } from "@/lib/supabase/types";
+import {
+  checkActorRateLimit,
+  extractClientIp,
+  readBodyWithLimit,
+  ACTOR_LIMITS,
+  MAX_BODY_BYTES,
+} from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -16,9 +23,19 @@ export const runtime = "nodejs";
 // riletto dal catalogo — non solo per sapere se esiste, ma per avere
 // l'elenco di quote_fields con cui filtrare scope prima di scriverlo.
 export async function POST(request: Request) {
+  // Tetto al payload PRIMA di leggere qualunque cosa (Fase 5, P1.5): questa
+  // rotta non porta mai binario, solo JSON strutturato - vedi rate-limit.ts.
+  const bodyRead = await readBodyWithLimit(request, MAX_BODY_BYTES.brief);
+  if (!bodyRead.ok) {
+    return NextResponse.json(
+      { error: "Corpo della richiesta troppo grande" },
+      { status: 413 }
+    );
+  }
+
   let body: { brief?: JobBrief; source?: string };
   try {
-    body = await request.json();
+    body = JSON.parse(bodyRead.text);
   } catch {
     return NextResponse.json({ error: "Body non valido" }, { status: 400 });
   }
@@ -28,11 +45,15 @@ export async function POST(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
-    // Logging best-effort: senza service role non blocchiamo la UX.
+    // Logging best-effort: senza service role non blocchiamo la UX. Il
+    // limite di frequenza non serve nemmeno qui: senza service role
+    // l'insert sotto fallisce comunque, quindi non c'e' niente da abusare.
     return NextResponse.json({ saved: false });
   }
 
-  // Se l'utente è loggato, agganciamo il brief al suo account.
+  // Se l'utente è loggato, agganciamo il brief al suo account — e usiamo lo
+  // stesso id come chiave del limite di frequenza, invece di un secondo
+  // giro di autenticazione.
   let userId: string | null = null;
   try {
     const supabase = createClient();
@@ -43,6 +64,29 @@ export async function POST(request: Request) {
   }
 
   const admin = createServiceClient(url, serviceKey);
+
+  // Limite di frequenza per attore (Fase 5, P1.5). Qui il service role
+  // esiste per costruzione (controllato sopra): un controllo che fallisce
+  // o va in timeout chiude (nega) — vedi rate-limit.ts.
+  const actorKey = userId ? `user:${userId}` : `ip:${extractClientIp(request)}`;
+  const actorLimits = userId
+    ? ACTOR_LIMITS.brief.authenticated
+    : ACTOR_LIMITS.brief.anonymous;
+  const actorCheck = await checkActorRateLimit(
+    admin,
+    actorKey,
+    "brief",
+    actorLimits
+  );
+  if (!actorCheck.allowed) {
+    return NextResponse.json(
+      { error: "Troppe richieste, riprova fra poco" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(actorCheck.retryAfterSeconds) },
+      }
+    );
+  }
 
   // subtaskSlug e le sue quote_fields sono la fonte di verità per filtrare
   // scope, non quello che il client dichiara di aver già validato. Uno slug

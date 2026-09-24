@@ -367,3 +367,20 @@ per conto suo.
 | **Conservazione** | Vita del profilo; cancellazione a cascata con l'account |
 | **Sicurezza** | RLS della riga `professionals`: la legge il proprietario e lo staff. L'elenco dei comuni è un file nostro servito dal server (`/api/geo/comuni`), nessuna chiamata a terzi e nessun geocoder |
 | **Note** | Minimizzazione: la grana è il comune e il CAP, non l'indirizzo — la stessa scelta fatta lato cliente con le migrazioni 044-046. Il CAP è obbligatorio nel modulo di iscrizione e facoltativo in database, perché i professionisti già iscritti non devono trovarsi bloccati: a loro arriva un promemoria nel profilo. **DA CONFERMARE da una persona**: allineare la voce dell'informativa quando si tocca, e decidere se il comune (non il CAP) debba comparire sulla scheda pubblica — oggi non compare |
+
+<!-- A23 riservata al lavoro sulla purga delle foto orfane di brief-photos (Fase 5, PR due) -->
+
+## A24 — Limite di frequenza su /api/bob/chat e /api/bob/brief
+
+| | |
+|---|---|
+| **Finalità** | Sicurezza e anti-abuso: impedire che un chiamante (script, flood) esaurisca la spesa di Claude o inondi `job_briefs` di scritture, su due rotte senza autenticazione (G20-G22, P1.5) |
+| **Base giuridica** | Legittimo interesse — art. 6(1)(f): protezione tecnica del servizio, non profilazione né alcuna finalità verso l'interessato |
+| **Interessati** | Chiunque chiami `/api/bob/chat` o `/api/bob/brief` — clienti anonimi (per IP) o account loggati (per user id) |
+| **Dati** | Indirizzo IP del chiamante (anonimo) o id utente (loggato), rotta, contatore per finestra di un minuto/un'ora. Nessun altro dato: non il contenuto della richiesta, non l'esito, non correlato a nessun'altra tabella |
+| **Tabelle** | `rate_limit_counters` (migrazione 097) |
+| **Destinatari** | Nessuno. Solo le funzioni `check_rate_limit`/`check_global_daily_cap` (SECURITY DEFINER, eseguibili solo dal service role) toccano questa tabella — nessuna policy per `anon`/`authenticated`, nessuna lettura da parte dei professionisti o dei clienti |
+| **Trasferimenti** | Come A1 (Supabase, regione UE) |
+| **Conservazione** | 48 ore — la finestra più lunga consultata dal sistema è un'ora, il resto è margine per il debug. `purge_stale_rate_limit_counters()`, schedulata ogni ora via `pg_cron` |
+| **Sicurezza** | RLS attiva, nessuna policy pubblica; il service role è l'unico chiamante. L'IP intero (non mascherato) è necessario alla finalità — a differenza delle regole sull'analytics (DATA_COMPLIANCE §1, mascherare almeno l'ultimo ottetto), qui il controllo deve distinguere un chiamante dall'altro, non aggregarli |
+| **Note** | La riga `global:chat` (tetto aggregato giornaliero) non è un identificatore di nessuno: nessun dato personale in quella riga specifica, anche se vive nella stessa tabella. Mai combinato con altri dati, mai usato per altro che questa decisione tecnica |
