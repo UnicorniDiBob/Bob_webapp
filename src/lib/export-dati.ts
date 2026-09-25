@@ -124,17 +124,19 @@ async function nomiProfessionisti(
   idProfessionisti: string[]
 ): Promise<Record<string, string>> {
   if (idProfessionisti.length === 0) return {};
-  const { data: pros } = await admin
+  const { data: pros, error: prosError } = await admin
     .from("professionals")
     .select("id, user_id")
     .in("id", idProfessionisti);
+  if (prosError) console.error("[export-dati] nomiProfessionisti/professionals ha fallito:", prosError);
   const righe = (pros ?? []) as { id: string; user_id: string }[];
   if (righe.length === 0) return {};
 
-  const { data: profili } = await admin
+  const { data: profili, error: profiliError } = await admin
     .from("profiles")
     .select("user_id, full_name")
     .in("user_id", righe.map((p) => p.user_id));
+  if (profiliError) console.error("[export-dati] nomiProfessionisti/profiles ha fallito:", profiliError);
   const perUtente: Record<string, string> = {};
   for (const p of (profili ?? []) as { user_id: string; full_name: string | null }[]) {
     if (p.full_name) perUtente[p.user_id] = p.full_name;

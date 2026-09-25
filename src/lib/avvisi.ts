@@ -64,7 +64,10 @@ export async function leggiAvvisiInCorso(
     .select("id, titolo, testo, livello, inizio_il, fine_il")
     .order("inizio_il", { ascending: false });
 
-  if (error) return [];
+  if (error) {
+    console.error("[avvisi] leggiAvvisiInCorso ha fallito:", error);
+    return [];
+  }
   const adesso = Date.now();
   const righe = ((data ?? []) as AvvisoServizio[]).filter((a) => {
     const da = new Date(a.inizio_il).getTime();

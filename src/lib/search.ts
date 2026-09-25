@@ -141,6 +141,10 @@ export async function resolveSearch(
     p_limit: limit,
   });
 
-  if (error || data === null || data === undefined) return emptyResolution(q);
+  if (error) {
+    console.error(`[search] search_resolve("${q}") ha fallito:`, error);
+    return emptyResolution(q);
+  }
+  if (data === null || data === undefined) return emptyResolution(q);
   return parseResolution(data, q);
 }

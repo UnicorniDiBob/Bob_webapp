@@ -61,12 +61,17 @@ export function useProfessional() {
     const p = data as Record<string, unknown>;
     // Il servizio principale e i prezzi vivono in professional_services:
     // una riga per (professionista, servizio), oggi una sola.
-    const { data: ps } = await supabase
+    const { data: ps, error: psError } = await supabase
       .from("professional_services")
       .select("id, service_id")
       .eq("professional_id", p.id as string)
       .limit(1)
       .maybeSingle();
+    // A differenza dell'errore sopra, questo non alza `failed`: la riga
+    // professionista resta valida senza servizio. Ma senza un log un
+    // fallimento qui e' indistinguibile da "non ha ancora un servizio" -
+    // stesso difetto che ha nascosto cinque giorni di /api/match rotto.
+    if (psError) console.error("[useProfessional] professional_services ha fallito:", psError);
     const s = (ps ?? {}) as Record<string, unknown>;
 
     setPro({

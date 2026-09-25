@@ -434,11 +434,12 @@ export async function caricaNotifiche(
     // L'invito alla verifica vale solo per chi ha un piano che la include:
     // spingerla a un Free e' un vicolo cieco (decisione del 14/08). Il piano
     // lo leggiamo qui perche' e' l'unico posto che ne ha bisogno.
-    const { data: piano } = await supabase
+    const { data: piano, error: pianoError } = await supabase
       .from("professionals")
       .select("subscription_tier")
       .eq("id", rigaPro.id)
       .maybeSingle();
+    if (pianoError) console.error(`[notifiche] subscription_tier(${rigaPro.id}) ha fallito:`, pianoError);
     const tier = (piano as { subscription_tier?: string } | null)?.subscription_tier;
     if (tier && tier !== "free") {
       out.push({
