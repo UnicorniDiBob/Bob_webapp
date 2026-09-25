@@ -11,16 +11,27 @@ import type {
 
 type Role = "customer" | "professional" | "admin" | "cs" | null;
 
+// Un errore Postgrest qui diventa oggi un elenco vuoto plausibile — stesso
+// difetto che ha nascosto cinque giorni di /api/match rotto in data.ts.
+// Logga soltanto, non cambia nessun fallback.
+function logQueryError(
+  context: string,
+  error: { message: string } | null
+): void {
+  if (error) console.error(`[messages] ${context} ha fallito:`, error);
+}
+
 // Restituisce l'id del professionista collegato all'utente (se è un pro).
 export async function getMyProfessionalId(
   userId: string
 ): Promise<string | null> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("professionals")
     .select("id")
     .eq("user_id", userId)
     .maybeSingle();
+  logQueryError(`getMyProfessionalId(${userId})`, error);
   return (data?.id as string) ?? null;
 }
 
@@ -43,26 +54,29 @@ export async function getConversations(
   if (role === "professional") {
     const myProId = await getMyProfessionalId(userId);
     if (!myProId) return [];
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("request_professionals")
       .select("request_id")
       .eq("professional_id", myProId);
+    logQueryError(`getConversations/request_professionals(${myProId})`, error);
     pairs = (data ?? []).map((r) => ({
       requestId: r.request_id as string,
       professionalId: myProId,
       proUserId: null,
     }));
   } else {
-    const { data: reqs } = await supabase
+    const { data: reqs, error: reqsError } = await supabase
       .from("requests")
       .select("id")
       .eq("customer_id", userId);
+    logQueryError(`getConversations/requests(${userId})`, reqsError);
     const ids = (reqs ?? []).map((r) => r.id as string);
     if (ids.length === 0) return [];
-    const { data: links } = await supabase
+    const { data: links, error: linksError } = await supabase
       .from("request_professionals")
       .select("request_id, professional_id, professionals ( user_id )")
       .in("request_id", ids);
+    logQueryError("getConversations/request_professionals(ids)", linksError);
     pairs = (links ?? []).map((l) => {
       const rec = l as Record<string, unknown>;
       const pro = rec.professionals as { user_id?: string } | null;
@@ -77,12 +91,13 @@ export async function getConversations(
   if (pairs.length === 0) return [];
   const requestIds = Array.from(new Set(pairs.map((p) => p.requestId)));
 
-  const { data: reqRows } = await supabase
+  const { data: reqRows, error: reqRowsError } = await supabase
     .from("requests")
     .select(
       "id, status, created_at, customer_id, services ( name ), cities ( name )"
     )
     .in("id", requestIds);
+  logQueryError("getConversations/requests(requestIds)", reqRowsError);
   const reqById = new Map(
     (reqRows ?? []).map((r) => [r.id as string, r as Record<string, unknown>])
   );
@@ -96,10 +111,11 @@ export async function getConversations(
           new Set(pairs.map((p) => p.proUserId).filter(Boolean))
         ) as string[]);
   if (wantedUserIds.length) {
-    const { data: profs } = await supabase
+    const { data: profs, error: profsError } = await supabase
       .from("profiles")
       .select("user_id, full_name")
       .in("user_id", wantedUserIds);
+    logQueryError("getConversations/profiles", profsError);
     for (const p of (profs ?? []) as {
       user_id: string;
       full_name: string | null;
@@ -109,11 +125,12 @@ export async function getConversations(
   }
 
   // Ultimo messaggio per thread (chiave richiesta:pro).
-  const { data: msgs } = await supabase
+  const { data: msgs, error: msgsError } = await supabase
     .from("request_messages")
     .select("request_id, professional_id, message, created_at")
     .in("request_id", requestIds)
     .order("created_at", { ascending: false });
+  logQueryError("getConversations/request_messages", msgsError);
 
   const lastByThread = new Map<string, { message: string; at: string }>();
   for (const m of msgs ?? []) {
@@ -160,16 +177,18 @@ async function myRequestIds(
   if (role === "professional") {
     const proId = await getMyProfessionalId(userId);
     if (!proId) return [];
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("request_professionals")
       .select("request_id")
       .eq("professional_id", proId);
+    logQueryError(`myRequestIds/request_professionals(${proId})`, error);
     return (data ?? []).map((r) => r.request_id as string);
   }
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("requests")
     .select("id")
     .eq("customer_id", userId);
+  logQueryError(`myRequestIds/requests(${userId})`, error);
   return (data ?? []).map((r) => r.id as string);
 }
 
@@ -232,7 +251,8 @@ export async function getMessages(
     .select("id, sender_type, message, created_at, kind, appointment_id")
     .eq("request_id", requestId);
   if (professionalId) q = q.eq("professional_id", professionalId);
-  const { data } = await q.order("created_at", { ascending: true });
+  const { data, error } = await q.order("created_at", { ascending: true });
+  logQueryError(`getMessages(${requestId})`, error);
   return (data ?? []).map((m) => ({
     id: m.id as string,
     senderType: m.sender_type as "customer" | "professional",
@@ -281,11 +301,12 @@ export async function getAppointments(
   professionalId: string
 ): Promise<Appointment[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("appointments")
     .select("*")
     .eq("professional_id", professionalId)
     .order("starts_at", { ascending: true });
+  logQueryError(`getAppointments(${professionalId})`, error);
   return (data ?? []) as Appointment[];
 }
 

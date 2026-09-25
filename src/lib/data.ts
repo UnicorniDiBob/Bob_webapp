@@ -24,42 +24,60 @@ import { withArticle, afterDi } from "@/lib/italian";
 
 // ---------- Catalogo (lettura pubblica via RLS) ----------
 
+// Un errore Postgrest qui e' oggi indistinguibile da "nessuna riga": senza
+// log, una colonna mancante o una RLS che rifiuta si travestono da elenco
+// vuoto plausibile. E' esattamente il difetto che ha nascosto cinque giorni
+// di /api/match rotto (094 non applicata): data.ts ignorava `error` e
+// restituiva `[]`, e "nessun professionista" sembrava un risultato vero.
+// Non cambia il comportamento di fallback — resta [] / null — logga soltanto
+// perche' qualcosa lo faccia notare.
+function logQueryError(
+  context: string,
+  error: { message: string; code?: string } | null
+): void {
+  if (error) console.error(`[data] ${context} ha fallito:`, error);
+}
+
 export async function getCities(): Promise<City[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("cities")
     .select("*")
     .order("status", { ascending: true })
     .order("name", { ascending: true });
+  logQueryError("getCities", error);
   return (data ?? []) as City[];
 }
 
 export async function getCityBySlug(slug: string): Promise<City | null> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("cities")
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
+  logQueryError(`getCityBySlug(${slug})`, error);
   return (data as City) ?? null;
 }
 
 export async function getServices(): Promise<Service[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("services")
     .select("*")
     .order("name", { ascending: true });
+  logQueryError("getServices", error);
   return (data ?? []) as Service[];
 }
 
 export async function getServiceBySlug(slug: string): Promise<Service | null> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("services")
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
+  logQueryError(`getServiceBySlug(${slug})`, error);
   return (data as Service) ?? null;
 }
 
@@ -68,12 +86,13 @@ export async function getServiceBySlug(slug: string): Promise<Service | null> {
 // per il cliente ne' per Bob.
 export async function getSubservices(serviceId: string): Promise<Subservice[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("subservices")
     .select("*")
     .eq("service_id", serviceId)
     .is("superseded_by", null)
     .order("name", { ascending: true });
+  logQueryError(`getSubservices(${serviceId})`, error);
   return (data ?? []) as Subservice[];
 }
 
@@ -85,11 +104,12 @@ export async function getAllSubservices(): Promise<
   { serviceSlug: string; slug: string; name: string; quoteFields: QuoteField[] }[]
 > {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("subservices")
     .select("slug, name, quote_fields, services(slug)")
     .is("superseded_by", null)
     .order("name", { ascending: true });
+  logQueryError("getAllSubservices", error);
   return (data ?? [])
     .map((row) => {
       const svc = row.services as { slug: string } | { slug: string }[] | null;
@@ -127,9 +147,10 @@ export async function getSubservicesByServiceSlug(
 // Numero di professionisti che offrono ciascun servizio (per badge nelle liste).
 export async function getServiceCounts(): Promise<Record<string, number>> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("professional_services")
     .select("service_id");
+  logQueryError("getServiceCounts", error);
   const counts: Record<string, number> = {};
   for (const row of (data ?? []) as { service_id: string }[]) {
     counts[row.service_id] = (counts[row.service_id] ?? 0) + 1;
@@ -234,10 +255,11 @@ async function namesByUserId(
 ): Promise<Record<string, string>> {
   if (userIds.length === 0) return {};
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("user_id, full_name")
     .in("user_id", userIds);
+  logQueryError("namesByUserId", error);
   const map: Record<string, string> = {};
   for (const p of (data ?? []) as { user_id: string; full_name: string | null }[]) {
     if (p.full_name) map[p.user_id] = p.full_name;
@@ -425,11 +447,12 @@ export async function getRequestCoverageKeys(
   comuneIstat?: string | null
 ): Promise<string[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("cities")
     .select("slug, coverage_keys")
     .eq("slug", citySlug)
     .maybeSingle();
+  logQueryError(`getRequestCoverageKeys(${citySlug})`, error);
   if (!data) return [];
   return gettoniRichiesta(
     data as { slug: string; coverage_keys: string[] | null },
@@ -442,7 +465,7 @@ export async function getProfessionals(
   filters: ProfessionalFilters = {}
 ): Promise<ProfessionalCard[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("professionals")
     .select(PROFESSIONAL_SELECT)
     // Un profilo spento esce dagli elenchi. Lo spegne la richiesta di
@@ -450,6 +473,10 @@ export async function getProfessionals(
     // solo se in quei giorni l'account NON continua a lavorare, altrimenti
     // stiamo rimandando una cancellazione mentre trattiamo ancora i dati.
     .is("deactivated_at", null);
+  // Qui e' esploso il 20-25 settembre: una colonna della 094 non ancora
+  // applicata dava 400 su OGNI richiesta, e senza questo log "nessun
+  // professionista" era indistinguibile da un elenco davvero vuoto.
+  logQueryError("getProfessionals", error);
 
   const rows = (data ?? []) as unknown as RawProfessionalRow[];
   const [names, coperture] = await Promise.all([
@@ -633,7 +660,7 @@ export async function getProfessionalById(
   id: string
 ): Promise<ProfessionalCard | null> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("professionals")
     .select(PROFESSIONAL_SELECT)
     .eq("id", id)
@@ -642,6 +669,7 @@ export async function getProfessionalById(
     // trovata, che e' la verita'.
     .is("deactivated_at", null)
     .maybeSingle();
+  logQueryError(`getProfessionalById(${id})`, error);
   if (!data) return null;
   const row = data as unknown as RawProfessionalRow;
   const [names, coperture] = await Promise.all([
@@ -656,11 +684,12 @@ export async function getPortfolioItems(
   professionalId: string
 ): Promise<PortfolioItem[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("portfolio_items")
     .select("*")
     .eq("professional_id", professionalId)
     .order("created_at", { ascending: false });
+  logQueryError(`getPortfolioItems(${professionalId})`, error);
   return (data ?? []) as PortfolioItem[];
 }
 
@@ -675,10 +704,11 @@ export async function getProfessionalReviews(
   id: string
 ): Promise<ProfessionalReview[]> {
   const supabase = createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("ratings")
     .select("id, score, comment, created_at")
     .eq("professional_id", id)
     .order("created_at", { ascending: false });
+  logQueryError(`getProfessionalReviews(${id})`, error);
   return (data ?? []) as ProfessionalReview[];
 }

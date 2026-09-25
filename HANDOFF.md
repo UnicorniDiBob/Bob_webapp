@@ -37,33 +37,85 @@ entrambe in produzione.
   `localStorage` rimasto da prima che la chiave fosse sistemata — chiuso
   senza toccare codice.
 
-## A metà: il timeout del limite di frequenza carica due volte chi trova latenza
+## URGENTE, CHIUSA: cinque giorni di `/api/match` rotto — issue #90 non era housekeeping
 
-Trovato durante la verifica di ieri, non ancora corretto. `check_rate_limit`
-incrementa il contatore PRIMA di controllare (per progetto: un tentativo
-respinto sul minuto deve contare lo stesso sull'ora). Quando il timeout
-lato applicazione (500ms, poi alzato a 2000ms con PR #94) scattava prima
-che la risposta della RPC arrivasse, la riga veniva comunque scritta in
-background — l'utente vedeva un 429 (respinto) **e** il suo contatore era
-già salito di uno, per una richiesta che non ha mai avuto una risposta.
-Sotto qualunque latenza anomala, un utente onesto paga due volte: rifiutato
-adesso, e più vicino al tetto vero dopo.
+**La causa reale per cui "nessun professionista compare mai in nessuna
+ricerca", scoperta verificando i quattro gettoni di copertura demo di
+André.** Non era `ready_at`, non era la copertura: `PROFESSIONAL_SELECT`
+in `src/lib/data.ts` seleziona `professionals.verification_badge_max_until`,
+colonna che la `094_tetto_esame_cessazione.sql` aggiunge — la stessa
+migrazione segnalata il 24/09 come mergiata ma **mai applicata** (issue #90).
+Il codice è andato in produzione via Vercel il **20 settembre** (`991c3dc`);
+la migrazione no. Da quel giorno **ogni** chiamata a `getProfessionals()` —
+`/api/match` e ogni pagina di elenco/ricerca del sito — ha preso un `400
+42703 column does not exist` da PostgREST, e `data.ts` non controllava mai
+`error`: `data ?? []` trasformava un fallimento vero in un elenco vuoto
+plausibile. Verificato dal vivo, non a memoria: `curl
+.../api/match?city=milano&service=idraulico` tornava `200
+{"professionals":[]}`, e `www.meetonda.com/servizi/idraulico/milano`
+mostrava "Nessun professionista" — con IdroMilano Express reale, `ready_at`
+dal 30/08, correttamente coperto su Milano.
 
-**Proposta discussa, non ancora costruita**: un `set statement_timeout`
-dentro `check_rate_limit`/`check_global_daily_cap` (es. 1500ms, sotto i
-2000ms del timeout applicativo) invece di un decremento a posteriori o un
-incremento condizionato al ricevimento della risposta — vedi la
-conversazione per il perché: un decremento tardivo è racy (finestra in cui
-un'altra richiesta concorrente vede un conteggio gonfiato ed è respinta
-anche lei, un secondo effetto collaterale); rendere l'incremento
-condizionato al "l'app ha ricevuto risposta" tocca l'asse sbagliato e
-rischia di disfare la scelta deliberata "un tentativo respinto sul minuto
-conta lo stesso sull'ora". Un timeout lato database più stretto di quello
-applicativo fa sì che la transazione non committi mai se non fa in tempo —
-nessuna riga scritta, nessuna raciness, il resto della logica invariato.
-Nessuna modifica lato TypeScript prevista: il percorso di errore esistente
-in `rate-limit.ts` già fa la cosa giusta una volta che la scrittura smette
-di succedere.
+**094 applicata da André, verificato in produzione**: `/api/match` torna
+IdroMilano per idraulico e LuceChiara per elettricista. Advisor puliti — i
+due rilievi `SECURITY DEFINER` su `professionals_score` sono spariti anche
+loro, perché la 094 ripristina `SECURITY INVOKER` (persi dalla 089, vedi la
+voce di Lucio del 20/09 più sotto).
+
+**Correzione sistemica, PR separata**: lo stesso difetto — un errore
+Postgrest catturato che diventa un array vuoto plausibile, senza log — c'era
+in altri 23 punti di `src/lib` (`data.ts` altri 12, `messages.ts` 13,
+`avvisi.ts`, `manutenzione.ts`, `search.ts`, `useProfessional.ts`,
+`export-dati.ts`, `notifiche.ts`). Aggiunto `console.error` ovunque
+l'`error` veniva scartato o catturato-e-non-loggato; nessun cambio di
+comportamento, i fallback restano `[]`/`null` — solo ora lasciano una
+traccia. È lo stesso difetto che ha nascosto la chiave Anthropic mancante
+per tre mesi e il model id ritirato su due rotte (18/09): un errore
+catturato che produce un risultato plausibile è peggio di un crash, perché
+niente sembra rotto.
+
+**`ready_at`: la proposta di gate su `professional_coverage_public` è
+sbagliata, non costruita.** `trovaPerRichiesta` (`src/lib/copertura.ts:274`)
+tratta zero righe di copertura come "tutta la città in cui il professionista
+è iscritto" — `professionals.city_id` è `NOT NULL`, quindi la regola vale
+sempre. Confermato che la stessa scorciatoia è duplicata lato SQL in
+`professionals_score` (094, CTE `area`, righe 236-238): un professionista
+senza copertura e uno con `city:milano` esplicito prendono **lo stesso
+punteggio d'area**, in ogni caso provato (con zona e senza). Un gate sulla
+presenza di una riga in `professional_coverage_public` avrebbe tolto
+`ready_at` a FOTOPRO-MILANO pur restando lui **davvero trovabile** — una
+bugia nuova, nella direzione opposta a quella che si voleva chiudere. Il
+gate attuale (`professional_services` esiste + non disattivato) già
+garantisce la trovabilità nella città di iscrizione, per costruzione del
+matcher: non serve un terzo requisito. Non si tocca `ready_at` in questo
+giro. Le quattro righe di copertura di André (b1000000-...0004/5/6/7,
+scope `city`, Milano) restano: non necessarie — il fallback copriva già
+tutto — ma non dannose, perché il punteggio è identico con o senza.
+
+## Chiusa: il timeout del limite di frequenza non carica più due volte chi trova latenza
+
+**PR #96 mergiata** (`fix/rate-limit-abort-signal`). La proposta discussa qui
+sotto (`statement_timeout`) si è rivelata sbagliata prima di essere
+costruita: misurato con `EXPLAIN ANALYZE` (4 chiamate reali: 1.72ms, 1.72ms,
+6.67ms, 22.4ms), l'esecuzione della RPC non si avvicina mai a un
+`statement_timeout` da 1500ms — non sarebbe mai scattato. Costruito invece
+`withTimeout` con un `AbortController` reale: al timeout lato app,
+`controller.abort()` cancella la richiesta PostgREST invece di limitarsi a
+smettere di aspettarla, quindi la scrittura in background che raddoppiava il
+conteggio (vedi sotto) non parte più. **Non è una garanzia assoluta per
+costruzione** — riduce la corsa a una finestra stretta (i millisecondi fra
+l'`abort()` e l'eventuale commit già in volo), non la azzera — e va descritta
+così, mai come "eliminata". `CHECK_TIMEOUT_MS` resta 2000ms, **provvisorio**:
+la telemetria `elapsedMs` è in produzione da PR #96, ma senza traffico reale
+post-deploy non c'è ancora una distribuzione da cui tararlo.
+
+Il problema originale, per chi arriva dopo: `check_rate_limit` incrementa il
+contatore PRIMA di controllare (per progetto: un tentativo respinto sul
+minuto deve contare lo stesso sull'ora). Quando il timeout lato applicazione
+scattava prima che la risposta della RPC arrivasse, la riga veniva comunque
+scritta in background — l'utente vedeva un 429 (respinto) **e** il suo
+contatore era già salito di uno, per una richiesta che non ha mai avuto una
+risposta.
 
 ---
 

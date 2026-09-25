@@ -285,7 +285,10 @@ export async function leggiManutenzioni(
     .gt("fine_il", new Date().toISOString())
     .order("inizio_il", { ascending: true })
     .limit(10);
-  if (error) return [];
+  if (error) {
+    console.error("[manutenzione] leggiManutenzioni ha fallito:", error);
+    return [];
+  }
   return (data ?? []) as Manutenzione[];
 }
 
