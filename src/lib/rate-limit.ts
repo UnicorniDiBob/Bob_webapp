@@ -98,15 +98,19 @@ export const MAX_BODY_BYTES: Record<Route, number> = {
 // (verifica dal vivo su meetonda.com, 24/09): 2 richieste reali su 3 hanno
 // preso il ramo "chiudo" per timeout, ma la riga in rate_limit_counters
 // mostrava count=1, ben dentro il limite — la RPC era arrivata, solo dopo
-// i 500ms. Non avevo un numero reale di round-trip Vercel→Supabase per
-// scegliere questo valore la prima volta, l'ho stimato sul solo dev
-// locale. 2000ms è un margine di sicurezza vero, non un altro numero
-// scelto a occhio: resta comunque piccolo contro il budget della rotta
-// (la chiamata a Claude da sola impiega 1-4s, il timeout di funzione
-// Vercel è 300s di default) — e checkActorRateLimit/checkGlobalDailyCap
-// loggano ora il tempo reale impiegato quando il controllo fallisce o va
-// oltre META' di questo tetto, cosi' la prossima volta il numero si
-// corregge da un log vero, non di nuovo a occhio.
+// i 500ms.
+//
+// 2000ms È PROVVISORIO, non misurato — e va detto chiaramente, non
+// nascosto dietro un numero che sembra deciso con cura. La causa più
+// probabile dei fallimenti da 500ms è un cold start di Vercel (prima
+// richiesta dopo un deploy, che paga TLS e apertura della connessione):
+// succede a ogni deploy, quindi tocca un utente vero ogni volta, non solo
+// in test. 2000ms sta comodo sopra quel costo una tantum senza tentare di
+// essere preciso su un numero che oggi non abbiamo — vedi
+// checkActorRateLimit/checkGlobalDailyCap per il perché non lo misuriamo
+// ancora con precisione (elapsedMs logga già, ma non c'è ancora traffico
+// vero dopo il fix per leggerlo). Quando ci sarà, questo numero si
+// corregge da un log vero, non da un'altra stima.
 const CHECK_TIMEOUT_MS = 2000;
 // Soglia di allarme: un controllo riuscito ma piu' lento della meta' del
 // timeout è un segnale che il margine si sta consumando, prima che diventi
@@ -186,13 +190,37 @@ interface TimedResult<T> {
 // prossima volta che questo timeout si rivela sbagliato si torna a
 // indovinare invece di leggere un numero vero (vedi il commento su
 // CHECK_TIMEOUT_MS — è la lezione di questa stessa funzione).
+//
+// ANNULLA LA RICHIESTA, NON SOLO L'ATTESA — questa è la parte che è
+// mancata la prima volta. Prima "timeout" voleva dire solo "smetto di
+// aspettare": la fetch verso Supabase restava viva e la RPC arrivava lo
+// stesso in background, scriveva la riga, e l'attore veniva addebitato per
+// una richiesta a cui era già stato negato l'accesso — respinto E messo
+// più vicino al tetto vero, due volte per lo stesso tentativo. Ora il
+// timer chiama anche `controller.abort()`: se la richiesta è ancora in
+// rete o in coda in PostgREST — il tratto misurato lento (EXPLAIN ANALYZE
+// sulla RPC: 2-22ms di esecuzione vera, il resto del tempo non è mai stato
+// la query) — annullarla la ferma prima che Postgres inizi a eseguirla, e
+// niente viene scritto.
+//
+// NON È UNA GARANZIA ASSOLUTA, E VA DETTO CHIARO: se PostgREST ha già
+// consegnato l'istruzione a Postgres quando l'abort arriva, chiudere la
+// connessione può NON annullare una transazione già in corso — Postgres
+// potrebbe finire di eseguirla e committerla comunque. Con un'esecuzione
+// misurata sui 2ms, quella finestra è stretta, non inesistente: questo
+// riduce l'asimmetria a una corsa che abbiamo misurato, non la elimina per
+// costruzione. Chi legge questo file fra un anno non deve pensare che sia
+// un problema risolto del tutto.
 async function withTimeout<T>(
-  promise: PromiseLike<T>,
+  buildQuery: (signal: AbortSignal) => PromiseLike<T>,
   ms: number
 ): Promise<TimedResult<T>> {
   const startedAt = Date.now();
+  const controller = new AbortController();
+  const promise = buildQuery(controller.signal);
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
+      controller.abort();
       resolve({ value: null, elapsedMs: Date.now() - startedAt, timedOut: true });
     }, ms);
     Promise.resolve(promise).then(
@@ -220,8 +248,9 @@ export interface ActorRateLimitResult {
 
 /**
  * Limite per attore (IP o utente). Chiude su errore o timeout: allowed:false,
- * un retry-after prudente di 60s. Vedi il commento in testa al file per il
- * perché "chiuso" è la scelta giusta qui.
+ * un retry-after prudente di 60s — vedi il commento in testa al file per il
+ * perché "chiuso" è la scelta giusta qui, e il commento su withTimeout per
+ * come l'abort riduce (non elimina) l'asimmetria fra respinto e addebitato.
  */
 export async function checkActorRateLimit(
   admin: SupabaseClient,
@@ -230,12 +259,15 @@ export async function checkActorRateLimit(
   limits: ActorLimits
 ): Promise<ActorRateLimitResult> {
   const timed = await withTimeout(
-    admin.rpc("check_rate_limit", {
-      p_key: key,
-      p_route: route,
-      p_minute_limit: limits.perMinute,
-      p_hour_limit: limits.perHour,
-    }),
+    (signal) =>
+      admin
+        .rpc("check_rate_limit", {
+          p_key: key,
+          p_route: route,
+          p_minute_limit: limits.perMinute,
+          p_hour_limit: limits.perHour,
+        })
+        .abortSignal(signal),
     CHECK_TIMEOUT_MS
   );
   const result = timed.value;
@@ -290,10 +322,13 @@ export async function checkGlobalDailyCap(
   dailyLimit: number
 ): Promise<boolean> {
   const timed = await withTimeout(
-    admin.rpc("check_global_daily_cap", {
-      p_route: route,
-      p_daily_limit: dailyLimit,
-    }),
+    (signal) =>
+      admin
+        .rpc("check_global_daily_cap", {
+          p_route: route,
+          p_daily_limit: dailyLimit,
+        })
+        .abortSignal(signal),
     CHECK_TIMEOUT_MS
   );
   const result = timed.value;
