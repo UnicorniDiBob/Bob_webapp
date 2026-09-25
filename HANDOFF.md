@@ -1,3 +1,72 @@
+# Passaggio di consegne — 25 settembre 2026 (André, con Claude)
+
+> La giornata di oggi in cima. La voce del 24 settembre e tutto quello che
+> sta sotto restano invariati; quello che è a metà si porta avanti, non si
+> butta.
+
+## P1.5 chiusa: la chiave è su Vercel produzione, la chat gira su Claude
+
+**Verificato dal vivo su meetonda.com, non solo mergiato.** Una
+conversazione vera ("lo scarico della doccia non scende") torna
+`source: "ai"`, la scheda lavoro compare con i campi pre-compilati ed
+etichettati "ipotesi di Bob" — `drain_location` pre-compilato,
+`standing_water` lasciato correttamente vuoto (Bob non l'aveva). PR #93
+(097, il limite di frequenza) e PR #94 (il fix del timeout, sotto) sono
+entrambe in produzione.
+
+- **`ANTHROPIC_API_KEY` è su Vercel produzione come Secret**, workspace
+  Default, **nessuna scadenza impostata**.
+- **LA TRAPPOLA CHE È COSTATA UNA SERATA**: la prima chiave incollata era
+  **scoped a livello di Organization**, e quello **non funziona** — serve
+  un header `anthropic-workspace-id` che il codice non manda. L'errore
+  risultante non diceva "chiave sbagliata": la rotta cadeva nel fallback a
+  regole con `source: "rules-error"`, indistinguibile a occhio da un
+  qualunque altro guasto verso Claude. **Quando si genera una chiave di
+  produzione, va presa dal workspace Default (o quello che il codice usa
+  davvero), mai da "Organization".**
+- **Il limite di frequenza (097) verificato con richieste vere**: un
+  IP anonimo (`ip:81.56.158.43`, il mio indirizzo pubblico reale,
+  verificato in modo indipendente prima di guardare la tabella) ha preso
+  10 richieste su 10 concesse e la undicesima **429** con
+  `Retry-After: 48` — esattamente il tetto di 10/min. La riga in
+  `rate_limit_counters` mostra `count: 11` (10 concesse + 1 respinta,
+  perché la funzione incrementa PRIMA di controllare, per progetto — vedi
+  097). Un utente loggato entra con `user:<uuid>`, uno anonimo con
+  `ip:<indirizzo>`, come da disegno.
+- **Il fallback visto la prima volta non era un guasto**: era un draft di
+  `localStorage` rimasto da prima che la chiave fosse sistemata — chiuso
+  senza toccare codice.
+
+## A metà: il timeout del limite di frequenza carica due volte chi trova latenza
+
+Trovato durante la verifica di ieri, non ancora corretto. `check_rate_limit`
+incrementa il contatore PRIMA di controllare (per progetto: un tentativo
+respinto sul minuto deve contare lo stesso sull'ora). Quando il timeout
+lato applicazione (500ms, poi alzato a 2000ms con PR #94) scattava prima
+che la risposta della RPC arrivasse, la riga veniva comunque scritta in
+background — l'utente vedeva un 429 (respinto) **e** il suo contatore era
+già salito di uno, per una richiesta che non ha mai avuto una risposta.
+Sotto qualunque latenza anomala, un utente onesto paga due volte: rifiutato
+adesso, e più vicino al tetto vero dopo.
+
+**Proposta discussa, non ancora costruita**: un `set statement_timeout`
+dentro `check_rate_limit`/`check_global_daily_cap` (es. 1500ms, sotto i
+2000ms del timeout applicativo) invece di un decremento a posteriori o un
+incremento condizionato al ricevimento della risposta — vedi la
+conversazione per il perché: un decremento tardivo è racy (finestra in cui
+un'altra richiesta concorrente vede un conteggio gonfiato ed è respinta
+anche lei, un secondo effetto collaterale); rendere l'incremento
+condizionato al "l'app ha ricevuto risposta" tocca l'asse sbagliato e
+rischia di disfare la scelta deliberata "un tentativo respinto sul minuto
+conta lo stesso sull'ora". Un timeout lato database più stretto di quello
+applicativo fa sì che la transazione non committi mai se non fa in tempo —
+nessuna riga scritta, nessuna raciness, il resto della logica invariato.
+Nessuna modifica lato TypeScript prevista: il percorso di errore esistente
+in `rate-limit.ts` già fa la cosa giusta una volta che la scrittura smette
+di succedere.
+
+---
+
 # Passaggio di consegne — 24 settembre 2026 (André, con Claude)
 
 > La giornata di oggi in cima. La voce di Lucio del 20 settembre e tutto
