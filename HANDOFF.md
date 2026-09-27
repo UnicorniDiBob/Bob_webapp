@@ -1,4 +1,10 @@
-# Nota (27 settembre 2026): G46 è superata
+# Passaggio di consegne — 27 settembre 2026 (André, con Claude)
+
+> La giornata di oggi in cima. La voce del 25 settembre e tutto quello che
+> sta sotto restano invariate; quello che è a metà si porta avanti, non si
+> butta.
+
+## Nota: G46 è superata
 
 `src/app/onboarding/profilo/page.tsx` chiede già mestiere, comune dall'elenco
 ISTAT (autocomplete) e **CAP obbligatorio** (validato, cinque cifre); alla fine
@@ -6,9 +12,67 @@ manda su `/dashboard`, che apre da sola `GuidaPrimoAccesso` al primo accesso
 (`onboarding_completed_at is null`). Non esiste nessun dashboard vuoto senza
 wizard — verificato leggendo il codice, non a memoria. Il buco vero resta un
 altro: `professionals.postal_code` è raccolto e non lo legge nessuno per la
-geografia, nessuna query lo usa per un centro o una distanza. Dettaglio nella
-sessione del 27/09 su ricerca per distanza (`docs/RICERCA.md` e il lavoro in
-corso su `professionals_score`).
+geografia, nessuna query lo usa per un centro o una distanza.
+
+## Copertura come filtro con esclusioni + punti_distanza in scaffolding: 098 e 099 applicate, verificate in produzione
+
+PR #98 mergiata, migrazioni 098 e 099 applicate su Supabase in quest'ordine.
+Advisor di sicurezza rilanciati dopo: nessun rilievo nuovo.
+
+- **Parte A (098) è live.** `professional_coverage` guadagna
+  `excluded_comuni_istat`/`excluded_zone_slugs` (vincolate al livello di scope
+  giusto), pubblicate come `excluded_keys` nello stesso vocabolario delle
+  inclusioni. Chiude l'exploit strutturale: escludere un solo comune da una
+  copertura nazionale, o un quartiere da «tutta la città», non costringe più
+  a spuntare a mano migliaia di righe al livello più fine — quello che paga
+  più punti. Provato no-op su ogni copertura scritta prima di oggi: 220+
+  confronti in `copertura.test.ts` fra la regola vecchia congelata e quella
+  nuova, più un confronto di sola lettura sui sei professionisti veri di
+  produzione contro sei richieste vere (0 divergenze).
+- **Parte B (098) è scaffolding, non ancora nel punteggio pubblicato.**
+  `professionals_score` guadagna `punti_distanza`, bande su distanza reale
+  (comune/zona) tarate sugli 88 NIL veri di Milano — non le bande del tempo
+  di risposta copiate 1:1, che avrebbero schiacciato il 99,7% delle coppie
+  milanesi su due sole bande. **`punti` resta quella di sempre: l'ordinamento
+  pubblico non è cambiato.**
+- **099 ha seminato comune e CAP sulle cinque fixture di dimostrazione**
+  (`b1000000-…`, tutte Milano/015146, cinque CAP diversi — FOTOPRO-MILANO
+  resta fuori apposta, vedi sotto). Verificato dal vivo dopo l'applicazione:
+  `punti_distanza` vale **14** per tutte e cinque su una richiesta a
+  Gratosoglio (5,94 km dal centroide comunale di Milano), **10** per
+  FOTOPRO-MILANO — la banda del punto mancante, perché non ha ancora
+  `comune_istat`. Esattamente il comportamento previsto, non un errore.
+
+### Il cancello di cutover, per chi arriva dopo
+
+**`punti_distanza` non entra ancora in `punti`, e non deve finché il pezzo 3
+non esiste.** Il punto base del professionista oggi risolve solo al livello
+di comune: dentro Milano ogni professionista risolve allo stesso punto
+(verificato: San Siro e Gratosoglio, 7,12 km veri di distanza, stessa banda
+su qualunque richiesta milanese), mentre l'area per specificità di oggi li
+distingue ancora (zona 20 contro città 15). Spostare il cutover prima del
+pezzo 3 renderebbe l'ordinamento dentro Milano — la città del pilota —
+peggiore di oggi, non migliore. Scritto anche dentro la migrazione 098, non
+solo qui.
+
+## Cosa è a metà
+
+- **`cap_centroids` (pezzo 3), non ancora costruito.** Dataset scelti e
+  copertura verificata: ds501 (farmacie, 38/38 CAP), ds47 (asili nido,
+  38/38), ds291 (mercati settimanali, 36/38) — combinati, 38 CAP su 38 reali
+  (i 4 nominali 20130/20140/20150/20160 non sono zone abitate, restano sul
+  comune per scelta esplicita). È questo che sblocca il cutover, non uno
+  strumento di confronto — che comunque non potrebbe validare l'intra-Milano
+  finché questo pezzo non c'è.
+- **Il selettore d'area (`/impostazioni/zone`, `AreaLavoroEditor.tsx`) non sa
+  ancora scrivere le esclusioni.** Le colonne esistono dalla 098, l'interfaccia
+  resta a sole inclusioni: chi vuole «tutta Italia meno un comune» non ha
+  ancora un modo di dirlo a mano. Nessun rischio nel frattempo — le colonne
+  restano vuote finché non c'è un'interfaccia che le scriva.
+- **FOTOPRO-MILANO non ha `comune_istat`.** È l'unico professionista vero,
+  quindi l'unico che conta per un confronto reale prima del cutover: va in
+  `/impostazioni/azienda` a scrivere comune e CAP — lo fa il titolare, non una
+  migrazione (la semina della 099 copre solo le cinque fixture).
 
 ---
 
