@@ -3,6 +3,7 @@ import {
   comuniNelCerchio,
   descriviCopertura,
   gettoniRichiesta,
+  RANGO_GETTONE,
   rangoCopertura,
   trovaPerRichiesta,
   zoneNelCerchio,
@@ -122,6 +123,181 @@ describe("chi trova chi", () => {
       "comune:015146",
       "it:*",
     ]);
+  });
+});
+
+describe("098: il filtro con esclusioni è un no-op a esclusioni vuote", () => {
+  // COPIA CONGELATA della regola PRIMA della 098 — non importata da
+  // copertura.ts di proposito: se qualcuno la "semplifica" per farla
+  // combaciare col codice nuovo, il test smette di dimostrare quello che
+  // deve dimostrare. È la stessa regola vecchia, lasciata immobile qui.
+  function trovaPerRichiestaVecchia(
+    pro: { keys: string[]; citySlug: string },
+    gettoniRichiesta: string[],
+    cittaRichiesta: string
+  ): boolean {
+    if (pro.keys.length === 0) return pro.citySlug === cittaRichiesta;
+    if (pro.keys.some((k) => gettoniRichiesta.includes(k))) return true;
+    const richiestaSenzaZona = !gettoniRichiesta.some((k) => k.startsWith("zone:"));
+    if (richiestaSenzaZona) {
+      const prefisso = `zone:${cittaRichiesta}/`;
+      return pro.keys.some((k) => k.startsWith(prefisso));
+    }
+    return false;
+  }
+
+  function rangoCoperturaVecchia(
+    pro: { keys: string[] },
+    gettoniRichiesta: string[]
+  ): number {
+    if (pro.keys.length === 0) return RANGO_GETTONE.city;
+    let migliore = -1;
+    for (const k of pro.keys) {
+      if (!gettoniRichiesta.includes(k)) continue;
+      const r = RANGO_GETTONE[k.split(":")[0]] ?? 0;
+      if (r > migliore) migliore = r;
+    }
+    if (migliore >= 0) return migliore;
+    const richiestaSenzaZona = !gettoniRichiesta.some((k) => k.startsWith("zone:"));
+    if (richiestaSenzaZona && pro.keys.some((k) => k.startsWith("zone:"))) {
+      return RANGO_GETTONE.city;
+    }
+    return migliore;
+  }
+
+  // OGNI FORMA DI COPERTURA CHE ESISTE OGGI IN PRODUZIONE, per scope: niente
+  // dichiarato, un quartiere solo, più quartieri, un comune, la città
+  // intera, la provincia, la regione, la macro-regione, l'Italia — più due
+  // città diverse, per esercitare anche la regola di compatibilità.
+  const CITTA_PRO = ["milano", "bergamo"];
+  const FORME_COPERTURA: Array<{ nome: string; keys: string[] }> = [
+    { nome: "niente dichiarato", keys: [] },
+    { nome: "un quartiere", keys: ["zone:milano/isola"] },
+    { nome: "tre quartieri", keys: ["zone:milano/isola", "zone:milano/brera", "zone:milano/navigli"] },
+    { nome: "un comune", keys: ["comune:015146"] },
+    { nome: "due comuni", keys: ["comune:015146", "comune:015209"] },
+    { nome: "tutta la città", keys: ["city:milano"] },
+    { nome: "tutta la provincia", keys: ["prov:milano"] },
+    { nome: "tutta la regione", keys: ["reg:lombardia"] },
+    { nome: "macroregione", keys: ["macro:nord"] },
+    { nome: "tutta Italia", keys: ["it:*"] },
+    { nome: "remoto più zona", keys: ["remote:*", "zone:milano/isola"] },
+  ];
+
+  // OGNI FORMA DI RICHIESTA: con zona, senza zona, con comune diverso dalla
+  // città, senza comune — sulle due città sopra.
+  const FORME_RICHIESTA: Array<{ nome: string; gettoni: string[]; citta: string }> = [
+    {
+      nome: "Milano, con zona Isola",
+      gettoni: ["zone:milano/isola", "comune:015146", "city:milano", "prov:milano", "reg:lombardia", "macro:nord", "it:*"],
+      citta: "milano",
+    },
+    {
+      nome: "Milano, senza zona",
+      gettoni: ["comune:015146", "city:milano", "prov:milano", "reg:lombardia", "macro:nord", "it:*"],
+      citta: "milano",
+    },
+    {
+      nome: "Milano, comune di Sesto (fuori città di Bob)",
+      gettoni: ["comune:015209", "city:milano", "prov:milano", "reg:lombardia", "macro:nord", "it:*"],
+      citta: "milano",
+    },
+    {
+      nome: "Milano, nessun gettone di comune",
+      gettoni: ["city:milano", "prov:milano", "reg:lombardia", "macro:nord", "it:*"],
+      citta: "milano",
+    },
+    {
+      nome: "Bergamo, con zona (ipotetica)",
+      gettoni: ["zone:bergamo/centro", "comune:016024", "city:bergamo", "prov:bergamo", "reg:lombardia", "macro:nord", "it:*"],
+      citta: "bergamo",
+    },
+  ];
+
+  it("trovaPerRichiesta: stesso risultato di prima della 098, su ogni combinazione, con esclusioni vuote", () => {
+    let confrontate = 0;
+    for (const forma of FORME_COPERTURA) {
+      for (const citySlug of CITTA_PRO) {
+        for (const richiesta of FORME_RICHIESTA) {
+          const proVecchio = { keys: forma.keys, citySlug };
+          // Le due forme di "nessuna esclusione" che la 098 può incontrare in
+          // produzione: la colonna non ancora letta (undefined) e la colonna
+          // letta ma vuota ('{}' → []). Devono comportarsi allo stesso modo.
+          for (const excludedKeys of [undefined, []] as (string[] | undefined)[]) {
+            const proNuovo = { keys: forma.keys, citySlug, excludedKeys };
+            expect(
+              trovaPerRichiesta(proNuovo, richiesta.gettoni, richiesta.citta),
+              `${forma.nome} / ${citySlug} / ${richiesta.nome} / excludedKeys=${JSON.stringify(excludedKeys)}`
+            ).toBe(trovaPerRichiestaVecchia(proVecchio, richiesta.gettoni, richiesta.citta));
+            confrontate += 1;
+          }
+        }
+      }
+    }
+    // Non deve passare per caso su un elenco vuoto: qui si contano le
+    // combinazioni davvero confrontate.
+    expect(confrontate).toBe(FORME_COPERTURA.length * CITTA_PRO.length * FORME_RICHIESTA.length * 2);
+  });
+
+  it("rangoCopertura: stesso risultato di prima della 098, su ogni combinazione, con esclusioni vuote", () => {
+    for (const forma of FORME_COPERTURA) {
+      for (const richiesta of FORME_RICHIESTA) {
+        for (const excludedKeys of [undefined, []] as (string[] | undefined)[]) {
+          const proNuovo = { keys: forma.keys, citySlug: richiesta.citta, excludedKeys };
+          expect(
+            rangoCopertura(proNuovo, richiesta.gettoni, richiesta.citta),
+            `${forma.nome} / ${richiesta.nome} / excludedKeys=${JSON.stringify(excludedKeys)}`
+          ).toBe(rangoCoperturaVecchia({ keys: forma.keys }, richiesta.gettoni));
+        }
+      }
+    }
+  });
+
+  it("rangoCopertura senza cittaRichiesta (il chiamante di prima della 098) resta invariato", () => {
+    // ordinaSenzaPunteggio non passava un terzo argomento prima della 098:
+    // deve continuare a funzionare esattamente come prima per chi non è
+    // ancora stato aggiornato a passarlo.
+    for (const forma of FORME_COPERTURA) {
+      for (const richiesta of FORME_RICHIESTA) {
+        const proNuovo = { keys: forma.keys, citySlug: richiesta.citta };
+        expect(rangoCopertura(proNuovo, richiesta.gettoni)).toBe(
+          rangoCoperturaVecchia({ keys: forma.keys }, richiesta.gettoni)
+        );
+      }
+    }
+  });
+
+  // LA PROVA CHE L'ESCLUSIONE NON È UN CODICE MORTO: lo stesso test sopra,
+  // ma con un'esclusione vera, deve invece CAMBIARE il risultato. Senza
+  // questa prova il no-op qui sopra sarebbe vero anche per una funzione che
+  // ignora `excludedKeys` sempre — un no-op che non potrebbe mai fallire non
+  // dimostra niente.
+  it("un'esclusione vera invece CAMBIA il risultato (altrimenti il test qui sopra sarebbe vuoto)", () => {
+    const proNazionaleMenoMilano = {
+      keys: ["it:*"],
+      citySlug: "milano",
+      excludedKeys: ["comune:015146"],
+    };
+    const richiestaDaMilano = FORME_RICHIESTA[1]; // "Milano, senza zona"
+    expect(
+      trovaPerRichiesta(proNazionaleMenoMilano, richiestaDaMilano.gettoni, richiestaDaMilano.citta)
+    ).toBe(false);
+    // Ma la stessa copertura, su una richiesta di un'altra città, resta ammessa:
+    // l'esclusione è mirata, non un interruttore generale.
+    const richiestaDaBergamo = FORME_RICHIESTA[4];
+    expect(
+      trovaPerRichiesta(proNazionaleMenoMilano, richiestaDaBergamo.gettoni, richiestaDaBergamo.citta)
+    ).toBe(true);
+
+    const proCittaMenoIsola = {
+      keys: ["city:milano"],
+      citySlug: "milano",
+      excludedKeys: ["zone:milano/isola"],
+    };
+    const richiestaDaIsola = FORME_RICHIESTA[0];
+    expect(
+      trovaPerRichiesta(proCittaMenoIsola, richiestaDaIsola.gettoni, richiestaDaIsola.citta)
+    ).toBe(false);
   });
 });
 

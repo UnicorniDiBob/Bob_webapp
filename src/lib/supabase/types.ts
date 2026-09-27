@@ -255,6 +255,8 @@ export interface ProfessionalCard {
   verificationLevel: VerificationLevel;
   /** I gettoni di copertura pubblicati (057/058); vuoto = nessuna area dichiarata. */
   coverageKeys: string[];
+  /** I gettoni ESCLUSI da una copertura più larga (098); vuoto = nessuna esclusione. */
+  excludedKeys: string[];
   bestScope: string | null;
   /** Data del riscontro che ha prodotto il livello: si mostra sempre col badge. */
   verifiedAt: string | null;
