@@ -35,7 +35,9 @@
 -- finché uno strumento di confronto non ha verificato le bande su richieste
 -- vere e su fixture sintetiche (professionals.is_test_fixture, qui sotto).
 -- Solo una migrazione di cutover successiva sposterà `area` dentro `punti` —
--- una `create or replace` sola, stesso schema di rollback della 089→094.
+-- una `create or replace` sola, stesso schema di rollback della 089→094. **IL
+-- CUTOVER HA UNA PRECONDIZIONE BLOCCANTE, vedi più sotto: non prima che il
+-- pezzo 3 (centroidi da CAP) esista per Milano.**
 --
 -- LE BANDE. Non quelle del tempo di risposta copiate 1:1 (<5/<15/<30/<60 km,
 -- 20/16/12/8/4): calcolato sugli 88 nuclei NIL di Milano in produzione
@@ -50,7 +52,42 @@
 -- il centro come tempo di risposta non misurato è la banda 10, riservata a
 -- quando un punto manca davvero). Con le bande vecchie Duomo–Isola (3,0 km) e
 -- Duomo–San Siro (3,9 km) valevano entrambe 20; con queste valgono 17 — la
--- distinzione che dentro Milano serve davvero.
+-- distinzione che dentro Milano serve davvero, PURCHÉ il punto base del
+-- professionista sia più preciso del solo comune: vedi la precondizione qui
+-- sotto, perché oggi non lo è.
+--
+-- ═══════════════════════════════════════════════════════════════════════
+-- PRECONDIZIONE DI CUTOVER — NON UNA NOTA A MARGINE, UN CANCELLO.
+-- ═══════════════════════════════════════════════════════════════════════
+-- Il punto base del professionista, finché il pezzo 3 non esiste, è SEMPRE
+-- e SOLO il centroide del comune (professionals.comune_istat → comuni.lat/
+-- lng). Per Milano questo è UN SOLO PUNTO (45,46679 · 9,19035) per OGNI
+-- professionista milanese, indipendentemente da dove sia davvero: un pro a
+-- San Siro e uno a Gratosoglio — 7,12 km veri di distanza fra loro,
+-- verificato ora sulle coordinate NIL vere — risultano nello STESSO punto,
+-- quindi prendono la STESSA banda su qualunque richiesta di Milano (per una
+-- richiesta a Loreto: banda 17 per entrambi; per una a San Siro o a
+-- Gratosoglio: banda 14 per entrambi, verificato con lo stesso calcolo della
+-- CTE qui sotto). OGGI L'AREA PER SPECIFICITÀ DISTINGUE QUESTI DUE CASI (chi
+-- ha dichiarato `zone:milano/san-siro` vale 20, chi ha dichiarato solo
+-- `city:milano` vale 15) — `punti_distanza`, dentro Milano, NON li distingue
+-- affatto finché resta al livello di comune. SPOSTARE IL CUTOVER PRIMA CHE
+-- IL PEZZO 3 ESISTA RENDEREBBE L'ORDINAMENTO DENTRO MILANO STRETTAMENTE
+-- PEGGIORE DI OGGI, nella città del pilota — l'esatto contrario dello scopo
+-- di questa migrazione. Il cancello: **nessuna migrazione di cutover finché
+-- `cap_centroids` (pezzo 3, non ancora costruito) non dà a Milano un punto
+-- base più fine del comune.** Fuori da Milano — dove oggi l'area non
+-- discrimina comunque niente di più fine del comune — questo limite non si
+-- applica: la distanza è già un miglioramento reale, verificato sulle
+-- distanze inter-città (vedi sotto).
+--
+-- CONSEGUENZA SUL CONFRONTO: uno strumento che confronta `punti` vecchio
+-- contro `punti_distanza` nuovo su richieste vere di Milano può SOLO
+-- validare la parte inter-città (un professionista di Milano contro uno
+-- fuori Milano) — mai la parte intra-Milano, che resta invalidabile finché
+-- ogni pro milanese collassa sullo stesso punto. Un risultato verde su quel
+-- confronto NON copre Milano, e va detto ogni volta che lo si legge, non
+-- solo qui.
 --
 -- IL PUNTO BASE DEL PROFESSIONISTA. Il centro del cerchio di copertura
 -- (professional_coverage.center_lat/lng) NON si usa: è dichiaratamente
@@ -63,10 +100,42 @@
 -- già pubblico quanto il resto della riga che questa funzione legge) verso
 -- public.comuni (086, lettura pubblica). Non è la precisione promessa dal
 -- punto 3 del piano — un centroide da CAP dentro Milano, non ancora
--- costruito — ma è reale, non fabbricata, e riusa dati già pubblici: nessuna
--- riga di professionals_score restituisce comune_istat o coordinate, solo il
--- punteggio già in banda, stessa disciplina di professional_signals (075)
--- per il tempo di risposta.
+-- costruito, vedi il cancello qui sopra — ma è reale, non fabbricata, e
+-- riusa dati già pubblici: nessuna riga di professionals_score restituisce
+-- comune_istat o coordinate, solo il punteggio già in banda, stessa
+-- disciplina di professional_signals (075) per il tempo di risposta.
+--
+-- RLS VERIFICATA SULLE CINQUE TABELLE CHE QUESTA FUNZIONE LEGGE PER LA
+-- DISTANZA E PER L'ESCLUSIONE: `comuni`, `city_zones`, `cities`,
+-- `professional_coverage_public` e `professionals` hanno tutte una policy
+-- di SELECT pubblica (`using (true)` o equivalente). SECURITY INVOKER
+-- (075) è quindi sicuro qui: un cliente anonimo o autenticato legge le
+-- stesse righe che leggerebbe lo staff, nessuna riga sparisce in silenzio
+-- sotto RLS come sarebbe successo con `professional_coverage.center_lat`
+-- (vedi sopra) — quel tranello è stato evitato, non ripetuto.
+--
+-- STATO REALE OGGI, VERIFICATO SUI SEI PROFESSIONISTI IN PRODUZIONE:
+-- `professionals.comune_istat` è NULL su tutti e sei — le cinque fixture
+-- (`b1000000-…`, create il 3 giugno 2026) e l'unico professionista vero
+-- (FOTOPRO-MILANO, iscritto il 9 settembre 2026). NON È UN BUCO NEL
+-- PERCORSO DI SCRITTURA: la colonna esiste dalla 085 (17 settembre 2026,
+-- vedi HANDOFF.md) e tutti e sei gli account, senza eccezioni, sono nati
+-- PRIMA di quella data — nessuno dei sei ha mai riaperto il questionario
+-- (`/onboarding/profilo`) o la scheda (`/impostazioni/azienda`) da allora,
+-- ed entrambe le pagine scrivono `comune_istat` (verificato leggendo il
+-- codice di tutte e due, non uno solo). `useStatoProfilo.ts` lo sa già e lo
+-- dice: la voce di checklist "Dove hai la base" (chiave `base`, non
+-- bloccante) esiste apposta, con la conseguenza scritta a mano — "Senza
+-- comune e CAP la mappa della tua area parte dal centro città invece che da
+-- dove sei" — che è esattamente il collasso descritto sopra, previsto
+-- prima ancora che questa migrazione esistesse. Oggi questo significa che
+-- `punti_distanza` calcolato su dati veri restituisce la banda 10 (punto
+-- mancante) per tutti e sei su ogni richiesta, verificato ora con la stessa
+-- CTE di questo file eseguita in sola lettura. Non blocca la migrazione —
+-- lo scaffolding regge un punto mancante per costruzione — ma **prima di
+-- qualunque confronto serio**, FOTOPRO-MILANO (l'unico caso reale) va in
+-- `/impostazioni/azienda` a scrivere comune e CAP, altrimenti il confronto
+-- misura solo colonne di 10.
 --
 -- IL PUNTO DELLA RICHIESTA. La zona (city_zones, se il cliente l'ha detta),
 -- altrimenti il comune della richiesta (p_comune_istat se c'è, il comune
@@ -468,6 +537,12 @@ as $$
   -- non il centro del cerchio, privato per costruzione, vedi il commento in
   -- testa al file) e il punto della richiesta (zona se c'è, comune
   -- altrimenti), banda haversine. Colonna di confronto: non entra in `punti`.
+  --
+  -- CHI TOCCA QUESTA CTE PER FARE IL CUTOVER (spostare `area` in `punti`):
+  -- FERMO. Il punto base qui sotto è solo comune finché `cap_centroids`
+  -- (pezzo 3) non esiste — dentro Milano ogni professionista risolve allo
+  -- STESSO punto, quindi `punti_distanza` non distingue niente in città.
+  -- Vedi «PRECONDIZIONE DI CUTOVER» in testa al file prima di procedere.
   -- ---------------------------------------------------------------------
   base_punto as (
     select b.id, co.lat, co.lng
