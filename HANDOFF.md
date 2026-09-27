@@ -1,3 +1,17 @@
+# Nota (27 settembre 2026): G46 è superata
+
+`src/app/onboarding/profilo/page.tsx` chiede già mestiere, comune dall'elenco
+ISTAT (autocomplete) e **CAP obbligatorio** (validato, cinque cifre); alla fine
+manda su `/dashboard`, che apre da sola `GuidaPrimoAccesso` al primo accesso
+(`onboarding_completed_at is null`). Non esiste nessun dashboard vuoto senza
+wizard — verificato leggendo il codice, non a memoria. Il buco vero resta un
+altro: `professionals.postal_code` è raccolto e non lo legge nessuno per la
+geografia, nessuna query lo usa per un centro o una distanza. Dettaglio nella
+sessione del 27/09 su ricerca per distanza (`docs/RICERCA.md` e il lavoro in
+corso su `professionals_score`).
+
+---
+
 # Passaggio di consegne — 25 settembre 2026 (André, con Claude)
 
 > La giornata di oggi in cima. La voce del 24 settembre e tutto quello che

@@ -228,22 +228,32 @@ const PROFESSIONAL_SELECT = `
  */
 async function coveragesByProfessionalId(
   ids: string[]
-): Promise<Record<string, { keys: string[]; bestScope: string | null }>> {
+): Promise<
+  Record<string, { keys: string[]; excludedKeys: string[]; bestScope: string | null }>
+> {
   if (ids.length === 0) return {};
   const supabase = createClient();
+  // select("*") e non l'elenco delle colonne: excluded_keys arriva con la
+  // 098, e finche' non e' applicata non deve far fallire la lettura (stesso
+  // principio di group_slug/comune_istat nelle migrazioni precedenti).
   const { data, error } = await supabase
     .from("professional_coverage_public")
-    .select("professional_id, coverage_keys, best_scope")
+    .select("*")
     .in("professional_id", ids);
   if (error) return {};
-  const mappa: Record<string, { keys: string[]; bestScope: string | null }> = {};
+  const mappa: Record<
+    string,
+    { keys: string[]; excludedKeys: string[]; bestScope: string | null }
+  > = {};
   for (const r of (data ?? []) as {
     professional_id: string;
     coverage_keys: string[] | null;
+    excluded_keys?: string[] | null;
     best_scope: string | null;
   }[]) {
     mappa[r.professional_id] = {
       keys: r.coverage_keys ?? [],
+      excludedKeys: r.excluded_keys ?? [],
       bestScope: r.best_scope,
     };
   }
@@ -270,7 +280,10 @@ async function namesByUserId(
 function toCard(
   row: RawProfessionalRow,
   names: Record<string, string>,
-  coperture: Record<string, { keys: string[]; bestScope: string | null }> = {}
+  coperture: Record<
+    string,
+    { keys: string[]; excludedKeys: string[]; bestScope: string | null }
+  > = {}
 ): ProfessionalCard {
   const ratings = row.ratings ?? [];
   const nRatings = ratings.length;
@@ -385,6 +398,7 @@ function toCard(
         : row.verification_level_at,
     responseTimeLabel: row.response_time_label,
     coverageKeys: cop?.keys ?? [],
+    excludedKeys: cop?.excludedKeys ?? [],
     bestScope: cop?.bestScope ?? null,
     city: { name: row.cities?.name ?? "", slug: row.cities?.slug ?? "" },
     serviceName: servizio?.name ?? null,
@@ -504,7 +518,7 @@ export async function getProfessionals(
     const citta = filters.citySlug;
     cards = cards.filter((c) =>
       trovaPerRichiesta(
-        { keys: c.coverageKeys, citySlug: c.city.slug },
+        { keys: c.coverageKeys, citySlug: c.city.slug, excludedKeys: c.excludedKeys },
         gettoniDellaRichiesta,
         citta
       )
@@ -631,12 +645,14 @@ function ordinaSenzaPunteggio(
     }
     if (gettoniDellaRichiesta.length > 0) {
       const ra = rangoCopertura(
-        { keys: a.coverageKeys, citySlug: a.city.slug },
-        gettoniDellaRichiesta
+        { keys: a.coverageKeys, citySlug: a.city.slug, excludedKeys: a.excludedKeys },
+        gettoniDellaRichiesta,
+        filters.citySlug
       );
       const rb = rangoCopertura(
-        { keys: b.coverageKeys, citySlug: b.city.slug },
-        gettoniDellaRichiesta
+        { keys: b.coverageKeys, citySlug: b.city.slug, excludedKeys: b.excludedKeys },
+        gettoniDellaRichiesta,
+        filters.citySlug
       );
       if (rb !== ra) return rb - ra;
     }

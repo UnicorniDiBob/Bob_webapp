@@ -258,6 +258,49 @@ export interface CoperturaPro {
   keys: string[];
   /** La città della riga professionals: serve alla regola di compatibilità. */
   citySlug: string;
+  /**
+   * I gettoni ESCLUSI da una copertura più larga (098). Stesso vocabolario di
+   * `keys` — `comune:<istat>`, `zone:<città>/<slug>` — pubblicati da
+   * `excluded_keys_for` insieme alle inclusioni. Vuoto o assente: nessuna
+   * esclusione, ed è per costruzione lo stato di ogni riga scritta prima
+   * della 098 — non c'è niente da migrare a mano.
+   */
+  excludedKeys?: string[];
+}
+
+/** Il gettone `comune:` della richiesta, se la richiesta ne ha uno. */
+function gettoneComuneRichiesta(gettoniRichiesta: string[]): string | null {
+  return gettoniRichiesta.find((k) => k.startsWith("comune:")) ?? null;
+}
+
+/** Il gettone `zone:<cittaRichiesta>/...` della richiesta, se c'è. */
+function gettoneZonaRichiesta(
+  gettoniRichiesta: string[],
+  cittaRichiesta: string
+): string | null {
+  const prefisso = `zone:${cittaRichiesta}/`;
+  return gettoniRichiesta.find((k) => k.startsWith(prefisso)) ?? null;
+}
+
+/**
+ * La richiesta cade in un comune o in una zona che il professionista ha
+ * esplicitamente escluso da una copertura più larga? Si controlla
+ * sull'IDENTITÀ della richiesta (il suo comune, la sua zona), non sul
+ * gettone che ha fatto match: un pro «tutta Italia» che esclude Milano fa
+ * match sempre e solo su `it:*`, mai su `comune:015146` — è la richiesta che
+ * deve dire dove sta, non il gettone che l'ha ammessa.
+ */
+function richiestaEsclusa(
+  pro: CoperturaPro,
+  gettoniRichiesta: string[],
+  cittaRichiesta: string
+): boolean {
+  if (!pro.excludedKeys || pro.excludedKeys.length === 0) return false;
+  const comune = gettoneComuneRichiesta(gettoniRichiesta);
+  if (comune && pro.excludedKeys.includes(comune)) return true;
+  const zona = gettoneZonaRichiesta(gettoniRichiesta, cittaRichiesta);
+  if (zona && pro.excludedKeys.includes(zona)) return true;
+  return false;
 }
 
 /**
@@ -265,12 +308,19 @@ export interface CoperturaPro {
  * ancora dichiarato niente vale come «tutta la città in cui è iscritto».
  * Senza, i professionisti già in produzione — che non hanno nessuna copertura —
  * spariscono da ogni elenco il giorno del deploy.
+ *
+ * L'ESCLUSIONE (098) SI CONTROLLA PER PRIMA e vale sempre, anche sulla
+ * regola di compatibilità: chi non ha ancora un'esclusione (`excludedKeys`
+ * vuoto o assente, cioè ogni riga scritta prima della 098) prende esattamente
+ * lo stesso risultato di prima — la prova è in copertura.test.ts, non
+ * un'assunzione.
  */
 export function trovaPerRichiesta(
   pro: CoperturaPro,
   gettoniRichiesta: string[],
   cittaRichiesta: string
 ): boolean {
+  if (richiestaEsclusa(pro, gettoniRichiesta, cittaRichiesta)) return false;
   if (pro.keys.length === 0) return pro.citySlug === cittaRichiesta;
   if (pro.keys.some((k) => gettoniRichiesta.includes(k))) return true;
 
@@ -288,11 +338,24 @@ export function trovaPerRichiesta(
   return false;
 }
 
-/** Il rango del gettone più preciso che ha fatto match; -1 se nessuno. */
+/**
+ * Il rango del gettone più preciso che ha fatto match; -1 se nessuno.
+ *
+ * `cittaRichiesta` è facoltativo per non rompere il solo altro chiamante
+ * (`ordinaSenzaPunteggio`, la rete di sicurezza quando `professionals_score`
+ * non risponde) più i test esistenti — ma senza di lui l'esclusione di zona
+ * non è controllabile (serve per formare `zone:<città>/...`), quindi
+ * ometterlo è un buco dichiarato, non un'omissione silenziosa: resta scritto
+ * qui, e il chiamante in data.ts lo passa.
+ */
 export function rangoCopertura(
   pro: CoperturaPro,
-  gettoniRichiesta: string[]
+  gettoniRichiesta: string[],
+  cittaRichiesta?: string
 ): number {
+  if (cittaRichiesta && richiestaEsclusa(pro, gettoniRichiesta, cittaRichiesta)) {
+    return -1;
+  }
   if (pro.keys.length === 0) return RANGO_GETTONE.city;
   let migliore = -1;
   for (const k of pro.keys) {
