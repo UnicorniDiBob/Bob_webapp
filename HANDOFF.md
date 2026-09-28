@@ -1,3 +1,147 @@
+# Passaggio di consegne — 28 settembre 2026 (Lucio, con Claude)
+
+> Sezione di Lucio, aggiunta in cima. Quella di André (27 e 25 settembre) e
+> tutto quello che sta sotto restano invariati.
+
+## Cosa ho fatto — Lucio (28 settembre)
+
+**In produzione non ho applicato niente, e `main` non l'ho toccato.** Una
+migrazione nuova, la **100**, esiste solo come file sul ramo
+`feat/termini-versioni-e-accettazione` e **non è provata**: vedi «a metà».
+
+### Mattina: messo in salvo quello che stava fuori da origin
+
+- `fix/controllo-deriva` (`8167765`, prima `420f681`, che viveva solo in un
+  bundle), `docs/checkin-primo-ingresso`, `docs/consegne-30ago-completo`,
+  `docs/handoff-17set-sera`: tutti su origin, nessuna PR. Cancellati 18 rami
+  locali già contenuti in `main`.
+- **Migrazioni 084–099: repo e produzione allineati**, per nome e per gli
+  oggetti controllati. L'allarme del 17/09 è chiuso. Non c'è niente da
+  rigiocare.
+- **`scripts/deriva.sh` non funziona contro questa produzione.** Confronta i
+  numeri con `cut -c1-3` sui nomi live, e ~30 righe live non hanno numero.
+  Impronta di produzione registrata oggi: columns 518 `f81a4590…`, constraints
+  232 `f0812ab4…`, event_triggers 1 `9db164e0…`, functions 38 `68522686…`,
+  indexes 149 `253b9a12…`, policies 131 `72b41cb7…`, tables 52 `e4d6d53e…`,
+  triggers 24 `632de219…`. Il lato repo manca: qui non ci sono né Postgres né
+  Docker.
+
+### Pomeriggio: SLA e cessazione (W04), solo accertato
+
+- **Cessazione (m2t4s9):** il tetto di 14 giorni c'è dalla 094 (`991c3dc`),
+  vivo in produzione, con il preavviso datato nella campanella e nella pagina.
+  **Resta com'è, per scelta di Lucio.** Mai esercitato: zero casi.
+- **SLA (m2t4s8): chiuso a metà.** Il timestamp c'è dalla 080
+  (`vat_review_opened_at`). Mancano la misura a posteriori, che si può ricavare
+  da `verification_events` senza colonne nuove, e qualunque segnale quando si
+  sfora. Il giro notturno non conta gli sforamenti.
+- Le note del Piano di queste due voci descrivono ancora il 12/09.
+
+### Sera: il meccanismo dei termini (ramo `feat/termini-versioni-e-accettazione`)
+
+La **v2 è in vigore dal 20/09 senza preavviso**. Vincola solo account di prova
+(confermato da Lucio), quindi è regolarizzabile. Costruito il meccanismo, non
+le decisioni:
+
+- **Registro** (`src/lib/termini/registro.ts`): una voce per versione e per
+  pubblico, con `pubblicataIl` ed `efficaceDal`. Sta nel codice perché le date
+  sono impegni contrattuali e devono passare da una PR. **L'efficacia della v2
+  è `null`**: è la decisione di Lucio. Un test fa fallire la CI se
+  un'efficacia per i professionisti cade a meno di 15 giorni dalla
+  pubblicazione.
+- **Archivio**: testi congelati estratti da git senza toccarne una parola (v1
+  da `9f06bc2^`, identica al 30/07 salvo un grigio; v2 da `main`).
+  `/termini/versioni`, `/termini/<versione>`, `/termini/professionisti/<versione>`.
+- **Pubblicazione programmata provata con una richiesta vera.** Build locale
+  con una versione finta fissata alle 17:22:01Z: alle 17:22:01Z la pagina è
+  passata a quella versione, stesso server, senza redeploy. Le pagine dei
+  termini sono `ƒ` (dinamiche), con `Cache-Control: no-store`. **Su `main`
+  `/termini` era statica**: una data programmata lì non sarebbe mai scattata.
+- **Accettazioni** (migrazione 100):
+  - `terms_acceptances`, di sola aggiunta anche per il service role;
+  - l'ora la scrive il database: `login/page.tsx` non manda più
+    `terms_accepted_at`;
+  - la riga d'iscrizione la crea un trigger su `profile_private`, senza
+    toccare `handle_new_user`;
+  - `POST /api/termini/accetta` registra un'accettazione successiva, insieme al
+    commit online;
+  - conservazione per **dieci anni dalla chiusura dell'account**, senza
+    cascata (decisione di Lucio), con una purga mensile;
+  - nessuna funzione SECURITY DEFINER; tabella inclusa nell'export artt. 15/20.
+- **Registro dei trattamenti: A25**, con il perché della conservazione. Riga
+  aggiunta anche in DATA_COMPLIANCE §5.
+- `tsc`, `lint` e build puliti; vitest 153/153. Per farlo girare ho
+  reinstallato `node_modules` con `npm ci`: era stato installato per un'altra
+  architettura. Il lockfile non è cambiato.
+
+### Sera tardi: la 100 è in produzione, ma dopo il codice
+
+- **PR #100 mergiata alle 18:57:41Z**, dall'account di Lucio, tre minuti dopo
+  averla aperta, e **prima** che la 100 fosse applicata: esattamente l'ordine
+  che avevamo detto di evitare. Vercel l'ha messa in produzione (`e47242d`,
+  READY).
+- **La 100 è applicata alle 19:04:23Z** (riga `20260928190423`), come corpo del
+  file su `main` senza `begin;`/`commit;`. L'aveva provata Lucio su un
+  Postgres 16 ricostruito dai soli file.
+- **Nei ~6 minuti senza tabella:** zero iscrizioni, zero export registrati.
+  Limite: `last_export_at` si scrive solo quando l'export riesce. La prova
+  piena sono i log di Vercel su quella finestra, non guardati.
+- **Advisor dopo la 100: nessun rilievo sugli oggetti nuovi.** Restano
+  `Leaked Password Protection` (piano Pro) e un INFO su `rate_limit_counters`,
+  voluto dalla 097.
+- **Oggetti vivi verificati:** RLS, una policy, solo `authenticated:SELECT`, 5
+  trigger, 6 funzioni e nessuna SECURITY DEFINER, cron `25 3 1 * *`, 2 righe
+  di backfill.
+- **In produzione:** `/termini/versioni` e gli archivi rispondono,
+  `Cache-Control: no-store`, una versione futura dà 404, la route senza login
+  dà 401.
+- **Impronta:** i due lati alla 099 coincidono su 8 righe su 9 (`functions`
+  sì, `functions_testo` no, per le 8 funzioni senza commenti; repo su PG
+  16.13, produzione su 17.6). Dopo la 100 ogni differenza è spiegata. Tutto in
+  `scripts/impronte/2026-09-28.md` sulla **PR #101** (`fix/controllo-deriva`),
+  **non mergiata**: il merge è di Lucio.
+
+## Cosa è a metà — Lucio (28 settembre)
+
+- ~~**La migrazione 100 non è provata.**~~ **Chiuso: provata da Lucio,
+  applicata alle 19:04Z.** Testo originale: Il branch Supabase è rifiutato
+  («Branching is supported only on the Pro plan or above»), e qui mancano
+  Postgres e Docker. **Non va applicata finché non gira su un database di
+  prova.** Le strade: Docker Desktop acceso, `brew install postgresql@16`,
+  oppure il piano Pro.
+- ~~**Ordine di rilascio obbligato: prima la 100, poi il merge.**~~ **Non
+  rispettato: il merge è arrivato 6 minuti prima.** Testo originale: Se il codice
+  arriva in produzione senza la tabella, l'export dei dati va in errore e le
+  nuove iscrizioni restano senza ora di accettazione, perché il browser non la
+  manda più. La migrazione aggiunge e basta, quindi applicarla prima regge.
+- **La finestra di iscrizione non è stata guardata in un browser.** Il login è
+  disegnato lato client e `curl` non la vede. Verificato solo che il registro
+  sia nel bundle di `/login`.
+- **Decisioni di Lucio, non toccate:** il testo del preavviso, la data di
+  efficacia della v2, qualunque email. Resend non è configurato (su Vercel
+  mancano `RESEND_API_KEY` ed `EMAIL_FROM`) e per i professionisti l'email è
+  il supporto durevole che l'art. 3(2) P2B richiede.
+- **Una correzione a quanto detto nel pomeriggio:** l'obbligo di comunicare
+  «senza indugio» la cessazione della partita IVA c'era già nella v1
+  (sezione 5). La sezione 9 della v2 lo ripete, non lo introduce.
+- **Il login sceglie la versione con l'orologio del browser.** È coerente con
+  il testo che mostra, ma un orologio molto sbagliato vicino a una data di
+  pubblicazione può mostrare la versione accanto. L'ora dell'accettazione
+  invece la scrive il server.
+
+## Cosa deve sapere André
+
+- Niente applicato su Supabase. Toccati `login/page.tsx` e `TermsDialog.tsx`,
+  entrambi per i termini: la modifica sta nella PR di Lucio, come da regola.
+- `TERMS_VERSION` e `TERMS_UPDATED` **non esistono più**: la versione si prende
+  da `ultimaPubblicata(pubblico)` in `src/lib/termini/registro.ts`. Una
+  versione pubblicata non si modifica più: una correzione è una versione nuova.
+- **`SUPABASE_SERVICE_ROLE_KEY` su Vercel** è salvata come «encrypted» e non
+  «sensitive», Vercel la segnala `readable-secret`, ed è esposta anche a
+  development e preview. È area tua: la voce proposta per il Piano è sotto.
+
+---
+
 # Nota (27 settembre 2026): G46 è superata
 
 `src/app/onboarding/profilo/page.tsx` chiede già mestiere, comune dall'elenco
