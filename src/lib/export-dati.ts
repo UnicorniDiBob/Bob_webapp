@@ -158,11 +158,13 @@ export async function raccogliDatiCliente(
   utente: { id: string; email: string }
 ): Promise<RisultatoExport> {
   // --- 1. chi sei -----------------------------------------------------------
-  const [account, profilo, riservati, telefono, autenticazione] = await Promise.all([
+  const [account, profilo, riservati, telefono, termini, autenticazione] = await Promise.all([
     leggi(admin, "users", "id", utente.id),
     leggi(admin, "profiles", "user_id", utente.id),
     leggi(admin, "profile_private", "user_id", utente.id),
     leggi(admin, "profile_phone", "user_id", utente.id),
+    // lo storico delle accettazioni dei termini (mig 100)
+    leggi(admin, "terms_acceptances", "user_id", utente.id),
     // vedi la nota 3 in testa al file: l'email non sta in public.users
     admin.auth.admin.getUserById(utente.id),
   ]);
@@ -297,6 +299,7 @@ export async function raccogliDatiCliente(
     profilo: senza(profilo[0], "user_id"),
     dati_riservati: senza(riservati[0], "user_id"),
     telefono: senza(telefono[0], "user_id"),
+    termini_accettati: termini.map((r) => senza(r, "user_id")),
     indirizzi_salvati: indirizzi.map((r) => senza(r, "user_id")),
     consensi_alle_comunicazioni: consensi.map((r) => senza(r, "user_id")),
     memoria_delle_ricerche: senza(memoria[0], "user_id"),
