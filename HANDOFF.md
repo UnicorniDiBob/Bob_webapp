@@ -74,14 +74,43 @@ le decisioni:
   reinstallato `node_modules` con `npm ci`: era stato installato per un'altra
   architettura. Il lockfile non è cambiato.
 
+### Sera tardi: la 100 è in produzione, ma dopo il codice
+
+- **PR #100 mergiata alle 18:57:41Z**, dall'account di Lucio, tre minuti dopo
+  averla aperta, e **prima** che la 100 fosse applicata: esattamente l'ordine
+  che avevamo detto di evitare. Vercel l'ha messa in produzione (`e47242d`,
+  READY).
+- **La 100 è applicata alle 19:04:23Z** (riga `20260928190423`), come corpo del
+  file su `main` senza `begin;`/`commit;`. L'aveva provata Lucio su un
+  Postgres 16 ricostruito dai soli file.
+- **Nei ~6 minuti senza tabella:** zero iscrizioni, zero export registrati.
+  Limite: `last_export_at` si scrive solo quando l'export riesce. La prova
+  piena sono i log di Vercel su quella finestra, non guardati.
+- **Advisor dopo la 100: nessun rilievo sugli oggetti nuovi.** Restano
+  `Leaked Password Protection` (piano Pro) e un INFO su `rate_limit_counters`,
+  voluto dalla 097.
+- **Oggetti vivi verificati:** RLS, una policy, solo `authenticated:SELECT`, 5
+  trigger, 6 funzioni e nessuna SECURITY DEFINER, cron `25 3 1 * *`, 2 righe
+  di backfill.
+- **In produzione:** `/termini/versioni` e gli archivi rispondono,
+  `Cache-Control: no-store`, una versione futura dà 404, la route senza login
+  dà 401.
+- **Impronta:** i due lati alla 099 coincidono su 8 righe su 9 (`functions`
+  sì, `functions_testo` no, per le 8 funzioni senza commenti; repo su PG
+  16.13, produzione su 17.6). Dopo la 100 ogni differenza è spiegata. Tutto in
+  `scripts/impronte/2026-09-28.md` sulla **PR #101** (`fix/controllo-deriva`),
+  **non mergiata**: il merge è di Lucio.
+
 ## Cosa è a metà — Lucio (28 settembre)
 
-- **La migrazione 100 non è provata.** Il branch Supabase è rifiutato
+- ~~**La migrazione 100 non è provata.**~~ **Chiuso: provata da Lucio,
+  applicata alle 19:04Z.** Testo originale: Il branch Supabase è rifiutato
   («Branching is supported only on the Pro plan or above»), e qui mancano
   Postgres e Docker. **Non va applicata finché non gira su un database di
   prova.** Le strade: Docker Desktop acceso, `brew install postgresql@16`,
   oppure il piano Pro.
-- **Ordine di rilascio obbligato: prima la 100, poi il merge.** Se il codice
+- ~~**Ordine di rilascio obbligato: prima la 100, poi il merge.**~~ **Non
+  rispettato: il merge è arrivato 6 minuti prima.** Testo originale: Se il codice
   arriva in produzione senza la tabella, l'export dei dati va in errore e le
   nuove iscrizioni restano senza ora di accettazione, perché il browser non la
   manda più. La migrazione aggiunge e basta, quindi applicarla prima regge.
