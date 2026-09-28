@@ -163,6 +163,7 @@ Double opt-in: not legally required in Italy, but cheap and makes the consent pr
 | Service announcements (`avvisi_servizio`) | 24 months after `fine_il` | 6(1)(f) — record of what we told users and when | Delete. No user personal data in the row; the author (`creato_da`, staff) is `on delete set null` |
 | Announcement-seen timestamp (`profiles.avvisi_visti_al`) | Account life, overwritten | 6(1)(f) — so the same popup isn't shown twice | Dies with the profile row; included in the Art. 15/20 export (it reads `profiles` with `select *`) |
 | Maintenance windows (`manutenzioni`) | 24 months after `fine_il` | 6(1)(f) — record of when the service was unavailable and why | Delete. No user personal data in the row; `motivo` and `dettaglio` are written for the public, and the author (`creato_da`, staff) is `on delete set null` |
+| Terms acceptances (`terms_acceptances`) | 10 years after account closure (`account_closed_at`), not account life | 6(1)(b) while active; 17(3)(e) after closure (defence of legal claims) — ROPA A25 | Delete (`purga_accettazioni_termini()`, monthly). No FK to `auth.users` on purpose: the proof must outlive the account |
 
 ---
 
