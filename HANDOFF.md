@@ -5,81 +5,111 @@
 
 ## Cosa ho fatto — Lucio (28 settembre)
 
-**Niente applicato in produzione, nessuna migrazione, `main` non toccato.**
-Solo git: messo in salvo quello che viveva fuori da origin, e controllato lo
-stato delle migrazioni.
+**In produzione non ho applicato niente, e `main` non l'ho toccato.** Una
+migrazione nuova, la **100**, esiste solo come file sul ramo
+`feat/termini-versioni-e-accettazione` e **non è provata**: vedi «a metà».
 
-- **`fix/controllo-deriva` è su origin.** Il commit `420f681` (20/09, `scripts/deriva.sh`,
-  due normalizzazioni in `schema_fingerprint.sql`, due regole in `CLAUDE.md`)
-  viveva solo in `deriva.bundle`. Spinto così com'era, poi rebasato su `main` e
-  rispinto sul ramo: ora è `8167765`, stesso patch-id. **Nessuna PR aperta:
-  prima va riparato, vedi sotto.**
-- **Tre rami di documenti spinti così come sono, come archivio**:
-  `docs/checkin-primo-ingresso` (riscrittura della specifica del 27/08, mai
-  arrivata su main), `docs/consegne-30ago-completo` (un `HANDOFF.md` del 30/08
-  mai arrivato su main), `docs/handoff-17set-sera` (contenuto identico a
-  `7ac5e6b`, già su main). Nessuna PR: se vanno fusi o no è una decisione a parte.
-- **Cancellati 18 rami locali**, solo quelli già contenuti in `main` (`git branch -d`).
-- **Migrazioni: repo e produzione sono allineati, per nome e per oggetti.**
-  In produzione c'è tutto da 084 a 099, nessuna riga 081–083. Le colonne del
-  quote intake, `subservice_migration_review`, `canonical_subservice_id`,
-  `rate_limit_counters` e `verification_badge_max_until` esistono. I 6
-  sotto-servizi sostituiti sono quelli della 090, `professionals_score` non è
-  `SECURITY DEFINER`, `http` è spenta. Ogni file 090–099 ha l'ultima modifica
-  **prima** della propria applicazione. L'allarme del 17/09 («produzione
-  indietro di tre») è chiuso. **Da non fare: nessun `apply_migration`, nessun
-  ritocco a `schema_migrations`. Non c'è niente da rigiocare.**
+### Mattina: messo in salvo quello che stava fuori da origin
+
+- `fix/controllo-deriva` (`8167765`, prima `420f681`, che viveva solo in un
+  bundle), `docs/checkin-primo-ingresso`, `docs/consegne-30ago-completo`,
+  `docs/handoff-17set-sera`: tutti su origin, nessuna PR. Cancellati 18 rami
+  locali già contenuti in `main`.
+- **Migrazioni 084–099: repo e produzione allineati**, per nome e per gli
+  oggetti controllati. L'allarme del 17/09 è chiuso. Non c'è niente da
+  rigiocare.
+- **`scripts/deriva.sh` non funziona contro questa produzione.** Confronta i
+  numeri con `cut -c1-3` sui nomi live, e ~30 righe live non hanno numero.
+  Impronta di produzione registrata oggi: columns 518 `f81a4590…`, constraints
+  232 `f0812ab4…`, event_triggers 1 `9db164e0…`, functions 38 `68522686…`,
+  indexes 149 `253b9a12…`, policies 131 `72b41cb7…`, tables 52 `e4d6d53e…`,
+  triggers 24 `632de219…`. Il lato repo manca: qui non ci sono né Postgres né
+  Docker.
+
+### Pomeriggio: SLA e cessazione (W04), solo accertato
+
+- **Cessazione (m2t4s9):** il tetto di 14 giorni c'è dalla 094 (`991c3dc`),
+  vivo in produzione, con il preavviso datato nella campanella e nella pagina.
+  **Resta com'è, per scelta di Lucio.** Mai esercitato: zero casi.
+- **SLA (m2t4s8): chiuso a metà.** Il timestamp c'è dalla 080
+  (`vat_review_opened_at`). Mancano la misura a posteriori, che si può ricavare
+  da `verification_events` senza colonne nuove, e qualunque segnale quando si
+  sfora. Il giro notturno non conta gli sforamenti.
+- Le note del Piano di queste due voci descrivono ancora il 12/09.
+
+### Sera: il meccanismo dei termini (ramo `feat/termini-versioni-e-accettazione`)
+
+La **v2 è in vigore dal 20/09 senza preavviso**. Vincola solo account di prova
+(confermato da Lucio), quindi è regolarizzabile. Costruito il meccanismo, non
+le decisioni:
+
+- **Registro** (`src/lib/termini/registro.ts`): una voce per versione e per
+  pubblico, con `pubblicataIl` ed `efficaceDal`. Sta nel codice perché le date
+  sono impegni contrattuali e devono passare da una PR. **L'efficacia della v2
+  è `null`**: è la decisione di Lucio. Un test fa fallire la CI se
+  un'efficacia per i professionisti cade a meno di 15 giorni dalla
+  pubblicazione.
+- **Archivio**: testi congelati estratti da git senza toccarne una parola (v1
+  da `9f06bc2^`, identica al 30/07 salvo un grigio; v2 da `main`).
+  `/termini/versioni`, `/termini/<versione>`, `/termini/professionisti/<versione>`.
+- **Pubblicazione programmata provata con una richiesta vera.** Build locale
+  con una versione finta fissata alle 17:22:01Z: alle 17:22:01Z la pagina è
+  passata a quella versione, stesso server, senza redeploy. Le pagine dei
+  termini sono `ƒ` (dinamiche), con `Cache-Control: no-store`. **Su `main`
+  `/termini` era statica**: una data programmata lì non sarebbe mai scattata.
+- **Accettazioni** (migrazione 100):
+  - `terms_acceptances`, di sola aggiunta anche per il service role;
+  - l'ora la scrive il database: `login/page.tsx` non manda più
+    `terms_accepted_at`;
+  - la riga d'iscrizione la crea un trigger su `profile_private`, senza
+    toccare `handle_new_user`;
+  - `POST /api/termini/accetta` registra un'accettazione successiva, insieme al
+    commit online;
+  - conservazione per **dieci anni dalla chiusura dell'account**, senza
+    cascata (decisione di Lucio), con una purga mensile;
+  - nessuna funzione SECURITY DEFINER; tabella inclusa nell'export artt. 15/20.
+- **Registro dei trattamenti: A25**, con il perché della conservazione. Riga
+  aggiunta anche in DATA_COMPLIANCE §5.
+- `tsc`, `lint` e build puliti; vitest 153/153. Per farlo girare ho
+  reinstallato `node_modules` con `npm ci`: era stato installato per un'altra
+  architettura. Il lockfile non è cambiato.
 
 ## Cosa è a metà — Lucio (28 settembre)
 
-- **`scripts/deriva.sh` non funziona contro questa produzione, per costruzione.**
-  Confronta i numeri con `cut -c1-3` sui nomi in `schema_migrations`, ma le
-  prime ~30 righe live non hanno numero (`create_bob_schema`, `job_brief`…) e
-  altre hanno numeri diversi dai file: il README di `supabase/migrations` lo
-  dice dall'8 agosto. Risultato, simulato sui dati veri:
-  - la parte 1 segnala 31 «non applicate» e 25 «senza file» che non lo sono;
-  - la parte 2 esclude dalla ricostruzione 31 file, compreso `001_create_bob_schema`,
-    quindi la ricostruzione fallisce.
-
-  Sotto il rumore l'unico caso vero è 036/037, che però è già documentato:
-  vivono in `038_…`. **Lo script va riparato prima della PR** (una tabella di
-  corrispondenza nome live → file, oppure un confronto solo dal 053 in su), e
-  la frase del commit «oggi le otto righe coincidono» non può essere uscita da
-  lui.
-- **Il confronto delle otto righe resta da fare.** Il lato produzione l'ho
-  calcolato oggi, con la stessa query di `schema_fingerprint.sql` sul ramo:
-
-  | categoria | n | impronta |
-  |---|---|---|
-  | columns | 518 | `f81a4590fa346fe6cc69c322fe64898a` |
-  | constraints | 232 | `f0812ab4bbeafa3277f178578315f73f` |
-  | event_triggers | 1 | `9db164e0229c1366ed8e7ee7217da9f8` |
-  | functions | 38 | `6852268686e9556f1d66329248ead188` |
-  | indexes | 149 | `253b9a1241a9a2bcae9e0bf29e717c4a` |
-  | policies | 131 | `72b41cb7295ce638c9319bab297f3454` |
-  | tables | 52 | `e4d6d53e6ae95da9d69c73df8a8e9997` |
-  | triggers | 24 | `632de2196160cdbc16451488f6ae7485` |
-
-  Il lato repo manca: su questo Mac non ci sono Postgres 16 e pg_cron, e Docker
-  è spento. Finché non si ricostruisce, «allineati» vale per nomi e oggetti
-  controllati, non per l'impronta intera.
-- **`Claude outputs/` sta dentro il repo, nascosta da `.gitignore` (riga 40).**
-  Contiene dieci file:
-  - già su origin, per contenuto: 2 bundle, 5 patch, `reset_account_prova.sql`;
-  - mai stati in git: `piani-desktop.png` e `piani-mobile.png`.
-
-  Va spostata fuori dal repo e la riga del `.gitignore` va tolta, così un file
-  lasciato lì compare in `git status` invece di sparire.
+- **La migrazione 100 non è provata.** Il branch Supabase è rifiutato
+  («Branching is supported only on the Pro plan or above»), e qui mancano
+  Postgres e Docker. **Non va applicata finché non gira su un database di
+  prova.** Le strade: Docker Desktop acceso, `brew install postgresql@16`,
+  oppure il piano Pro.
+- **Ordine di rilascio obbligato: prima la 100, poi il merge.** Se il codice
+  arriva in produzione senza la tabella, l'export dei dati va in errore e le
+  nuove iscrizioni restano senza ora di accettazione, perché il browser non la
+  manda più. La migrazione aggiunge e basta, quindi applicarla prima regge.
+- **La finestra di iscrizione non è stata guardata in un browser.** Il login è
+  disegnato lato client e `curl` non la vede. Verificato solo che il registro
+  sia nel bundle di `/login`.
+- **Decisioni di Lucio, non toccate:** il testo del preavviso, la data di
+  efficacia della v2, qualunque email. Resend non è configurato (su Vercel
+  mancano `RESEND_API_KEY` ed `EMAIL_FROM`) e per i professionisti l'email è
+  il supporto durevole che l'art. 3(2) P2B richiede.
+- **Una correzione a quanto detto nel pomeriggio:** l'obbligo di comunicare
+  «senza indugio» la cessazione della partita IVA c'era già nella v1
+  (sezione 5). La sezione 9 della v2 lo ripete, non lo introduce.
+- **Il login sceglie la versione con l'orologio del browser.** È coerente con
+  il testo che mostra, ma un orologio molto sbagliato vicino a una data di
+  pubblicazione può mostrare la versione accanto. L'ora dell'accettazione
+  invece la scrive il server.
 
 ## Cosa deve sapere André
 
-- Niente di tuo è stato toccato. In produzione non ho applicato niente.
-- Su origin ci sono quattro rami nuovi miei, nessuno con una PR:
-  `fix/controllo-deriva`, `docs/checkin-primo-ingresso`,
-  `docs/consegne-30ago-completo`, `docs/handoff-17set-sera`.
-- Quando esce la prossima migrazione, **il controllo di deriva non è ancora uno
-  strumento su cui contare**: fino alla riparazione vale il confronto a mano
-  dell'impronta, come scritto nel README.
+- Niente applicato su Supabase. Toccati `login/page.tsx` e `TermsDialog.tsx`,
+  entrambi per i termini: la modifica sta nella PR di Lucio, come da regola.
+- `TERMS_VERSION` e `TERMS_UPDATED` **non esistono più**: la versione si prende
+  da `ultimaPubblicata(pubblico)` in `src/lib/termini/registro.ts`. Una
+  versione pubblicata non si modifica più: una correzione è una versione nuova.
+- **`SUPABASE_SERVICE_ROLE_KEY` su Vercel** è salvata come «encrypted» e non
+  «sensitive», Vercel la segnala `readable-secret`, ed è esposta anche a
+  development e preview. È area tua: la voce proposta per il Piano è sotto.
 
 ---
 
