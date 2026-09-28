@@ -66,10 +66,28 @@ Progetta le verifiche perché possano FALLIRE.
   drop-then-recreate per policy/trigger/funzioni). È già la regola e si è rotta due
   volte: 015/016, e la 056 (viva in produzione dal 19 al 25 agosto senza file nel
   repo). Nessuna delle due volte se n'è accorto qualcosa, perché niente controlla.
-- Il controllo di deriva esiste: `scripts/schema_check.sh` ricostruisce lo schema dai
-  soli file del repo. L'ultimo passo è ancora umano — eseguire
-  `scripts/schema_fingerprint.sql` sulla produzione e confrontare le otto righe.
-  Va fatto ogni settimana, non a memoria.
+  E vale anche al contrario: il file unito a main manda in produzione il CODICE
+  (Vercel) ma non lo SCHEMA, che si applica a mano. La 093 è online dal 18
+  settembre con la sua migrazione mai applicata — chi sceglie «altro» dentro un
+  servizio core non riceve nessuna domanda. Applicare la migrazione fa parte del
+  merge, non del giorno dopo.
+- **Una funzione condivisa si riscrive partendo da quella VIVA.** In Postgres una
+  funzione non si modifica: ogni migrazione la ricrea intera, quindi l'ultima
+  scritta vince su tutto. `professionals_score` è stata ricreata da sei
+  migrazioni, `handle_new_user` da cinque, `protect_professional_columns` da sei.
+  Chi ne tocca una parte da `pg_get_functiondef` sulla produzione, mai dal file
+  della migrazione che l'ha creata: la 089 ha copiato il corpo della 072 e ha
+  riportato indietro 075, 077 e 080 — voce verifica, prezzo, tempo di risposta e
+  `SECURITY INVOKER` — senza che git avesse niente da segnalare, perché per lui
+  era solo un file nuovo. Git fonde file, non oggetti di database.
+- Il controllo di deriva ora è uno solo e si esegue: `scripts/deriva.sh`. Risponde
+  a due domande — quali migrazioni del repo non sono applicate in produzione (e
+  viceversa), e se lo schema ricostruito dai soli file coincide con la produzione.
+  Esclude dalla ricostruzione le migrazioni non ancora applicate, altrimenti il
+  confronto fallirebbe sempre per un motivo legittimo. Gira ogni mattina come
+  attività pianificata; a mano serve `PGURL` con un ruolo in sola lettura.
+  `scripts/schema_check.sh` resta la sola ricostruzione (il suo `--fingerprint`
+  documentato non è mai stato implementato: l'impronta la stampa comunque).
 - Dopo ogni cambio di schema: advisor di sicurezza Supabase, e risolvere i rilievi
   RLS mancante / SECURITY DEFINER / search_path mutabile / bucket pubblico prima di
   considerare il lavoro finito.

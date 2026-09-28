@@ -14,7 +14,7 @@
 #   ./scripts/schema_check.sh --fingerprint   # solo l'impronta, per il confronto
 #
 # Poi la stessa query (scripts/schema_fingerprint.sql) va eseguita sulla
-# produzione: le otto righe devono coincidere, categoria per categoria.
+# produzione: le nove righe devono coincidere, categoria per categoria.
 #
 # Richiede: postgresql-16 e postgresql-16-cron installati; gira come utente
 # postgres. Su macOS: brew install postgresql@16 e adattare PGBIN.
@@ -65,4 +65,4 @@ echo "Ricostruzione completata dai soli file del repo: 0 errori."
 echo
 psql $P -d bobclone -f "$REPO/scripts/schema_fingerprint.sql"
 echo
-echo "Ora esegui scripts/schema_fingerprint.sql sulla produzione e confronta le otto righe."
+echo "Ora esegui scripts/schema_fingerprint.sql sulla produzione e confronta le nove righe."
