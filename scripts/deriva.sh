@@ -20,7 +20,7 @@
 #      online che gira su uno schema che non c'e'.
 #
 #   2) SCHEMA. Ricostruisce il database da zero dai soli file del repo e
-#      confronta le otto righe dell'impronta con la produzione. Le migrazioni
+#      confronta le nove righe dell'impronta con la produzione. Le migrazioni
 #      non ancora applicate vengono ESCLUSE dalla ricostruzione: se no la
 #      differenza sarebbe legittima, il controllo griderebbe sempre al lupo e
 #      dopo due settimane non lo guarderebbe piu' nessuno.
@@ -95,14 +95,14 @@ WORK="$WORK/pg" "$WORK/repo/scripts/schema_check.sh" > "$WORK/ricostruzione.txt"
   exit 1
 }
 
-grep -E '^ (columns|constraints|event_triggers|functions|indexes|policies|tables|triggers)' \
+grep -E '^ (columns|constraints|event_triggers|functions_testo|functions|indexes|policies|tables|triggers)' \
   "$WORK/ricostruzione.txt" | tr -s ' ' | sed 's/^ //' | sort > "$WORK/impronta_repo.txt"
 
 psql "$PGURL" -Atq -F'|' -f "$REPO/scripts/schema_fingerprint.sql" \
   | tr '|' ' ' | tr -s ' ' | sort > "$WORK/impronta_prod.txt"
 
 if diff -u "$WORK/impronta_repo.txt" "$WORK/impronta_prod.txt" > "$WORK/diff.txt"; then
-  echo "Le otto righe coincidono: la produzione e' quello che dicono i file."
+  echo "Le nove righe coincidono: la produzione e' quello che dicono i file."
 else
   echo "IMPRONTE DIVERSE (- repo, + produzione):"
   cat "$WORK/diff.txt"

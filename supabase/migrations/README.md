@@ -23,8 +23,8 @@ Use the next sequential number and a short snake_case name.
 ```
 
 It builds an empty Postgres 16, applies the platform shim, replays every file in
-this folder in order, and prints an eight-row fingerprint of the result. Then run
-`scripts/schema_fingerprint.sql` against production and compare the eight rows.
+this folder in order, and prints a nine-row fingerprint of the result. Then run
+`scripts/schema_fingerprint.sql` against production and compare the nine rows (two of them for functions: see the header of that file).
 Same fingerprints = a fresh clone reproduces production.
 
 **Why not `supabase db diff`:** the CLI matches files to applied migrations by a
