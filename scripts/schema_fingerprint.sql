@@ -22,6 +22,13 @@
 --                    e' «applica il file»: qualcuno lo ha ricopiato (di solito
 --                    togliendo i commenti), e un ricopiare e' il posto dove
 --                    un giorno sparira' una riga che non era un commento.
+--                    ATTENZIONE: il testo grezzo lo ristampa il motore
+--                    (pg_get_functiondef), e un aggiornamento di versione
+--                    major da una parte sola puo' farlo divergere senza che
+--                    nessuno abbia toccato niente. Il 28/09 la riga
+--                    normalizzata coincideva fra PostgreSQL 16.13 (repo) e
+--                    17.6 (produzione): se dopo un aggiornamento diverge solo
+--                    functions_testo, si guarda prima la versione.
 --
 -- Il 28/09 e' esattamente il caso (misurato da Lucio): le 8 funzioni applica_disdette_scadute,
 -- professionals_score, search_resolve, segnali_da_messaggio, set_request_comune,
