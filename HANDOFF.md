@@ -1,3 +1,88 @@
+# Passaggio di consegne — 28 settembre 2026 (Lucio, con Claude)
+
+> Sezione di Lucio, aggiunta in cima. Quella di André (27 e 25 settembre) e
+> tutto quello che sta sotto restano invariati.
+
+## Cosa ho fatto — Lucio (28 settembre)
+
+**Niente applicato in produzione, nessuna migrazione, `main` non toccato.**
+Solo git: messo in salvo quello che viveva fuori da origin, e controllato lo
+stato delle migrazioni.
+
+- **`fix/controllo-deriva` è su origin.** Il commit `420f681` (20/09, `scripts/deriva.sh`,
+  due normalizzazioni in `schema_fingerprint.sql`, due regole in `CLAUDE.md`)
+  viveva solo in `deriva.bundle`. Spinto così com'era, poi rebasato su `main` e
+  rispinto sul ramo: ora è `8167765`, stesso patch-id. **Nessuna PR aperta:
+  prima va riparato, vedi sotto.**
+- **Tre rami di documenti spinti così come sono, come archivio**:
+  `docs/checkin-primo-ingresso` (riscrittura della specifica del 27/08, mai
+  arrivata su main), `docs/consegne-30ago-completo` (un `HANDOFF.md` del 30/08
+  mai arrivato su main), `docs/handoff-17set-sera` (contenuto identico a
+  `7ac5e6b`, già su main). Nessuna PR: se vanno fusi o no è una decisione a parte.
+- **Cancellati 18 rami locali**, solo quelli già contenuti in `main` (`git branch -d`).
+- **Migrazioni: repo e produzione sono allineati, per nome e per oggetti.**
+  In produzione c'è tutto da 084 a 099, nessuna riga 081–083. Le colonne del
+  quote intake, `subservice_migration_review`, `canonical_subservice_id`,
+  `rate_limit_counters` e `verification_badge_max_until` esistono. I 6
+  sotto-servizi sostituiti sono quelli della 090, `professionals_score` non è
+  `SECURITY DEFINER`, `http` è spenta. Ogni file 090–099 ha l'ultima modifica
+  **prima** della propria applicazione. L'allarme del 17/09 («produzione
+  indietro di tre») è chiuso. **Da non fare: nessun `apply_migration`, nessun
+  ritocco a `schema_migrations`. Non c'è niente da rigiocare.**
+
+## Cosa è a metà — Lucio (28 settembre)
+
+- **`scripts/deriva.sh` non funziona contro questa produzione, per costruzione.**
+  Confronta i numeri con `cut -c1-3` sui nomi in `schema_migrations`, ma le
+  prime ~30 righe live non hanno numero (`create_bob_schema`, `job_brief`…) e
+  altre hanno numeri diversi dai file: il README di `supabase/migrations` lo
+  dice dall'8 agosto. Risultato, simulato sui dati veri:
+  - la parte 1 segnala 31 «non applicate» e 25 «senza file» che non lo sono;
+  - la parte 2 esclude dalla ricostruzione 31 file, compreso `001_create_bob_schema`,
+    quindi la ricostruzione fallisce.
+
+  Sotto il rumore l'unico caso vero è 036/037, che però è già documentato:
+  vivono in `038_…`. **Lo script va riparato prima della PR** (una tabella di
+  corrispondenza nome live → file, oppure un confronto solo dal 053 in su), e
+  la frase del commit «oggi le otto righe coincidono» non può essere uscita da
+  lui.
+- **Il confronto delle otto righe resta da fare.** Il lato produzione l'ho
+  calcolato oggi, con la stessa query di `schema_fingerprint.sql` sul ramo:
+
+  | categoria | n | impronta |
+  |---|---|---|
+  | columns | 518 | `f81a4590fa346fe6cc69c322fe64898a` |
+  | constraints | 232 | `f0812ab4bbeafa3277f178578315f73f` |
+  | event_triggers | 1 | `9db164e0229c1366ed8e7ee7217da9f8` |
+  | functions | 38 | `6852268686e9556f1d66329248ead188` |
+  | indexes | 149 | `253b9a1241a9a2bcae9e0bf29e717c4a` |
+  | policies | 131 | `72b41cb7295ce638c9319bab297f3454` |
+  | tables | 52 | `e4d6d53e6ae95da9d69c73df8a8e9997` |
+  | triggers | 24 | `632de2196160cdbc16451488f6ae7485` |
+
+  Il lato repo manca: su questo Mac non ci sono Postgres 16 e pg_cron, e Docker
+  è spento. Finché non si ricostruisce, «allineati» vale per nomi e oggetti
+  controllati, non per l'impronta intera.
+- **`Claude outputs/` sta dentro il repo, nascosta da `.gitignore` (riga 40).**
+  Contiene dieci file:
+  - già su origin, per contenuto: 2 bundle, 5 patch, `reset_account_prova.sql`;
+  - mai stati in git: `piani-desktop.png` e `piani-mobile.png`.
+
+  Va spostata fuori dal repo e la riga del `.gitignore` va tolta, così un file
+  lasciato lì compare in `git status` invece di sparire.
+
+## Cosa deve sapere André
+
+- Niente di tuo è stato toccato. In produzione non ho applicato niente.
+- Su origin ci sono quattro rami nuovi miei, nessuno con una PR:
+  `fix/controllo-deriva`, `docs/checkin-primo-ingresso`,
+  `docs/consegne-30ago-completo`, `docs/handoff-17set-sera`.
+- Quando esce la prossima migrazione, **il controllo di deriva non è ancora uno
+  strumento su cui contare**: fino alla riparazione vale il confronto a mano
+  dell'impronta, come scritto nel README.
+
+---
+
 # Nota (27 settembre 2026): G46 è superata
 
 `src/app/onboarding/profilo/page.tsx` chiede già mestiere, comune dall'elenco
