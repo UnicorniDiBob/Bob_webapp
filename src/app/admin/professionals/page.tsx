@@ -7,19 +7,25 @@ import { Wrench, MapPin, Euro, Phone, Calendar, Clock } from "lucide-react";
 import { VerifyButtons } from "./VerifyButtons";
 import { TierButtons } from "./TierButtons";
 import { VatReviewActions } from "./VatReviewActions";
+import Link from "next/link";
 import {
+  VISTE,
+  aperto,
   contatori,
+  firmaDocumenti,
   inAttesaDelProDa,
-  ordinaCoda,
   pallaNostra,
   perche,
+  righeDellaVista,
+  vistaDa,
+  type DocumentoFirmato,
+  type DocumentoGrezzo,
 } from "./coda";
 import {
   misuraSlaStorica,
   namesMatch,
   procedureFlagInName,
   statoCoda,
-  MOTIVO_RICONTROLLO_STAFF,
   SLA_VERIFICA_GIORNI_LAVORATIVI,
   VERIFICATION_LABEL_STAFF,
   type EventoVerificaSla,
@@ -34,13 +40,9 @@ export const revalidate = 0; // sempre aggiornato
 type VerificationStatus = "unverified" | "pending" | "verified";
 type SubscriptionTier = "free" | "pro" | "business";
 
-// Documento di verifica come lo consuma la coda: link firmato già risolto.
-interface AdminDoc {
-  file_name: string;
-  status: string;
-  uploaded_at: string;
-  url: string | null;
-}
+// Documento di verifica come lo consuma la coda: link firmato già risolto
+// (o segnato come fallito), vedi firmaDocumenti() in ./coda.ts.
+type AdminDoc = DocumentoFirmato;
 
 interface VerificationRow {
   professional_id: string;
@@ -175,8 +177,16 @@ const STATUS_CONFIG: Record<
   },
 };
 
-export default async function AdminProfessionalsPage() {
+export default async function AdminProfessionalsPage({
+  searchParams,
+}: {
+  searchParams?: { vista?: string | string[] };
+}) {
   const supabase = await createClient();
+  // LA VISTA STA NELL'INDIRIZZO (?vista=), e si legge sul server: un link a una
+  // vista si incolla a qualcuno e si riapre uguale. Predefinita: «Aperti».
+  const vista = vistaDa(searchParams?.vista);
+  const adesso = new Date();
 
   const { data } = await supabase
     .from("professionals")
@@ -233,6 +243,8 @@ export default async function AdminProfessionalsPage() {
 
   const reviewRows = (reviewData ?? []) as unknown as VerificationRow[];
   const proById = Object.fromEntries(pros.map((p) => [p.id, p]));
+  const righeVista = righeDellaVista(reviewRows, vista, adesso);
+  const numeri = contatori(reviewRows, adesso);
 
   // Il registro delle verifiche, letto in due modi diversi perché servono a
   // due cose diverse.
@@ -241,8 +253,8 @@ export default async function AdminProfessionalsPage() {
   //    lo ricavavo dai 200 movimenti più recenti di tutti, e per un caso vecchio
   //    la cronologia risultava vuota pur esistendo: una cronologia che a volte
   //    mente è peggio di nessuna cronologia. Ora si chiede per i professionisti
-  //    effettivamente mostrati in pagina.
-  const idsInPagina = reviewRows.map((r) => r.professional_id);
+  //    effettivamente mostrati in pagina: quelli della vista, non tutti.
+  const idsInPagina = righeVista.map((r) => r.professional_id);
   const { data: eventsPerCaso } = idsInPagina.length
     ? await supabase
         .from("verification_events")
@@ -270,26 +282,22 @@ export default async function AdminProfessionalsPage() {
         .in("professional_id", idsInPagina)
         .order("uploaded_at", { ascending: false })
     : { data: [] };
-  const docsByPro = new Map<string, AdminDoc[]>();
-  for (const d of (docsData ?? []) as unknown as {
-    professional_id: string;
-    file_name: string;
-    storage_path: string;
-    status: string;
-    uploaded_at: string;
-  }[]) {
-    const { data: signed } = await supabase.storage
-      .from("verifica-documenti")
-      .createSignedUrl(d.storage_path, 3600);
-    const list = docsByPro.get(d.professional_id) ?? [];
-    list.push({
-      file_name: d.file_name,
-      status: d.status,
-      uploaded_at: d.uploaded_at,
-      url: signed?.signedUrl ?? null,
-    });
-    docsByPro.set(d.professional_id, list);
-  }
+  // PRIVILEGIO MINIMO (29/09): si firmano solo i documenti dei casi della
+  // vista mostrata — prima si firmava tutto, a ogni apertura, anche i livelli
+  // attivi e i respinti che nessuno apriva. Una firma fallita resta visibile.
+  const docsByPro = await firmaDocumenti(
+    (docsData ?? []) as unknown as DocumentoGrezzo[],
+    async (percorso) => {
+      const { data: signed, error } = await supabase.storage
+        .from("verifica-documenti")
+        .createSignedUrl(percorso, 3600);
+      if (error) {
+        console.error(`[admin/professionals] link firmato non creato: ${error.message}`);
+        return null;
+      }
+      return signed?.signedUrl ?? null;
+    }
+  );
 
   // 3) La misura a posteriori dell'SLA (29/09, m2t4s8): quanto ci abbiamo
   //    messo davvero sui casi chiusi. Serve il registro INTERO, non gli ultimi
@@ -337,18 +345,12 @@ export default async function AdminProfessionalsPage() {
     nameByPro.set(p.id, profileMap[p.user_id]?.full_name ?? "Professionista");
   }
 
-  // LA CODA DI LAVORO (29/09): una sola, dal piu' urgente. L'ordine e le
-  // regole stanno in ./coda.ts, che usa statoCoda() e casiInEmergenza() di
-  // vat.ts: palla nostra e oltre l'SLA in cima, poi palla nostra, poi i casi
-  // che aspettano il professionista. Prima erano tre sezioni (Emergenze,
-  // Ricontrollo, Coda partita IVA) e bisognava leggerle tutte.
-  const adesso = new Date();
-  const coda = ordinaCoda(reviewRows, adesso);
-  const numeri = contatori(reviewRows, adesso);
-  const closedCases = reviewRows.filter((r) => r.vat_review_state === "rejected");
-  const grantedCases = reviewRows.filter(
-    (r) => r.level !== "none" && r.vat_review_state === null
-  );
+  // LA CODA DI LAVORO (29/09): una sola, dal piu' urgente, e le viste per stato
+  // sono filtri sulla stessa lista. L'ordine e le regole stanno in ./coda.ts,
+  // che usa statoCoda() e casiInEmergenza() di vat.ts. Prima erano cinque
+  // sezioni (Emergenze, Ricontrollo, Coda partita IVA, livelli attivi,
+  // respinti) e bisognava leggerle tutte.
+  const titoloVista = VISTE.find((v) => v.id === vista)?.titolo ?? "";
 
   // Raggruppa per stato
   const grouped: Record<VerificationStatus, ProRow[]> = {
@@ -378,7 +380,7 @@ export default async function AdminProfessionalsPage() {
         <div className="space-y-4 xl:col-span-2">
           <section id="coda" data-testid="coda-lavoro" className="scroll-mt-20">
             <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <h2 className="text-lg font-semibold text-bob-ink">Da fare</h2>
+              <h2 className="text-lg font-semibold text-bob-ink">{titoloVista}</h2>
               <p className="text-sm text-bob-ink/70" data-testid="coda-contatori">
                 <span className="font-semibold text-bob-ink">{numeri.daFare}</span> con la palla nostra
                 {" · "}
@@ -390,22 +392,42 @@ export default async function AdminProfessionalsPage() {
                 <span className="font-semibold text-bob-ink">{numeri.inAttesaDelPro}</span> in attesa del professionista
               </p>
             </div>
-            <p className="mb-3 text-xs text-bob-ink/65">
-              {"Dall'alto in basso: prima chi ha superato i giorni che abbiamo promesso, poi chi aspetta noi da più tempo, poi chi aspetta il professionista. Una riga si apre per decidere."}
-            </p>
+            <nav className="mb-3 flex flex-wrap gap-1.5" aria-label="Viste della coda" data-testid="coda-viste">
+              {VISTE.map((v) => (
+                <Link
+                  key={v.id}
+                  href={v.id === "aperti" ? "/admin/professionals" : `/admin/professionals?vista=${v.id}`}
+                  aria-current={v.id === vista ? "page" : undefined}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    v.id === vista
+                      ? "bg-bob-indigo text-white"
+                      : "bg-black/5 text-bob-ink/70 hover:bg-black/10"
+                  }`}
+                >
+                  {v.etichetta}
+                </Link>
+              ))}
+            </nav>
+            {vista === "aperti" && (
+              <p className="mb-3 text-xs text-bob-ink/65">
+                {"Dall'alto in basso: prima chi ha superato i giorni che abbiamo promesso, poi chi aspetta noi da più tempo, poi chi aspetta il professionista. Una riga si apre per decidere."}
+              </p>
+            )}
 
-            {coda.length === 0 ? (
+            {righeVista.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
-                {"Niente da fare: nessun caso aperto."}
+                {vista === "aperti" ? "Niente da fare: nessun caso aperto." : "Nessun caso in questa vista."}
               </div>
             ) : (
               <ol className="flex flex-col gap-2" data-testid="coda-righe">
-                {coda.map((row, i) => {
+                {righeVista.map((row, i) => {
                   const pro = proById[row.professional_id];
                   const profile = pro ? profileMap[pro.user_id] : undefined;
                   const storico = eventsByPro.get(row.professional_id) ?? [];
                   const primoDiLoro =
-                    !pallaNostra(row) && (i === 0 || pallaNostra(coda[i - 1]));
+                    aperto(row) &&
+                    !pallaNostra(row) &&
+                    (i === 0 || pallaNostra(righeVista[i - 1]));
                   return (
                     <li key={row.professional_id}>
                       {primoDiLoro && (
@@ -428,54 +450,6 @@ export default async function AdminProfessionalsPage() {
             )}
           </section>
 
-          {grantedCases.length > 0 && (
-            <details data-testid="livelli-attivi">
-              <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
-                Livelli attivi ({grantedCases.length}) — da qui si revoca, con
-                motivazione
-              </summary>
-              <div className="mt-3 flex flex-col gap-3">
-                {grantedCases.map((row) => (
-                  <VatCaseCard
-                    key={row.professional_id}
-                    row={row}
-                    pro={proById[row.professional_id]}
-                    profile={
-                      proById[row.professional_id]
-                        ? profileMap[proById[row.professional_id].user_id]
-                        : undefined
-                    }
-                    storico={eventsByPro.get(row.professional_id) ?? []}
-                    documenti={docsByPro.get(row.professional_id) ?? []}
-                  />
-                ))}
-              </div>
-            </details>
-          )}
-
-          {closedCases.length > 0 && (
-            <details data-testid="casi-respinti">
-              <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
-                Casi respinti ({closedCases.length})
-              </summary>
-              <div className="mt-3 flex flex-col gap-3">
-                {closedCases.map((row) => (
-                  <VatCaseCard
-                    key={row.professional_id}
-                    row={row}
-                    pro={proById[row.professional_id]}
-                    profile={
-                      proById[row.professional_id]
-                        ? profileMap[proById[row.professional_id].user_id]
-                        : undefined
-                    }
-                    storico={eventsByPro.get(row.professional_id) ?? []}
-                    documenti={docsByPro.get(row.professional_id) ?? []}
-                  />
-                ))}
-              </div>
-            </details>
-          )}
         </div>
 
         {/* ---- A destra: la misura e il registro. Non sono lavoro da fare. ---- */}
@@ -987,7 +961,14 @@ function VatCaseCard({
                     {d.file_name}
                   </a>
                 ) : (
-                  <span>{d.file_name}</span>
+                  <span>
+                    {d.file_name}
+                    {d.firmaFallita && (
+                      <span className="ml-1 font-semibold text-red-700" data-testid="documento-senza-link">
+                        {"(link non creato: ricarica la pagina)"}
+                      </span>
+                    )}
+                  </span>
                 )}{" "}
                 · {fmtDateTime(d.uploaded_at)}
                 {d.status !== "in_esame" && ` · ${d.status}`}
