@@ -24,25 +24,20 @@ elencato in `docs/NOTE_E_DECISIONI.md`.
 
 # Handoff — 29 settembre 2026, Lucio
 
-**Fatto.** L'SLA della coda si misura anche a caso chiuso (ramo
-`feat/sla-coda-misurarlo`, voce m2t4s8). `misuraSlaStorica()` in `vat.ts`
-ricostruisce dai `verification_events` i tratti con la palla nostra, con le
-regole della 080, e dà due numeri: `sforatoSecondoIToS` sull'ultimo tratto (va
-nel riquadro «SLA misurato» di `/admin/professionals`) e `attesaTotale`, la
-somma. Le chiusure automatiche sono contate a parte. Il giro notturno scrive
-`sla_palla_nostra`/`sla_sforati` in `system_job_runs` e un `console.error`
-«SLA sforato» quando serve. Nessuna migrazione: la 104 è libera.
+**Fatto.** Tre PR su `main`:
+- #106: l'SLA misurato sui casi chiusi e `sla_sforati` nel giro notturno;
+- #107: fuori da `next.csv` la voce `registraGiro()`, chiusa dal 12/09;
+- #108: via «se sforiamo ti scriviamo», l'avviso di scuse quando sforiamo, e le Emergenze che vedono i ricontrolli con documento.
 
-**A metà.** Niente è provato su dati veri: la coda è vuota, e la prova sono
-38 test (anche in UTC). Il riquadro admin non l'ho visto disegnato, perché
-richiede il login staff. Rimandati di proposito, scritti in
-`NOTE_E_DECISIONI.md` (29/09): i ricontrolli «scadenza» sulle verifiche
-manuali, dove il lavoro è nostro ma la palla risulta sua. **Per André:**
-`AvanzamentoVerifica.tsx:39` promette «se sforiamo ti scriviamo», e non è
-vero; il `level_granted` automatico in `api/pro/verifica-piva` è firmato
-`actor_role 'professional'` (rilievo in `roadmap/findings.csv`).
+Poi la riscrittura di `/admin/professionals` (ramo `feat/admin-verifiche-coda-unica`, PR da mergiare):
+- una coda sola, dal più urgente, con le regole di `vat.ts`;
+- le viste per stato come filtro `?vista=`;
+- in fondo un archivio con le sole leve piano e approvazione staff;
+- ogni lettura controlla il suo errore;
+- link firmati e telefono solo per i casi mostrati.
 
-**Applicato in produzione che devi sapere.** Oggi niente. Ieri sera la 100
-(`terms_acceptances`) è stata applicata alle 19:04Z, **sei minuti dopo** il
-merge della PR #100 che la usa: nel mezzo nessuna iscrizione e nessun export
-registrati. Advisor puliti sugli oggetti nuovi.
+Tolta la frase «visibili ai clienti», falsa dalla 080. Nel Piano la voce m2t4s9 è spuntata citando la 094, verificata viva dopo la 102.
+
+**A metà.** Niente è verificato da loggati: la pagina chiede il login dello staff e la coda in produzione è vuota. Il redirect di `/admin` verso `/login` perde `?vista=`: chi apre un link a una vista senza essere dentro, dopo il login non ci torna. Aperti in `findings.csv`: il declassamento Pro+ → Pro senza motivazione né registro, e il cs che può cambiare il piano. **Per André:** la 101, la 102 e la 103 sono registrate in `schema_migrations` senza numero (`centroidi_cap`, `distanza_nel_punteggio`, `centroidi_cap_milano`); il `level_granted` automatico firmato `actor_role 'professional'` resta aperto.
+
+**Applicato in produzione che devi sapere.** Oggi niente su Supabase. Il Piano è stato ripubblicato (versione 53) dallo strumento di Claude, che l'ha avvolto in uno scheletro HTML in più: il contenuto è intatto, ma se vedi qualcosa di strano è quello.
