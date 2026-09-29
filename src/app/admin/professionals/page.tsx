@@ -8,7 +8,13 @@ import { VerifyButtons } from "./VerifyButtons";
 import { TierButtons } from "./TierButtons";
 import { VatReviewActions } from "./VatReviewActions";
 import {
-  casiInEmergenza,
+  contatori,
+  inAttesaDelProDa,
+  ordinaCoda,
+  pallaNostra,
+  perche,
+} from "./coda";
+import {
   misuraSlaStorica,
   namesMatch,
   procedureFlagInName,
@@ -331,63 +337,15 @@ export default async function AdminProfessionalsPage() {
     nameByPro.set(p.id, profileMap[p.user_id]?.full_name ?? "Professionista");
   }
 
-  // Da lavorare; già decisi (per rispondere a chi chiede "come mai?"); e
-  // livelli attivi, dove l'azione utile è semmai la revoca motivata.
-  // LA CODA SI ORDINA PER QUANTO MANCA ALLO SFORAMENTO, non per data di
-  // aggiornamento: l'ordine di prima metteva davanti l'ultimo caso toccato,
-  // cioe' esattamente quello di cui ci eravamo appena occupati. L'SLA e' uno
-  // solo per tutti (5 giorni lavorativi), quindi il piu' vecchio in coda e'
-  // anche il piu' vicino a sforare: basta ordinare per ingresso crescente.
-  // Chi aspetta i documenti non ha orologio e va in fondo — la palla e' sua,
-  // non nostra.
-  const codaAperta = reviewRows
-    .filter(
-      (r) =>
-        r.vat_review_state === "pending" || r.vat_review_state === "docs_requested"
-    )
-    .sort((a, b) => {
-      const sa = a.vat_review_opened_at;
-      const sb = b.vat_review_opened_at;
-      if (sa && sb) return sa.localeCompare(sb);
-      if (sa) return -1;
-      if (sb) return 1;
-      return (a.updated_at ?? "").localeCompare(b.updated_at ?? "");
-    });
-
-  // CHI HA GIA' SFORATO STA IN UNA SEZIONE SUA, non in cima alla stessa lista.
-  // Un caso fuori tempo non e' «lo stesso lavoro, un po' piu' urgente»: e' una
-  // promessa che abbiamo gia' rotto, e mescolarlo agli altri lo fa scorrere via
-  // insieme a loro. Il numero accanto al titolo si legge senza aprire niente,
-  // ed e' la cifra che dice se i 5 giorni lavorativi reggono.
-  // IL CRITERIO E' QUELLO DEL GIRO NOTTURNO (29/09): palla nostra =
-  // vat_review_opened_at valorizzata, qualunque sia lo stato. Prima si partiva
-  // da codaAperta (solo pending e docs_requested) e i ricontrolli con un
-  // documento caricato, oltre l'SLA, non comparivano da nessuna parte come
-  // emergenze. Vedi casiInEmergenza() in src/lib/vat.ts.
-  const emergenze = casiInEmergenza(reviewRows);
-  const inEmergenza = new Set(emergenze.map((r) => r.professional_id));
-  const openCases = codaAperta.filter((r) => !inEmergenza.has(r.professional_id));
+  // LA CODA DI LAVORO (29/09): una sola, dal piu' urgente. L'ordine e le
+  // regole stanno in ./coda.ts, che usa statoCoda() e casiInEmergenza() di
+  // vat.ts: palla nostra e oltre l'SLA in cima, poi palla nostra, poi i casi
+  // che aspettano il professionista. Prima erano tre sezioni (Emergenze,
+  // Ricontrollo, Coda partita IVA) e bisognava leggerle tutte.
+  const adesso = new Date();
+  const coda = ordinaCoda(reviewRows, adesso);
+  const numeri = contatori(reviewRows, adesso);
   const closedCases = reviewRows.filter((r) => r.vat_review_state === "rejected");
-  // RICONTROLLO (079): una coda a parte, non in fondo a quella delle prime
-  // richieste. Chi e' qui il badge ce l'ha gia' e lo sta rischiando; chi e' di
-  // la' lo aspetta. Urgenze opposte, liste separate. Prima le cessazioni: una
-  // scadenza annuale puo' aspettare un giorno, un'attivita' che non risulta
-  // piu' no.
-  const PESO_MOTIVO: Record<string, number> = {
-    cessazione: 0,
-    procedura: 1,
-    intestazione: 2,
-    scadenza: 3,
-  };
-  // Un ricontrollo in emergenza sta nelle Emergenze, non anche qui.
-  const recheckCases = reviewRows
-    .filter((r) => r.vat_review_state === "recheck" && !inEmergenza.has(r.professional_id))
-    .sort(
-      (a, b) =>
-        (PESO_MOTIVO[a.recheck_reason ?? "scadenza"] ?? 9) -
-          (PESO_MOTIVO[b.recheck_reason ?? "scadenza"] ?? 9) ||
-        (a.recheck_opened_at ?? "").localeCompare(b.recheck_opened_at ?? "")
-    );
   const grantedCases = reviewRows.filter(
     (r) => r.level !== "none" && r.vat_review_state === null
   );
@@ -415,253 +373,138 @@ export default async function AdminProfessionalsPage() {
         </p>
       </div>
 
-      {/* ---- Emergenze: SLA gia' sforato (13/09) ---- */}
-      <section id="emergenze" data-testid="coda-emergenze" className="scroll-mt-20">
-        <div className="mb-3 flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-bob-ink">Emergenze</h2>
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              emergenze.length > 0
-                ? "bg-red-50 text-red-700"
-                : "bg-black/5 text-bob-ink/65"
-            }`}
-          >
-            {emergenze.length}
-          </span>
-        </div>
-        <p className="mb-4 text-sm text-bob-ink/70">
-          Casi oltre i {SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi che
-          abbiamo promesso. Non sono più in coda: la promessa è già rotta, e
-          finché restano qui sono la prima cosa da fare.
-        </p>
-
-        {emergenze.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
-            Nessuno fuori tempo. I {SLA_VERIFICA_GIORNI_LAVORATIVI} giorni
-            lavorativi li stiamo rispettando.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {emergenze.map((row) => (
-              <div key={row.professional_id}>
-                {row.vat_review_state === "recheck" && (
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-orange-700">
-                    {`Ricontrollo · ${
-                      MOTIVO_RICONTROLLO_STAFF[
-                        (row.recheck_reason ?? "scadenza") as keyof typeof MOTIVO_RICONTROLLO_STAFF
-                      ] ?? row.recheck_reason
-                    }`}
-                  </p>
-                )}
-                <VatCaseCard
-                  row={row}
-                  pro={proById[row.professional_id]}
-                  profile={
-                    proById[row.professional_id]
-                      ? profileMap[proById[row.professional_id].user_id]
-                      : undefined
-                  }
-                  storico={eventsByPro.get(row.professional_id) ?? []}
-                  documenti={docsByPro.get(row.professional_id) ?? []}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ---- SLA misurato sui casi chiusi (29/09, m2t4s8) ---- */}
-      <RiquadroSlaMisurato misura={misuraSla} lettura={letturaSla} />
-
-      {/* ---- Ricontrollo (079) ---- */}
-      <section id="ricontrollo" data-testid="coda-ricontrollo" className="scroll-mt-20">
-        <div className="mb-3 flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-bob-ink">Ricontrollo</h2>
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              recheckCases.length > 0
-                ? "bg-orange-50 text-orange-700"
-                : "bg-black/5 text-bob-ink/65"
-            }`}
-          >
-            {recheckCases.length}
-          </span>
-        </div>
-        <p className="mb-4 text-sm text-bob-ink/70">
-          Verifiche gi&agrave; concesse che vanno riguardate: l&apos;anno
-          &egrave; scaduto, oppure il riscontro ha trovato qualcosa. Il livello
-          qui non &egrave; stato tolto da nessuno &mdash; lo toglie una persona,
-          con motivazione scritta, oppure non lo toglie. Le cessazioni stanno in
-          cima.
-        </p>
-
-        {recheckCases.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
-            Niente da ricontrollare.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {recheckCases.map((row) => (
-              <div key={row.professional_id}>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-orange-700">
-                  {MOTIVO_RICONTROLLO_STAFF[
-                    (row.recheck_reason ?? "scadenza") as keyof typeof MOTIVO_RICONTROLLO_STAFF
-                  ] ?? row.recheck_reason}
-                  {row.recheck_opened_at && (
-                    <span className="font-normal normal-case text-bob-ink/65">
-                      {" "}
-                      · aperto il{" "}
-                      {new Date(row.recheck_opened_at).toLocaleDateString("it-IT", {
-                        day: "numeric",
-                        month: "long",
-                      })}
-                    </span>
-                  )}
-                </p>
-                <VatCaseCard
-                  row={row}
-                  pro={proById[row.professional_id]}
-                  profile={
-                    proById[row.professional_id]
-                      ? profileMap[proById[row.professional_id].user_id]
-                      : undefined
-                  }
-                  storico={eventsByPro.get(row.professional_id) ?? []}
-                  documenti={docsByPro.get(row.professional_id) ?? []}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ---- Coda partita IVA (blocco 10, §5.3) ---- */}
-      <section id="vat-queue" data-testid="vat-queue" className="scroll-mt-20">
-        <div className="mb-3 flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-bob-ink">
-            Coda partita IVA
-          </h2>
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              openCases.length > 0
-                ? "bg-amber-50 text-amber-700"
-                : "bg-black/5 text-bob-ink/65"
-            }`}
-          >
-            {openCases.length}
-          </span>
-        </div>
-        <p className="mb-4 text-sm text-bob-ink/70">
-          Casi che il controllo automatico non ha confermato. Non sono rifiuti:
-          chi non lavora con l&apos;estero spesso non è iscritto al VIES, quindi
-          decide una persona. La motivazione che scrivi la legge il
-          professionista. In cima c&apos;è chi aspetta da più tempo: abbiamo
-          dichiarato {SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi, e chi
-          li ha già superati sta nelle emergenze qui sopra.
-        </p>
-
-        {openCases.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
-            Nessun caso da esaminare.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {openCases.map((row) => (
-              <VatCaseCard
-                key={row.professional_id}
-                row={row}
-                pro={proById[row.professional_id]}
-                profile={
-                  proById[row.professional_id]
-                    ? profileMap[proById[row.professional_id].user_id]
-                    : undefined
-                }
-                storico={eventsByPro.get(row.professional_id) ?? []}
-                documenti={docsByPro.get(row.professional_id) ?? []}
-              />
-            ))}
-          </div>
-        )}
-
-        {grantedCases.length > 0 && (
-          <details className="mt-3">
-            <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
-              Livelli attivi ({grantedCases.length}) — da qui si revoca, con
-              motivazione
-            </summary>
-            <div className="mt-3 flex flex-col gap-3">
-              {grantedCases.map((row) => (
-                <VatCaseCard
-                  key={row.professional_id}
-                  row={row}
-                  pro={proById[row.professional_id]}
-                  profile={
-                    proById[row.professional_id]
-                      ? profileMap[proById[row.professional_id].user_id]
-                      : undefined
-                  }
-                  storico={eventsByPro.get(row.professional_id) ?? []}
-                documenti={docsByPro.get(row.professional_id) ?? []}
-                />
-              ))}
+      <div className="grid gap-6 xl:grid-cols-3">
+        {/* ---- La coda di lavoro (29/09): una sola, dal piu' urgente ---- */}
+        <div className="space-y-4 xl:col-span-2">
+          <section id="coda" data-testid="coda-lavoro" className="scroll-mt-20">
+            <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <h2 className="text-lg font-semibold text-bob-ink">Da fare</h2>
+              <p className="text-sm text-bob-ink/70" data-testid="coda-contatori">
+                <span className="font-semibold text-bob-ink">{numeri.daFare}</span> con la palla nostra
+                {" · "}
+                <span className={numeri.oltreSla > 0 ? "font-semibold text-red-700" : "font-semibold text-bob-ink"}>
+                  {numeri.oltreSla}
+                </span>{" "}
+                oltre i {SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi
+                {" · "}
+                <span className="font-semibold text-bob-ink">{numeri.inAttesaDelPro}</span> in attesa del professionista
+              </p>
             </div>
-          </details>
-        )}
+            <p className="mb-3 text-xs text-bob-ink/65">
+              {"Dall'alto in basso: prima chi ha superato i giorni che abbiamo promesso, poi chi aspetta noi da più tempo, poi chi aspetta il professionista. Una riga si apre per decidere."}
+            </p>
 
-        {closedCases.length > 0 && (
-          <details className="mt-3">
-            <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
-              Casi respinti ({closedCases.length})
-            </summary>
-            <div className="mt-3 flex flex-col gap-3">
-              {closedCases.map((row) => (
-                <VatCaseCard
-                  key={row.professional_id}
-                  row={row}
-                  pro={proById[row.professional_id]}
-                  profile={
-                    proById[row.professional_id]
-                      ? profileMap[proById[row.professional_id].user_id]
-                      : undefined
-                  }
-                  storico={eventsByPro.get(row.professional_id) ?? []}
-                documenti={docsByPro.get(row.professional_id) ?? []}
-                />
-              ))}
-            </div>
-          </details>
-        )}
-      </section>
+            {coda.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
+                {"Niente da fare: nessun caso aperto."}
+              </div>
+            ) : (
+              <ol className="flex flex-col gap-2" data-testid="coda-righe">
+                {coda.map((row, i) => {
+                  const pro = proById[row.professional_id];
+                  const profile = pro ? profileMap[pro.user_id] : undefined;
+                  const storico = eventsByPro.get(row.professional_id) ?? [];
+                  const primoDiLoro =
+                    !pallaNostra(row) && (i === 0 || pallaNostra(coda[i - 1]));
+                  return (
+                    <li key={row.professional_id}>
+                      {primoDiLoro && (
+                        <p className="mb-2 mt-3 text-xs font-semibold uppercase tracking-wide text-bob-ink/60">
+                          {"In attesa del professionista"}
+                        </p>
+                      )}
+                      <RigaCoda
+                        row={row}
+                        pro={pro}
+                        profile={profile}
+                        storico={storico}
+                        documenti={docsByPro.get(row.professional_id) ?? []}
+                        adesso={adesso}
+                      />
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </section>
 
-      {/* Registro completo: chiuso di default, ma sempre qui sotto. */}
-      {events.length > 0 && (
-        <details className="mt-4" data-testid="vat-registro">
-          <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
-            Registro delle verifiche — ultimi {events.length} movimenti
-            {typeof totaleMovimenti === "number" && totaleMovimenti > events.length
-              ? ` su ${totaleMovimenti}`
-              : ""}
-            , con la firma di chi li ha fatti
-          </summary>
-          <p className="mt-2 text-xs text-bob-ink/65">
-            Si scrive solo in aggiunta: nessuna riga può essere modificata o
-            cancellata, nemmeno da un amministratore. È quello che lo rende una
-            prova di cosa è stato fatto e da chi. Lo vedono tutti gli account
-            admin e customer service; il professionista vede solo le righe che
-            riguardano lui. Qui sotto ci sono i movimenti più recenti: la
-            cronologia completa di un singolo caso sta nella sua scheda.
-          </p>
-          <ul className="mt-2 max-h-96 space-y-1 overflow-y-auto pr-2">
-            {events.map((e) => (
-              <EventRow
-                key={e.id}
-                e={e}
-                proName={nameByPro.get(e.professional_id)}
-              />
-            ))}
-          </ul>
-        </details>
-      )}
+          {grantedCases.length > 0 && (
+            <details data-testid="livelli-attivi">
+              <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
+                Livelli attivi ({grantedCases.length}) — da qui si revoca, con
+                motivazione
+              </summary>
+              <div className="mt-3 flex flex-col gap-3">
+                {grantedCases.map((row) => (
+                  <VatCaseCard
+                    key={row.professional_id}
+                    row={row}
+                    pro={proById[row.professional_id]}
+                    profile={
+                      proById[row.professional_id]
+                        ? profileMap[proById[row.professional_id].user_id]
+                        : undefined
+                    }
+                    storico={eventsByPro.get(row.professional_id) ?? []}
+                    documenti={docsByPro.get(row.professional_id) ?? []}
+                  />
+                ))}
+              </div>
+            </details>
+          )}
+
+          {closedCases.length > 0 && (
+            <details data-testid="casi-respinti">
+              <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
+                Casi respinti ({closedCases.length})
+              </summary>
+              <div className="mt-3 flex flex-col gap-3">
+                {closedCases.map((row) => (
+                  <VatCaseCard
+                    key={row.professional_id}
+                    row={row}
+                    pro={proById[row.professional_id]}
+                    profile={
+                      proById[row.professional_id]
+                        ? profileMap[proById[row.professional_id].user_id]
+                        : undefined
+                    }
+                    storico={eventsByPro.get(row.professional_id) ?? []}
+                    documenti={docsByPro.get(row.professional_id) ?? []}
+                  />
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+
+        {/* ---- A destra: la misura e il registro. Non sono lavoro da fare. ---- */}
+        <aside className="space-y-6">
+          <RiquadroSlaMisurato misura={misuraSla} lettura={letturaSla} />
+
+          {events.length > 0 && (
+            <details data-testid="vat-registro">
+              <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
+                Registro delle verifiche — ultimi {events.length} movimenti
+                {typeof totaleMovimenti === "number" && totaleMovimenti > events.length
+                  ? ` su ${totaleMovimenti}`
+                  : ""}
+              </summary>
+              <p className="mt-2 text-xs text-bob-ink/65">
+                Si scrive solo in aggiunta: nessuna riga può essere modificata o
+                cancellata, nemmeno da un amministratore. Lo vedono gli account
+                admin e customer service; il professionista vede solo le sue
+                righe. La cronologia completa di un caso sta nella sua scheda.
+              </p>
+              <ul className="mt-2 max-h-96 space-y-1 overflow-y-auto pr-2">
+                {events.map((e) => (
+                  <EventRow key={e.id} e={e} proName={nameByPro.get(e.professional_id)} />
+                ))}
+              </ul>
+            </details>
+          )}
+        </aside>
+      </div>
 
       {order.map((status) => {
         const list = grouped[status];
@@ -890,6 +733,54 @@ function RiquadroSlaMisurato({
         </div>
       )}
     </section>
+  );
+}
+
+// UNA RIGA DELLA CODA: chi, perche', da quanto — senza aprire niente. Aprendola
+// c'e' la scheda del caso di sempre, con le sue azioni: e' l'unico posto dove
+// si decide su un caso.
+function RigaCoda({
+  row,
+  pro,
+  profile,
+  storico,
+  documenti,
+  adesso,
+}: {
+  row: VerificationRow;
+  pro: ProRow | undefined;
+  profile: { full_name: string | null; phone: string | null } | undefined;
+  storico: VerificationEvent[];
+  documenti: AdminDoc[];
+  adesso: Date;
+}) {
+  const name = profile?.full_name ?? "Professionista";
+  const svc = pro?.professional_services?.[0]?.services?.name;
+  const attesaPro = inAttesaDelProDa(row, storico, adesso);
+  return (
+    <details className="group rounded-xl border border-black/10 bg-white" data-testid={`coda-riga-${row.professional_id}`}>
+      <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 hover:bg-black/[0.02]">
+        <span className="min-w-[12rem] font-semibold text-bob-ink">{name}</span>
+        <span className="text-xs text-bob-ink/65">
+          {[svc, pro?.cities?.name].filter(Boolean).join(" · ") || "—"}
+        </span>
+        <span className="text-sm text-bob-ink/80" data-testid="coda-perche">
+          {perche(row, storico)}
+        </span>
+        <span className="ml-auto">
+          {attesaPro ? (
+            <span className="rounded-full bg-black/5 px-2 py-0.5 text-2xs font-semibold text-bob-ink/70">
+              {attesaPro}
+            </span>
+          ) : (
+            <PillolaSla apertoIl={row.vat_review_opened_at} />
+          )}
+        </span>
+      </summary>
+      <div className="border-t border-black/5 p-2">
+        <VatCaseCard row={row} pro={pro} profile={profile} storico={storico} documenti={documenti} />
+      </div>
+    </details>
   );
 }
 
