@@ -18,21 +18,24 @@
 import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { X, FileText } from "lucide-react";
-import {
-  TermsContent,
-  TERMS_UPDATED,
-  type TermsAudience,
-} from "@/components/TermsContent";
+import { TermsContent, type TermsAudience } from "@/components/TermsContent";
+import type { VersioneTermini } from "@/lib/termini/registro";
 
 export function TermsDialog({
   open,
   audience,
+  versione,
   onClose,
   onAccept,
 }: {
   open: boolean;
   /** Quale testo mostrare: cambia in base al ruolo scelto nel form. */
   audience: TermsAudience;
+  /**
+   * La versione da mostrare, decisa da chi apre la finestra: e' la STESSA che
+   * poi viene registrata come accettata, quindi non la si ricalcola qui.
+   */
+  versione: VersioneTermini;
   /** Chiusura senza accettare (ESC, backdrop, "Chiudi", ×). */
   onClose: () => void;
   /** "Ho letto": chiude, sblocca e spunta il consenso. */
@@ -83,10 +86,10 @@ export function TermsDialog({
             </h2>
             <p className="mt-1 text-xs text-bob-ink/70 sm:text-sm">
               {isPro ? "Versione per i professionisti" : "Versione per i clienti"}{" "}
-              · aggiornati a {TERMS_UPDATED}
+              · versione {versione.versione}, aggiornati a {versione.aggiornamento}
             </p>
             <Link
-              href={isPro ? "/termini/professionisti" : "/termini"}
+              href={`${isPro ? "/termini/professionisti" : "/termini"}/${versione.versione}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-bob-indigo underline sm:text-sm"
@@ -113,7 +116,7 @@ export function TermsDialog({
           tabIndex={0}
         >
           <div className="space-y-7 [&_h2]:text-[17px] [&_h2]:leading-snug [&_p]:text-[15px] [&_p]:leading-relaxed [&_p]:text-bob-ink/80">
-            <TermsContent audience={audience} />
+            <TermsContent audience={audience} versione={versione.versione} />
           </div>
         </div>
 

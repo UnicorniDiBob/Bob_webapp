@@ -8,7 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { User, Wrench, FileText, Check } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 import { TermsDialog } from "@/components/TermsDialog";
-import { TERMS_VERSION } from "@/components/TermsContent";
+import { ultimaPubblicata } from "@/lib/termini/registro";
 import type { UserRole } from "@/lib/supabase/types";
 import { ContoAllaRovescia } from "@/components/ContoAllaRovescia";
 import {
@@ -88,6 +88,12 @@ function LoginInner() {
   const [role, setRole] = useState<Extract<UserRole, "customer" | "professional">>(
     params.get("role") === "professional" ? "professional" : "customer"
   );
+  // La versione dei termini che la finestra mostra e che l'iscrizione registra:
+  // un oggetto solo per le due cose, cosi' non possono divergere. La sceglie il
+  // registro (src/lib/termini/registro.ts) con l'orologio del browser: e' la
+  // versione che il browser ha davvero mostrato. L'ORA dell'accettazione invece
+  // la scrive il database (mig 100), non questa pagina.
+  const versioneTermini = ultimaPubblicata(role);
   // Nome e cognome separati (052): dati puliti da subito, full_name resta
   // per compatibilità e viene composto dal trigger handle_new_user.
   const [firstName, setFirstName] = useState("");
@@ -313,7 +319,7 @@ function LoginInner() {
           return;
         }
         // Il trigger handle_new_user legge role, first/last name (052),
-        // date_of_birth e terms_accepted_at da raw_user_meta_data.
+        // date_of_birth e terms_version da raw_user_meta_data.
         const { data, error: signErr } = await supabase.auth.signUp({
           email,
           password,
@@ -330,10 +336,16 @@ function LoginInner() {
               last_name: lastName.trim(),
               full_name: `${firstName.trim()} ${lastName.trim()}`,
               date_of_birth: dateOfBirth,
-              terms_accepted_at: new Date().toISOString(),
+              // NIENTE terms_accepted_at DAL BROWSER (28/09). Fino alla mig 100
+              // la mandavamo da qui con new Date(): un orologio sbagliato o una
+              // richiesta costruita a mano bastavano a scrivere un'ora qualunque
+              // nella prova dell'accettazione. Adesso l'ora la mette il
+              // database (trigger su profile_private) e la riga in
+              // terms_acceptances. Se un giorno qualcuno la rimette qui, il
+              // trigger la sovrascrive comunque.
               // Registriamo QUALE versione dei termini è stata accettata
               // (migration 028): serve come prova di cosa l'utente ha letto.
-              terms_version: TERMS_VERSION,
+              terms_version: versioneTermini.versione,
             },
           },
         });
@@ -488,6 +500,7 @@ function LoginInner() {
       <TermsDialog
         open={termsDialogOpen}
         audience={role}
+        versione={versioneTermini}
         onClose={() => {
           setTermsDialogOpen(false);
           // Anche la semplice apertura conta come "visualizzato": sbloccarlo

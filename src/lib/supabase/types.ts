@@ -140,8 +140,29 @@ export interface Profile {
 export interface ProfilePrivate {
   user_id: string;
   date_of_birth: string | null;
+  /**
+   * Ora dell'ULTIMA accettazione dei termini. Dalla mig 100 la scrive il
+   * database; le righe precedenti al 28/09/2026 hanno l'ora dichiarata dal
+   * browser e NON valgono come prova. La prova e' terms_acceptances.
+   */
   terms_accepted_at: string | null;
+  /** Ultima versione accettata; lo storico completo sta in terms_acceptances. */
+  terms_version: string | null;
   created_at: string | null;
+}
+
+// Storico delle accettazioni dei termini (mig 100). Sola aggiunta: nessuno la
+// scrive dal browser, e sopravvive alla chiusura dell'account (ROPA A25).
+export interface TermsAcceptance {
+  id: string;
+  user_id: string;
+  audience: "customer" | "professional";
+  version: string;
+  accepted_at: string;
+  method: "signup" | "dialog" | "backfill";
+  commit_sha: string | null;
+  effective_from: string | null;
+  account_closed_at: string | null;
 }
 
 // Telefono del pro (migration 051): tabella propria con RLS — solo il

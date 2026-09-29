@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { LegalPage } from "@/components/LegalPage";
-import { TermsContent, TERMS_UPDATED } from "@/components/TermsContent";
+import { PaginaTerminiCorrenti } from "@/components/termini/PaginaTermini";
 
 export const metadata: Metadata = {
   title: "Termini del servizio (clienti)",
@@ -10,28 +8,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/termini" },
 };
 
-// Il testo vive in components/TermsContent.tsx, condiviso con il modal
-// mostrato in fase di iscrizione: un'unica fonte per tutte le superfici.
-// I professionisti hanno un testo dedicato: /termini/professionisti.
+// Dinamica di proposito: quale versione mostrare dipende dall'ora della
+// richiesta (pubblicazione programmata, vedi components/termini/PaginaTermini).
+export const dynamic = "force-dynamic";
+
+// Il testo vive in components/termini/, una versione per file; quale mostrare
+// lo decide src/lib/termini/registro.ts. I professionisti hanno un testo
+// dedicato: /termini/professionisti. Le versioni precedenti: /termini/versioni.
 export default function TerminiPage() {
-  return (
-    <LegalPage
-      eyebrow="Legale"
-      title="Termini del servizio"
-      updated={TERMS_UPDATED}
-    >
-      <div className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3 text-sm text-bob-ink/70">
-        Questa è la versione per i <strong>clienti</strong>. Se offri servizi su
-        BOB, leggi i{" "}
-        <Link
-          href="/termini/professionisti"
-          className="font-medium text-bob-indigo underline"
-        >
-          termini per i professionisti
-        </Link>
-        .
-      </div>
-      <TermsContent audience="customer" />
-    </LegalPage>
-  );
+  return <PaginaTerminiCorrenti pubblico="customer" titolo="Termini del servizio" />;
 }
