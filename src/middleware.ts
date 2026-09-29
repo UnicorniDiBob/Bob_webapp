@@ -135,6 +135,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // /api/sessioni/ ESCLUSA di proposito (29/09): li' si scambiano le
+    // sessioni, e rinnovare qui l'attiva nella stessa richiesta metterebbe i
+    // cookie di un account contro quelli dell'altro. Vedi lib/sessioni/server.ts.
+    "/((?!_next/static|_next/image|favicon.ico|api/sessioni/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
