@@ -17,8 +17,9 @@ export type VerificationLevel = "none" | "vat_verified" | "documents_verified";
  * SLA DICHIARATO DELLA CODA DI VERIFICA: 5 giorni lavorativi (12/09, Lucio).
  * Sta qui perche' la stessa cifra va detta al professionista mentre aspetta,
  * nei ToS pro («SLA di esame») e in assistenza: tre copie divergono, una no.
- * Oggi e' una promessa NON misurata - la coda non ha un timestamp di ingresso
- * e nessuno confronta il dichiarato col fatto.
+ * Si misura in due modi: DAL VIVO con statoCoda(), su vat_review_opened_at
+ * (mig 080, il timestamp d'ingresso che fino al 13/09 mancava), e A POSTERIORI
+ * con misuraSlaStorica(), sui casi gia' chiusi (29/09).
  */
 export const SLA_VERIFICA_GIORNI_LAVORATIVI = 5;
 
@@ -161,6 +162,323 @@ export function statoCoda(
       ? -giorniLavorativiTra(scadenzaSla, adesso)
       : giorniLavorativiTra(adesso, scadenzaSla),
     sforata,
+  };
+}
+
+/**
+ * Quanti casi con la palla nostra sono oltre l'SLA ADESSO (29/09, m2t4s8).
+ * La conta il giro notturno, perche' lo sforamento esista anche se nessuno apre
+ * la pagina admin. La regola e' statoCoda(), non una copia.
+ */
+export function riepilogoSforamenti(
+  aperti: readonly (string | null)[],
+  adesso: Date = new Date()
+): { pallaNostra: number; sforati: number; peggiore: number } {
+  const stati = aperti
+    .map((a) => statoCoda(a, adesso))
+    .filter((x): x is StatoCoda => x !== null);
+  const sforati = stati.filter((x) => x.sforata);
+  return {
+    pallaNostra: stati.length,
+    sforati: sforati.length,
+    /** Di quanti giorni lavorativi e' oltre il caso piu' vecchio; 0 se nessuno. */
+    peggiore: sforati.length ? Math.max(...sforati.map((x) => -x.rimasti)) : 0,
+  };
+}
+
+/**
+ * Se il professionista deve vedere l'avviso di ritardo (29/09): la sua prima
+ * richiesta e' in esame (pending) e siamo oltre l'SLA. La soglia e' quella di
+ * statoCoda(), la stessa del riquadro admin e del giro notturno. Su un
+ * ricontrollo non si accende: AvanzamentoVerifica non si mostra li'.
+ */
+export function avvisoSlaAcceso(
+  review: VatReviewState | null,
+  apertoIl: string | null,
+  adesso: Date = new Date()
+): boolean {
+  return review === "pending" && statoCoda(apertoIl, adesso)?.sforata === true;
+}
+
+/**
+ * I casi da mettere in «Emergenze» nella pagina admin (29/09): quelli con la
+ * palla nostra e oltre l'SLA, dal piu' vecchio al piu' recente.
+ *
+ * Ha la palla nostra CHI HA vat_review_opened_at VALORIZZATA (mig 080): lo
+ * stesso criterio di riepilogoSforamenti(), cioe' del giro notturno. Prima la
+ * pagina filtrava per stato (solo pending e docs_requested) e perdeva i
+ * ricontrolli su cui il professionista aveva gia' caricato un documento: palla
+ * nostra, orologio che corre, e nessuna emergenza a video mentre il giro
+ * notturno la contava. Due criteri per la stessa domanda davano due risposte.
+ */
+export function casiInEmergenza<T extends { vat_review_opened_at: string | null }>(
+  righe: readonly T[],
+  adesso: Date = new Date()
+): T[] {
+  return righe
+    .filter((r) => statoCoda(r.vat_review_opened_at, adesso)?.sforata)
+    .sort(
+      (a, b) =>
+        new Date(a.vat_review_opened_at as string).getTime() -
+        new Date(b.vat_review_opened_at as string).getTime()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// La misura a posteriori dell'SLA (29/09, Lucio — voce m2t4s8)
+// ---------------------------------------------------------------------------
+//
+// PERCHE'. statoCoda() dice quanto aspetta un caso ADESSO, leggendo
+// vat_review_opened_at; ma quella colonna torna nulla quando il caso si chiude
+// o quando la palla passa al professionista. A caso chiuso non resta niente, e
+// «quanto ci abbiamo messo davvero» non lo sapeva nessuno. L'unica fonte che
+// ricorda e' verification_events: da li' si ricostruisce, caso per caso, per
+// quanto tempo la palla e' stata nostra.
+//
+// DI CHI E' LA PALLA, EVENTO PER EVENTO. Le stesse regole del trigger
+// trg_vat_review_clock (mig 080), perche' la misura storica non puo' dire una
+// cosa diversa da quella che la pagina admin mostra e che il professionista
+// legge:
+//   vat_submitted        nostra. Se era gia' nostra (caso in pending) l'orologio
+//                        continua: il trigger non lo riazzera.
+//   documents_submitted  nostra, da adesso: il trigger riazzera l'orologio.
+//   documents_requested  SUA: l'orologio si ferma.
+//   vat_recheck_opened   apre un caso con la palla SUA. Il nostro orologio parte
+//                        solo quando lui risponde con un documento. (Il buco dei
+//                        ricontrolli «scadenza» sulle verifiche fatte a mano,
+//                        dove il lavoro e' nostro ma il modello dice sua, e' in
+//                        docs/NOTE_E_DECISIONI.md, 29/09: rimandato.)
+//   level_granted, vat_rejected, level_revoked  chiudono il caso.
+//   vat_check_ok, vat_check_failed               non spostano la palla.
+//
+// DUE NUMERI, CON DUE NOMI, E NON UN SECONDO «SFORATO».
+//   sforatoSecondoIToS  sull'ULTIMO TRATTO con la palla nostra, con la regola
+//                       di statoCoda(): e' quello che abbiamo pubblicato («5
+//                       giorni lavorativi dalla ricezione della richiesta ovvero
+//                       della documentazione integrativa») ed e' quello che va
+//                       nel riquadro «SLA misurato».
+//   attesaTotale        la SOMMA dei tratti con la palla nostra: quanto ha
+//                       aspettato davvero la persona. Non la differenza fra il
+//                       primo e l'ultimo evento, che conterebbe anche le pause.
+// Se i due divergono spesso, e' la prova per riaprire il testo dei ToS: non una
+// ragione per cambiare la regola qui.
+//
+// CHI HA CHIUSO. L'SLA promette tempo di ESAME UMANO: nella misura entrano solo
+// i casi chiusi da admin o cs. Le chiusure automatiche si contano a parte, per
+// actor_role dell'evento di chiusura: 'system' = giro notturno, 'professional' =
+// l'automatismo all'ingresso (VIES e intestazione confermati nello stesso
+// secondo della richiesta). Attenzione: quel 'professional' e' una decisione
+// della macchina firmata come se l'avesse presa il professionista — rilievo
+// aperto in roadmap/findings.csv, non corretto qui.
+//
+// COSA CONTA COME GIORNO. giorniLavorativiTra() cosi' com'e': conta le
+// MEZZANOTTI di giorni feriali attraversate, non le durate. Un tratto dentro la
+// stessa giornata vale 0; sabato e domenica saltati, festivi no. Usa il fuso
+// del processo: su Vercel e' UTC, non Roma. E' la stessa unita' di statoCoda(),
+// quindi le due misure sono confrontabili; e' una stranezza documentata, non un
+// bug da correggere oggi.
+
+/** Un evento del registro, con i soli campi che servono alla misura. */
+export interface EventoVerificaSla {
+  professional_id: string;
+  event: string;
+  created_at: string;
+  actor_role: string | null;
+}
+
+/** Chi ha chiuso il caso, dall'actor_role dell'evento di chiusura. */
+export type ChiusoDa =
+  | "esame_umano"
+  | "giro_notturno"
+  | "automatico_ingresso"
+  | "non_attribuito";
+
+export interface TrattoSla {
+  da: Date;
+  a: Date;
+  /** Giorni lavorativi del tratto, con giorniLavorativiTra(). */
+  giorni: number;
+}
+
+export interface CasoMisurato {
+  professionalId: string;
+  apertoIl: Date;
+  chiusoIl: Date;
+  esito: "concesso" | "respinto" | "revocato";
+  chiusoDa: ChiusoDa;
+  /** Gli intervalli in cui la palla era nostra, in ordine. */
+  tratti: TrattoSla[];
+  /** Giorni lavorativi dell'ultimo tratto; null se la palla non e' mai stata nostra. */
+  ultimoTratto: number | null;
+  /** L'ultimo tratto oltre l'SLA, con la regola di statoCoda(). */
+  sforatoSecondoIToS: boolean;
+  /** Somma dei giorni lavorativi di tutti i tratti. */
+  attesaTotale: number;
+}
+
+export interface MisuraSla {
+  /** I casi che entrano nella misura: chiusi da una persona, con almeno un tratto nostro. */
+  esameUmano: CasoMisurato[];
+  rispettati: number;
+  sforati: number;
+  /** Chiusi da una persona senza che la palla sia mai stata nostra (es. un ricontrollo senza risposta). */
+  senzaAttesaNostra: number;
+  /** Chiusi da un automatismo: fuori dalla misura, contati a parte. */
+  automatici: { giroNotturno: number; ingresso: number };
+  /** Chiusi da un evento senza actor_role riconoscibile: fuori dalla misura. */
+  nonAttribuiti: number;
+  /** Casi ancora aperti: non hanno una fine, quindi non hanno una misura. */
+  aperti: number;
+}
+
+type StatoCaso = "pending" | "docs_requested" | "recheck" | "recheck_nostra";
+
+interface CasoInCorso {
+  apertoIl: Date;
+  stato: StatoCaso;
+  trattoDa: Date | null;
+  tratti: TrattoSla[];
+}
+
+function chiusoDaRuolo(ruolo: string | null): ChiusoDa {
+  if (ruolo === "admin" || ruolo === "cs") return "esame_umano";
+  if (ruolo === "system") return "giro_notturno";
+  if (ruolo === "professional") return "automatico_ingresso";
+  return "non_attribuito";
+}
+
+function chiudiTratto(caso: CasoInCorso, a: Date): void {
+  if (!caso.trattoDa) return;
+  caso.tratti.push({ da: caso.trattoDa, a, giorni: giorniLavorativiTra(caso.trattoDa, a) });
+  caso.trattoDa = null;
+}
+
+/**
+ * Quanto abbiamo davvero impiegato sui casi gia' chiusi, ricostruito dal
+ * registro. Funzione pura: gli eventi arrivano da chi chiama, in qualunque
+ * ordine (a parita' di created_at conta l'ordine in cui arrivano).
+ */
+export function misuraSlaStorica(eventi: readonly EventoVerificaSla[]): MisuraSla {
+  const perPro = new Map<string, { e: EventoVerificaSla; i: number }[]>();
+  eventi.forEach((e, i) => {
+    const lista = perPro.get(e.professional_id) ?? [];
+    lista.push({ e, i });
+    perPro.set(e.professional_id, lista);
+  });
+
+  const chiusi: CasoMisurato[] = [];
+  let aperti = 0;
+
+  for (const [professionalId, lista] of Array.from(perPro.entries())) {
+    lista.sort(
+      (x, y) =>
+        new Date(x.e.created_at).getTime() - new Date(y.e.created_at).getTime() || x.i - y.i
+    );
+    let caso: CasoInCorso | null = null;
+
+    for (const { e } of lista) {
+      const t = new Date(e.created_at);
+      if (Number.isNaN(t.getTime())) continue;
+
+      switch (e.event) {
+        case "vat_submitted":
+          if (!caso) {
+            caso = { apertoIl: t, stato: "pending", trattoDa: t, tratti: [] };
+          } else if (caso.stato !== "pending") {
+            chiudiTratto(caso, t);
+            caso.stato = "pending";
+            caso.trattoDa = t;
+          }
+          break;
+
+        case "documents_submitted":
+          if (!caso) {
+            // Nel registro manca l'apertura: il trigger lo scrive solo su un
+            // caso aperto, quindi un caso c'era, e da qui la palla e' nostra.
+            caso = { apertoIl: t, stato: "pending", trattoDa: t, tratti: [] };
+          } else if (caso.stato === "docs_requested") {
+            caso.stato = "pending";
+            caso.trattoDa = t;
+          } else if (caso.stato === "recheck") {
+            caso.stato = "recheck_nostra";
+            caso.trattoDa = t;
+          } else if (caso.stato === "recheck_nostra") {
+            // Un secondo documento sul ricontrollo: il trigger riazzera.
+            chiudiTratto(caso, t);
+            caso.trattoDa = t;
+          }
+          // Su un caso in pending la 080 non scrive documents_submitted.
+          break;
+
+        case "documents_requested":
+          if (!caso) {
+            caso = { apertoIl: t, stato: "docs_requested", trattoDa: null, tratti: [] };
+          } else {
+            chiudiTratto(caso, t);
+            caso.stato = "docs_requested";
+          }
+          break;
+
+        case "vat_recheck_opened":
+          if (!caso) {
+            caso = { apertoIl: t, stato: "recheck", trattoDa: null, tratti: [] };
+          } else {
+            chiudiTratto(caso, t);
+            caso.stato = "recheck";
+          }
+          break;
+
+        case "level_granted":
+        case "vat_rejected":
+        case "level_revoked": {
+          // Senza un caso aperto non c'e' niente da chiudere: e' la revoca che
+          // accompagna un rifiuto (il rifiuto l'ha gia' chiuso).
+          if (!caso) break;
+          chiudiTratto(caso, t);
+          const ultimo = caso.tratti[caso.tratti.length - 1];
+          chiusi.push({
+            professionalId,
+            apertoIl: caso.apertoIl,
+            chiusoIl: t,
+            esito:
+              e.event === "level_granted"
+                ? "concesso"
+                : e.event === "vat_rejected"
+                  ? "respinto"
+                  : "revocato",
+            chiusoDa: chiusoDaRuolo(e.actor_role),
+            tratti: caso.tratti,
+            ultimoTratto: ultimo ? ultimo.giorni : null,
+            sforatoSecondoIToS: ultimo
+              ? ultimo.a > aggiungiGiorniLavorativi(ultimo.da, SLA_VERIFICA_GIORNI_LAVORATIVI)
+              : false,
+            attesaTotale: caso.tratti.reduce((n, x) => n + x.giorni, 0),
+          });
+          caso = null;
+          break;
+        }
+
+        default:
+          break;
+      }
+    }
+    if (caso) aperti += 1;
+  }
+
+  chiusi.sort((a, b) => a.chiusoIl.getTime() - b.chiusoIl.getTime());
+  const umani = chiusi.filter((c) => c.chiusoDa === "esame_umano");
+  const esameUmano = umani.filter((c) => c.ultimoTratto !== null);
+  return {
+    esameUmano,
+    rispettati: esameUmano.filter((c) => !c.sforatoSecondoIToS).length,
+    sforati: esameUmano.filter((c) => c.sforatoSecondoIToS).length,
+    senzaAttesaNostra: umani.length - esameUmano.length,
+    automatici: {
+      giroNotturno: chiusi.filter((c) => c.chiusoDa === "giro_notturno").length,
+      ingresso: chiusi.filter((c) => c.chiusoDa === "automatico_ingresso").length,
+    },
+    nonAttribuiti: chiusi.filter((c) => c.chiusoDa === "non_attribuito").length,
+    aperti,
   };
 }
 

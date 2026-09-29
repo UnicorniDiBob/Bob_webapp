@@ -698,3 +698,63 @@ quindi il guadagno vero è più grande):
 
 Sedici millisecondi è il bilancio di un fotogramma a 60 al secondo: prima se ne
 andavano quasi tutti nel disegno, e restava lo strappo.
+
+## 29 settembre 2026 — l'SLA si misura anche a caso chiuso, e un buco resta aperto di proposito
+
+Voce m2t4s8 del Piano. Decisioni di Lucio, prese sulla proposta della sessione.
+
+### Deciso
+
+- **La misura a posteriori è una funzione TypeScript, non una vista SQL**
+  (`misuraSlaStorica()` in `src/lib/vat.ts`). La vista avrebbe portato una
+  seconda definizione di «giorno lavorativo» e una superficie nuova di dati
+  identificabili, in cambio di un'interrogabilità da SQL che oggi non serve a
+  nessuno. Niente migrazione: la 104 resta libera.
+- **L'orologio segue la 080, non un modello nuovo.** Su un ricontrollo parte con
+  `documents_submitted`, non con `vat_recheck_opened`: la misura storica non può
+  dire una cosa diversa da quella che la pagina admin mostra e il professionista
+  legge. Due verità sullo stesso numero sono la classe di errore che ci è già
+  costata due volte.
+- **Nella misura entrano solo gli esami umani.** Il taglio è sull'`actor_role`
+  dell'evento di chiusura: `admin`/`cs` entrano; `system` (giro notturno) e
+  `professional` (automatismo all'ingresso) si contano a parte, etichettati
+  come automatici. L'SLA è una promessa sul tempo di esame umano: contare le
+  approvazioni istantanee farebbe dire alla statistica che siamo veloci proprio
+  dove nessuno ha esaminato niente.
+- **Due numeri, due nomi, nessun secondo «sforato».** `sforatoSecondoIToS`
+  sull'ultimo tratto con la palla nostra, con la regola di `statoCoda()`: è
+  quello che abbiamo pubblicato, ed è quello che la pagina admin chiama «SLA
+  misurato». `attesaTotale`, la somma dei tratti, gli sta accanto con la sua
+  etichetta. **Se i due divergono spesso, quella è la prova per riaprire il
+  testo dei termini, che oggi dice insieme «decorrenti dalla ricezione della
+  documentazione integrativa» e «il termine resta sospeso».** Non è una
+  ragione per cambiare la regola di nascosto.
+- **Il giorno lavorativo è quello di `giorniLavorativiTra()`, così com'è.**
+  Conta le mezzanotti feriali attraversate, non le durate; festivi non esclusi;
+  fuso del processo, cioè UTC su Vercel. È una stranezza documentata, non un
+  bug da correggere oggi.
+
+### Rimandato, con il perché
+
+**I ricontrolli «scadenza» sulle verifiche fatte a mano.** Il giro notturno
+apre un ricontrollo con la nota «lo rifà una persona»: lì il lavoro è nostro,
+ma il modello della 080 dice che la palla è del professionista
+(`vat_review_opened_at` nullo), quindi nessun orologio corre e nessuna pillola
+SLA compare. Il buco è reale. **Non lo chiudiamo nella PR della misura** perché
+chiuderlo vuol dire cambiare la semantica di `trg_vat_review_clock`, cioè
+quello che la pagina admin mostra e quello che al professionista promettiamo
+sul badge («finché la palla è da noi l'etichetta resta accesa»). È una modifica
+di regola, con effetti sul badge e sul testo, e merita una PR sua.
+
+### Trovato per strada, non corretto
+
+- Il `level_granted` automatico all'ingresso è firmato `actor_role
+  'professional'`: rilievo in `roadmap/findings.csv`. È area di André
+  (`src/app/api/pro/**`).
+- `src/components/AvanzamentoVerifica.tsx:39` promette al professionista «e se
+  sforiamo ti scriviamo». Oggi non è vero: il giro notturno conta gli sforamenti
+  e scrive nei log, ma nessuno scrive al professionista. È area di André e un
+  testo verso il professionista: segnalato, non riscritto.
+- Il tipo `VerificationEvent` in `src/lib/supabase/types.ts` non conosce
+  `vat_recheck_opened`, che la 080 ha aggiunto al vocabolario. La misura usa un
+  tipo suo e non ne dipende.

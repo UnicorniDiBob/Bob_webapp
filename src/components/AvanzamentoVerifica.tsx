@@ -23,12 +23,26 @@
 // occupa spazio.
 //
 // L'SLA E' DICHIARATO, NON CONTATO A VIDEO. Cinque giorni lavorativi e' la
-// promessa e si legge come promessa. Nessun conto alla rovescia: la coda non
-// ha nemmeno un timestamp di ingresso, quindi un countdown sarebbe una cifra
-// inventata, e finche' quel timestamp non esiste l'SLA non lo misura nessuno.
+// promessa e si legge come promessa. Nessun conto alla rovescia: una cifra che
+// scende da sola arriva a zero anche quando nessuno ha guardato niente. Il
+// timestamp d'ingresso esiste dalla 080 (vat_review_opened_at) e l'SLA lo
+// misurano statoCoda() dal vivo e misuraSlaStorica() sui casi chiusi, in
+// src/lib/vat.ts: qui non si ricalcola niente.
 
 import type { VatReviewState } from "@/lib/vat";
-import { SLA_VERIFICA_GIORNI_LAVORATIVI } from "@/lib/vat";
+import { SLA_VERIFICA_GIORNI_LAVORATIVI, avvisoSlaAcceso } from "@/lib/vat";
+
+// QUANDO SFORIAMO, CE NE SCUSIAMO — E BASTA (29/09, testo scelto da Lucio).
+// L'avviso si accende da avvisoSlaAcceso(), cioe' da statoCoda().sforata: la
+// stessa regola del riquadro admin e del giro notturno, nessuna seconda soglia
+// e nessun secondo calcolo.
+// Non promette un contatto e non da' una data: quando sforiamo non scriviamo a
+// nessuno, e una nuova scadenza sarebbe una seconda promessa da poter rompere.
+// Qui gira nel browser, quindi con l'orologio e il fuso di chi legge (Roma),
+// mentre admin e giro notturno contano in UTC: verso mezzanotte l'avviso puo'
+// accendersi qualche ora prima o dopo di quanto lo veda lo staff.
+const AVVISO_SLA_SFORATO =
+  "Ci stiamo mettendo più del previsto, e ci dispiace. Non devi fare niente: la tua richiesta è ancora in esame e l'esito comparirà qui.";
 
 type Fase = "gestione" | "documenti" | "rifiutata";
 
@@ -36,7 +50,10 @@ const FASI: Record<Fase, { titolo: string; passo: number; nota: string }> = {
   gestione: {
     titolo: "In gestione",
     passo: 2,
-    nota: `La stiamo guardando noi: non serve fare altro. Di solito rispondiamo entro ${SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi, e se sforiamo ti scriviamo.`,
+    // NIENTE PROMESSE DI CONTATTO (29/09, Lucio). Qui c'era «e se sforiamo ti
+    // scriviamo»: non era vero, nessuno scrive a nessuno, e non lo vogliamo.
+    // La frase dice quanto dura di solito l'esame e dove si legge l'esito.
+    nota: `La stiamo guardando noi: non serve fare altro. Di solito l'esame richiede fino a ${SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi, e l'esito compare qui.`,
   },
   documenti: {
     titolo: "Documenti richiesti",
@@ -55,9 +72,12 @@ const PASSI = ["Ricevuta", "In gestione", "Esito"];
 export function AvanzamentoVerifica({
   review,
   verificato,
+  apertoIl = null,
 }: {
   review: VatReviewState | null;
   verificato: boolean;
+  /** vat_review_opened_at: da quando la palla e' nostra (mig 080). */
+  apertoIl?: string | null;
 }) {
   // Approvata: il riquadro verde dice tutto, la barra sparisce.
   if (verificato) return null;
@@ -77,6 +97,7 @@ export function AvanzamentoVerifica({
   const { titolo, passo, nota } = FASI[fase];
   const quota = passo / PASSI.length;
   const negativa = fase === "rifiutata";
+  const sforata = avvisoSlaAcceso(review, apertoIl);
 
   return (
     <div
@@ -133,6 +154,16 @@ export function AvanzamentoVerifica({
       </ol>
 
       <p className="mt-2 text-[11px] leading-relaxed text-bob-ink/45">{nota}</p>
+
+      {sforata && (
+        <p
+          className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800"
+          data-testid="avviso-sla-sforato"
+          role="status"
+        >
+          {AVVISO_SLA_SFORATO}
+        </p>
+      )}
     </div>
   );
 }
