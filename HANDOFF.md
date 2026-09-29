@@ -24,20 +24,14 @@ elencato in `docs/NOTE_E_DECISIONI.md`.
 
 # Handoff — 29 settembre 2026, Lucio
 
-**Fatto.** Tre PR su `main`:
-- #106: l'SLA misurato sui casi chiusi e `sla_sforati` nel giro notturno;
-- #107: fuori da `next.csv` la voce `registraGiro()`, chiusa dal 12/09;
-- #108: via «se sforiamo ti scriviamo», l'avviso di scuse quando sforiamo, e le Emergenze che vedono i ricontrolli con documento.
+**Fatto.** Sessioni multiple (ramo `feat/sessioni-multiple`, PR da mergiare), in quattro fette:
+- **due sessioni nello stesso browser** e lo scambio con un click; l'account in attesa sta in `bob-attesa` (httpOnly, solo refresh token, id ed email) e l'attivo non si rinnova mai durante lo scambio;
+- **il punto unico lato server** (`createClient` di `lib/supabase/server`, costruito da `fabbrica.ts`) con un test che prova che, con A attivo e B presente, niente va a B;
+- **le chiavi del browser per account** (bozza della chat di Bob compresa), e la ricarica completa allo scambio con l'avviso fra schede;
+- «esci da questo» ed «esci da tutti», in questo browser.
 
-Poi la riscrittura di `/admin/professionals` (ramo `feat/admin-verifiche-coda-unica`, PR da mergiare):
-- una coda sola, dal più urgente, con le regole di `vat.ts`;
-- le viste per stato come filtro `?vista=`;
-- in fondo un archivio con le sole leve piano e approvazione staff;
-- ogni lettura controlla il suo errore;
-- link firmati e telefono solo per i casi mostrati.
+Selettore minimo in `/impostazioni/accesso`. Nessuna migrazione: la 104 è libera.
 
-Tolta la frase «visibili ai clienti», falsa dalla 080. Nel Piano la voce m2t4s9 è spuntata citando la 094, verificata viva dopo la 102.
+**A metà.** **La route «aggiungi account» non c'è**: il tetto di tentativi vuole allargare il vincolo `route in ('chat','brief')` di `rate_limit_counters`, cioè una migrazione, e aspetta la decisione di Lucio. Senza, un secondo account entra nel browser solo a mano (passi nella PR). Il collaudo dal vivo lo fa Lucio con account suoi. **Per André:** il selettore nell'intestazione; `BobChat.tsx` e `PromemoriaProfilo.tsx` sono cambiati solo nel nome delle chiavi di `localStorage`.
 
-**A metà.** Niente è verificato da loggati: la pagina chiede il login dello staff e la coda in produzione è vuota. Il redirect di `/admin` verso `/login` perde `?vista=`: chi apre un link a una vista senza essere dentro, dopo il login non ci torna. Aperti in `findings.csv`: il declassamento Pro+ → Pro senza motivazione né registro, e il cs che può cambiare il piano. **Per André:** la 101, la 102 e la 103 sono registrate in `schema_migrations` senza numero (`centroidi_cap`, `distanza_nel_punteggio`, `centroidi_cap_milano`); il `level_granted` automatico firmato `actor_role 'professional'` resta aperto.
-
-**Applicato in produzione che devi sapere.** Oggi niente su Supabase. Il Piano è stato ripubblicato (versione 53) dallo strumento di Claude, che l'ha avvolto in uno scheletro HTML in più: il contenuto è intatto, ma se vedi qualcosa di strano è quello.
+**Applicato in produzione che devi sapere.** Niente su Supabase. **Al merge cambia il logout per tutti:** «Esci» vale solo per questo browser, non più per tutti i dispositivi (`NOTE_E_DECISIONI.md`, 29/09).
