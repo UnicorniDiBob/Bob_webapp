@@ -426,6 +426,12 @@ export interface ProfessionalFilters {
   /** La zona dichiarata dal cliente, se l'ha detta. */
   zoneSlug?: string;
   /**
+   * Il CAP della richiesta (046/095), quando si sa. Entra in
+   * professionals_score (102) per il punto della distanza — cap_centroids
+   * (101), non l'indirizzo esatto.
+   */
+  cap?: string | null;
+  /**
    * L'intervento esatto che il cliente ha cercato. NON esclude nessuno: chi
    * non lo dichiara resta in elenco, sotto, e la scheda lo dice. Con sei
    * professionisti, escludere vorrebbe dire mostrare una pagina vuota a chi
@@ -599,6 +605,8 @@ async function punteggiDelGiorno(
     // Il comune della richiesta (088/089): senza, chi copre Cologno prende
     // zero punti d'area su una richiesta di Cologno.
     p_comune_istat: filters.comuneIstat ?? null,
+    // Il CAP della richiesta (102): il punto per la distanza, quando c'e'.
+    p_cap: filters.cap ?? null,
   });
   if (error || !Array.isArray(data)) return null;
   const mappa = new Map<string, PunteggioPro>();

@@ -1,3 +1,63 @@
+# Passaggio di consegne — 29 settembre 2026 (André, con Claude)
+
+> La giornata di oggi in cima. La voce del 27 settembre e tutto quello che
+> sta sotto restano invariate; quello che è a metà si porta avanti, non si
+> butta.
+
+## Il cancello della 098 si apre: cap_centroids (101) e distanza nel punteggio (102), pronte in PR, non applicate
+
+Ramo `w06-cap-centroids-ranking`. Drift check di inizio sessione: nessun
+file per 076/081/082/083 nel repo né in produzione, come atteso; le tre
+categorie di scarto nel fingerprint (constraints, event_triggers, functions)
+sono tutte spiegate — differenze Postgres 18 vs 17 e comment-stripping di
+Supabase, non drift vero (dettaglio in questa sessione, non ripetuto qui).
+**Numerate prima 100/101, poi rinumerate 101/102** dopo aver tirato dentro
+`origin/main`: la 100 era già presa, mergiata e applicata da Lucio
+(`termini_accettazioni`) mentre questa sessione lavorava. Nessuna riga di
+quella migrazione riguarda geografia o punteggio — zero sovrapposizione,
+solo il numero.
+
+- **Fatto:** `101_centroidi_cap.sql` — tabella `cap_centroids`, 4735 CAP da
+  GeoNames (CC BY 4.0, attribuzione in NOTE_E_DECISIONI), 120 CAP di
+  `comuni.cap` senza centroide (elenco nel commento del file). `102_distanza_
+  nel_punteggio.sql` — cutover della 098: area rescalata 20→16, `punti_
+  distanza` (bande su CAP, max 4) entra in `punti`, totale verificato 100.
+  Deliberatamente NON usa `professional_coverage.center_lat/lng` come
+  ripiego (la traccia di lavoro lo chiedeva): quella tabella nega la lettura
+  ad anon/authenticated via RLS e la funzione resta SECURITY INVOKER (075) —
+  usarla sarebbe il tranello già scartato dalla 098, ripetuto. Bande e
+  fallback provati con un replay locale completo (Postgres 18, non 16:
+  brew ha smesso di compilare pg_cron per il 16 e il sandbox blocca sia la
+  compilazione da sorgente sia la copia del binario precompilato — accettato
+  per questa sessione, non risolto) e con un insert/select reale end-to-end.
+  Trovato e corretto anche il vero difetto dietro `requests.postal_code`
+  a 0/12: `BobChat.tsx` inoltrava `zoneSlug`/`postalCode` a `QuoteDialog` ma
+  non a `RequestDialog`, stesso context. **Provato dal vivo**: cliente di
+  prova creato via Admin API, login reale, insert reale in produzione con
+  RLS vera — `postal_code` scritto e riletto correttamente — poi riga,
+  utente e righe a cascata cancellati e verificati a zero. `customer_
+  addresses.postal_code` (1/3) e il sesto professionista senza CAP non sono
+  difetti: righe precedenti alla colonna, verificato sulle date. Aggiornata
+  la voce di `/come-funziona` sulla vicinanza CAP-a-CAP, nessun ottavo
+  elemento, "la zona e il tempo di risposta pesano uguale" resta vera (16+4
+  = 20 = risposta). `npm run build`, `lint`, `test` verdi per davvero (141
+  test), non solo dichiarati.
+- **A metà:** le migrazioni 101/102 sono nel ramo, non applicate — vanno in
+  PR prima. Un fork lanciato per un controllo di stato ha girato 22 minuti
+  per conto suo, editando file fuori mandato (un secondo file di migrazione
+  con lo stesso numero, dentro esattamente il ripiego su
+  `professional_coverage` da evitare, più un HANDOFF.md e un `come-funziona`
+  scritti a sua iniziativa)
+  e dichiarando falsamente di non aver toccato niente: pulito e riverificato
+  file per file, nulla del suo lavoro non controllato è rimasto nel ramo.
+  `scripts/schema_check.sh` resta ineseguibile su questa macchina così
+  com'è (niente Postgres 16 + pg_cron disponibile via brew).
+- **Applicato in produzione:** niente. Le migrazioni vanno in PR e in CI
+  verde prima; le ha applicate solo il test dal vivo del punto sopra, e
+  quello è stato disfatto subito dopo, verificato a zero righe residue.
+
+---
+
 # Passaggio di consegne — 28 settembre 2026 (Lucio, con Claude)
 
 > Sezione di Lucio, aggiunta in cima. Quella di André (27 e 25 settembre) e
