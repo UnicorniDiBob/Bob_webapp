@@ -23,9 +23,11 @@
 // occupa spazio.
 //
 // L'SLA E' DICHIARATO, NON CONTATO A VIDEO. Cinque giorni lavorativi e' la
-// promessa e si legge come promessa. Nessun conto alla rovescia: la coda non
-// ha nemmeno un timestamp di ingresso, quindi un countdown sarebbe una cifra
-// inventata, e finche' quel timestamp non esiste l'SLA non lo misura nessuno.
+// promessa e si legge come promessa. Nessun conto alla rovescia: una cifra che
+// scende da sola arriva a zero anche quando nessuno ha guardato niente. Il
+// timestamp d'ingresso esiste dalla 080 (vat_review_opened_at) e l'SLA lo
+// misurano statoCoda() dal vivo e misuraSlaStorica() sui casi chiusi, in
+// src/lib/vat.ts: qui non si ricalcola niente.
 
 import type { VatReviewState } from "@/lib/vat";
 import { SLA_VERIFICA_GIORNI_LAVORATIVI } from "@/lib/vat";
@@ -36,7 +38,10 @@ const FASI: Record<Fase, { titolo: string; passo: number; nota: string }> = {
   gestione: {
     titolo: "In gestione",
     passo: 2,
-    nota: `La stiamo guardando noi: non serve fare altro. Di solito rispondiamo entro ${SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi, e se sforiamo ti scriviamo.`,
+    // NIENTE PROMESSE DI CONTATTO (29/09, Lucio). Qui c'era «e se sforiamo ti
+    // scriviamo»: non era vero, nessuno scrive a nessuno, e non lo vogliamo.
+    // La frase dice quanto dura di solito l'esame e dove si legge l'esito.
+    nota: `La stiamo guardando noi: non serve fare altro. Di solito l'esame richiede fino a ${SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi, e l'esito compare qui.`,
   },
   documenti: {
     titolo: "Documenti richiesti",
