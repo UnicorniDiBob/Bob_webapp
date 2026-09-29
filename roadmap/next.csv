@@ -7,9 +7,6 @@ Le due cose decise il 19/08 e non ancora costruite,"SUPPORTO — pagina con tick
 #   RESEND_API_KEY = <la chiave>
 #   EMAIL_FROM     = Bob <noreply@send.meetonda.com>   <-- obbligatoria, vedi sopra
 # poi un deploy, e /dashboard/comunicazioni smette da sola di mostrare l'avviso"
-registraGiro() anche quando il cron lavora davvero,"Il ritentativo notturno gira da 11 notti (10.14 chiusa il 19/08) ma tutte e 11 le righe scrivono outcome {""esaminati"": 0}, perche' registraGiro() e' chiamato solo nel ramo casi.length === 0. Un giro che elabora dei casi non lascia nessuna traccia. Basta per il cancello di M1 - dimostrare che il processo parte - e non basta per sapere se funziona: e' la differenza che conta da ottobre, quando in coda ci saranno partite IVA vere.","# src/app/api/cron/verifica-piva/route.ts
-# aggiungere una registraGiro() al return finale, con i contatori
-# confermati / daEsaminare / ancoraGiu gia' calcolati nel corpo"
 "Controllare dal vivo l'area personale, desktop e 390px","Fatto in parte il 19/08 dopo il deploy b6109ca: i due redirect scattano, le sezioni caricano da loggato, il form waitlist e l'informativa privacy sono live col testo nuovo. NON fatti il controllo a 390px e la lettura del contenuto delle sezioni da loggato, e il motivo e' ambientale: il Chrome locale risponde a list_tabs (quindi si vede l'URL dopo un redirect) ma non a execute_javascript ne' a get_page_content. Su macOS quelle due passano da AppleScript e servono due interruttori.","# Chrome > View > Developer > Allow JavaScript from Apple Events
 # (e, se serve, Impostazioni di Sistema > Privacy e sicurezza > Automazione)
 # poi si possono leggere le pagine e provare il viewport a 390px"
