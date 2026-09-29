@@ -17,6 +17,7 @@ import {
   SLA_VERIFICA_GIORNI_LAVORATIVI,
   TETTO_CESSAZIONE_GIORNI,
   aggiungiGiorniLavorativi,
+  casiInEmergenza,
   giorniLavorativiTra,
   livelloVisibile,
   misuraSlaStorica,
@@ -395,6 +396,58 @@ describe("riepilogoSforamenti: quello che il giro notturno conta ogni notte", ()
     const aperto = "2026-09-21T12:00:00+02:00";
     expect(riepilogoSforamenti([aperto], ADESSO).sforati).toBe(
       statoCoda(aperto, ADESSO)?.sforata ? 1 : 0
+    );
+  });
+});
+
+describe("casiInEmergenza: la sezione Emergenze usa il criterio del giro notturno", () => {
+  const ADESSO = new Date("2026-09-29T12:00:00+02:00"); // martedi'
+  type Riga = { id: string; vat_review_state: string | null; vat_review_opened_at: string | null };
+  const righe: Riga[] = [
+    // Prima richiesta in pending, oltre l'SLA: c'era gia' prima.
+    { id: "pending-vecchio", vat_review_state: "pending", vat_review_opened_at: "2026-09-18T12:00:00+02:00" },
+    // IL CASO CHE PRIMA SFUGGIVA: un ricontrollo con documento caricato,
+    // quindi palla nostra, e oltre l'SLA.
+    { id: "ricontrollo-con-documento", vat_review_state: "recheck", vat_review_opened_at: "2026-09-21T12:00:00+02:00" },
+    // Un ricontrollo senza documento: palla sua, nessun orologio.
+    { id: "ricontrollo-senza-documento", vat_review_state: "recheck", vat_review_opened_at: null },
+    // Documenti richiesti: palla sua.
+    { id: "documenti-richiesti", vat_review_state: "docs_requested", vat_review_opened_at: null },
+    // In pending ma dentro l'SLA.
+    { id: "pending-recente", vat_review_state: "pending", vat_review_opened_at: "2026-09-28T12:00:00+02:00" },
+  ];
+
+  it("prende il ricontrollo con documento, che il filtro per stato perdeva", () => {
+    const ids = casiInEmergenza(righe, ADESSO).map((r) => r.id);
+    expect(ids).toContain("ricontrollo-con-documento");
+    // Il filtro di prima (solo pending e docs_requested) lo escludeva.
+    const primaPerStato = righe
+      .filter((r) => r.vat_review_state === "pending" || r.vat_review_state === "docs_requested")
+      .filter((r) => statoCoda(r.vat_review_opened_at, ADESSO)?.sforata)
+      .map((r) => r.id);
+    expect(primaPerStato).not.toContain("ricontrollo-con-documento");
+  });
+
+  it("chi ha la palla sua o e' dentro l'SLA non e' un'emergenza", () => {
+    const ids = casiInEmergenza(righe, ADESSO).map((r) => r.id);
+    expect(ids).not.toContain("ricontrollo-senza-documento");
+    expect(ids).not.toContain("documenti-richiesti");
+    expect(ids).not.toContain("pending-recente");
+  });
+
+  it("l'ordine resta dal piu' vecchio al piu' recente", () => {
+    expect(casiInEmergenza(righe, ADESSO).map((r) => r.id)).toEqual([
+      "pending-vecchio",
+      "ricontrollo-con-documento",
+    ]);
+  });
+
+  it("la pagina e il giro notturno contano lo stesso numero", () => {
+    expect(casiInEmergenza(righe, ADESSO)).toHaveLength(
+      riepilogoSforamenti(
+        righe.map((r) => r.vat_review_opened_at),
+        ADESSO
+      ).sforati
     );
   });
 });
