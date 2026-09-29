@@ -1,9 +1,11 @@
-// Pagina admin: verifica dei professionisti.
-// Mostra i professionisti raggruppati per stato di verifica.
-// Admin e CS possono approvare (verified), mettere in attesa (pending) o rifiutare (unverified).
+// Pagina admin: verifica dei professionisti (riscritta il 29/09).
+// In cima una coda di lavoro sola, dal piu' urgente, con le viste per stato
+// come filtro (?vista=); a destra lo SLA misurato e il registro; in fondo,
+// chiuso, l'archivio di tutti i professionisti con le due leve dello staff
+// (piano e approvazione staff). Vedi ./coda.ts per le regole della coda.
 
 import { createClient } from "@/lib/supabase/server";
-import { Wrench, MapPin, Euro, Phone, Calendar, Clock } from "lucide-react";
+import { Wrench, MapPin, Phone, Calendar } from "lucide-react";
 import { VerifyButtons } from "./VerifyButtons";
 import { TierButtons } from "./TierButtons";
 import { VatReviewActions } from "./VatReviewActions";
@@ -131,16 +133,11 @@ interface ProRow {
   id: string;
   verification_status: VerificationStatus;
   subscription_tier: SubscriptionTier;
-  headline: string | null;
-  bio: string | null;
-  years_experience: number | null;
   created_at: string | null;
   user_id: string;
   cities: { name: string } | null;
   professional_services: {
     services: { name: string } | null;
-    min_price: number | null;
-    max_price: number | null;
   }[];
 }
 
@@ -156,26 +153,9 @@ function fmtDate(d: string | null) {
   });
 }
 
-const STATUS_CONFIG: Record<
-  VerificationStatus,
-  { label: string; badge: string; description: string }
-> = {
-  unverified: {
-    label: "Non verificati",
-    badge: "bg-red-50 text-red-700",
-    description: "Nuovi iscritti che non sono ancora stati esaminati.",
-  },
-  pending: {
-    label: "In revisione",
-    badge: "bg-amber-50 text-amber-700",
-    description: "Profili in corso di verifica.",
-  },
-  verified: {
-    label: "Verificati",
-    badge: "bg-emerald-50 text-emerald-700",
-    description: "Profili approvati e visibili ai clienti.",
-  },
-};
+// «Verificati — Profili approvati e visibili ai clienti» stava qui, sopra la
+// sezione raggruppata per verification_status. Era falso almeno dalla 080
+// (13/09): chi compare ai clienti non lo decide quel campo. Tolta il 29/09.
 
 export default async function AdminProfessionalsPage({
   searchParams,
@@ -195,12 +175,9 @@ export default async function AdminProfessionalsPage({
       user_id,
       verification_status,
       subscription_tier,
-      headline,
-      bio,
-      years_experience,
       created_at,
       cities ( name ),
-      professional_services ( min_price, max_price, services ( name ) )
+      professional_services ( services ( name ) )
     `)
     .order("created_at", { ascending: false });
 
@@ -213,19 +190,8 @@ export default async function AdminProfessionalsPage({
     .select("user_id, full_name")
     .in("user_id", userIds);
 
-  // Telefono in profile_phone dalla 051 — non piu' in profiles (vedi nota
-  // in admin/users/page.tsx per il perche'). Unito qui in profileMap cosi'
-  // tutti gli usi sotto (profileMap[x]?.phone) restano invariati.
-  const { data: phones } = await supabase
-    .from("profile_phone")
-    .select("user_id, phone")
-    .in("user_id", userIds);
-  const phoneMap = Object.fromEntries(
-    ((phones ?? []) as { user_id: string; phone: string | null }[]).map((p) => [p.user_id, p.phone])
-  );
-
-  const profileMap = Object.fromEntries(
-    (profiles ?? []).map((p) => [p.user_id, { ...p, phone: phoneMap[p.user_id] ?? null }])
+  const nomeMap: Record<string, string | null> = Object.fromEntries(
+    (profiles ?? []).map((p) => [p.user_id, p.full_name])
   );
 
   // Coda delle verifiche P.IVA: i casi con un esame umano aperto o appena
@@ -245,6 +211,24 @@ export default async function AdminProfessionalsPage({
   const proById = Object.fromEntries(pros.map((p) => [p.id, p]));
   const righeVista = righeDellaVista(reviewRows, vista, adesso);
   const numeri = contatori(reviewRows, adesso);
+
+  // IL TELEFONO SOLO DOVE SERVE (29/09, privilegio minimo): si legge per i
+  // casi della vista mostrata, che lo mostrano nella scheda. Prima si leggeva
+  // per tutti i professionisti, e la sezione in fondo lo stampava a tutti.
+  // In profile_phone dalla 051, non piu' in profiles (vedi admin/users/page.tsx).
+  const userIdsVista = righeVista
+    .map((r) => proById[r.professional_id]?.user_id)
+    .filter((x): x is string => !!x);
+  const { data: phones } = userIdsVista.length
+    ? await supabase.from("profile_phone").select("user_id, phone").in("user_id", userIdsVista)
+    : { data: [] };
+  const phoneMap = Object.fromEntries(
+    ((phones ?? []) as { user_id: string; phone: string | null }[]).map((p) => [p.user_id, p.phone])
+  );
+  const profileMap: Record<string, { full_name: string | null; phone: string | null }> =
+    Object.fromEntries(
+      Object.entries(nomeMap).map(([uid, full_name]) => [uid, { full_name, phone: phoneMap[uid] ?? null }])
+    );
 
   // Il registro delle verifiche, letto in due modi diversi perché servono a
   // due cose diverse.
@@ -342,7 +326,7 @@ export default async function AdminProfessionalsPage({
   const events = (eventsData ?? []) as unknown as VerificationEvent[];
   const nameByPro = new Map<string, string>();
   for (const p of pros) {
-    nameByPro.set(p.id, profileMap[p.user_id]?.full_name ?? "Professionista");
+    nameByPro.set(p.id, nomeMap[p.user_id] ?? "Professionista");
   }
 
   // LA CODA DI LAVORO (29/09): una sola, dal piu' urgente, e le viste per stato
@@ -352,17 +336,9 @@ export default async function AdminProfessionalsPage({
   // respinti) e bisognava leggerle tutte.
   const titoloVista = VISTE.find((v) => v.id === vista)?.titolo ?? "";
 
-  // Raggruppa per stato
-  const grouped: Record<VerificationStatus, ProRow[]> = {
-    unverified: [],
-    pending: [],
-    verified: [],
-  };
-  for (const p of pros) {
-    grouped[p.verification_status].push(p);
-  }
-
-  const order: VerificationStatus[] = ["unverified", "pending", "verified"];
+  // L'ARCHIVIO (29/09): tutti i professionisti, per trovarli e per le due leve
+  // dello staff. Nessuna azione sul caso: quelle stanno solo nella coda.
+  const livelloPerPro = new Map(reviewRows.map((r) => [r.professional_id, r.level]));
 
   return (
     <div className="space-y-8">
@@ -480,120 +456,56 @@ export default async function AdminProfessionalsPage({
         </aside>
       </div>
 
-      {order.map((status) => {
-        const list = grouped[status];
-        const config = STATUS_CONFIG[status];
-        return (
-          <section key={status}>
-            <div className="mb-3 flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-bob-ink">
-                {config.label}
-              </h2>
-              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${config.badge}`}>
-                {list.length}
-              </span>
-            </div>
-            <p className="mb-4 text-sm text-bob-ink/70">{config.description}</p>
-
-            {list.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
-                Nessun professionista in questa categoria.
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {list.map((pro) => {
-                  const profile = profileMap[pro.user_id];
-                  const svc = pro.professional_services?.[0];
-                  return (
-                    <div
-                      key={pro.id}
-                      className="card p-5"
-                      data-testid={`pro-row-${pro.id}`}
-                    >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        {/* Info professionista */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-semibold text-bob-ink">
-                              {profile?.full_name ?? "Professionista"}
-                            </h3>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${config.badge}`}
-                            >
-                              {config.label}
-                            </span>
-                          </div>
-
-                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-bob-ink/70">
-                            {svc?.services?.name && (
-                              <span className="inline-flex items-center gap-1">
-                                <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
-                                {svc.services.name}
-                              </span>
-                            )}
-                            {pro.cities?.name && (
-                              <span className="inline-flex items-center gap-1">
-                                <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-                                {pro.cities.name}
-                              </span>
-                            )}
-                            {pro.years_experience != null && (
-                              <span className="inline-flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                                {pro.years_experience} anni di esperienza
-                              </span>
-                            )}
-                            {svc?.min_price != null && (
-                              <span className="inline-flex items-center gap-1">
-                                <Euro className="h-3.5 w-3.5" aria-hidden="true" />
-                                da €{svc.min_price}
-                                {svc.max_price ? ` a €${svc.max_price}` : ""}
-                              </span>
-                            )}
-                            {profile?.phone && (
-                              <span className="inline-flex items-center gap-1">
-                                <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-                                {profile.phone}
-                              </span>
-                            )}
-                            <span className="inline-flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-                              Iscritto {fmtDate(pro.created_at)}
-                            </span>
-                          </div>
-
-                          {pro.headline && (
-                            <p className="mt-2 text-sm text-bob-ink/75">
-                              {pro.headline}
-                            </p>
-                          )}
-                          {pro.bio && (
-                            <p className="mt-1 line-clamp-2 text-xs text-bob-ink/65">
-                              {pro.bio}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Bottoni azione */}
-                        <div className="flex shrink-0 flex-col items-end gap-2.5">
-                          <VerifyButtons
-                            proId={pro.id}
-                            currentStatus={pro.verification_status}
-                          />
-                          <TierButtons
-                            proId={pro.id}
-                            currentTier={pro.subscription_tier ?? "free"}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        );
-      })}
+      {/* ---- L'archivio: non e' una coda. Solo le due leve dello staff. ---- */}
+      <details data-testid="archivio-professionisti">
+        <summary className="cursor-pointer text-sm font-medium text-bob-ink/70 hover:text-bob-indigo">
+          Tutti i professionisti ({pros.length}) — archivio, piano e approvazione staff
+        </summary>
+        <div className="mt-3 grid gap-3 text-xs text-bob-ink/70 lg:grid-cols-2">
+          <p>
+            <span className="font-semibold text-bob-ink">Piano.</span>{" "}
+            {"Cambia il piano di abbonamento del professionista; ogni cambio lo registra subscription_tier_events. È l'unico punto da cui lo staff lo può fare."}
+          </p>
+          <p>
+            <span className="font-semibold text-bob-ink">Approvazione staff (verification_status).</span>{" "}
+            {"Fa due cose: se non è «Approva», un livello «documenti verificati» si mostra ai clienti come «Pro» invece che «Pro+»; e la contano la dashboard di /admin e le analisi. Non fa: non decide chi compare ai clienti né l'ordine dei risultati, non chiede una motivazione e non lascia una riga nel registro."}
+          </p>
+        </div>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm" data-testid="archivio-tabella">
+            <thead className="text-xs text-bob-ink/60">
+              <tr className="border-b border-black/10">
+                <th className="py-2 pr-3 font-semibold">Professionista</th>
+                <th className="py-2 pr-3 font-semibold">Città</th>
+                <th className="py-2 pr-3 font-semibold">Livello</th>
+                <th className="py-2 pr-3 font-semibold">Iscritto</th>
+                <th className="py-2 pr-3 font-semibold">Piano</th>
+                <th className="py-2 font-semibold">Approvazione staff</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pros.map((pro) => (
+                <tr key={pro.id} className="border-b border-black/5 align-middle" data-testid={`pro-row-${pro.id}`}>
+                  <td className="py-2 pr-3 font-medium text-bob-ink">
+                    {nomeMap[pro.user_id] ?? "Professionista"}
+                  </td>
+                  <td className="py-2 pr-3 text-bob-ink/70">{pro.cities?.name ?? "—"}</td>
+                  <td className="py-2 pr-3 text-bob-ink/70">
+                    {VERIFICATION_LABEL_STAFF[livelloPerPro.get(pro.id) ?? "none"]}
+                  </td>
+                  <td className="py-2 pr-3 text-bob-ink/70">{fmtDate(pro.created_at)}</td>
+                  <td className="py-2 pr-3">
+                    <TierButtons proId={pro.id} currentTier={pro.subscription_tier ?? "free"} />
+                  </td>
+                  <td className="py-2">
+                    <VerifyButtons proId={pro.id} currentStatus={pro.verification_status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </div>
   );
 }
