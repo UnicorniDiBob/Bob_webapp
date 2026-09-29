@@ -12,7 +12,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/supabase/types";
 import type { VerificationLevel } from "@/lib/vat";
-import { ascoltaSegnali, esciAccount } from "@/lib/sessioni/client";
+import { ascoltaSegnali, esciAccount, leggiStatoSessioni } from "@/lib/sessioni/client";
 
 interface AuthState {
   session: Session | null;
@@ -22,6 +22,12 @@ interface AuthState {
   /** Livello di verifica del professionista: serve all'etichetta nell'header. */
   verificationLevel: VerificationLevel | null;
   loading: boolean;
+  /**
+   * C'e' un secondo account in questo browser (in attesa o da riconnettere).
+   * Serve all'etichetta di «Esci», che in quel caso esce da tutti e due e
+   * deve dirlo (29/09).
+   */
+  altroAccount: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -36,11 +42,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [verificationLevel, setVerificationLevel] =
     useState<VerificationLevel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [altroAccount, setAltroAccount] = useState(false);
   // L'utente che questa scheda ha in memoria: serve a scoprire, quando la
   // scheda torna in primo piano, che nei cookie c'e' ormai un altro account.
   const utenteInMemoria = useRef<string | null>(null);
   useEffect(() => {
     utenteInMemoria.current = session?.user?.id ?? null;
+    // bob-attesa e' httpOnly: se c'e' un secondo account lo dice il server.
+    if (session?.user) leggiStatoSessioni().then((st) => setAltroAccount(!!st?.attesa));
+    else setAltroAccount(false);
   }, [session]);
 
   async function loadProfile(userId: string) {
@@ -163,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fullName,
     verificationLevel,
     loading,
+    altroAccount,
     signOut,
     refresh,
   };
