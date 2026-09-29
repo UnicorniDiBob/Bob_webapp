@@ -53,14 +53,16 @@ colmare prima della seconda città, elencato in `docs/NOTE_E_DECISIONI.md`.
 
 # Handoff — 29 settembre 2026, Lucio
 
-**Fatto.** Sessioni multiple (ramo `feat/sessioni-multiple`, PR da mergiare), in quattro fette:
-- **due sessioni nello stesso browser** e lo scambio con un click; l'account in attesa sta in `bob-attesa` (httpOnly, solo refresh token, id ed email) e l'attivo non si rinnova mai durante lo scambio;
-- **il punto unico lato server** (`createClient` di `lib/supabase/server`, costruito da `fabbrica.ts`) con un test che prova che, con A attivo e B presente, niente va a B;
-- **le chiavi del browser per account** (bozza della chat di Bob compresa), e la ricarica completa allo scambio con l'avviso fra schede;
-- «esci da questo» ed «esci da tutti», in questo browser.
+**Fatto.** Sessioni multiple: la #114 è su `main`. Sul ramo `feat/sessioni-aggiungi-account` (PR da mergiare):
+- **«aggiungi un altro account»** e **«riconnetti»** (`POST /api/sessioni/aggiungi`). Il tetto di tentativi è per IP e per HMAC dell'email, e il login fallito non tocca niente. L'errore è identico per email e password, e nessuna delle due finisce in un log;
+- **la migrazione 104**, che allarga il vincolo di `rate_limit_counters` a `accesso`, e la riga A24 del Registro;
+- **«Esci» dice «Esci da tutti gli account»** quando in questo browser ci sono due account.
 
-Selettore minimo in `/impostazioni/accesso`. Nessuna migrazione: la 104 è libera.
+**A metà — prima del merge, in quest'ordine:**
+1. mettere `ACCESSO_HMAC_SEGRETO` su Vercel, produzione, almeno 32 caratteri (`openssl rand -hex 32`); senza, la route risponde 503;
+2. applicare la 104;
+3. rilanciare gli advisor.
 
-**A metà.** **La route «aggiungi account» non c'è**: il tetto di tentativi vuole allargare il vincolo `route in ('chat','brief')` di `rate_limit_counters`, cioè una migrazione, e aspetta la decisione di Lucio. Senza, un secondo account entra nel browser solo a mano (passi nella PR). Il collaudo dal vivo lo fa Lucio con account suoi. **Per André:** il selettore nell'intestazione; `BobChat.tsx` e `PromemoriaProfilo.tsx` sono cambiati solo nel nome delle chiavi di `localStorage`.
+Le 13 prove manuali della #114 le fa Lucio su produzione.
 
-**Applicato in produzione che devi sapere.** Niente su Supabase. **Al merge cambia il logout per tutti:** «Esci» vale solo per questo browser, non più per tutti i dispositivi (`NOTE_E_DECISIONI.md`, 29/09).
+**Applicato in produzione che devi sapere.** Niente, oggi: la 104 è nel ramo e **non è applicata**. **Per André:** in `Header.tsx` è cambiata solo l'etichetta dei due pulsanti «Esci».
