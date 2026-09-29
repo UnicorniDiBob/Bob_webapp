@@ -251,14 +251,15 @@ export default function ComeFunzionaPage() {
             cercato in passato e chi sei.
           </p>
           <p className="mt-4 text-base font-medium text-bob-ink">
-            Il piano a pagamento pesa nel punteggio, attraverso la verifica.
+            Il piano a pagamento sblocca funzioni che pesano nel punteggio.
           </p>
           <p className="mt-1 text-base text-bob-ink/65">
-            La verifica della partita IVA contribuisce al punteggio: a parità di
-            tutto il resto, un professionista verificato viene prima di uno che
-            non lo è. Se un giorno introdurremo spazi a pagamento diversi dai
-            piani, li troverai marcati «Sponsorizzato» sulla scheda, e questa
-            pagina lo dirà.
+            I piani a pagamento comprendono la verifica della partita IVA e la
+            prenotazione immediata, ed entrambe pesano nel punteggio: a parità
+            di tutto il resto, chi le ha viene prima di chi non le ha. Se un
+            giorno introdurremo spazi a pagamento diversi dai piani, li
+            troverai marcati «Sponsorizzato» sulla scheda, e questa pagina lo
+            dirà.
           </p>
       
             </div>
