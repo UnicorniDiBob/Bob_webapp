@@ -25,26 +25,29 @@ principali sì, meccanica no): via le soglie del tempo di risposta, l'esempio
 di shrinkage delle recensioni, il sorteggio giornaliero a parità di punti, il
 dettaglio oltre alla frase sulla privacy del centro-CAP. Restano sette
 elementi, "la zona e il tempo di risposta pesano uguale" resta vera.
+Corretta anche l'intestazione dello stesso blocco: diceva che il piano a
+pagamento pesa nel punteggio "attraverso la verifica", come se fosse l'unico
+canale. Non lo è — `punti_disponibilita` dà 10 con disponibilità *e*
+`instant_book_enabled`, 7 con la sola disponibilità, 5 senza niente;
+`instant_book_enabled` è bloccato a `tier === "pro" || "business"`, quindi il
+piano a pagamento vale +3 lì, non i 10 pieni che la voce precedente di
+questo file diceva (errore mio, corretto qui — i 7 punti dell'availability restano
+raggiungibili da chiunque sul piano Free che imposta gli orari). Totale
+raggiungibile solo a pagamento: 7 dalla verifica + 3 dalla prenotazione
+immediata, 10 su 100. La pagina ora nomina entrambi i canali (verifica e
+prenotazione immediata) senza pubblicare i punteggi.
 
 **A metà.** La revisione legale di Lucio sul blocco trasparenza — il testo è
 già live, come da istruzione, ma non è stato scritto da un legale e tocca
 art. 23 Codice del Consumo.
 
-**Applicato in produzione che devi sapere.** 101, 102, 103 e il fix del
+**Applicato in produzione che devi sapere.** 101, 102, 103 e i due fix del
 blocco trasparenza sono tutti applicati/mergiati. La 103 e' stata applicata
 alle 10:01 PRIMA del merge, contro la regola: il file arriva in main con la
 PR di quel giorno. Se hai fatto pull fra le 10:01 e il merge, il tuo repo non
-ricostruiva la produzione. **Trovato lavorando sul blocco trasparenza, non
-ancora corretto**: la disponibilità (`punti_disponibilita`, fino a 10 punti —
-più della verifica) premia con 10 punti solo chi ha `instant_book_enabled`,
-e quel campo è bloccato a `tier === "pro" || tier === "business"`
-(`InstantBookingConfig.tsx`, `InstantBookingEntry.tsx`) — stessa categoria di
-problema appena corretta per la verifica, stessa norma probabilmente
-coinvolta, ma non era nello scopo di questo fix e non l'ho toccato. Da
-valutare con Lucio insieme alla revisione legale sopra. Restano ~110 CAP
-civici reali fuori Milano senza centroide (Cagliari, Ravenna, Mestre, La
-Spezia e altri): gap noto, da colmare prima della seconda città, elencato in
-`docs/NOTE_E_DECISIONI.md`.
+ricostruiva la produzione. Restano ~110 CAP civici reali fuori Milano senza
+centroide (Cagliari, Ravenna, Mestre, La Spezia e altri): gap noto, da
+colmare prima della seconda città, elencato in `docs/NOTE_E_DECISIONI.md`.
 
 ---
 
