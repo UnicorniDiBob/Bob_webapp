@@ -190,10 +190,8 @@ export default function ComeFunzionaPage() {
             <li>
               <strong className="text-bob-ink">La valutazione.</strong>{" "}
               Quella che pesa di più. La media dei voti, pesata sul numero di
-              recensioni: cinque stelle su due giudizi contano meno di quattro e
-              mezzo su venti. Poche recensioni avvicinano alla media della
-              piattaforma, non a zero. Sotto le tre stelle la valutazione smette
-              di dare punti.
+              recensioni. Sotto le tre stelle la valutazione smette di dare
+              punti.
             </li>
             <li>
               <strong className="text-bob-ink">Chi lavora dove servi tu.</strong>{" "}
@@ -202,9 +200,7 @@ export default function ComeFunzionaPage() {
               comunque, ma parte quasi da zero su questa voce. A prescindere
               da dove ha detto di lavorare, conta anche chi è fisicamente più
               vicino a te: il confronto è fra il centro del tuo CAP e quello
-              del professionista, mai un indirizzo esatto — la precisione
-              grezza è voluta, non un limite: è tutto quello che serve per
-              ordinare l&apos;elenco, e niente di più.
+              del professionista, mai un indirizzo esatto.
             </li>
             <li>
               <strong className="text-bob-ink">
@@ -212,8 +208,7 @@ export default function ComeFunzionaPage() {
               </strong>{" "}
               Pesa esattamente quanto la zona. Misurato, non dichiarato: il tempo
               che passa fra il tuo primo messaggio e la sua prima risposta, negli
-              ultimi tre mesi. Chi risponde entro mezz&apos;ora prende tutto, chi
-              ci mette più di tre giorni non prende niente.
+              ultimi tre mesi. Prima risponde, meglio è.
             </li>
             <li>
               <strong className="text-bob-ink">Se il prezzo è scritto.</strong>{" "}
@@ -231,8 +226,10 @@ export default function ComeFunzionaPage() {
             </li>
             <li>
               <strong className="text-bob-ink">Chi è verificato.</strong>{" "}
-              Un profilo con la partita IVA controllata viene prima di uno ancora
-              da controllare.
+              La verifica della partita IVA è compresa nei piani a pagamento. Se
+              un professionista non è verificato non è detto che non
+              l&apos;abbiamo controllato: può non avere un piano che la include.
+              Resta una delle voci che pesano di meno.
             </li>
             <li>
               <strong className="text-bob-ink">La scheda compilata.</strong>{" "}
@@ -247,23 +244,21 @@ export default function ComeFunzionaPage() {
             Se di un professionista non abbiamo ancora misurato il tempo di
             risposta, o non ci ha ancora dato i suoi orari, quella voce vale il
             centro della scala: chi è appena arrivato non parte ultimo per il solo
-            fatto di essere appena arrivato. E a parità di punti si sorteggia, con
-            un sorteggio che cambia una volta al giorno — così l&apos;elenco è
-            stabile se ricarichi la pagina, ma non è sempre lo stesso nome a stare
-            davanti.
+            fatto di essere appena arrivato.
           </p>
           <p className="mt-3 text-base text-bob-ink/65">
             Non contano, e non conteranno finché non è scritto qui: che cosa hai
-            cercato in passato, chi sei, e qualunque pagamento.
+            cercato in passato e chi sei.
           </p>
           <p className="mt-4 text-base font-medium text-bob-ink">
-            Nessuna posizione è a pagamento.
+            Il piano a pagamento pesa nel punteggio, attraverso la verifica.
           </p>
           <p className="mt-1 text-base text-bob-ink/65">
-            Nessun professionista può pagare per stare più in alto. Se un giorno
-            introdurremo spazi a pagamento, li troverai marcati
-            «Sponsorizzato» sulla scheda e questa pagina lo dirà: non cambieranno
-            l&apos;ordine degli altri.
+            La verifica della partita IVA contribuisce al punteggio: a parità di
+            tutto il resto, un professionista verificato viene prima di uno che
+            non lo è. Se un giorno introdurremo spazi a pagamento diversi dai
+            piani, li troverai marcati «Sponsorizzato» sulla scheda, e questa
+            pagina lo dirà.
           </p>
       
             </div>
