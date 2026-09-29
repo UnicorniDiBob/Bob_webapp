@@ -1,9 +1,9 @@
 # Bob — Design spike: il doppio cappello (cliente e professionista nello stesso account)
 
-> **PROPOSTA IN ATTESA DELLA RIUNIONE DEL 1 OTTOBRE 2026 (rito del giovedì).** Approvata il 29/09 come analisi; la strada (b) e la disposizione B sono consigliate da Lucio, ma **niente è deciso**: cinque voci su undici sono di André e cambiano la navigazione dell'intero prodotto, e la decisione si prende insieme giovedì.
+> **DECISO il 29/09/2026 da Lucio — due account separati, uno per mestiere.** La strada (b), un account solo con due cappelli, è scartata. L'analisi qui sotto resta com'era, marcata: serve a chi fra sei mesi chiederà perché. Le voci che restano sono al §9; la voce nuova, le sessioni multiple, al §10.
 
-**Stato:** PROPOSTA — niente è deciso, niente è costruito; decisione alla riunione del 1/10/2026 · **Data:** 29 settembre 2026 · **Autore:** Lucio, con Claude
-**Proprietari:** la scelta è di Lucio e André insieme; la navigazione e l'area cliente sono di André, schema, RLS, termini e cancellazione di Lucio (vedi §9).
+**Stato:** DECISO il 29/09/2026 da Lucio — strada (a), due account separati; niente costruito · **Data:** 29 settembre 2026 · **Autore:** Lucio, con Claude
+**Proprietari:** la scelta l'ha presa Lucio il 29/09/2026; la casetta nell'area in alto è di André, Registro, termini e sessioni multiple di Lucio (vedi §9).
 **Perché adesso:** un professionista che ha bisogno di un idraulico oggi deve aprire un secondo account con un'altra email. Prima del pilota di gennaio conviene sapere se si risolve in interfaccia o in schema, perché le due strade toccano cose diverse, e una delle due tocca l'autenticazione.
 
 > **Come si legge questo documento.** Ogni affermazione è marcata:
@@ -11,21 +11,23 @@
 > **DECISO** = regola già scritta del progetto (CLAUDE.md, DATA_COMPLIANCE.md), che la proposta deve rispettare;
 > **PROPOSTO** = opinione di questa spike, da approvare. Una proposta scritta come decisione è il modo in cui questo
 > progetto si è già ritrovato con note che descrivono uno stato che non esiste: qui non succede.
+> **SCELTO / SCARTATO** = esito della decisione del 29/09/2026 (Lucio). Una proposta scartata resta scritta com'era,
+> con la marcatura: il materiale serve, la conclusione no.
 
 ---
 
-## 0. Foglio delle decisioni (da prendere — nessuna presa)
+## 0. Foglio delle decisioni (decisione presa il 29/09/2026 da Lucio)
 
-| # | Domanda | Proposta | Perché, in una riga |
-|---|---|---|---|
-| 1 | Due account legati, o un account solo? | **PROPOSTO: un account solo (strada b)** | Il database ragiona già così: la RLS non guarda il ruolo tranne che in un punto (§1.3) |
-| 2 | Cosa diventa `users.role`? | **PROPOSTO: resta solo per lo staff**; «è professionista» = ha una riga in `professionals` | È già il criterio di tutte le policy lato pro |
-| 3 | Disposizione dell'area in alto | **PROPOSTO: disposizione B** (casa = la tua vita privata, valigetta = il lavoro) | Un simbolo che significa una cosa sola, per tutti (§3) |
-| 4 | Il cappello si sceglie con uno stato nascosto o con l'indirizzo? | **PROPOSTO: con l'indirizzo** (due aree, due URL) | Un link si incolla e si riapre uguale; niente «ero nel cappello sbagliato» |
-| 5 | Abbinarsi a sé stessi | **PROPOSTO: vietato nel database**, non solo nel matcher | Oggi è già possibile via API (§5.1) |
-| 6 | Chiudere l'attività senza cancellare l'account | **PROPOSTO: sì, operazione separata** | Oggi non esiste: chi smette di fare il pro perde anche il cliente (§5.5) |
+| # | Domanda | Esito |
+|---|---|---|
+| 1 | Due account legati, o un account solo? | **DECISO il 29/09 da Lucio: due account separati, uno per mestiere (strada a).** La proposta della spike, un account solo (strada b), è **SCARTATA** |
+| 2 | Cosa diventa `users.role`? | **Non si applica:** resta com'è, un ruolo per account |
+| 3 | Disposizione dell'area in alto | **Superata:** A, B e C nascevano dal doppio cappello. Con un ruolo per account la casetta porta alla casa di quell'account (§9, voce 2) |
+| 4 | Il cappello nell'indirizzo o in uno stato? | **Non si applica:** un mestiere per account |
+| 5 | Abbinarsi a sé stessi | **Resta, ma non qui:** è un rilievo *serious* in `roadmap/findings.csv` (29/09), vivo adesso e indipendente dalla scelta |
+| 6 | Chiudere l'attività senza cancellare l'account | **Non si applica:** ogni account si cancella da sé |
 
-**Da fare prima di costruire (niente codice):** Lucio e André scelgono 1, 3 e 4; poi le voci del §9 partono ognuna nella PR del suo proprietario.
+**Voce nuova, che prima non c'era:** restare connessi a tutti e due gli account e passare dall'uno all'altro senza rifare il login (§10). **Dipendenza:** l'SMTP personalizzato di Supabase (§10.4).
 
 ---
 
@@ -79,7 +81,7 @@
 
 ---
 
-## 3. L'area in alto: tre disposizioni (PROPOSTO)
+## 3. L'area in alto: tre disposizioni (analisi per la strada b — SUPERATA il 29/09/2026)
 
 La casetta sostituisce «I miei lavori» / «Il mio lavoro». Il problema non è l'icona: oggi quella voce è **un indirizzo con due significati**, e un simbolo muto non può portarne due. Per chi ha due cappelli, «casa» deve voler dire una cosa sola.
 
@@ -95,7 +97,7 @@ Entrambi:         [Bob]  ……  💬 Parla con Bob   🔔  🏠  👤      🏠
 
 Pro: una sola icona, nessuna decisione. Contro: **per il pro-cliente «casa» vuol dire lavoro**, e le sue richieste private diventano una scheda dentro il lavoro — la stessa confusione di oggi, con meno testo per spiegarla.
 
-### Disposizione B — «Casa è la tua vita privata, la valigetta è il lavoro» (**PROPOSTA**)
+### Disposizione B — «Casa è la tua vita privata, la valigetta è il lavoro» (era la proposta della spike, superata)
 
 ```
 Cliente:          [Bob]  ……  💬 Parla con Bob   🔔  🏠        👤    🏠 → /casa  (richieste, preventivi, appuntamenti da cliente)
@@ -117,13 +119,15 @@ Entrambi:         [Bob]  ……  🔔  🏠  [ Cliente ▾ | Professionista ]  �
 
 Pro: una sola casetta. Contro: **uno stato nascosto**. Lo stesso clic porta in due posti a seconda di un interruttore che si dimentica; un link incollato a qualcuno si apre nel cappello sbagliato; le notifiche vanno smistate fra i due. È il selettore della strada (a), senza i suoi costi ma con il suo difetto.
 
-**Proposta: B.** È l'unica in cui il simbolo ha un significato solo, e il cappello sta nell'indirizzo (decisione 4).
+**Era la proposta: B. Superata dalla decisione del 29/09:** con due account separati ogni account ha un ruolo solo, e la casetta ha già un significato solo per ciascuno.
 
 ---
 
 ## 4. Il doppio cappello: le due strade
 
-### 4.1 Strada (a) — Due account legati, con un selettore
+### 4.1 Strada (a) — Due account legati, con un selettore — **SCELTA il 29/09/2026 da Lucio**
+
+> Decisione: **due account separati, uno per mestiere.** Il passaggio dall'uno all'altro senza rifare il login è la voce nuova del §10, che progetta anche la parte «Sessione» qui sotto.
 
 **Schema.** Due utenti Auth distinti (due email, per il vincolo di Supabase), ognuno col suo `users.role` di oggi. Una tabella nuova di legame (`account_links`: utente A, utente B, confermato il), con RLS.
 
@@ -137,15 +141,17 @@ Pro: una sola casetta. Contro: **uno stato nascosto**. Lo stesso clic porta in d
 - Il divieto di abbinarsi a sé stessi e di recensirsi (§5.1, §5.2) diventa un controllo **attraverso** la tabella dei legami: più facile da sbagliare, e aggirabile da chi non lega i due account.
 - Due campanelle, due caselle messaggi.
 
-### 4.2 Strada (b) — Un account solo, che cambia vista (**PROPOSTA**)
+### 4.2 Strada (b) — Un account solo, che cambia vista — **SCARTATA il 29/09/2026 da Lucio**
+
+> Era la proposta della spike. Resta scritta com'era, per chi chiederà perché; le frasi «Proponeva» sono al passato di proposito.
 
 **Schema.**
 - `users.role` si restringe a dire se sei **staff** (`admin`, `cs`) o no. Per tutti gli altri, «cliente» è la condizione di base; «professionista» = **esiste una riga in `professionals`** con il tuo `user_id` — che è già il criterio di `private.my_professional_ids()` e di tutte le policy lato pro.
-- Per non rompere niente, **PROPOSTO:** si lascia la colonna com'è (`customer`/`professional`) durante il passaggio e si smette di leggerla, lettore per lettore; si toglie alla fine.
+- Per non rompere niente, **Proponeva:** si lascia la colonna com'è (`customer`/`professional`) durante il passaggio e si smette di leggerla, lettore per lettore; si toglie alla fine.
 
 **RLS e policy.**
 - Le policy del lato cliente e del lato pro **restano come sono** (§1.3).
-- «Pro creates own profile»: invece di `users.role = 'professional'`, **PROPOSTO:** richiedere che l'utente abbia **accettato i termini professionisti** (una riga in `terms_acceptances` con `audience = 'professional'`). È una condizione più vera del ruolo: dice che ha firmato il contratto business.
+- «Pro creates own profile»: invece di `users.role = 'professional'`, **Proponeva:** richiedere che l'utente abbia **accettato i termini professionisti** (una riga in `terms_acceptances` con `audience = 'professional'`). È una condizione più vera del ruolo: dice che ha firmato il contratto business.
 - Il trigger `termini_accettati_all_iscrizione` (mig 100) resta per l'iscrizione; il passaggio «divento anche professionista» registra la seconda accettazione dalla route, con il suo pubblico.
 
 **Sessione.** Una sola. Il cappello non è uno stato della sessione: è **dove sei** (`/casa` o `/lavoro`, disposizione B). Niente impersonazione, niente selettore.
@@ -164,16 +170,18 @@ Pro: una sola casetta. Contro: **uno stato nascosto**. Lo stesso clic porta in d
 | Abbinarsi / recensirsi | controllo attraverso i legami, aggirabile | vincolo diretto su `auth.uid()` |
 | Dove sta il costo | autenticazione (la parte più rischiosa) | interfaccia (la parte più visibile) |
 
-**PROPOSTO: strada (b).** Il database è già un modello a cappello doppio (§1.3); la strada (a) costruirebbe un secondo account per aggirare un limite che esiste solo nell'interfaccia, e sposterebbe il rischio proprio dove Bob è più fragile: l'autenticazione e il tetto delle email.
+**La spike proponeva la strada (b) — SCARTATA il 29/09/2026 da Lucio, che ha scelto la (a).** L'argomento era questo: il database è già un modello a cappello doppio (§1.3); la strada (a) costruirebbe un secondo account per aggirare un limite che esiste solo nell'interfaccia, e sposterebbe il rischio proprio dove Bob è più fragile: l'autenticazione e il tetto delle email.
 
 ---
 
 ## 5. Le code, guardate prima di consigliare
 
+> Le analisi restano: sono fatti accertati. Le proposte legate alla strada (b) sono superate e sono al passato. Quello che è vivo adesso, qualunque strada, sta in `roadmap/findings.csv`.
+
 ### 5.1 Il matcher non deve propormi a me stesso
 
 - **FATTO: oggi non c'è nessuna esclusione.** `/api/match` e `getProfessionals()` in `src/lib/data.ts` non escludono il profilo di chi chiede; `request_professionals` la scrive il browser (`RequestDialog.tsx:222`, `QuoteDialog.tsx:228`) con qualunque `professional_id`, e la policy «User inserts own request_professionals» controlla solo che la richiesta sia tua. L'unico ostacolo è `BobChat`, che parte solo per i clienti: **un pro può già abbinarsi a sé stesso chiamando l'API.**
-- **PROPOSTO, in entrambe le strade:** (1) il matcher esclude i profili con `user_id = auth.uid()`; (2) **nel database**, un vincolo (trigger su `request_professionals`) che rifiuta un professionista il cui `user_id` coincide con il `customer_id` della richiesta. Con (b) è un confronto diretto; con (a) va esteso agli account legati.
+- **PROPOSTO, in entrambe le strade — e ora rilievo *serious* in `roadmap/findings.csv` (29/09):** (1) il matcher esclude i profili con `user_id = auth.uid()`; (2) **nel database**, un vincolo (trigger su `request_professionals`) che rifiuta un professionista il cui `user_id` coincide con il `customer_id` della richiesta. Sullo stesso account è un confronto diretto. **Con la strada scelta (a)**, i due account di una persona hanno due `user_id` diversi: il vincolo non li vede, a meno che il server sappia che sono della stessa persona (§10.1).
 - Resta «scelto dal cliente» (DECISO §2.1): si toglie una scelta impossibile, non se ne aggiunge una automatica.
 
 ### 5.2 Un professionista che recensisce un professionista
@@ -187,7 +195,7 @@ Pro: una sola casetta. Contro: **uno stato nascosto**. Lo stesso clic porta in d
 
 - **FATTO.** Il registro distingue già per **pubblico** (`customer` / `professional`), ogni pubblico ha la sua sequenza di versioni, e `terms_acceptances` ha la colonna `audience` (mig 100). Un utente può avere righe per tutti e due i pubblici: lo schema lo regge già.
 - **FATTO: il codice no.** `pubblicoPerRuolo()` dà **un** pubblico per utente; la route `/api/termini/accetta` accetta solo quello; il trigger d'iscrizione ne deriva uno dal ruolo.
-- **PROPOSTO:** la route riceve il pubblico come parametro e lo controlla contro la condizione vera (per `professional`: sta creando o ha un profilo pro); il passaggio «divento anche professionista» è **il momento dell'accettazione dei termini business**, con la sua riga. Così la risposta a «quale testo ha accettato e quando» è: due righe, una per pubblico, ognuna con la sua versione e la sua ora.
+- **Proponeva, per la strada (b):** la route riceve il pubblico come parametro e lo controlla contro la condizione vera (per `professional`: sta creando o ha un profilo pro); il passaggio «divento anche professionista» è **il momento dell'accettazione dei termini business**, con la sua riga. Così la risposta a «quale testo ha accettato e quando» è: due righe, una per pubblico, ognuna con la sua versione e la sua ora.
 - **Da far guardare al legale:** i termini clienti presuppongono un consumatore. Un idraulico che chiede un elettricista per un cantiere suo compra da professionista, non da consumatore. Il testo clienti va riletto per questo caso prima di aprirlo ai pro.
 
 ### 5.4 Divulgazione progressiva: un pro che è anche cliente
@@ -200,26 +208,25 @@ Pro: una sola casetta. Contro: **uno stato nascosto**. Lo stesso clic porta in d
 
 - **FATTO.** Oggi per un pro la cancellazione disattiva il profilo e poi cancella **l'intero account** (`cancellazione/route.ts:136`); le cascate portano via `professionals` e, con lui, le recensioni **ricevute** (`ratings.professional_id` è `ON DELETE CASCADE`).
 - **FATTO.** L'export dei dati è bloccato per i pro (`esporta/route.ts:74`): un pro-cliente non potrebbe scaricare nemmeno i suoi dati da cliente.
-- **PROPOSTO, strada (b):** due operazioni distinte.
+- **Proponeva, per la strada (b):** due operazioni distinte.
   1. **Chiudi l'attività:** disattiva il profilo pro (`deactivated_at`, esiste già) e lo cancella dopo il periodo dichiarato, lasciando vivo l'account cliente. Resta da decidere cosa succede alle recensioni ricevute (oggi spariscono con la cascata) e alle fatture (10 anni, DATA_COMPLIANCE §5).
   2. **Cancella l'account:** entrambi i cappelli, come oggi.
   E l'export copre tutti e due i cappelli.
-- Con la strada (a) le cancellazioni sono due, su due account, e tenerle coerenti è lasciato a chi le fa.
+- **Con la strada scelta (a):** ogni account si cancella da sé, con il percorso di oggi. Una persona che chiede di cancellare «tutto» va servita su tutti gli account che indica: è una questione di processo (§9, voce 3), non di codice.
 
 ---
 
 ## 6. Dati personali (DATA_COMPLIANCE §0)
 
-- **PROPOSTO:** nessuna finalità nuova con la strada (b): gli stessi dati, per gli stessi scopi, con due contratti (clienti e professionisti) accettati dalla stessa persona. Da aggiornare le righe A1 (account: il ruolo cambia significato) e A25 (accettazioni: due pubblici per utente) del Registro.
-- La strada (a) raddoppia l'interessato: due righe per ogni finalità di A1, e una tabella nuova (i legami) con la sua base giuridica, conservazione e cancellazione.
+- **Con la strada scelta (a):** nessuna finalità nuova. Una persona può avere due account, e i diritti (export, cancellazione, rettifica) si esercitano per account: la riga A1 del Registro lo deve dire (§9, voce 3). A25 non cambia: ogni account ha un pubblico solo.
+- **Se le sessioni multiple (§10) registrano lato server che due account sono della stessa persona**, quel legame è un dato nuovo, con base giuridica, riga nel Registro, conservazione e cancellazione. Se restano solo nel browser, no.
 - **DPIA:** nessun innesco nuovo in nessuna delle due.
 
 ---
 
 ## 7. Stima grossolana
 
-- **(b):** la maggior parte in interfaccia (André): due aree al posto di `/dashboard`, lato della chat dalla richiesta, impostazioni per capacità, Bob per tutti, flusso «diventa anche professionista». Nello schema (Lucio): una migrazione con la policy riscritta e due vincoli, la route dei termini, export e cancellazione. Ordine di grandezza: settimane, non mesi.
-- **(a):** tutto quello che serve a (b) per i controlli (§5), più la tabella dei legami, il cambio di sessione o l'impersonazione, e il doppio percorso GDPR.
+Scritta per la strada (b), superata. **Con la strada scelta (a)** il costo sta tutto in una voce: le sessioni multiple (§10), che toccano l'autenticazione — la parte in cui Bob è più fragile — e che dipendono dall'SMTP (§10.4). Le voci d'interfaccia della strada (b) non si fanno (§9).
 
 ---
 
@@ -227,37 +234,86 @@ Pro: una sola casetta. Contro: **uno stato nascosto**. Lo stesso clic porta in d
 
 | Domanda | Stato |
 |---|---|
-| Strada (a) o (b) | **Aperta** — proposta (b) |
-| Disposizione A, B o C | **Aperta** — proposta B |
-| Cappello nell'indirizzo o in uno stato | **Aperta** — proposto nell'indirizzo |
-| Cosa succede alle recensioni ricevute quando si chiude l'attività | **Aperta**, non proposta: è una scelta di prodotto e di conservazione |
-| Termini clienti per un professionista che compra per lavoro | **Aperta**, da legale |
-| Abbinarsi a sé stessi via API | **Fatto accertato**, da chiudere indipendentemente dalla scelta |
+| Strada (a) o (b) | **DECISA il 29/09/2026 da Lucio: (a), due account separati** |
+| Disposizione A, B o C | **Superata** dalla decisione |
+| Cappello nell'indirizzo o in uno stato | **Non si applica** |
+| Recensioni ricevute alla chiusura dell'attività | **Non si applica**: con account separati si cancella l'account pro, come oggi |
+| Termini clienti per un professionista che compra per lavoro | **Aperta**, da legale (§9, voce 4) |
+| Abbinarsi a sé stessi via API | **Fatto accertato**, rilievo in `findings.csv` |
+| Dove vivono le due sessioni, come si evita quella sbagliata, cosa succede alla scadenza | **Aperta**, da progettare (§10) |
 
 ---
 
-## 9. Voci per il Piano (PROPOSTE, con proprietario)
+## 9. Voci per il Piano (stato dopo la decisione del 29/09/2026)
 
-**Da decidere insieme, prima di tutto il resto**
-1. Scegliere strada (a)/(b), disposizione dell'area in alto, cappello nell'indirizzo o nello stato — *Lucio e André*.
+Le undici voci diventano cinque: una è fatta, tre restano, una nasce adesso. Sette sono chiuse come **NON DA FARE**.
 
-**André — navigazione e area cliente**
-2. Area in alto: casetta (e valigetta) secondo la disposizione scelta, desktop e 390px — `Header.tsx`.
-3. `/dashboard` diviso in area cliente e area di lavoro, con `middleware.ts` e `next.config.mjs` aggiornati.
-4. `messaggi`: il lato da cui si scrive si decide dalla richiesta (`customer_id` = io?), non dal ruolo.
-5. `BobChat` e le impostazioni: «puoi chiedere un servizio» per tutti, «impostazioni da pro» per chi ha un profilo pro, non per ruolo.
-6. Flusso «diventa anche professionista» da un account cliente, e «chiudi l'attività» nell'area account.
+**Le cinque voci**
 
-**Lucio — schema, RLS, termini, dati**
-7. Migrazione: «Pro creates own profile» condizionata ai termini professionisti accettati invece che al ruolo; `users.role` smette di essere letto per cliente/pro.
-8. `/api/termini/accetta` con il pubblico esplicito; `pubblicoPerRuolo()` sostituita.
-9. Cancellazione in due: «chiudi l'attività» e «cancella l'account»; decidere conservazione delle recensioni ricevute e delle fatture.
-10. Registro dei trattamenti: A1 e A25 aggiornate.
-11. Legale: termini clienti per un professionista che compra per il suo lavoro.
+1. **Scegliere la strada** — *Lucio e André* — **FATTA il 29/09/2026 (Lucio): due account separati, uno per mestiere.**
+2. **Area in alto: la casetta** — *André* — Al posto di «I miei lavori» / «Il mio lavoro». Con un ruolo per account porta alla `/dashboard` di quell'account, senza valigetta. Desktop e 390px.
+3. **Registro dei trattamenti, riga A1** — *Lucio* — Una persona può avere due account; export, cancellazione e rettifica si esercitano per account, e una richiesta «su tutto» va servita su tutti gli account che la persona indica.
+4. **Legale: termini clienti per un professionista che compra per lavoro** — *Lucio* — I termini clienti presuppongono un consumatore; va riletto il caso dell'account cliente di un professionista che compra per la sua attività.
+5. **Sessioni multiple: passare da un account all'altro senza rifare il login** — *Lucio* — Voce nuova. Prima di costruire va progettato quanto scritto al §10. **Dipende dall'SMTP personalizzato di Supabase (§10.4).**
 
-**Non sono voci del Piano: sono rilievi, perché sono vivi adesso e non dipendono dal doppio cappello.** Aperti il 29/09 in `roadmap/findings.csv`:
-- *serious* — dal browser si può attaccare alla propria richiesta qualunque professionista, anche sé stessi (§5.1): la policy di `request_professionals` non vincola `professional_id`. Da qui discende anche il recensirsi da soli (§5.2).
-- *serious* — l'export dei dati risponde 409 ai professionisti (§5.5): il diritto di accesso e portabilità non si esercita dal prodotto. Con una data proposta, da confermare il 1/10.
-- *warning* — `AuthProvider` ripiega su `"customer"` se la lettura del ruolo fallisce (§1.1).
+**Chiuse come NON DA FARE (29/09/2026)**
 
-Resta da aprire, non ancora scritto come rilievo: «verificata» vuol dire «richiesta chiusa», non «transazione conclusa» (§5.2).
+Tutte e sette nascevano dal mescolare i due mestieri in un account solo. Con account separati non esistono.
+
+| Voce di prima | Perché non si fa |
+|---|---|
+| `/dashboard` diviso in area cliente e area di lavoro (André) | Un account ha un'area sola |
+| Messaggi: il lato si decide dalla richiesta (André) | In un account il lato è uno solo, e il ruolo lo dice già |
+| Bob e impostazioni per capacità, non per ruolo (André) | Il ruolo resta il criterio giusto: un mestiere per account |
+| Flussi «diventa anche professionista» e «chiudi l'attività» (André) | Si apre un secondo account; si chiude cancellando quello |
+| Migrazione: il profilo pro si crea con i termini business accettati (Lucio) | `users.role` resta; la policy «Pro creates own profile» è corretta così |
+| Route dei termini con il pubblico esplicito (Lucio) | Un account ha un pubblico solo: `pubblicoPerRuolo()` basta |
+| Cancellazione in due (Lucio) | Ogni account si cancella da sé, con il percorso di oggi |
+
+**Non sono voci ma rilievi**, vivi adesso e indipendenti dalla scelta, in `roadmap/findings.csv` dal 29/09: l'inserimento in `request_professionals` che non vincola `professional_id` (*serious*), l'export che risponde 409 ai professionisti (*serious*), il ripiego silenzioso di `AuthProvider` su `"customer"` (*warning*). Resta da aprire: «verificata» vuol dire «richiesta chiusa», non «transazione conclusa» (§5.2).
+
+---
+
+## 10. Sessioni multiple: cosa progettare prima di costruire (voce 5, Lucio)
+
+Restare connessi a tutti e due gli account e passare dall'uno all'altro senza rifare il login, come fa Gmail. **Qui non si costruisce niente**: queste sono le domande a cui la progettazione deve rispondere per iscritto prima della prima riga.
+
+### 10.1 Dove vivono le due sessioni
+
+- **FATTO, oggi.** Una sessione sola per browser. Browser (`src/lib/supabase/client.ts`), server (`src/lib/supabase/server.ts`) e middleware (`src/middleware.ts`) usano `@supabase/ssr` 0.5 e leggono **lo stesso cookie** di sessione di Supabase: nessun `storageKey` né nome di cookie personalizzato. Un secondo login sostituisce il primo.
+- **Da decidere:**
+  - quanti posti per sessione (due, o *n*) e come si chiamano i cookie (per posizione o per id utente);
+  - dove sta l'indicazione dell'account attivo: per scheda, nell'indirizzo, come `/u/0/` e `/u/1/` di Gmail, oppure per browser, in un cookie. Per scheda, due schede possono stare su due account insieme; per browser, un cambio vale ovunque;
+  - chi rinnova i token dell'account **non attivo**. Supabase ruota il refresh token a ogni rinnovo: se nessuno lo rinnova, quella sessione scade in silenzio; se lo rinnovano due schede insieme, una delle due perde;
+  - che cosa del secondo account resta leggibile da JavaScript. I cookie di `@supabase/ssr` servono anche al browser, quindi non sono HttpOnly.
+- **Da decidere, e non è tecnica:** se il server registra che i due account sono della stessa persona. Serve a tre cose: impedire che una persona abbini la propria richiesta al proprio account pro (il rilievo *serious* del 29/09 copre lo stesso account, non due); servire una richiesta GDPR «su tutto»; leggere le recensioni. Se il legame si registra, è un dato nuovo (§6); se resta solo nel browser, il server non lo sa.
+
+### 10.2 Come si evita di leggere quella sbagliata
+
+- **Un solo punto d'ingresso lato server.** Ogni componente server, ogni route e il middleware devono leggere l'account **attivo** attraverso un'unica funzione, mai «il cookie di Supabase». Una sola route che lo legge per conto suo agisce sull'account sbagliato con un JWT valido: la RLS non lo ferma, perché per lei quell'utente è legittimo.
+- **Al cambio, niente stato del vecchio account nel browser.** Lo stato di `AuthProvider`, i canali realtime su `request_messages`, le notifiche, le pagine già caricate vanno chiusi e ricaricati. Un messaggio arrivato all'account A non deve comparire mentre si è su B.
+- **FATTO, oggi:** cinque chiavi in `localStorage` **non contengono l'utente**, quindi due account nello stesso browser le condividerebbero:
+  - `bob-chat-draft-v1` (`BobChat.tsx:110`), la bozza della chat di Bob, che contiene il testo di una richiesta;
+  - `bob.notifiche.viste.v1` (`notifiche.ts:473`);
+  - `bob.guida.pro.v1` (`guidaProgresso.ts:19`);
+  - `bob.promemoria.profilo.v1` (`PromemoriaProfilo.tsx:34`);
+  - `bob:manutenzione-chiusa` (`ManutenzioneBanner.tsx:37`).
+
+  Vanno separate per account prima che due account convivano.
+- **Un cambio fallito non ripiega su niente.** Oggi `AuthProvider` ripiega su `"customer"` se non legge il ruolo (rilievo *warning*, 29/09). Con due account, un ripiego silenzioso vorrebbe dire trovarsi sull'account sbagliato credendo di essere su quello giusto.
+
+### 10.3 Cosa succede quando una sessione scade
+
+- **Scade quella non attiva:** nel selettore compare come «da riconnettere». Non viene mai sostituita dall'altra, e non sparisce in silenzio.
+- **Scade quella attiva, a metà di un'azione:** si va al login **di quell'account**, con il ritorno alla pagina di partenza, senza passare all'altro account. Da decidere se e come si conserva quello che si stava scrivendo.
+- **Uscire:** «esci da questo account» ed «esci da tutti» sono due gesti diversi. Da decidere quale fa il pulsante di oggi.
+- **Cancellare uno dei due account:** il suo posto si libera, e l'altro resta connesso.
+- **Dispositivo condiviso:** con più sessioni aperte, chi usa lo stesso browser dopo di te entra in più di un account. Va detto nel momento in cui si aggiunge il secondo.
+
+### 10.4 Dipendenza: l'SMTP personalizzato di Supabase
+
+- **DECISO (CLAUDE.md):** le email di autenticazione (conferma, reset, magic link) le manda il mailer di Supabase, con un tetto di **2 email all'ora per tutto il progetto**; impostare `RESEND_API_KEY` non cambia niente, serve un SMTP personalizzato configurato in Supabase.
+- **Due account vogliono due email distinte**, e ognuno va confermato. Finché l'SMTP non c'è:
+  - **la creazione del secondo account non è collaudabile**: ogni prova consuma metà del tetto orario **di tutto il progetto**, compresi i reset password dei clienti veri;
+  - una persona che apre il secondo account nell'ora sbagliata non riceve la conferma.
+- **Quindi è una dipendenza, non un dettaglio: la voce 5 non si collauda, e non si spedisce, prima che l'SMTP sia configurato.**
