@@ -168,7 +168,19 @@ export default async function AdminProfessionalsPage({
   const vista = vistaDa(searchParams?.vista);
   const adesso = new Date();
 
-  const { data } = await supabase
+  // OGNI LETTURA CONTROLLA IL SUO ERRORE (29/09). Prima sette letture su otto
+  // facevano `data ?? []`: un errore diventava un elenco vuoto plausibile, cioe'
+  // «niente da fare» quando non si era riusciti a leggere niente. Una lettura
+  // fallita qui finisce nei log e in cima alla pagina.
+  const lettureFallite: string[] = [];
+  const controlla = (cosa: string, error: { message: string } | null | undefined) => {
+    if (!error) return false;
+    console.error(`[admin/professionals] lettura fallita (${cosa}): ${error.message}`);
+    lettureFallite.push(cosa);
+    return true;
+  };
+
+  const { data, error: erroreProfessionisti } = await supabase
     .from("professionals")
     .select(`
       id,
@@ -181,14 +193,16 @@ export default async function AdminProfessionalsPage({
     `)
     .order("created_at", { ascending: false });
 
+  const professionistiFalliti = controlla("professionisti", erroreProfessionisti);
   const pros = (data ?? []) as unknown as ProRow[];
 
   // Recupera i nomi dai profili
   const userIds = pros.map((p) => p.user_id);
-  const { data: profiles } = await supabase
+  const { data: profiles, error: erroreProfili } = await supabase
     .from("profiles")
     .select("user_id, full_name")
     .in("user_id", userIds);
+  controlla("nomi dei profili", erroreProfili);
 
   const nomeMap: Record<string, string | null> = Object.fromEntries(
     (profiles ?? []).map((p) => [p.user_id, p.full_name])
@@ -199,7 +213,7 @@ export default async function AdminProfessionalsPage({
   // verification": qui il numero di partita IVA lo vediamo, i clienti mai.
   // Prendiamo anche i livelli già concessi: una concessione automatica
   // sbagliata deve potersi correggere da qui, non solo via SQL.
-  const { data: reviewData } = await supabase
+  const { data: reviewData, error: erroreCasi } = await supabase
     .from("professional_verification")
     .select(
       "professional_id, level, vat_number, vat_active, vat_holder_name, vat_checked_at, vat_check_source, vat_review_state, vat_review_note, vat_reviewed_at, vat_reviewed_by_name, declared_business_name, vat_match_source, recheck_reason, recheck_opened_at, vat_review_opened_at, updated_at"
@@ -207,6 +221,7 @@ export default async function AdminProfessionalsPage({
     .or("vat_review_state.not.is.null,level.neq.none")
     .order("updated_at", { ascending: false });
 
+  const casiFalliti = controlla("casi di verifica", erroreCasi);
   const reviewRows = (reviewData ?? []) as unknown as VerificationRow[];
   const proById = Object.fromEntries(pros.map((p) => [p.id, p]));
   const righeVista = righeDellaVista(reviewRows, vista, adesso);
@@ -219,9 +234,10 @@ export default async function AdminProfessionalsPage({
   const userIdsVista = righeVista
     .map((r) => proById[r.professional_id]?.user_id)
     .filter((x): x is string => !!x);
-  const { data: phones } = userIdsVista.length
+  const { data: phones, error: erroreTelefoni } = userIdsVista.length
     ? await supabase.from("profile_phone").select("user_id, phone").in("user_id", userIdsVista)
-    : { data: [] };
+    : { data: [], error: null };
+  controlla("telefoni", erroreTelefoni);
   const phoneMap = Object.fromEntries(
     ((phones ?? []) as { user_id: string; phone: string | null }[]).map((p) => [p.user_id, p.phone])
   );
@@ -239,7 +255,7 @@ export default async function AdminProfessionalsPage({
   //    mente è peggio di nessuna cronologia. Ora si chiede per i professionisti
   //    effettivamente mostrati in pagina: quelli della vista, non tutti.
   const idsInPagina = righeVista.map((r) => r.professional_id);
-  const { data: eventsPerCaso } = idsInPagina.length
+  const { data: eventsPerCaso, error: erroreStorico } = idsInPagina.length
     ? await supabase
         .from("verification_events")
         .select(
@@ -247,7 +263,8 @@ export default async function AdminProfessionalsPage({
         )
         .in("professional_id", idsInPagina)
         .order("created_at", { ascending: false })
-    : { data: [] };
+    : { data: [], error: null };
+  controlla("storico dei casi", erroreStorico);
 
   const eventsByPro = new Map<string, VerificationEvent[]>();
   for (const e of (eventsPerCaso ?? []) as unknown as VerificationEvent[]) {
@@ -259,13 +276,14 @@ export default async function AdminProfessionalsPage({
   // Documenti caricati dai professionisti in coda (10.2, mig 052): il pro
   // carica dal suo profilo nel bucket privato, qui si aprono con link firmati
   // a scadenza (1h) — mai URL permanenti su documenti d'identità.
-  const { data: docsData } = idsInPagina.length
+  const { data: docsData, error: erroreDocumenti } = idsInPagina.length
     ? await supabase
         .from("verification_documents")
         .select("professional_id, file_name, storage_path, status, uploaded_at")
         .in("professional_id", idsInPagina)
         .order("uploaded_at", { ascending: false })
-    : { data: [] };
+    : { data: [], error: null };
+  controlla("documenti caricati", erroreDocumenti);
   // PRIVILEGIO MINIMO (29/09): si firmano solo i documenti dei casi della
   // vista mostrata — prima si firmava tutto, a ogni apertura, anche i livelli
   // attivi e i respinti che nessuno apriva. Una firma fallita resta visibile.
@@ -298,9 +316,7 @@ export default async function AdminProfessionalsPage({
     .select("professional_id, event, created_at, actor_role", { count: "exact" })
     .order("created_at", { ascending: true })
     .range(0, LIMITE_MISURA_SLA - 1);
-  if (erroreEventiSla) {
-    console.error(`[admin/professionals] misura SLA: lettura del registro fallita: ${erroreEventiSla.message}`);
-  }
+  controlla("registro per la misura SLA", erroreEventiSla);
   const letturaSla = {
     letti: (eventiSla ?? []).length,
     totale: totaleEventiSla ?? null,
@@ -314,7 +330,7 @@ export default async function AdminProfessionalsPage({
   //    il lavoro del team. Qui il taglio è dichiarato, non nascosto: crescendo,
   //    questa lista va sostituita da una pagina con filtri e ricerca (10.13).
   const REGISTRO_RECENTI = 100;
-  const { data: eventsData, count: totaleMovimenti } = await supabase
+  const { data: eventsData, count: totaleMovimenti, error: erroreRegistro } = await supabase
     .from("verification_events")
     .select(
       "id, professional_id, event, from_level, to_level, note, actor_name, actor_role, created_at",
@@ -323,6 +339,7 @@ export default async function AdminProfessionalsPage({
     .order("created_at", { ascending: false })
     .limit(REGISTRO_RECENTI);
 
+  controlla("registro recente", erroreRegistro);
   const events = (eventsData ?? []) as unknown as VerificationEvent[];
   const nameByPro = new Map<string, string>();
   for (const p of pros) {
@@ -350,6 +367,18 @@ export default async function AdminProfessionalsPage({
           Esamina i profili e aggiorna il loro stato di verifica.
         </p>
       </div>
+
+      {lettureFallite.length > 0 && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          data-testid="letture-fallite"
+        >
+          <span className="font-semibold">{"Non sono riuscito a leggere: "}</span>
+          {lettureFallite.join(", ")}.{" "}
+          {"Quello che vedi qui sotto può essere incompleto: un elenco vuoto non vuol dire che non ci sia niente. Ricarica la pagina; se resta, guarda i log."}
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-3">
         {/* ---- La coda di lavoro (29/09): una sola, dal piu' urgente ---- */}
@@ -390,7 +419,11 @@ export default async function AdminProfessionalsPage({
               </p>
             )}
 
-            {righeVista.length === 0 ? (
+            {casiFalliti ? (
+              <div className="rounded-2xl border border-dashed border-red-200 py-8 text-center text-sm text-red-700" data-testid="coda-non-letta">
+                {"La coda non si è letta: non so cosa c'è da fare. Non è una coda vuota."}
+              </div>
+            ) : righeVista.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-black/10 py-8 text-center text-sm text-bob-ink/65">
                 {vista === "aperti" ? "Niente da fare: nessun caso aperto." : "Nessun caso in questa vista."}
               </div>
@@ -471,6 +504,11 @@ export default async function AdminProfessionalsPage({
             {"Fa due cose: se non è «Approva», un livello «documenti verificati» si mostra ai clienti come «Pro» invece che «Pro+»; e la contano la dashboard di /admin e le analisi. Non fa: non decide chi compare ai clienti né l'ordine dei risultati, non chiede una motivazione e non lascia una riga nel registro."}
           </p>
         </div>
+        {professionistiFalliti && (
+          <p className="mt-3 text-sm font-semibold text-red-700">
+            {"L'elenco dei professionisti non si è letto: la tabella qui sotto è vuota per un errore, non perché non ci siano professionisti."}
+          </p>
+        )}
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-left text-sm" data-testid="archivio-tabella">
             <thead className="text-xs text-bob-ink/60">
