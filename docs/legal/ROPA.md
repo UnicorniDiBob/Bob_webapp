@@ -370,19 +370,21 @@ per conto suo.
 
 <!-- A23 riservata al lavoro sulla purga delle foto orfane di brief-photos (Fase 5, PR due) -->
 
-## A24 — Limite di frequenza su /api/bob/chat e /api/bob/brief
+## A24 — Limite di frequenza su /api/bob/chat, /api/bob/brief e /api/sessioni/aggiungi
+
+*Allargata il 29 settembre 2026 con la migrazione 104: la finalità ora comprende i tentativi di accesso per aggiungere un secondo account.*
 
 | | |
 |---|---|
-| **Finalità** | Sicurezza e anti-abuso: impedire che un chiamante (script, flood) esaurisca la spesa di Claude o inondi `job_briefs` di scritture, su due rotte senza autenticazione (G20-G22, P1.5) |
+| **Finalità** | Sicurezza e anti-abuso: impedire che un chiamante (script, flood) esaurisca la spesa di Claude o inondi `job_briefs` di scritture, su due rotte senza autenticazione (G20-G22, P1.5). **Dal 29/09 (mig 104):** impedire che «aggiungi un altro account» (`/api/sessioni/aggiungi`, che accetta email e password) diventi il modo per provare password a raffica o per scoprire chi ha un account su Bob |
 | **Base giuridica** | Legittimo interesse — art. 6(1)(f): protezione tecnica del servizio, non profilazione né alcuna finalità verso l'interessato |
-| **Interessati** | Chiunque chiami `/api/bob/chat` o `/api/bob/brief` — clienti anonimi (per IP) o account loggati (per user id) |
-| **Dati** | Indirizzo IP del chiamante (anonimo) o id utente (loggato), rotta, contatore per finestra di un minuto/un'ora. Nessun altro dato: non il contenuto della richiesta, non l'esito, non correlato a nessun'altra tabella |
-| **Tabelle** | `rate_limit_counters` (migrazione 097) |
+| **Interessati** | Chiunque chiami `/api/bob/chat` o `/api/bob/brief` — clienti anonimi (per IP) o account loggati (per user id). Per la rotta `accesso`: chi tenta di aggiungere un account (per IP) e il titolare dell'indirizzo email tentato (per HMAC dell'email) |
+| **Dati** | Indirizzo IP del chiamante (anonimo) o id utente (loggato), rotta, contatore per finestra di un minuto/un'ora. Per `accesso`, in più, **l'HMAC-SHA256 dell'email tentata** con una chiave segreta d'ambiente (`ACCESSO_HMAC_SEGRETO`): **mai l'indirizzo in chiaro, mai un hash nudo** (uno SHA-256 di un indirizzo si inverte provando indirizzi, e la tabella diventerebbe l'elenco di chi ha provato a entrare). Nessun altro dato: non la password, non il contenuto della richiesta, non l'esito, non correlato a nessun'altra tabella |
+| **Tabelle** | `rate_limit_counters` (migrazioni 097 e 104) |
 | **Destinatari** | Nessuno. Solo le funzioni `check_rate_limit`/`check_global_daily_cap` (SECURITY DEFINER, eseguibili solo dal service role) toccano questa tabella — nessuna policy per `anon`/`authenticated`, nessuna lettura da parte dei professionisti o dei clienti |
 | **Trasferimenti** | Come A1 (Supabase, regione UE) |
-| **Conservazione** | 48 ore — la finestra più lunga consultata dal sistema è un'ora, il resto è margine per il debug. `purge_stale_rate_limit_counters()`, schedulata ogni ora via `pg_cron` |
-| **Sicurezza** | RLS attiva, nessuna policy pubblica; il service role è l'unico chiamante. L'IP intero (non mascherato) è necessario alla finalità — a differenza delle regole sull'analytics (DATA_COMPLIANCE §1, mascherare almeno l'ultimo ottetto), qui il controllo deve distinguere un chiamante dall'altro, non aggregarli |
+| **Conservazione** | 48 ore — la finestra più lunga consultata dal sistema è un'ora, il resto è margine per il debug. `purge_stale_rate_limit_counters()`, schedulata ogni ora via `pg_cron`; non filtra per rotta, quindi copre anche `accesso` senza niente di nuovo da schedulare |
+| **Sicurezza** | RLS attiva, nessuna policy pubblica; il service role è l'unico chiamante. L'IP intero (non mascherato) è necessario alla finalità — a differenza delle regole sull'analytics (DATA_COMPLIANCE §1, mascherare almeno l'ultimo ottetto), qui il controllo deve distinguere un chiamante dall'altro, non aggregarli. Per `accesso`: senza la chiave HMAC configurata la route rifiuta (503) invece di ripiegare su un hash nudo; il tetto si controlla prima del login e chiude su errore; la password e l'email non entrano in nessun log |
 | **Note** | La riga `global:chat` (tetto aggregato giornaliero) non è un identificatore di nessuno: nessun dato personale in quella riga specifica, anche se vive nella stessa tabella. Mai combinato con altri dati, mai usato per altro che questa decisione tecnica |
 
 ## A25 — Versioni dei termini e accettazioni

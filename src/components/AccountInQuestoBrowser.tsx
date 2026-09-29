@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
+  annuncia,
   esciAccount,
   leggiStatoSessioni,
   scambiaAccount,
@@ -20,6 +21,8 @@ export function AccountInQuestoBrowser() {
   const [stato, setStato] = useState<StatoSessioni | null>(null);
   const [inCorso, setInCorso] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     leggiStatoSessioni().then(setStato);
@@ -50,7 +53,36 @@ export function AccountInQuestoBrowser() {
     }
   }
 
+  // Aggiungere un secondo account, o riconnettere quello «da riconnettere»:
+  // login solo per lui, sul server; l'account attivo non si tocca.
+  async function aggiungi(e: React.FormEvent) {
+    e.preventDefault();
+    setInCorso(true);
+    setErrore(null);
+    let r: Response | null = null;
+    try {
+      r = await fetch("/api/sessioni/aggiungi", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: email || (stato?.attesa?.daRiconnettere ? stato.attesa.email : ""), password }),
+      });
+    } catch {
+      r = null;
+    }
+    setPassword("");
+    if (r?.ok) {
+      annuncia("fatto");
+      window.location.reload();
+      return;
+    }
+    const corpo = r ? ((await r.json().catch(() => ({}))) as { error?: string }) : {};
+    setErrore(corpo.error ?? "Non sono riuscito ad aggiungere l'account. Riprova.");
+    setInCorso(false);
+  }
+
   if (!stato) return null;
+  const serveIlModulo = !stato.attesa || stato.attesa.daRiconnettere;
+  const emailDaRiconnettere = stato.attesa?.daRiconnettere ? stato.attesa.email : null;
 
   return (
     <section className="card p-5 sm:p-6" data-testid="account-in-questo-browser">
@@ -98,9 +130,44 @@ export function AccountInQuestoBrowser() {
         </button>
       </div>
 
+      {serveIlModulo && (
+        <form onSubmit={aggiungi} className="mt-4 space-y-2" data-testid="form-aggiungi-account">
+          <p className="text-sm font-medium text-bob-ink">
+            {emailDaRiconnettere ? `Riconnetti ${emailDaRiconnettere}` : "Aggiungi un altro account"}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="email"
+              autoComplete="username"
+              required
+              value={email || emailDaRiconnettere || ""}
+              onChange={(ev) => setEmail(ev.target.value)}
+              placeholder="Email"
+              className="input-bob flex-1 py-2"
+              data-testid="input-aggiungi-email"
+            />
+            <input
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(ev) => setPassword(ev.target.value)}
+              placeholder="Password"
+              className="input-bob flex-1 py-2"
+              data-testid="input-aggiungi-password"
+            />
+            <button type="submit" disabled={inCorso} className="btn-secondary py-2 text-sm" data-testid="button-aggiungi-account">
+              {emailDaRiconnettere ? "Riconnetti" : "Aggiungi"}
+            </button>
+          </div>
+          <p className="text-xs text-bob-ink/65">
+            {"Resti sull'account di adesso: l'altro si aggiunge in attesa, e ci passi con un click."}
+          </p>
+        </form>
+      )}
       {!stato.attesa && (
         <p className="mt-3 text-xs text-bob-ink/65">
-          {"Aggiungere un secondo account da qui arriva a breve. Uscire vale solo per questo browser: gli altri dispositivi restano connessi."}
+          {"Uscire vale solo per questo browser: gli altri dispositivi restano connessi."}
         </p>
       )}
       {stato.attesa && (
