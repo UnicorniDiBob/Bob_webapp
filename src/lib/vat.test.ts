@@ -19,11 +19,14 @@ import {
   aggiungiGiorniLavorativi,
   giorniLavorativiTra,
   livelloVisibile,
+  misuraSlaStorica,
+  riepilogoSforamenti,
   publicVerificationLevel,
   scadenzaBadge,
   statoCoda,
   tettoRicontrollo,
   verificaScaduta,
+  type EventoVerificaSla,
 } from "./vat";
 
 const iso = (s: string) => new Date(s).toISOString();
@@ -165,5 +168,233 @@ describe("publicVerificationLevel: la stessa regola, piu' il cancello dello staf
     expect(
       publicVerificationLevel("vat_verified", "verified", passato, true, null)
     ).toBe("vat_verified");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// misuraSlaStorica (29/09): quanto ci abbiamo messo davvero, sui casi chiusi
+// ---------------------------------------------------------------------------
+// Tutti gli orari sono a MEZZOGIORNO di Roma: giorniLavorativiTra() conta le
+// mezzanotti nel fuso del processo (UTC su Vercel e in CI, Roma su un Mac), e a
+// mezzogiorno il giorno di calendario e' lo stesso in entrambi.
+// Settembre 2026: lunedi' 7, 14, 21, 28.
+
+const PRO = "pro-1";
+const ev = (
+  event: string,
+  quando: string,
+  actor_role: string | null = null,
+  professional_id = PRO
+): EventoVerificaSla => ({
+  professional_id,
+  event,
+  created_at: `${quando}T12:00:00+02:00`,
+  actor_role,
+});
+
+describe("misuraSlaStorica: l'SLA sui casi gia' chiusi", () => {
+  it("chiuso dentro l'SLA: due giorni lavorativi, non sforato", () => {
+    const m = misuraSlaStorica([
+      ev("vat_submitted", "2026-09-07", "professional"),
+      ev("vat_check_failed", "2026-09-07", "professional"),
+      ev("level_granted", "2026-09-09", "admin"),
+    ]);
+    expect(m.esameUmano).toHaveLength(1);
+    const c = m.esameUmano[0];
+    expect(c.esito).toBe("concesso");
+    expect(c.ultimoTratto).toBe(2);
+    expect(c.attesaTotale).toBe(2);
+    expect(c.sforatoSecondoIToS).toBe(false);
+    expect(m.rispettati).toBe(1);
+    expect(m.sforati).toBe(0);
+  });
+
+  it("chiuso oltre l'SLA: sei giorni lavorativi, sforato", () => {
+    const m = misuraSlaStorica([
+      ev("vat_submitted", "2026-09-07", "professional"),
+      ev("vat_rejected", "2026-09-15", "cs"),
+    ]);
+    const c = m.esameUmano[0];
+    expect(c.esito).toBe("respinto");
+    expect(c.ultimoTratto).toBe(6);
+    expect(c.sforatoSecondoIToS).toBe(true);
+    expect(m.sforati).toBe(1);
+  });
+
+  it("la pausa documents_requested -> documents_submitted non si conta", () => {
+    // Lun 7 -> mer 9: 2 giorni nostri. Poi la palla e' sua fino a lun 21.
+    // Lun 21 -> gio 24: 3 giorni nostri. Dal primo all'ultimo evento sono 13.
+    const m = misuraSlaStorica([
+      ev("vat_submitted", "2026-09-07", "professional"),
+      ev("documents_requested", "2026-09-09", "admin"),
+      ev("documents_submitted", "2026-09-21", "professional"),
+      ev("level_granted", "2026-09-24", "admin"),
+    ]);
+    const c = m.esameUmano[0];
+    expect(c.tratti.map((t) => t.giorni)).toEqual([2, 3]);
+    expect(c.attesaTotale).toBe(5);
+    expect(c.ultimoTratto).toBe(3);
+    expect(c.attesaTotale).not.toBe(
+      giorniLavorativiTra(new Date("2026-09-07T12:00:00+02:00"), new Date("2026-09-24T12:00:00+02:00"))
+    );
+  });
+
+  it("i due numeri divergono: dentro i ToS sull'ultimo tratto, oltre i 5 giorni in totale", () => {
+    // Lun 7 -> ven 11: 4. Lun 21 -> gio 24: 3. Totale 7, ultimo tratto 3.
+    const m = misuraSlaStorica([
+      ev("vat_submitted", "2026-09-07", "professional"),
+      ev("documents_requested", "2026-09-11", "admin"),
+      ev("documents_submitted", "2026-09-21", "professional"),
+      ev("level_granted", "2026-09-24", "admin"),
+    ]);
+    const c = m.esameUmano[0];
+    expect(c.attesaTotale).toBe(7);
+    expect(c.ultimoTratto).toBe(3);
+    expect(c.sforatoSecondoIToS).toBe(false);
+  });
+
+  it("un ricontrollo apre il caso con la palla SUA: l'orologio parte col documento", () => {
+    // Aperto lun 7 dal giro notturno; il documento arriva lun 14; deciso mer 16.
+    const m = misuraSlaStorica([
+      ev("vat_recheck_opened", "2026-09-07", "system"),
+      ev("documents_submitted", "2026-09-14", "professional"),
+      ev("level_granted", "2026-09-16", "admin"),
+    ]);
+    const c = m.esameUmano[0];
+    expect(c.tratti).toHaveLength(1);
+    expect(c.attesaTotale).toBe(2);
+    expect(c.apertoIl.toISOString()).toBe(iso("2026-09-07T12:00:00+02:00"));
+  });
+
+  it("un secondo documento sul ricontrollo riazzera l'ultimo tratto, come il trigger", () => {
+    const m = misuraSlaStorica([
+      ev("vat_recheck_opened", "2026-09-07", "system"),
+      ev("documents_submitted", "2026-09-14", "professional"),
+      ev("documents_submitted", "2026-09-16", "professional"),
+      ev("level_granted", "2026-09-17", "admin"),
+    ]);
+    const c = m.esameUmano[0];
+    expect(c.tratti.map((t) => t.giorni)).toEqual([2, 1]);
+    expect(c.ultimoTratto).toBe(1);
+    expect(c.attesaTotale).toBe(3);
+  });
+
+  it("un ricontrollo chiuso senza che la palla sia mai stata nostra non entra nella misura", () => {
+    const m = misuraSlaStorica([
+      ev("vat_recheck_opened", "2026-09-07", "system"),
+      ev("vat_rejected", "2026-09-21", "admin"),
+      ev("level_revoked", "2026-09-21", "admin"),
+    ]);
+    expect(m.esameUmano).toHaveLength(0);
+    expect(m.senzaAttesaNostra).toBe(1);
+  });
+
+  it("un caso senza evento di chiusura e' aperto: non entra nella misura storica", () => {
+    const m = misuraSlaStorica([
+      ev("vat_submitted", "2026-09-07", "professional"),
+      ev("vat_check_failed", "2026-09-08", "system"),
+    ]);
+    expect(m.esameUmano).toHaveLength(0);
+    expect(m.aperti).toBe(1);
+  });
+
+  it("le chiusure automatiche si contano a parte, per actor_role", () => {
+    const m = misuraSlaStorica([
+      // All'ingresso: VIES e intestazione confermati nello stesso secondo.
+      ev("vat_submitted", "2026-09-07", "professional", "pro-a"),
+      ev("vat_check_ok", "2026-09-07", "professional", "pro-a"),
+      ev("level_granted", "2026-09-07", "professional", "pro-a"),
+      // Il giro notturno che ritenta un VIES che non rispondeva.
+      ev("vat_submitted", "2026-09-07", "professional", "pro-b"),
+      ev("level_granted", "2026-09-08", "system", "pro-b"),
+      // Un evento di chiusura senza ruolo.
+      ev("vat_submitted", "2026-09-07", "professional", "pro-c"),
+      ev("level_granted", "2026-09-08", null, "pro-c"),
+    ]);
+    expect(m.esameUmano).toHaveLength(0);
+    expect(m.automatici).toEqual({ giroNotturno: 1, ingresso: 1 });
+    expect(m.nonAttribuiti).toBe(1);
+  });
+
+  it("rifiuto e revoca insieme chiudono un caso solo", () => {
+    const m = misuraSlaStorica([
+      ev("vat_submitted", "2026-09-07", "professional"),
+      ev("vat_rejected", "2026-09-08", "admin"),
+      ev("level_revoked", "2026-09-08", "admin"),
+    ]);
+    expect(m.esameUmano).toHaveLength(1);
+    expect(m.esameUmano[0].esito).toBe("respinto");
+  });
+
+  it("il fine settimana non si conta: da venerdi' a lunedi' e' un giorno", () => {
+    const m = misuraSlaStorica([
+      ev("vat_submitted", "2026-09-11", "professional"),
+      ev("level_granted", "2026-09-14", "admin"),
+    ]);
+    expect(m.esameUmano[0].attesaTotale).toBe(1);
+  });
+
+  it("un nuovo vat_submitted su un caso gia' in pending non riazzera l'orologio", () => {
+    const m = misuraSlaStorica([
+      ev("vat_submitted", "2026-09-07", "professional"),
+      ev("vat_submitted", "2026-09-09", "professional"),
+      ev("level_granted", "2026-09-16", "admin"),
+    ]);
+    const c = m.esameUmano[0];
+    expect(c.tratti).toHaveLength(1);
+    expect(c.ultimoTratto).toBe(7);
+    expect(c.sforatoSecondoIToS).toBe(true);
+  });
+
+  it("gli eventi possono arrivare in qualunque ordine e mescolati fra professionisti", () => {
+    const m = misuraSlaStorica([
+      ev("level_granted", "2026-09-09", "admin", "pro-x"),
+      ev("vat_submitted", "2026-09-07", "professional", "pro-y"),
+      ev("vat_submitted", "2026-09-07", "professional", "pro-x"),
+      ev("vat_rejected", "2026-09-15", "admin", "pro-y"),
+    ]);
+    expect(m.esameUmano.map((c) => [c.professionalId, c.attesaTotale])).toEqual([
+      ["pro-x", 2],
+      ["pro-y", 6],
+    ]);
+  });
+
+  it("stessa regola di statoCoda: 5 giorni esatti e un'ora dopo e' gia' sforato", () => {
+    const aperto = new Date("2026-09-07T12:00:00+02:00");
+    const dopo = new Date("2026-09-14T13:00:00+02:00");
+    const m = misuraSlaStorica([
+      { professional_id: PRO, event: "vat_submitted", created_at: aperto.toISOString(), actor_role: "professional" },
+      { professional_id: PRO, event: "level_granted", created_at: dopo.toISOString(), actor_role: "admin" },
+    ]);
+    expect(m.esameUmano[0].sforatoSecondoIToS).toBe(statoCoda(aperto.toISOString(), dopo)?.sforata);
+    expect(m.esameUmano[0].sforatoSecondoIToS).toBe(true);
+  });
+});
+
+describe("riepilogoSforamenti: quello che il giro notturno conta ogni notte", () => {
+  const ADESSO = new Date("2026-09-29T12:00:00+02:00"); // martedi'
+
+  it("coda vuota: zero casi, zero sforati", () => {
+    expect(riepilogoSforamenti([], ADESSO)).toEqual({ pallaNostra: 0, sforati: 0, peggiore: 0 });
+  });
+
+  it("conta solo i casi con la palla nostra, e fra questi gli sforati", () => {
+    const r = riepilogoSforamenti(
+      [
+        "2026-09-28T12:00:00+02:00", // ieri: dentro
+        "2026-09-18T12:00:00+02:00", // ven 18: 7 giorni lavorativi, sforato di 2
+        "2026-09-21T12:00:00+02:00", // lun 21: 6 giorni lavorativi, sforato di 1
+        null, // palla sua: nessun orologio
+      ],
+      ADESSO
+    );
+    expect(r).toEqual({ pallaNostra: 3, sforati: 2, peggiore: 2 });
+  });
+
+  it("usa la stessa regola di statoCoda, caso per caso", () => {
+    const aperto = "2026-09-21T12:00:00+02:00";
+    expect(riepilogoSforamenti([aperto], ADESSO).sforati).toBe(
+      statoCoda(aperto, ADESSO)?.sforata ? 1 : 0
+    );
   });
 });

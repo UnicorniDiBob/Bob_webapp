@@ -8,12 +8,15 @@ import { VerifyButtons } from "./VerifyButtons";
 import { TierButtons } from "./TierButtons";
 import { VatReviewActions } from "./VatReviewActions";
 import {
+  misuraSlaStorica,
   namesMatch,
   procedureFlagInName,
   statoCoda,
   MOTIVO_RICONTROLLO_STAFF,
   SLA_VERIFICA_GIORNI_LAVORATIVI,
   VERIFICATION_LABEL_STAFF,
+  type EventoVerificaSla,
+  type MisuraSla,
   type VerificationLevel,
   type VatReviewState,
 } from "@/lib/vat";
@@ -281,6 +284,33 @@ export default async function AdminProfessionalsPage() {
     docsByPro.set(d.professional_id, list);
   }
 
+  // 3) La misura a posteriori dell'SLA (29/09, m2t4s8): quanto ci abbiamo
+  //    messo davvero sui casi chiusi. Serve il registro INTERO, non gli ultimi
+  //    100: PostgREST taglia comunque a un massimo di righe, quindi si chiede
+  //    il conteggio e, se le righe lette sono meno, la misura si dichiara
+  //    parziale invece di mostrare un numero sbagliato che sembra giusto.
+  const LIMITE_MISURA_SLA = 10000;
+  const {
+    data: eventiSla,
+    count: totaleEventiSla,
+    error: erroreEventiSla,
+  } = await supabase
+    .from("verification_events")
+    .select("professional_id, event, created_at, actor_role", { count: "exact" })
+    .order("created_at", { ascending: true })
+    .range(0, LIMITE_MISURA_SLA - 1);
+  if (erroreEventiSla) {
+    console.error(`[admin/professionals] misura SLA: lettura del registro fallita: ${erroreEventiSla.message}`);
+  }
+  const letturaSla = {
+    letti: (eventiSla ?? []).length,
+    totale: totaleEventiSla ?? null,
+    errore: !!erroreEventiSla,
+  };
+  const misuraSla = erroreEventiSla
+    ? null
+    : misuraSlaStorica((eventiSla ?? []) as unknown as EventoVerificaSla[]);
+
   // 2) La vista d'insieme "cosa è successo di recente", che serve a controllare
   //    il lavoro del team. Qui il taglio è dichiarato, non nascosto: crescendo,
   //    questa lista va sostituita da una pagina con filtri e ricerca (10.13).
@@ -425,6 +455,9 @@ export default async function AdminProfessionalsPage() {
           </div>
         )}
       </section>
+
+      {/* ---- SLA misurato sui casi chiusi (29/09, m2t4s8) ---- */}
+      <RiquadroSlaMisurato misura={misuraSla} lettura={letturaSla} />
 
       {/* ---- Ricontrollo (079) ---- */}
       <section id="ricontrollo" data-testid="coda-ricontrollo" className="scroll-mt-20">
@@ -763,6 +796,87 @@ function schedaDelCaso(
     `Profilo: /professionisti/${row.professional_id}`,
   ];
   return righe.filter(Boolean).join("\n");
+}
+
+// Il riquadro della misura a posteriori. Il numero che conta come «SLA
+// misurato» e' sforatoSecondoIToS, sull'ultimo tratto: e' la regola che abbiamo
+// pubblicato. attesaTotale gli sta accanto con la sua etichetta: e' quanto ha
+// aspettato davvero la persona. Le chiusure automatiche stanno fuori, contate a
+// parte. Vedi misuraSlaStorica() in src/lib/vat.ts.
+function mediana(valori: number[]): number | null {
+  if (valori.length === 0) return null;
+  const v = [...valori].sort((a, b) => a - b);
+  const m = Math.floor(v.length / 2);
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+}
+
+function RiquadroSlaMisurato({
+  misura,
+  lettura,
+}: {
+  misura: MisuraSla | null;
+  lettura: { letti: number; totale: number | null; errore: boolean };
+}) {
+  const parziale = lettura.totale !== null && lettura.totale > lettura.letti;
+  const casi = misura?.esameUmano ?? [];
+  const attese = casi.map((c) => c.attesaTotale);
+  const med = mediana(attese);
+  const max = attese.length ? Math.max(...attese) : null;
+
+  return (
+    <section id="sla-misurato" data-testid="sla-misurato" className="scroll-mt-20">
+      <div className="mb-3 flex items-center gap-3">
+        <h2 className="text-lg font-semibold text-bob-ink">SLA misurato</h2>
+        {misura && !parziale && (
+          <span
+            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              misura.sforati > 0 ? "bg-red-50 text-red-700" : "bg-black/5 text-bob-ink/65"
+            }`}
+            data-testid="sla-misurato-conteggio"
+          >
+            {`${misura.rispettati} su ${casi.length}`}
+          </span>
+        )}
+      </div>
+      <p className="mb-4 text-sm text-bob-ink/70">
+        {`I casi già chiusi da una persona, ricostruiti dal registro. Dentro l'SLA vuol dire entro ${SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi sull'ultimo tratto con la palla nostra: la regola che abbiamo scritto nei termini.`}
+      </p>
+
+      {lettura.errore || !misura ? (
+        <div className="rounded-2xl border border-dashed border-red-200 py-6 text-center text-sm text-red-700">
+          {"Misura non disponibile: la lettura del registro è fallita."}
+        </div>
+      ) : parziale ? (
+        <div className="rounded-2xl border border-dashed border-amber-200 py-6 text-center text-sm text-amber-700">
+          {`Misura parziale: letti ${lettura.letti} eventi del registro su ${lettura.totale}. Non la mostro: un numero calcolato su una parte sembrerebbe giusto.`}
+        </div>
+      ) : (
+        <div className="grid gap-3 rounded-2xl border border-black/10 p-4 text-sm text-bob-ink/80 sm:grid-cols-2">
+          <div>
+            <p className="font-semibold text-bob-ink">Secondo i termini</p>
+            {casi.length === 0 ? (
+              <p className="mt-1">{"Nessun caso chiuso da una persona da misurare, per ora."}</p>
+            ) : (
+              <p className="mt-1">
+                {`${misura.rispettati} dentro i ${SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi, ${misura.sforati} oltre, su ${casi.length} casi chiusi da una persona.`}
+              </p>
+            )}
+          </div>
+          <div>
+            <p className="font-semibold text-bob-ink">Attesa totale</p>
+            <p className="mt-1">
+              {med === null
+                ? "Nessun dato."
+                : `Mediana ${med}, massima ${max} giorni lavorativi: la somma dei tratti con la palla nostra, pause escluse.`}
+            </p>
+          </div>
+          <div className="sm:col-span-2 text-xs text-bob-ink/65">
+            {`Fuori dalla misura: ${misura.automatici.giroNotturno} chiusi dal giro notturno e ${misura.automatici.ingresso} dall'automatismo all'ingresso (automatici, non esami umani); ${misura.senzaAttesaNostra} chiusi senza che la palla fosse mai nostra; ${misura.aperti} ancora aperti${misura.nonAttribuiti ? `; ${misura.nonAttribuiti} senza un autore riconoscibile` : ""}. Un giorno lavorativo è una mezzanotte feriale attraversata (festivi inclusi), contata in UTC.`}
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 // Da quanto aspetta, in giorni lavorativi, e quanto manca alla cifra che
