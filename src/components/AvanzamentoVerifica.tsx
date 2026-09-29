@@ -30,7 +30,19 @@
 // src/lib/vat.ts: qui non si ricalcola niente.
 
 import type { VatReviewState } from "@/lib/vat";
-import { SLA_VERIFICA_GIORNI_LAVORATIVI } from "@/lib/vat";
+import { SLA_VERIFICA_GIORNI_LAVORATIVI, avvisoSlaAcceso } from "@/lib/vat";
+
+// QUANDO SFORIAMO, CE NE SCUSIAMO — E BASTA (29/09, testo scelto da Lucio).
+// L'avviso si accende da avvisoSlaAcceso(), cioe' da statoCoda().sforata: la
+// stessa regola del riquadro admin e del giro notturno, nessuna seconda soglia
+// e nessun secondo calcolo.
+// Non promette un contatto e non da' una data: quando sforiamo non scriviamo a
+// nessuno, e una nuova scadenza sarebbe una seconda promessa da poter rompere.
+// Qui gira nel browser, quindi con l'orologio e il fuso di chi legge (Roma),
+// mentre admin e giro notturno contano in UTC: verso mezzanotte l'avviso puo'
+// accendersi qualche ora prima o dopo di quanto lo veda lo staff.
+const AVVISO_SLA_SFORATO =
+  "Ci stiamo mettendo più del previsto, e ci dispiace. Non devi fare niente: la tua richiesta è ancora in esame e l'esito comparirà qui.";
 
 type Fase = "gestione" | "documenti" | "rifiutata";
 
@@ -60,9 +72,12 @@ const PASSI = ["Ricevuta", "In gestione", "Esito"];
 export function AvanzamentoVerifica({
   review,
   verificato,
+  apertoIl = null,
 }: {
   review: VatReviewState | null;
   verificato: boolean;
+  /** vat_review_opened_at: da quando la palla e' nostra (mig 080). */
+  apertoIl?: string | null;
 }) {
   // Approvata: il riquadro verde dice tutto, la barra sparisce.
   if (verificato) return null;
@@ -82,6 +97,7 @@ export function AvanzamentoVerifica({
   const { titolo, passo, nota } = FASI[fase];
   const quota = passo / PASSI.length;
   const negativa = fase === "rifiutata";
+  const sforata = avvisoSlaAcceso(review, apertoIl);
 
   return (
     <div
@@ -138,6 +154,16 @@ export function AvanzamentoVerifica({
       </ol>
 
       <p className="mt-2 text-[11px] leading-relaxed text-bob-ink/45">{nota}</p>
+
+      {sforata && (
+        <p
+          className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-relaxed text-amber-800"
+          data-testid="avviso-sla-sforato"
+          role="status"
+        >
+          {AVVISO_SLA_SFORATO}
+        </p>
+      )}
     </div>
   );
 }

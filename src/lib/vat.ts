@@ -187,6 +187,20 @@ export function riepilogoSforamenti(
 }
 
 /**
+ * Se il professionista deve vedere l'avviso di ritardo (29/09): la sua prima
+ * richiesta e' in esame (pending) e siamo oltre l'SLA. La soglia e' quella di
+ * statoCoda(), la stessa del riquadro admin e del giro notturno. Su un
+ * ricontrollo non si accende: AvanzamentoVerifica non si mostra li'.
+ */
+export function avvisoSlaAcceso(
+  review: VatReviewState | null,
+  apertoIl: string | null,
+  adesso: Date = new Date()
+): boolean {
+  return review === "pending" && statoCoda(apertoIl, adesso)?.sforata === true;
+}
+
+/**
  * I casi da mettere in «Emergenze» nella pagina admin (29/09): quelli con la
  * palla nostra e oltre l'SLA, dal piu' vecchio al piu' recente.
  *

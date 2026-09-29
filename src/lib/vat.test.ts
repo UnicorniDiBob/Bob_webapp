@@ -17,6 +17,7 @@ import {
   SLA_VERIFICA_GIORNI_LAVORATIVI,
   TETTO_CESSAZIONE_GIORNI,
   aggiungiGiorniLavorativi,
+  avvisoSlaAcceso,
   casiInEmergenza,
   giorniLavorativiTra,
   livelloVisibile,
@@ -449,5 +450,36 @@ describe("casiInEmergenza: la sezione Emergenze usa il criterio del giro notturn
         ADESSO
       ).sforati
     );
+  });
+});
+
+describe("avvisoSlaAcceso: l'avviso di ritardo al professionista", () => {
+  const ADESSO = new Date("2026-09-29T12:00:00+02:00"); // martedi'
+  const OLTRE = "2026-09-21T12:00:00+02:00"; // 6 giorni lavorativi fa
+  const DENTRO = "2026-09-28T12:00:00+02:00"; // ieri
+
+  it("si accende su una richiesta in esame oltre l'SLA", () => {
+    expect(avvisoSlaAcceso("pending", OLTRE, ADESSO)).toBe(true);
+  });
+
+  it("non si accende dentro l'SLA", () => {
+    expect(avvisoSlaAcceso("pending", DENTRO, ADESSO)).toBe(false);
+  });
+
+  it("non si accende quando la palla e' sua, o il caso e' chiuso", () => {
+    expect(avvisoSlaAcceso("docs_requested", null, ADESSO)).toBe(false);
+    expect(avvisoSlaAcceso("rejected", null, ADESSO)).toBe(false);
+    expect(avvisoSlaAcceso(null, null, ADESSO)).toBe(false);
+    expect(avvisoSlaAcceso("pending", null, ADESSO)).toBe(false);
+  });
+
+  it("non si accende sui ricontrolli, anche oltre l'SLA: li' il componente non c'e'", () => {
+    expect(avvisoSlaAcceso("recheck", OLTRE, ADESSO)).toBe(false);
+  });
+
+  it("segue statoCoda: stessa soglia del riquadro admin", () => {
+    for (const aperto of [OLTRE, DENTRO, "2026-09-22T12:00:00+02:00", "2026-09-22T11:00:00+02:00"]) {
+      expect(avvisoSlaAcceso("pending", aperto, ADESSO)).toBe(statoCoda(aperto, ADESSO)?.sforata === true);
+    }
   });
 });
