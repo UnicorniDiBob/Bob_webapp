@@ -30,7 +30,10 @@ import { useAuth } from "@/components/AuthProvider";
 import { useNotifiche } from "@/components/NotificheProvider";
 import { useStatoProfilo } from "@/lib/useStatoProfilo";
 import { leggiProgresso } from "@/lib/guidaProgresso";
+import { chiaveUtente } from "@/lib/sessioni/chiavi";
 
+// Per account (29/09): la chiave vera e' «bob.promemoria.profilo.v1:<id utente>»,
+// vedi lib/sessioni/chiavi.
 const CHIAVE = "bob.promemoria.profilo.v1";
 
 /** Data locale in forma YYYY-MM-DD: il "giorno" e' quello di chi guarda. */
@@ -43,7 +46,7 @@ function oggi(): string {
 
 function giaMostratoOggi(): boolean {
   try {
-    return window.localStorage.getItem(CHIAVE) === oggi();
+    return window.localStorage.getItem(chiaveUtente(CHIAVE)) === oggi();
   } catch {
     // Senza memoria il promemoria non si mostra: meglio zero volte che a ogni
     // cambio di pagina.
@@ -53,7 +56,7 @@ function giaMostratoOggi(): boolean {
 
 function segnaMostrato() {
   try {
-    window.localStorage.setItem(CHIAVE, oggi());
+    window.localStorage.setItem(chiaveUtente(CHIAVE), oggi());
   } catch {
     // Niente da fare: si ripresentera' al prossimo caricamento. Accettabile.
   }

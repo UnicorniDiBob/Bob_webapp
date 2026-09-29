@@ -47,6 +47,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leggiAvvisiInCorso } from "@/lib/avvisi";
+import { chiaveUtente } from "@/lib/sessioni/chiavi";
 import {
   MOTIVO_RICONTROLLO_TESTO,
   MOTIVO_RICONTROLLO_TITOLO,
@@ -470,12 +471,15 @@ function ordina(n: Notifica[]): Notifica[] {
 // «Letto»: una data sola nel browser
 // ---------------------------------------------------------------------------
 
+// Per account (29/09): la chiave vera e' «bob.notifiche.viste.v1:<id utente>»,
+// vedi lib/sessioni/chiavi. Con due account nello stesso browser, «letto» su
+// uno non deve spegnere il pallino dell'altro.
 export const CHIAVE_VISTE = "bob.notifiche.viste.v1";
 export const EVENTO_NOTIFICHE = "bob:notifiche-viste";
 
 export function leggiViste(): string | null {
   try {
-    return window.localStorage.getItem(CHIAVE_VISTE);
+    return window.localStorage.getItem(chiaveUtente(CHIAVE_VISTE));
   } catch {
     return null;
   }
@@ -483,7 +487,7 @@ export function leggiViste(): string | null {
 
 export function segnaViste(quando: Date = new Date()): void {
   try {
-    window.localStorage.setItem(CHIAVE_VISTE, quando.toISOString());
+    window.localStorage.setItem(chiaveUtente(CHIAVE_VISTE), quando.toISOString());
   } catch {
     // Senza memoria il pallino resta acceso: fastidioso, non rotto.
   }

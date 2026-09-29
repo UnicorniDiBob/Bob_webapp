@@ -5,12 +5,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/supabase/types";
 import type { VerificationLevel } from "@/lib/vat";
+import { ascoltaSegnali, esciAccount } from "@/lib/sessioni/client";
 
 interface AuthState {
   session: Session | null;
@@ -34,6 +36,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [verificationLevel, setVerificationLevel] =
     useState<VerificationLevel | null>(null);
   const [loading, setLoading] = useState(true);
+  // L'utente che questa scheda ha in memoria: serve a scoprire, quando la
+  // scheda torna in primo piano, che nei cookie c'e' ormai un altro account.
+  const utenteInMemoria = useRef<string | null>(null);
+  useEffect(() => {
+    utenteInMemoria.current = session?.user?.id ?? null;
+  }, [session]);
 
   async function loadProfile(userId: string) {
     const [{ data: u }, { data: p }] = await Promise.all([
@@ -104,8 +112,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // SESSIONI MULTIPLE (29/09): un account attivo per browser, non per scheda.
+  // Quando un'altra scheda scambia o esce, questa deve smettere di rinnovare
+  // (se no ruoterebbe il refresh token che sta andando in attesa) e poi
+  // ricaricarsi (se no resterebbe sull'account di prima, con un token ancora
+  // valido). Rete in piu': al ritorno in primo piano, se nei cookie c'e' un
+  // account diverso da quello in memoria, si ricarica. Vedi lib/sessioni/client.
+  useEffect(() => {
+    const smetti = ascoltaSegnali((s) => {
+      if (s === "inizio") supabase.auth.stopAutoRefresh();
+      else if (s === "annullato") supabase.auth.startAutoRefresh();
+      else window.location.reload();
+    });
+    const alRitorno = async () => {
+      if (document.visibilityState !== "visible") return;
+      const {
+        data: { session: neiCookie },
+      } = await supabase.auth.getSession();
+      if ((neiCookie?.user?.id ?? null) !== utenteInMemoria.current) window.location.reload();
+    };
+    document.addEventListener("visibilitychange", alRitorno);
+    return () => {
+      smetti();
+      document.removeEventListener("visibilitychange", alRitorno);
+    };
+  }, [supabase]);
+
+  // «Esci» (il pulsante in alto) = ESCI DA TUTTI gli account di questo
+  // browser, e SOLO in questo browser (scope local, 29/09). Prima era
+  // supabase.auth.signOut() con lo scope predefinito, globale: uscire dal
+  // portatile chiudeva anche il telefono. «Esci da questo account», che
+  // passa all'altro, sta in /impostazioni/accesso. Vedi NOTE_E_DECISIONI 29/09.
   async function signOut() {
-    await supabase.auth.signOut();
+    const ok = await esciAccount(supabase, "tutti");
+    if (!ok) {
+      // La route non ha risposto: si esce almeno in locale, cosi' il pulsante
+      // non resta senza effetto. Scope local anche qui, mai globale.
+      await supabase.auth.signOut({ scope: "local" });
+      window.location.replace("/");
+    }
     setSession(null);
     setRole(null);
     setFullName(null);

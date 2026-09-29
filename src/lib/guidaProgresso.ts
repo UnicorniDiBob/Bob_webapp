@@ -16,6 +16,10 @@
 // disabilitato, leggere o scrivere LANCIA. Una guida che rompe la pagina
 // perche' non riesce a ricordarsi a che punto era sarebbe un pessimo scambio.
 
+import { chiaveUtente } from "@/lib/sessioni/chiavi";
+
+// Per account (29/09): la chiave vera e' «bob.guida.pro.v1:<id utente>», vedi
+// lib/sessioni/chiavi.
 export const CHIAVE_GUIDA = "bob.guida.pro.v1";
 export const EVENTO_GUIDA = "bob:guida-cambiata";
 
@@ -30,7 +34,7 @@ export interface ProgressoGuida {
 
 export function leggiProgresso(): ProgressoGuida | null {
   try {
-    const grezzo = window.localStorage.getItem(CHIAVE_GUIDA);
+    const grezzo = window.localStorage.getItem(chiaveUtente(CHIAVE_GUIDA));
     if (!grezzo) return null;
     const p = JSON.parse(grezzo) as ProgressoGuida;
     return typeof p?.attiva === "boolean" ? p : null;
@@ -42,8 +46,8 @@ export function leggiProgresso(): ProgressoGuida | null {
 /** Passare null cancella il segnaposto: il giro e' finito o abbandonato. */
 export function scriviProgresso(p: ProgressoGuida | null) {
   try {
-    if (p) window.localStorage.setItem(CHIAVE_GUIDA, JSON.stringify(p));
-    else window.localStorage.removeItem(CHIAVE_GUIDA);
+    if (p) window.localStorage.setItem(chiaveUtente(CHIAVE_GUIDA), JSON.stringify(p));
+    else window.localStorage.removeItem(chiaveUtente(CHIAVE_GUIDA));
   } catch {
     // Senza memoria la guida funziona lo stesso: non riprende da sola, e
     // basta. Non e' un errore da mostrare a nessuno.

@@ -758,3 +758,25 @@ di regola, con effetti sul badge e sul testo, e merita una PR sua.
 - Il tipo `VerificationEvent` in `src/lib/supabase/types.ts` non conosce
   `vat_recheck_opened`, che la 080 ha aggiunto al vocabolario. La misura usa un
   tipo suo e non ne dipende.
+
+## 29 settembre 2026 — sessioni multiple: uscire vale per questo browser, e la sessione in attesa non si cifra
+
+Decisioni di Lucio, sul ramo `feat/sessioni-multiple` (voce 5 della spike sul doppio cappello, §10).
+
+### Uscire vale solo per questo browser (scope `local`) — cambio di comportamento per TUTTI
+
+- **Prima:** il pulsante «Esci» chiamava `supabase.auth.signOut()` con lo scope predefinito di supabase-js, che è **globale**: uscire dal portatile chiudeva la sessione anche sul telefono e su ogni altro dispositivo dello stesso utente.
+- **Da adesso:** ogni uscita chiude la sessione **solo in questo browser** (`/auth/v1/logout?scope=local`). Gli altri dispositivi restano connessi.
+- **Perché:** era già un comportamento sbagliato con un account solo, e con due account diventa assurdo — si esce da un cappello e cade la sessione di un altro dispositivo.
+- **Tre gesti, non uno:**
+  - «Esci da questo account»: esci dall'account attivo, in questo browser, e **quello in attesa diventa attivo** («smetto questo cappello», non «me ne vado da Bob»). Se l'altro non si rinnova, resta «da riconnettere» e non è attivo nessuno.
+  - «Esci da tutti e due»: tutti e due, in questo browser. Anche quello in attesa si chiude davvero su Supabase, non solo togliendo il cookie.
+  - Il pulsante «Esci» nell'intestazione fa «esci da tutti», in questo browser: su un computer condiviso deve lasciar fuori chiunque. Con un account solo, cioè oggi per tutti, le due uscite coincidono.
+- **«Esci da tutti i dispositivi» resta una cosa che vogliamo**: voce del Piano di Lucio, non costruita.
+
+### `bob-attesa` NON è cifrato, e perché
+
+- Il refresh token dell'account **attivo** sta già in chiaro nei cookie `sb-`, messi lì da `@supabase/ssr` (e leggibili dal JavaScript della pagina, perché servono al client del browser).
+- Cifrare **solo** quello in attesa aggiungerebbe una variabile d'ambiente, una chiave da ruotare e un modo nuovo di rompersi, per proteggere la sessione secondaria **meglio** della principale: una protezione disomogenea, cioè una che sembra esserci.
+- In cambio `bob-attesa` è `httpOnly` (mai leggibile dalla pagina), `Secure`, `SameSite=Lax`, `path=/`, con una scadenza pari a quella del cookie di sessione di `@supabase/ssr` (400 giorni: sul piano Free il refresh di Supabase non scade a tempo), e contiene **solo** il refresh token, l'id e l'email — niente nome, niente ruolo, niente livello.
+- **Il giorno in cui si cifrano i cookie, si cifrano tutti e due insieme.**
