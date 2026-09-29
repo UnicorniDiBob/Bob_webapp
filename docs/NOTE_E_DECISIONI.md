@@ -6,6 +6,40 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 
 ---
 
+## 2026-09-29 · GeoNames non bastava a Milano: i suoi 38 CAP corretti da un'altra fonte (mig. 103)
+
+**Il checksum della 101 provava la trascrizione, non la precisione.** Verificato
+in produzione dopo l'apply: i 38 CAP civici reali di Milano (20121–20162)
+collassavano su **12 soli punti distinti** — GeoNames porta un punto per zona
+amministrativa, non uno per CAP. 20121 e 20162 avevano coordinate identiche,
+pur stando a chilometri di distanza vera. Con le bande della 102 (≤5 km → 4,
+≤10 km → 3) questo voleva dire che `punti_distanza` non distingueva quasi
+nessuna coppia di professionisti milanesi — un punto di scarto su 100, nella
+sola città del pilota.
+
+- **Fonte per Milano ora:** Zornade (CC BY 4.0, https://zornade.com/mappa-cap/milano/),
+  poligoni ricostruiti da particelle catastali incrociate con OSM/OpenAddresses/
+  dati.gov.it/ISTAT/Nominatim. Centroide ricalcolato da noi dai poligoni grezzi
+  (non un campo del file). GeoNames resta la fonte per il resto d'Italia — non
+  sostituito, solo insufficiente per i 38 CAP dove il pilota gira davvero.
+- **Scartate:** un dataset CAP ufficiale del Comune di Milano non esiste (i CAP
+  non sono open data in Italia, sono di Poste Italiane); Nominatim da solo non è
+  affidabile CAP per CAP (un test ha classificato il CAP 20138, milanese, sotto
+  il comune di San Donato Milanese); derivare il centro da un NIL (084) sarebbe
+  un'approssimazione di un'approssimazione senza mappa CAP↔NIL ufficiale che la
+  giustifichi.
+- **Verificato:** 38 CAP nel file, esattamente i 38 CAP civici di Milano; 38
+  punti distinti su 38; scarto massimo 13,96 km (vicino ai ~15 km reali);
+  20121↔20162 a 5,11 km, confermato in modo indipendente da Nominatim (4,87 km)
+  e dal centro del bounding box (5,02 km) — **non gli ~8 km stimati
+  inizialmente**: decisione di André, 2026-09-29, di procedere lo stesso, la
+  stima a 8 km era imprecisa.
+- **Non cambia:** 20130/20140/20150/20160 restano assenti apposta (CAP
+  generici, nessun indirizzo civico); il resto d'Italia resta su GeoNames, coi
+  ~110 CAP civici ancora senza centroide documentati nella 101.
+
+---
+
 ## 2026-09-28 · Il centro di ogni CAP, e la sua fonte (mig. 101)
 
 **La distanza entra nel punteggio: serviva un punto per CAP, non un indirizzo.**
