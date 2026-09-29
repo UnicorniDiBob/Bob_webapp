@@ -28,6 +28,7 @@ import { QuoteDialog } from "./QuoteDialog";
 import { SchedaLavoro, type Scope } from "./SchedaLavoro";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
+import { chiaveUtenteConAdozione } from "@/lib/sessioni/chiavi";
 import { withArticle, afterDi } from "@/lib/italian";
 import { zonesForCity } from "@/lib/zones";
 import { createClient } from "@/lib/supabase/client";
@@ -107,6 +108,10 @@ interface Collected {
 // il giro di login (Accedi o registrati → /login → ritorno) azzerava il
 // brief appena costruito. Salviamo i campi serializzabili in localStorage
 // e li ripristiniamo al mount; "Ricomincia" pulisce anche il draft.
+// Una bozza per account (29/09, sessioni multiple): la chiave vera e'
+// «bob-chat-draft-v1:<id utente>», vedi lib/sessioni/chiavi. Contiene il testo
+// di una richiesta: con due account nello stesso browser non deve passare
+// dall'uno all'altro. Quella scritta da anonimo la adotta chi entra.
 const DRAFT_KEY = "bob-chat-draft-v1";
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // dopo 24h il problema è probabilmente superato
 
@@ -197,11 +202,11 @@ export function BobChat({
   // Ripristina il draft al mount (solo client, evita mismatch di hydration).
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(DRAFT_KEY);
+      const raw = window.localStorage.getItem(chiaveUtenteConAdozione(DRAFT_KEY));
       if (!raw) return;
       const draft = JSON.parse(raw) as ChatDraft;
       if (!draft?.savedAt || Date.now() - draft.savedAt > DRAFT_TTL_MS) {
-        window.localStorage.removeItem(DRAFT_KEY);
+        window.localStorage.removeItem(chiaveUtenteConAdozione(DRAFT_KEY));
         return;
       }
       if (draft.step === "intent" || (draft.messages?.length ?? 0) < 2) return;
@@ -314,7 +319,7 @@ export function BobChat({
         waitlistCity,
         briefId,
       };
-      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      window.localStorage.setItem(chiaveUtenteConAdozione(DRAFT_KEY), JSON.stringify(draft));
     } catch {
       // quota piena o storage negato: la chat funziona comunque
     }
@@ -783,7 +788,7 @@ export function BobChat({
 
   function restart() {
     try {
-      window.localStorage.removeItem(DRAFT_KEY);
+      window.localStorage.removeItem(chiaveUtenteConAdozione(DRAFT_KEY));
     } catch {
       // storage negato: ignora
     }
