@@ -199,7 +199,12 @@ export default function ComeFunzionaPage() {
               <strong className="text-bob-ink">Chi lavora dove servi tu.</strong>{" "}
               Prima chi ha dichiarato proprio la tua zona, poi chi copre il tuo
               comune, poi chi copre la città, poi chi arriva da più lontano. Chi lavora in tutta Italia compare
-              comunque, ma parte quasi da zero su questa voce.
+              comunque, ma parte quasi da zero su questa voce. Fra chi ha
+              dichiarato la stessa zona, conta anche chi è fisicamente più
+              vicino a te: il confronto è fra il centro del tuo CAP e quello
+              del professionista, mai un indirizzo esatto — la precisione
+              grezza è voluta, non un limite: è tutto quello che serve per
+              ordinare l&apos;elenco, e niente di più.
             </li>
             <li>
               <strong className="text-bob-ink">

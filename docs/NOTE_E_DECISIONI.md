@@ -6,6 +6,45 @@ nel repo è la casa stabile. Aggiungere in cima, non cancellare.
 
 ---
 
+## 2026-09-28 · Il centro di ogni CAP, e la sua fonte (mig. 101)
+
+**La distanza entra nel punteggio: serviva un punto per CAP, non un indirizzo.**
+`punti_distanza` in `professionals_score` esisteva già (098) ma solo come
+colonna di confronto — questa settimana entra nel totale. Calcolarla fra due
+indirizzi esatti avrebbe voluto dire far viaggiare l'indirizzo del cliente
+fino al matching, il contrario della consegna progressiva di
+`docs/DATA_COMPLIANCE.md` §4. Fra due centri di CAP è abbastanza preciso per
+ordinare e abbastanza grezzo da non essere un problema di privacy — la
+coarseness è voluta, non un limite.
+
+- **Fonte:** GeoNames, https://download.geonames.org/export/zip/IT.zip
+  (CC BY 4.0, licenza nel readme dell'archivio). Scaricato il 2026-09-28,
+  attribuzione scritta nella colonna `source` di ogni riga e nel commento
+  della 101.
+- **Copertura:** 4735 CAP distinti su 4678 che compaiono in `comuni.cap`
+  (086). 120 CAP di `comuni.cap` non hanno un centroide GeoNames, ma non sono
+  un solo problema — tre cose diverse, verificate contro la ricerca CAP di
+  Poste (elenco completo, con i nomi delle città, nel commento della 101):
+  **22 sono CAP generici** (caselle postali/grandi utenti, nessun indirizzo
+  civico — Milano 20130/20140/20150/20160 compresi) e la loro assenza è
+  corretta, non un buco: **Milano è coperta per intero per il pilota**.
+  **91 sono CAP civici reali che GeoNames non copre** (Cagliari 09050–09069,
+  Ravenna 48121–48125, e altri ~70), e qui la mancanza conta davvero: **prima
+  che una seconda città vada in produzione servono i loro centroidi veri**,
+  altrimenti ogni professionista lì dentro collassa sul centroide di comune e
+  `punti_distanza` smette di distinguere, lo stesso difetto che questa
+  migrazione chiude a Milano. **7 restano di esito incerto** (Mestre
+  30127–30129, La Spezia 19127–19130), né confermati né aboliti nella
+  ricerca di Poste. In tutti e tre i casi, oggi, nessuna riga qui: chi
+  interroga questi CAP ricade sul centroide del comune (fallback già in
+  `professionals_score`).
+- **Stessa postura di `comuni`:** geografia pubblica, RLS con lettura per
+  tutti — ma **nessuna policy di scrittura**, a differenza di `comuni` che ne
+  ha una per lo staff: `cap_centroids` la scrive solo questa migrazione, non
+  esiste un percorso applicativo che debba correggerla riga per riga.
+
+---
+
 ## 2026-09-22 · Perché il CAP non può diventare la domanda primaria del passo zona, non ancora (decisione di André, con Claude)
 
 **Proposto e ritirato nella stessa sessione**: durante il lavoro sulla scheda

@@ -1,3 +1,63 @@
+# Passaggio di consegne — 29 settembre 2026 (André, con Claude)
+
+> La giornata di oggi in cima. La voce del 27 settembre e tutto quello che
+> sta sotto restano invariate; quello che è a metà si porta avanti, non si
+> butta.
+
+## Il cancello della 098 si apre: cap_centroids (101) e distanza nel punteggio (102), pronte in PR, non applicate
+
+Ramo `w06-cap-centroids-ranking`. Drift check di inizio sessione: nessun
+file per 076/081/082/083 nel repo né in produzione, come atteso; le tre
+categorie di scarto nel fingerprint (constraints, event_triggers, functions)
+sono tutte spiegate — differenze Postgres 18 vs 17 e comment-stripping di
+Supabase, non drift vero (dettaglio in questa sessione, non ripetuto qui).
+**Numerate prima 100/101, poi rinumerate 101/102** dopo aver tirato dentro
+`origin/main`: la 100 era già presa, mergiata e applicata da Lucio
+(`termini_accettazioni`) mentre questa sessione lavorava. Nessuna riga di
+quella migrazione riguarda geografia o punteggio — zero sovrapposizione,
+solo il numero.
+
+- **Fatto:** `101_centroidi_cap.sql` — tabella `cap_centroids`, 4735 CAP da
+  GeoNames (CC BY 4.0, attribuzione in NOTE_E_DECISIONI), 120 CAP di
+  `comuni.cap` senza centroide (elenco nel commento del file). `102_distanza_
+  nel_punteggio.sql` — cutover della 098: area rescalata 20→16, `punti_
+  distanza` (bande su CAP, max 4) entra in `punti`, totale verificato 100.
+  Deliberatamente NON usa `professional_coverage.center_lat/lng` come
+  ripiego (la traccia di lavoro lo chiedeva): quella tabella nega la lettura
+  ad anon/authenticated via RLS e la funzione resta SECURITY INVOKER (075) —
+  usarla sarebbe il tranello già scartato dalla 098, ripetuto. Bande e
+  fallback provati con un replay locale completo (Postgres 18, non 16:
+  brew ha smesso di compilare pg_cron per il 16 e il sandbox blocca sia la
+  compilazione da sorgente sia la copia del binario precompilato — accettato
+  per questa sessione, non risolto) e con un insert/select reale end-to-end.
+  Trovato e corretto anche il vero difetto dietro `requests.postal_code`
+  a 0/12: `BobChat.tsx` inoltrava `zoneSlug`/`postalCode` a `QuoteDialog` ma
+  non a `RequestDialog`, stesso context. **Provato dal vivo**: cliente di
+  prova creato via Admin API, login reale, insert reale in produzione con
+  RLS vera — `postal_code` scritto e riletto correttamente — poi riga,
+  utente e righe a cascata cancellati e verificati a zero. `customer_
+  addresses.postal_code` (1/3) e il sesto professionista senza CAP non sono
+  difetti: righe precedenti alla colonna, verificato sulle date. Aggiornata
+  la voce di `/come-funziona` sulla vicinanza CAP-a-CAP, nessun ottavo
+  elemento, "la zona e il tempo di risposta pesano uguale" resta vera (16+4
+  = 20 = risposta). `npm run build`, `lint`, `test` verdi per davvero (141
+  test), non solo dichiarati.
+- **A metà:** le migrazioni 101/102 sono nel ramo, non applicate — vanno in
+  PR prima. Un fork lanciato per un controllo di stato ha girato 22 minuti
+  per conto suo, editando file fuori mandato (un secondo file di migrazione
+  con lo stesso numero, dentro esattamente il ripiego su
+  `professional_coverage` da evitare, più un HANDOFF.md e un `come-funziona`
+  scritti a sua iniziativa)
+  e dichiarando falsamente di non aver toccato niente: pulito e riverificato
+  file per file, nulla del suo lavoro non controllato è rimasto nel ramo.
+  `scripts/schema_check.sh` resta ineseguibile su questa macchina così
+  com'è (niente Postgres 16 + pg_cron disponibile via brew).
+- **Applicato in produzione:** niente. Le migrazioni vanno in PR e in CI
+  verde prima; le ha applicate solo il test dal vivo del punto sopra, e
+  quello è stato disfatto subito dopo, verificato a zero righe residue.
+
+---
+
 # Passaggio di consegne — 28 settembre 2026 (Lucio, con Claude)
 
 > Sezione di Lucio, aggiunta in cima. Quella di André (27 e 25 settembre) e
@@ -150,9 +210,67 @@ manda su `/dashboard`, che apre da sola `GuidaPrimoAccesso` al primo accesso
 (`onboarding_completed_at is null`). Non esiste nessun dashboard vuoto senza
 wizard — verificato leggendo il codice, non a memoria. Il buco vero resta un
 altro: `professionals.postal_code` è raccolto e non lo legge nessuno per la
-geografia, nessuna query lo usa per un centro o una distanza. Dettaglio nella
-sessione del 27/09 su ricerca per distanza (`docs/RICERCA.md` e il lavoro in
-corso su `professionals_score`).
+geografia, nessuna query lo usa per un centro o una distanza.
+
+## Copertura come filtro con esclusioni + punti_distanza in scaffolding: 098 e 099 applicate, verificate in produzione
+
+PR #98 mergiata, migrazioni 098 e 099 applicate su Supabase in quest'ordine.
+Advisor di sicurezza rilanciati dopo: nessun rilievo nuovo.
+
+- **Parte A (098) è live.** `professional_coverage` guadagna
+  `excluded_comuni_istat`/`excluded_zone_slugs` (vincolate al livello di scope
+  giusto), pubblicate come `excluded_keys` nello stesso vocabolario delle
+  inclusioni. Chiude l'exploit strutturale: escludere un solo comune da una
+  copertura nazionale, o un quartiere da «tutta la città», non costringe più
+  a spuntare a mano migliaia di righe al livello più fine — quello che paga
+  più punti. Provato no-op su ogni copertura scritta prima di oggi: 220+
+  confronti in `copertura.test.ts` fra la regola vecchia congelata e quella
+  nuova, più un confronto di sola lettura sui sei professionisti veri di
+  produzione contro sei richieste vere (0 divergenze).
+- **Parte B (098) è scaffolding, non ancora nel punteggio pubblicato.**
+  `professionals_score` guadagna `punti_distanza`, bande su distanza reale
+  (comune/zona) tarate sugli 88 NIL veri di Milano — non le bande del tempo
+  di risposta copiate 1:1, che avrebbero schiacciato il 99,7% delle coppie
+  milanesi su due sole bande. **`punti` resta quella di sempre: l'ordinamento
+  pubblico non è cambiato.**
+- **099 ha seminato comune e CAP sulle cinque fixture di dimostrazione**
+  (`b1000000-…`, tutte Milano/015146, cinque CAP diversi — FOTOPRO-MILANO
+  resta fuori apposta, vedi sotto). Verificato dal vivo dopo l'applicazione:
+  `punti_distanza` vale **14** per tutte e cinque su una richiesta a
+  Gratosoglio (5,94 km dal centroide comunale di Milano), **10** per
+  FOTOPRO-MILANO — la banda del punto mancante, perché non ha ancora
+  `comune_istat`. Esattamente il comportamento previsto, non un errore.
+
+### Il cancello di cutover, per chi arriva dopo
+
+**`punti_distanza` non entra ancora in `punti`, e non deve finché il pezzo 3
+non esiste.** Il punto base del professionista oggi risolve solo al livello
+di comune: dentro Milano ogni professionista risolve allo stesso punto
+(verificato: San Siro e Gratosoglio, 7,12 km veri di distanza, stessa banda
+su qualunque richiesta milanese), mentre l'area per specificità di oggi li
+distingue ancora (zona 20 contro città 15). Spostare il cutover prima del
+pezzo 3 renderebbe l'ordinamento dentro Milano — la città del pilota —
+peggiore di oggi, non migliore. Scritto anche dentro la migrazione 098, non
+solo qui.
+
+## Cosa è a metà
+
+- **`cap_centroids` (pezzo 3), non ancora costruito.** Dataset scelti e
+  copertura verificata: ds501 (farmacie, 38/38 CAP), ds47 (asili nido,
+  38/38), ds291 (mercati settimanali, 36/38) — combinati, 38 CAP su 38 reali
+  (i 4 nominali 20130/20140/20150/20160 non sono zone abitate, restano sul
+  comune per scelta esplicita). È questo che sblocca il cutover, non uno
+  strumento di confronto — che comunque non potrebbe validare l'intra-Milano
+  finché questo pezzo non c'è.
+- **Il selettore d'area (`/impostazioni/zone`, `AreaLavoroEditor.tsx`) non sa
+  ancora scrivere le esclusioni.** Le colonne esistono dalla 098, l'interfaccia
+  resta a sole inclusioni: chi vuole «tutta Italia meno un comune» non ha
+  ancora un modo di dirlo a mano. Nessun rischio nel frattempo — le colonne
+  restano vuote finché non c'è un'interfaccia che le scriva.
+- **FOTOPRO-MILANO non ha `comune_istat`.** È l'unico professionista vero,
+  quindi l'unico che conta per un confronto reale prima del cutover: va in
+  `/impostazioni/azienda` a scrivere comune e CAP — lo fa il titolare, non una
+  migrazione (la semina della 099 copre solo le cinque fixture).
 
 ---
 
