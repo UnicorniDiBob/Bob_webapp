@@ -1,6 +1,8 @@
 # Bob — Design spike: il doppio cappello (cliente e professionista nello stesso account)
 
-**Stato:** PROPOSTA — niente è deciso, niente è costruito · **Data:** 29 settembre 2026 · **Autore:** Lucio, con Claude
+> **PROPOSTA IN ATTESA DELLA RIUNIONE DEL 1 OTTOBRE 2026 (rito del giovedì).** Approvata il 29/09 come analisi; la strada (b) e la disposizione B sono consigliate da Lucio, ma **niente è deciso**: cinque voci su undici sono di André e cambiano la navigazione dell'intero prodotto, e la decisione si prende insieme giovedì.
+
+**Stato:** PROPOSTA — niente è deciso, niente è costruito; decisione alla riunione del 1/10/2026 · **Data:** 29 settembre 2026 · **Autore:** Lucio, con Claude
 **Proprietari:** la scelta è di Lucio e André insieme; la navigazione e l'area cliente sono di André, schema, RLS, termini e cancellazione di Lucio (vedi §9).
 **Perché adesso:** un professionista che ha bisogno di un idraulico oggi deve aprire un secondo account con un'altra email. Prima del pilota di gennaio conviene sapere se si risolve in interfaccia o in schema, perché le due strade toccano cose diverse, e una delle due tocca l'autenticazione.
 
@@ -248,14 +250,14 @@ Pro: una sola casetta. Contro: **uno stato nascosto**. Lo stesso clic porta in d
 
 **Lucio — schema, RLS, termini, dati**
 7. Migrazione: «Pro creates own profile» condizionata ai termini professionisti accettati invece che al ruolo; `users.role` smette di essere letto per cliente/pro.
-8. Vincoli nel database: niente professionista abbinato a una richiesta del suo stesso utente; niente recensione del proprio profilo. **Indipendente dalla scelta: il buco c'è già oggi via API.**
-9. `/api/termini/accetta` con il pubblico esplicito; `pubblicoPerRuolo()` sostituita.
-10. Cancellazione in due: «chiudi l'attività» e «cancella l'account»; decidere conservazione delle recensioni ricevute e delle fatture.
-11. Export dei dati anche per i professionisti (oggi 409): vale già adesso, non solo col doppio cappello.
-12. Registro dei trattamenti: A1 e A25 aggiornate.
-13. Legale: termini clienti per un professionista che compra per il suo lavoro.
+8. `/api/termini/accetta` con il pubblico esplicito; `pubblicoPerRuolo()` sostituita.
+9. Cancellazione in due: «chiudi l'attività» e «cancella l'account»; decidere conservazione delle recensioni ricevute e delle fatture.
+10. Registro dei trattamenti: A1 e A25 aggiornate.
+11. Legale: termini clienti per un professionista che compra per il suo lavoro.
 
-**Rilievi da aprire in `roadmap/findings.csv`, indipendenti dalla scelta (Lucio)**
-- Abbinarsi a sé stessi e recensirsi sono possibili via API (§5.1, §5.2).
-- «Verificata» vuol dire «richiesta chiusa», non «transazione conclusa» (§5.2).
-- `AuthProvider` ripiega su `"customer"` se la lettura del ruolo fallisce (§1.1).
+**Non sono voci del Piano: sono rilievi, perché sono vivi adesso e non dipendono dal doppio cappello.** Aperti il 29/09 in `roadmap/findings.csv`:
+- *serious* — dal browser si può attaccare alla propria richiesta qualunque professionista, anche sé stessi (§5.1): la policy di `request_professionals` non vincola `professional_id`. Da qui discende anche il recensirsi da soli (§5.2).
+- *serious* — l'export dei dati risponde 409 ai professionisti (§5.5): il diritto di accesso e portabilità non si esercita dal prodotto. Con una data proposta, da confermare il 1/10.
+- *warning* — `AuthProvider` ripiega su `"customer"` se la lettura del ruolo fallisce (§1.1).
+
+Resta da aprire, non ancora scritto come rilievo: «verificata» vuol dire «richiesta chiusa», non «transazione conclusa» (§5.2).
