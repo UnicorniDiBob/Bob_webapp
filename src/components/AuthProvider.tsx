@@ -12,7 +12,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/supabase/types";
 import type { VerificationLevel } from "@/lib/vat";
-import { ascoltaSegnali } from "@/lib/sessioni/client";
+import { ascoltaSegnali, esciAccount } from "@/lib/sessioni/client";
 
 interface AuthState {
   session: Session | null;
@@ -138,8 +138,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase]);
 
+  // «Esci» (il pulsante in alto) = ESCI DA TUTTI gli account di questo
+  // browser, e SOLO in questo browser (scope local, 29/09). Prima era
+  // supabase.auth.signOut() con lo scope predefinito, globale: uscire dal
+  // portatile chiudeva anche il telefono. «Esci da questo account», che
+  // passa all'altro, sta in /impostazioni/accesso. Vedi NOTE_E_DECISIONI 29/09.
   async function signOut() {
-    await supabase.auth.signOut();
+    const ok = await esciAccount(supabase, "tutti");
+    if (!ok) {
+      // La route non ha risposto: si esce almeno in locale, cosi' il pulsante
+      // non resta senza effetto. Scope local anche qui, mai globale.
+      await supabase.auth.signOut({ scope: "local" });
+      window.location.replace("/");
+    }
     setSession(null);
     setRole(null);
     setFullName(null);

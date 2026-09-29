@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { SectionHeader } from "@/components/ImpostazioniShell";
 import { CancellazioneAccount } from "@/components/CancellazioneAccount";
+import { AccountInQuestoBrowser } from "@/components/AccountInQuestoBrowser";
 import { GIORNI_RIPENSAMENTO } from "@/lib/cancellazione";
 
 // Deve restare allineata a Supabase > Authentication > Providers > Email.
@@ -165,6 +166,9 @@ export default function AccessoPage() {
       <SectionHeader title="Accesso e sicurezza">
         Come entri in Bob, e come si chiude.
       </SectionHeader>
+
+      {/* ---- Account in questo browser (29/09, sessioni multiple) ---- */}
+      <AccountInQuestoBrowser />
 
       {/* ---- Email di accesso ---- */}
       <section className="card p-5 sm:p-6">
