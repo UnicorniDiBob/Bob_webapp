@@ -8,6 +8,7 @@ import { VerifyButtons } from "./VerifyButtons";
 import { TierButtons } from "./TierButtons";
 import { VatReviewActions } from "./VatReviewActions";
 import {
+  casiInEmergenza,
   misuraSlaStorica,
   namesMatch,
   procedureFlagInName,
@@ -358,12 +359,14 @@ export default async function AdminProfessionalsPage() {
   // promessa che abbiamo gia' rotto, e mescolarlo agli altri lo fa scorrere via
   // insieme a loro. Il numero accanto al titolo si legge senza aprire niente,
   // ed e' la cifra che dice se i 5 giorni lavorativi reggono.
-  const emergenze = codaAperta.filter(
-    (r) => statoCoda(r.vat_review_opened_at)?.sforata
-  );
-  const openCases = codaAperta.filter(
-    (r) => !statoCoda(r.vat_review_opened_at)?.sforata
-  );
+  // IL CRITERIO E' QUELLO DEL GIRO NOTTURNO (29/09): palla nostra =
+  // vat_review_opened_at valorizzata, qualunque sia lo stato. Prima si partiva
+  // da codaAperta (solo pending e docs_requested) e i ricontrolli con un
+  // documento caricato, oltre l'SLA, non comparivano da nessuna parte come
+  // emergenze. Vedi casiInEmergenza() in src/lib/vat.ts.
+  const emergenze = casiInEmergenza(reviewRows);
+  const inEmergenza = new Set(emergenze.map((r) => r.professional_id));
+  const openCases = codaAperta.filter((r) => !inEmergenza.has(r.professional_id));
   const closedCases = reviewRows.filter((r) => r.vat_review_state === "rejected");
   // RICONTROLLO (079): una coda a parte, non in fondo a quella delle prime
   // richieste. Chi e' qui il badge ce l'ha gia' e lo sta rischiando; chi e' di
@@ -376,8 +379,9 @@ export default async function AdminProfessionalsPage() {
     intestazione: 2,
     scadenza: 3,
   };
+  // Un ricontrollo in emergenza sta nelle Emergenze, non anche qui.
   const recheckCases = reviewRows
-    .filter((r) => r.vat_review_state === "recheck")
+    .filter((r) => r.vat_review_state === "recheck" && !inEmergenza.has(r.professional_id))
     .sort(
       (a, b) =>
         (PESO_MOTIVO[a.recheck_reason ?? "scadenza"] ?? 9) -
@@ -439,18 +443,28 @@ export default async function AdminProfessionalsPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {emergenze.map((row) => (
-              <VatCaseCard
-                key={row.professional_id}
-                row={row}
-                pro={proById[row.professional_id]}
-                profile={
-                  proById[row.professional_id]
-                    ? profileMap[proById[row.professional_id].user_id]
-                    : undefined
-                }
-                storico={eventsByPro.get(row.professional_id) ?? []}
-                documenti={docsByPro.get(row.professional_id) ?? []}
-              />
+              <div key={row.professional_id}>
+                {row.vat_review_state === "recheck" && (
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-orange-700">
+                    {`Ricontrollo · ${
+                      MOTIVO_RICONTROLLO_STAFF[
+                        (row.recheck_reason ?? "scadenza") as keyof typeof MOTIVO_RICONTROLLO_STAFF
+                      ] ?? row.recheck_reason
+                    }`}
+                  </p>
+                )}
+                <VatCaseCard
+                  row={row}
+                  pro={proById[row.professional_id]}
+                  profile={
+                    proById[row.professional_id]
+                      ? profileMap[proById[row.professional_id].user_id]
+                      : undefined
+                  }
+                  storico={eventsByPro.get(row.professional_id) ?? []}
+                  documenti={docsByPro.get(row.professional_id) ?? []}
+                />
+              </div>
             ))}
           </div>
         )}

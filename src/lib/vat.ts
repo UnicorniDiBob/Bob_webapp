@@ -186,6 +186,44 @@ export function riepilogoSforamenti(
   };
 }
 
+/**
+ * Se il professionista deve vedere l'avviso di ritardo (29/09): la sua prima
+ * richiesta e' in esame (pending) e siamo oltre l'SLA. La soglia e' quella di
+ * statoCoda(), la stessa del riquadro admin e del giro notturno. Su un
+ * ricontrollo non si accende: AvanzamentoVerifica non si mostra li'.
+ */
+export function avvisoSlaAcceso(
+  review: VatReviewState | null,
+  apertoIl: string | null,
+  adesso: Date = new Date()
+): boolean {
+  return review === "pending" && statoCoda(apertoIl, adesso)?.sforata === true;
+}
+
+/**
+ * I casi da mettere in «Emergenze» nella pagina admin (29/09): quelli con la
+ * palla nostra e oltre l'SLA, dal piu' vecchio al piu' recente.
+ *
+ * Ha la palla nostra CHI HA vat_review_opened_at VALORIZZATA (mig 080): lo
+ * stesso criterio di riepilogoSforamenti(), cioe' del giro notturno. Prima la
+ * pagina filtrava per stato (solo pending e docs_requested) e perdeva i
+ * ricontrolli su cui il professionista aveva gia' caricato un documento: palla
+ * nostra, orologio che corre, e nessuna emergenza a video mentre il giro
+ * notturno la contava. Due criteri per la stessa domanda davano due risposte.
+ */
+export function casiInEmergenza<T extends { vat_review_opened_at: string | null }>(
+  righe: readonly T[],
+  adesso: Date = new Date()
+): T[] {
+  return righe
+    .filter((r) => statoCoda(r.vat_review_opened_at, adesso)?.sforata)
+    .sort(
+      (a, b) =>
+        new Date(a.vat_review_opened_at as string).getTime() -
+        new Date(b.vat_review_opened_at as string).getTime()
+    );
+}
+
 // ---------------------------------------------------------------------------
 // La misura a posteriori dell'SLA (29/09, Lucio — voce m2t4s8)
 // ---------------------------------------------------------------------------
