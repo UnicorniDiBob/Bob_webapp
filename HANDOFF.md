@@ -51,16 +51,22 @@ colmare prima della seconda città, elencato in `docs/NOTE_E_DECISIONI.md`.
 
 ---
 
-# Handoff — 29 settembre 2026, Lucio
+# Handoff — 29 settembre 2026, Lucio (fine giornata)
 
-**Fatto.** Sessioni multiple (ramo `feat/sessioni-multiple`, PR da mergiare), in quattro fette:
-- **due sessioni nello stesso browser** e lo scambio con un click; l'account in attesa sta in `bob-attesa` (httpOnly, solo refresh token, id ed email) e l'attivo non si rinnova mai durante lo scambio;
-- **il punto unico lato server** (`createClient` di `lib/supabase/server`, costruito da `fabbrica.ts`) con un test che prova che, con A attivo e B presente, niente va a B;
-- **le chiavi del browser per account** (bozza della chat di Bob compresa), e la ricarica completa allo scambio con l'avviso fra schede;
-- «esci da questo» ed «esci da tutti», in questo browser.
+**Fatto e in produzione** (`main` = `ce7820f`, deploy di produzione READY):
+- **la misura dell'SLA** sui casi chiusi e `sla_sforati` nel giro notturno (#106);
+- **la promessa tolta**, «se sforiamo ti scriviamo», e le scuse quando sforiamo (#108);
+- **la riscrittura di `/admin/professionals`**: una coda sola, le viste `?vista=`, l'archivio in fondo, il controllo degli errori (#109);
+- **le sessioni multiple**: due account nello stesso browser, scambio con un click, uscire vale solo per questo browser (#114);
+- **la spike portata allo stato deciso**: due account separati, uno per mestiere (#111).
 
-Selettore minimo in `/impostazioni/accesso`. Nessuna migrazione: la 104 è libera.
+**Fermo e pronto: la #115, NON mergiata** — «aggiungi un altro account» più l'etichetta «Esci da tutti gli account». Aspetta tre mosse di Lucio, **in quest'ordine**:
+1. `ACCESSO_HMAC_SEGRETO` su Vercel, produzione, sensitive, almeno 32 caratteri (`openssl rand -hex 32`);
+2. applicare la migrazione **104** (`supabase/migrations/104_limite_accesso.sql`);
+3. advisor di sicurezza di Supabase, e rilievi sistemati.
 
-**A metà.** **La route «aggiungi account» non c'è**: il tetto di tentativi vuole allargare il vincolo `route in ('chat','brief')` di `rate_limit_counters`, cioè una migrazione, e aspetta la decisione di Lucio. Senza, un secondo account entra nel browser solo a mano (passi nella PR). Il collaudo dal vivo lo fa Lucio con account suoi. **Per André:** il selettore nell'intestazione; `BobChat.tsx` e `PromemoriaProfilo.tsx` sono cambiati solo nel nome delle chiavi di `localStorage`.
+Solo dopo, il merge.
 
-**Applicato in produzione che devi sapere.** Niente su Supabase. **Al merge cambia il logout per tutti:** «Esci» vale solo per questo browser, non più per tutti i dispositivi (`NOTE_E_DECISIONI.md`, 29/09).
+**Non verificato:** le **13 prove manuali della #114**, che è già in produzione e che nessuno ha ancora guardato dal vivo. Sono nella descrizione della #114.
+
+**Per André:** nella #115 ho toccato `src/components/Header.tsx`, dieci righe, solo l'etichetta del pulsante «Esci» (desktop e mobile). Lo dichiaro qui perché è area tua. Nella #114, già su `main`, `BobChat.tsx` e `PromemoriaProfilo.tsx` sono cambiati solo nel nome delle chiavi di `localStorage`.
