@@ -165,6 +165,27 @@ export function statoCoda(
   };
 }
 
+/**
+ * Quanti casi con la palla nostra sono oltre l'SLA ADESSO (29/09, m2t4s8).
+ * La conta il giro notturno, perche' lo sforamento esista anche se nessuno apre
+ * la pagina admin. La regola e' statoCoda(), non una copia.
+ */
+export function riepilogoSforamenti(
+  aperti: readonly (string | null)[],
+  adesso: Date = new Date()
+): { pallaNostra: number; sforati: number; peggiore: number } {
+  const stati = aperti
+    .map((a) => statoCoda(a, adesso))
+    .filter((x): x is StatoCoda => x !== null);
+  const sforati = stati.filter((x) => x.sforata);
+  return {
+    pallaNostra: stati.length,
+    sforati: sforati.length,
+    /** Di quanti giorni lavorativi e' oltre il caso piu' vecchio; 0 se nessuno. */
+    peggiore: sforati.length ? Math.max(...sforati.map((x) => -x.rimasti)) : 0,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // La misura a posteriori dell'SLA (29/09, Lucio — voce m2t4s8)
 // ---------------------------------------------------------------------------

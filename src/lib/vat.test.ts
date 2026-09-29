@@ -20,6 +20,7 @@ import {
   giorniLavorativiTra,
   livelloVisibile,
   misuraSlaStorica,
+  riepilogoSforamenti,
   publicVerificationLevel,
   scadenzaBadge,
   statoCoda,
@@ -367,5 +368,33 @@ describe("misuraSlaStorica: l'SLA sui casi gia' chiusi", () => {
     ]);
     expect(m.esameUmano[0].sforatoSecondoIToS).toBe(statoCoda(aperto.toISOString(), dopo)?.sforata);
     expect(m.esameUmano[0].sforatoSecondoIToS).toBe(true);
+  });
+});
+
+describe("riepilogoSforamenti: quello che il giro notturno conta ogni notte", () => {
+  const ADESSO = new Date("2026-09-29T12:00:00+02:00"); // martedi'
+
+  it("coda vuota: zero casi, zero sforati", () => {
+    expect(riepilogoSforamenti([], ADESSO)).toEqual({ pallaNostra: 0, sforati: 0, peggiore: 0 });
+  });
+
+  it("conta solo i casi con la palla nostra, e fra questi gli sforati", () => {
+    const r = riepilogoSforamenti(
+      [
+        "2026-09-28T12:00:00+02:00", // ieri: dentro
+        "2026-09-18T12:00:00+02:00", // ven 18: 7 giorni lavorativi, sforato di 2
+        "2026-09-21T12:00:00+02:00", // lun 21: 6 giorni lavorativi, sforato di 1
+        null, // palla sua: nessun orologio
+      ],
+      ADESSO
+    );
+    expect(r).toEqual({ pallaNostra: 3, sforati: 2, peggiore: 2 });
+  });
+
+  it("usa la stessa regola di statoCoda, caso per caso", () => {
+    const aperto = "2026-09-21T12:00:00+02:00";
+    expect(riepilogoSforamenti([aperto], ADESSO).sforati).toBe(
+      statoCoda(aperto, ADESSO)?.sforata ? 1 : 0
+    );
   });
 });

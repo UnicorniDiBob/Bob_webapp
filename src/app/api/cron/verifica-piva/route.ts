@@ -36,6 +36,8 @@ import {
   matchRegistryName,
   procedureFlagInName,
   FINESTRA_RICONTROLLO_GIORNI,
+  SLA_VERIFICA_GIORNI_LAVORATIVI,
+  riepilogoSforamenti,
 } from "@/lib/vat";
 
 export const runtime = "nodejs";
@@ -92,6 +94,49 @@ async function registraGiro(
   } catch {
     // volutamente silenzioso
   }
+}
+
+/**
+ * GLI SFORAMENTI DI ADESSO (29/09, m2t4s8).
+ *
+ * La pagina admin mostra «SLA sforata di N giorni» e mette quei casi in cima,
+ * ma se nessuno la apre lo sforamento non esiste da nessuna parte. Qui il giro
+ * notturno li conta ogni notte e li lascia in system_job_runs; quando sono piu'
+ * di zero scrive anche un console.error, che nei log di Vercel si cerca con
+ * «SLA sforato». Nessuna email: Resend non e' configurato.
+ *
+ * Si contano TUTTI i casi con la palla nostra (vat_review_opened_at valorizzata,
+ * mig 080), compresi i ricontrolli su cui il professionista ha caricato un
+ * documento. La sezione «Emergenze» della pagina admin oggi filtra solo
+ * pending/docs_requested e quelli li perde. La regola di sforamento e' una
+ * sola, statoCoda(), dentro riepilogoSforamenti(): questa funzione non ne ha
+ * una sua.
+ *
+ * Nel log solo numeri, nessun identificativo: per sapere chi, si apre la pagina.
+ */
+async function contaSforamenti(
+  admin: SupabaseClient
+): Promise<Record<string, number>> {
+  const { data, error } = await admin
+    .from("professional_verification")
+    .select("vat_review_opened_at")
+    .not("vat_review_opened_at", "is", null);
+  if (error) {
+    // Una lettura fallita non e' «zero sforati»: nell'outcome si vede.
+    console.error(`[verifica-piva] SLA: lettura della coda fallita: ${error.message}`);
+    return { sla_lettura_fallita: 1 };
+  }
+  const r = riepilogoSforamenti(
+    ((data ?? []) as { vat_review_opened_at: string | null }[]).map(
+      (x) => x.vat_review_opened_at
+    )
+  );
+  if (r.sforati > 0) {
+    console.error(
+      `[verifica-piva] SLA sforato: ${r.sforati} ${r.sforati === 1 ? "caso" : "casi"} con la palla nostra oltre i ${SLA_VERIFICA_GIORNI_LAVORATIVI} giorni lavorativi (il piu' vecchio oltre di ${r.peggiore}). Vedi /admin/professionals#emergenze.`
+    );
+  }
+  return { sla_palla_nostra: r.pallaNostra, sla_sforati: r.sforati };
 }
 
 /** Quante verifiche in scadenza guardare per giro. */
@@ -352,6 +397,7 @@ export async function GET(request: Request) {
   if (casi.length === 0) {
     // Il giro a vuoto e' il caso normale, ed e' proprio quello che prima non
     // lasciava traccia: la riga si scrive comunque.
+    const sla = await contaSforamenti(admin);
     await registraGiro(admin, {
       started_at: inizioGiro,
       ok: true,
@@ -360,6 +406,7 @@ export async function GET(request: Request) {
         scadenze_guardate: ric.guardate,
         rinnovate: ric.rinnovate,
         in_ricontrollo: ric.inRicontrollo,
+        ...sla,
       },
     });
     return NextResponse.json({
@@ -512,6 +559,8 @@ export async function GET(request: Request) {
   // senza di lei dal database non si distingue un giro pieno da un giro che
   // non e' partito — che e' il buco in cui era rimasto nascosto per settimane
   // un CRON_SECRET mancante.
+  // Gli sforamenti si contano a FINE giro: il ritentativo puo' averne chiusi.
+  const sla = await contaSforamenti(admin);
   await registraGiro(admin, {
     started_at: inizioGiro,
     ok: true,
@@ -523,6 +572,7 @@ export async function GET(request: Request) {
       scadenze_guardate: ric.guardate,
       rinnovate: ric.rinnovate,
       in_ricontrollo: ric.inRicontrollo,
+      ...sla,
     },
   });
 
