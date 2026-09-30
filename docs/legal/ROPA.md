@@ -21,6 +21,8 @@ DATA_COMPLIANCE.md §8.
 
 ## A1 — Account e autenticazione
 
+*Aggiornata il 30 settembre 2026: una persona può avere più di un account (decisione del 29/09, un account per mestiere; sessioni multiple, #114 e #115).*
+
 | | |
 |---|---|
 | **Finalità** | Creare e gestire l'account, autenticare, applicare i termini accettati |
@@ -32,6 +34,7 @@ DATA_COMPLIANCE.md §8.
 | **Trasferimenti** | Supabase progetto in regione UE; i subresponsabili includono entità USA. Vercel: elaborazione primaria negli USA → trasferimento presente, coperto da DPA/SCC. Vedi DATA_COMPLIANCE §7.6 |
 | **Conservazione** | Finché l'account è attivo; fino a 12 mesi dalla cancellazione (allineato all'informativa) |
 | **Sicurezza** | RLS su tutte le tabelle, service-role key solo server-side, MFA sulle dashboard Supabase/Vercel, `profile_private` separata dal profilo pubblico |
+| **Più account della stessa persona** | Una persona può avere più di un account — per esempio uno da cliente e uno da professionista, ognuno con la propria email. Il server **non registra** che due account sono della stessa persona: il legame esiste solo nel browser, nei cookie delle sessioni multiple (`src/lib/sessioni/`), che non scrivono niente nel database. Per questo i diritti dell'interessato — accesso, export, rettifica, cancellazione — si esercitano **per account**: ognuno si esporta, si corregge e si cancella da sé, e la cancellazione di uno non tocca l'altro. **Eccezione viva:** l'export dal prodotto oggi risponde 409 agli account professionista (rilievo *serious* del 29/09 in `roadmap/findings.csv`), quindi per quegli account l'accesso passa ancora da una richiesta a mano. Una richiesta «su tutto» (una mail al contatto privacy, non un gesto del prodotto) va servita su **tutti gli account che la persona indica**, verificando per ciascuno che il richiedente ne sia il titolare; non si cercano altri account per somiglianza di nome o di dati |
 | **Note** | La data di nascita serve a verificare la maggiore età (servizio riservato a maggiorenni). Verificare che non sia esposta oltre il necessario — **DA CONFERMARE** quali ruoli la leggono |
 
 ## A2 — Richieste di preventivo e abbinamento cliente/professionista

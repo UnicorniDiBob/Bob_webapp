@@ -780,3 +780,15 @@ Decisioni di Lucio, sul ramo `feat/sessioni-multiple` (voce 5 della spike sul do
 - Cifrare **solo** quello in attesa aggiungerebbe una variabile d'ambiente, una chiave da ruotare e un modo nuovo di rompersi, per proteggere la sessione secondaria **meglio** della principale: una protezione disomogenea, cioè una che sembra esserci.
 - In cambio `bob-attesa` è `httpOnly` (mai leggibile dalla pagina), `Secure`, `SameSite=Lax`, `path=/`, con una scadenza pari a quella del cookie di sessione di `@supabase/ssr` (400 giorni: sul piano Free il refresh di Supabase non scade a tempo), e contiene **solo** il refresh token, l'id e l'email — niente nome, niente ruolo, niente livello.
 - **Il giorno in cui si cifrano i cookie, si cifrano tutti e due insieme.**
+
+---
+
+## 30 settembre 2026 — `bob:manutenzione-chiusa` resta condivisa, di proposito
+
+Decisione di Lucio (voce V3 della chiusura del doppio cappello). Delle cinque chiavi di `localStorage` elencate nella spike §10.2, quattro passano da `chiaveConUtente()` (`src/lib/sessioni/chiavi.ts`); questa no, e non è una dimenticanza.
+
+- **Cosa contiene:** solo l'id del fermo programmato di cui si è chiuso il preavviso (`ManutenzioneBanner.tsx:37`). Niente dell'utente, niente di un account.
+- **Di chi è l'avviso:** del progetto, non dell'utente. Il fermo vale per tutti, e la fascia sta nel layout radice (`src/app/layout.tsx`), quindi la vede anche chi non è entrato — che un id utente non ce l'ha.
+- **Perché non si separa:** chi ha chiuso il preavviso in questo browser l'ha letto, qualunque cappello porti. Separarla per account glielo farebbe ricomparire a ogni scambio, per una notizia che non cambia da un account all'altro; e fra due account non passa niente che l'altro non debba vedere.
+- **Resta vero** quello che la spike chiede alle altre quattro: la bozza della chat, le notifiche viste, la guida e il promemoria contengono stato di un account, e quelle sono separate.
+- **Quando cambia:** se un giorno la fascia porta un contenuto per account (un avviso che dipende dal ruolo o dal piano), la chiave va separata con `chiaveConUtente()` nello stesso commit.
