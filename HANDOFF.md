@@ -51,18 +51,27 @@ colmare prima della seconda città, elencato in `docs/NOTE_E_DECISIONI.md`.
 
 ---
 
-# Handoff — 29 settembre 2026, Lucio
+# Handoff — 29 settembre 2026, Lucio (fine giornata)
 
-**Fatto.** Sessioni multiple: la #114 è su `main`. Sul ramo `feat/sessioni-aggiungi-account` (PR da mergiare):
-- **«aggiungi un altro account»** e **«riconnetti»** (`POST /api/sessioni/aggiungi`). Il tetto di tentativi è per IP e per HMAC dell'email, e il login fallito non tocca niente. L'errore è identico per email e password, e nessuna delle due finisce in un log;
-- **la migrazione 104**, che allarga il vincolo di `rate_limit_counters` a `accesso`, e la riga A24 del Registro;
-- **«Esci» dice «Esci da tutti gli account»** quando in questo browser ci sono due account.
+**Fatto e in produzione** (`main` = `ce7820f`, deploy di produzione READY):
+- **la misura dell'SLA** sui casi chiusi e `sla_sforati` nel giro notturno (#106);
+- **la promessa tolta**, «se sforiamo ti scriviamo», e le scuse quando sforiamo (#108);
+- **la riscrittura di `/admin/professionals`**: una coda sola, le viste `?vista=`, l'archivio in fondo, il controllo degli errori (#109);
+- **le sessioni multiple**: due account nello stesso browser, scambio con un click, uscire vale solo per questo browser (#114);
+- **la spike portata allo stato deciso**: due account separati, uno per mestiere (#111).
 
-**A metà — prima del merge, in quest'ordine:**
-1. mettere `ACCESSO_HMAC_SEGRETO` su Vercel, produzione, almeno 32 caratteri (`openssl rand -hex 32`); senza, la route risponde 503;
-2. applicare la 104;
-3. rilanciare gli advisor.
+**Fermo e pronto: la #115, NON mergiata** — «aggiungi un altro account» e «riconnetti» (`POST /api/sessioni/aggiungi`), la migrazione **104** e l'etichetta «Esci da tutti gli account». Nel dettaglio:
+- il tetto di tentativi è per IP e per HMAC dell'email, e il login fallito non tocca niente; l'errore è identico per email e password, e nessuna delle due finisce in un log;
+- la **104** (`supabase/migrations/104_limite_accesso.sql`) allarga il vincolo di `rate_limit_counters` ad `accesso`, con la riga **A24** del Registro dei trattamenti;
+- «Esci» diventa «Esci da tutti gli account» quando in questo browser ci sono due account.
 
-Le 13 prove manuali della #114 le fa Lucio su produzione.
+Aspetta tre mosse di Lucio, **in quest'ordine**:
+1. `ACCESSO_HMAC_SEGRETO` su Vercel, produzione, sensitive, almeno 32 caratteri (`openssl rand -hex 32`); senza, la route risponde 503;
+2. applicare la migrazione **104**;
+3. advisor di sicurezza di Supabase, e rilievi sistemati.
 
-**Applicato in produzione che devi sapere.** Niente, oggi: la 104 è nel ramo e **non è applicata**. **Per André:** in `Header.tsx` è cambiata solo l'etichetta dei due pulsanti «Esci».
+Solo dopo, il merge.
+
+**Non verificato:** le **13 prove manuali della #114**, che è già in produzione e che nessuno ha ancora guardato dal vivo. Sono nella descrizione della #114.
+
+**Per André:** nella #115 ho toccato `src/components/Header.tsx`, dieci righe, solo l'etichetta del pulsante «Esci» (desktop e mobile). Lo dichiaro qui perché è area tua. Nella #114, già su `main`, `BobChat.tsx` e `PromemoriaProfilo.tsx` sono cambiati solo nel nome delle chiavi di `localStorage`.
