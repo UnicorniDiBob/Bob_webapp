@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Settings, UserCog } from "lucide-react";
+import { Bell, House, Settings, UserCog } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "./AuthProvider";
 import { NotificheCampanella } from "./NotificheCampanella";
@@ -119,13 +119,22 @@ export function Header() {
                   un avviso, non una destinazione. Gli account staff non ne
                   hanno: le loro cose stanno in /admin. */}
               {role !== "admin" && role !== "cs" && <NotificheCampanella />}
-              <Link
-                href="/dashboard"
-                className="btn-secondary py-2"
-                data-testid="link-dashboard"
-              >
-                {role === "professional" ? "Il mio lavoro" : "I miei lavori"}
-              </Link>
+              {/* LA CASETTA (30/09). Al posto di «Il mio lavoro» / «I miei
+                  lavori»: con un ruolo per account /dashboard ha un
+                  significato solo, e l'icona basta (spike doppio cappello
+                  §9, voce 2). Lo staff non ha casa: /dashboard lo rimanda
+                  in /admin, che ha gia' la sua voce. */}
+              {role !== "admin" && role !== "cs" && (
+                <Link
+                  href="/dashboard"
+                  className="rounded-xl p-2.5 text-bob-ink/70 transition hover:bg-bob-indigo-50 hover:text-bob-indigo"
+                  aria-label="La tua area"
+                  title="La tua area"
+                  data-testid="link-dashboard"
+                >
+                  <House className="h-5 w-5" aria-hidden="true" />
+                </Link>
+              )}
               {/* Icona e non parola: si apre raramente e non deve competere col
                   bottone del lavoro. UserCog e non Settings perche' quella
                   chiave e' gia' usata sopra per il pannello Admin, e due
@@ -213,13 +222,21 @@ export function Header() {
                       Parla con Bob
                     </Link>
                   )}
-                  <Link href="/dashboard" onClick={() => setOpen(false)} className="btn-secondary flex-1 py-2">
-                    {role === "professional" ? "Il mio lavoro" : "I miei lavori"}
-                    {role === "professional" &&
-                      verificationLevel &&
-                      verificationLevel !== "none" &&
-                      ` · ${VERIFICATION_LABEL[verificationLevel]}`}
-                  </Link>
+                  {role !== "admin" && role !== "cs" && (
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setOpen(false)}
+                      className="btn-secondary inline-flex flex-1 items-center justify-center gap-1.5 py-2"
+                      data-testid="link-dashboard-mobile"
+                    >
+                      <House className="h-4 w-4" aria-hidden="true" />
+                      La tua area
+                      {role === "professional" &&
+                        verificationLevel &&
+                        verificationLevel !== "none" &&
+                        ` · ${VERIFICATION_LABEL[verificationLevel]}`}
+                    </Link>
+                  )}
                   {/* Su mobile l'icona da sola sarebbe un bersaglio ambiguo in
                       mezzo al menu: qui la voce e' scritta. */}
                   {role !== "admin" && role !== "cs" && (

@@ -3,7 +3,7 @@
 > **DECISO il 29/09/2026 da Lucio — due account separati, uno per mestiere.** La strada (b), un account solo con due cappelli, è scartata. L'analisi qui sotto resta com'era, marcata: serve a chi fra sei mesi chiederà perché. Le voci che restano sono al §9; la voce nuova, le sessioni multiple, al §10.
 
 **Stato:** DECISO il 29/09/2026 da Lucio — strada (a), due account separati; niente costruito · **Data:** 29 settembre 2026 · **Autore:** Lucio, con Claude
-**Proprietari:** la scelta l'ha presa Lucio il 29/09/2026; la casetta nell'area in alto è di André, Registro, termini e sessioni multiple di Lucio (vedi §9).
+**Proprietari:** la scelta l'ha presa Lucio il 29/09/2026; tutte le voci aperte sono di Lucio dal 30/09/2026 — la casetta nell'area in alto, prima di André, compresa (vedi §9).
 **Perché adesso:** un professionista che ha bisogno di un idraulico oggi deve aprire un secondo account con un'altra email. Prima del pilota di gennaio conviene sapere se si risolve in interfaccia o in schema, perché le due strade toccano cose diverse, e una delle due tocca l'autenticazione.
 
 > **Come si legge questo documento.** Ogni affermazione è marcata:
@@ -251,7 +251,7 @@ Le undici voci diventano cinque: una è fatta, tre restano, una nasce adesso. Se
 **Le cinque voci**
 
 1. **Scegliere la strada** — *Lucio e André* — **FATTA il 29/09/2026 (Lucio): due account separati, uno per mestiere.**
-2. **Area in alto: la casetta** — *André* — Al posto di «I miei lavori» / «Il mio lavoro». Con un ruolo per account porta alla `/dashboard` di quell'account, senza valigetta. Desktop e 390px.
+2. **Area in alto: la casetta** — *Lucio (dal 30/09/2026; prima André)* — Al posto di «I miei lavori» / «Il mio lavoro». Con un ruolo per account porta alla `/dashboard` di quell'account, senza valigetta. Desktop e 390px.
 3. **Registro dei trattamenti, riga A1** — *Lucio* — Una persona può avere due account; export, cancellazione e rettifica si esercitano per account, e una richiesta «su tutto» va servita su tutti gli account che la persona indica.
 4. **Legale: termini clienti per un professionista che compra per lavoro** — *Lucio* — I termini clienti presuppongono un consumatore; va riletto il caso dell'account cliente di un professionista che compra per la sua attività.
 5. **Sessioni multiple: passare da un account all'altro senza rifare il login** — *Lucio* — Voce nuova. Prima di costruire va progettato quanto scritto al §10. **Dipende dall'SMTP personalizzato di Supabase (§10.4).**
