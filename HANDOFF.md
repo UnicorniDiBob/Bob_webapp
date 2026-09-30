@@ -60,9 +60,14 @@ colmare prima della seconda città, elencato in `docs/NOTE_E_DECISIONI.md`.
 - **le sessioni multiple**: due account nello stesso browser, scambio con un click, uscire vale solo per questo browser (#114);
 - **la spike portata allo stato deciso**: due account separati, uno per mestiere (#111).
 
-**Fermo e pronto: la #115, NON mergiata** — «aggiungi un altro account» più l'etichetta «Esci da tutti gli account». Aspetta tre mosse di Lucio, **in quest'ordine**:
-1. `ACCESSO_HMAC_SEGRETO` su Vercel, produzione, sensitive, almeno 32 caratteri (`openssl rand -hex 32`);
-2. applicare la migrazione **104** (`supabase/migrations/104_limite_accesso.sql`);
+**Fermo e pronto: la #115, NON mergiata** — «aggiungi un altro account» e «riconnetti» (`POST /api/sessioni/aggiungi`), la migrazione **104** e l'etichetta «Esci da tutti gli account». Nel dettaglio:
+- il tetto di tentativi è per IP e per HMAC dell'email, e il login fallito non tocca niente; l'errore è identico per email e password, e nessuna delle due finisce in un log;
+- la **104** (`supabase/migrations/104_limite_accesso.sql`) allarga il vincolo di `rate_limit_counters` ad `accesso`, con la riga **A24** del Registro dei trattamenti;
+- «Esci» diventa «Esci da tutti gli account» quando in questo browser ci sono due account.
+
+Aspetta tre mosse di Lucio, **in quest'ordine**:
+1. `ACCESSO_HMAC_SEGRETO` su Vercel, produzione, sensitive, almeno 32 caratteri (`openssl rand -hex 32`); senza, la route risponde 503;
+2. applicare la migrazione **104**;
 3. advisor di sicurezza di Supabase, e rilievi sistemati.
 
 Solo dopo, il merge.

@@ -28,7 +28,11 @@ const NAV = [
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, role, verificationLevel, signOut, loading } = useAuth();
+  const { user, role, verificationLevel, signOut, loading, altroAccount } = useAuth();
+  // Con due account nello stesso browser «Esci» esce da tutti e due: lo deve
+  // dire (29/09). Un pulsante che fa piu' di quel che dice e' come si perde
+  // la fiducia in una sessione.
+  const etichettaEsci = altroAccount ? "Esci da tutti gli account" : "Esci";
   const { daContare } = useNotifiche();
   const [open, setOpen] = useState(false);
 
@@ -141,7 +145,7 @@ export function Header() {
                 className="btn-ghost"
                 data-testid="button-signout"
               >
-                Esci
+                {etichettaEsci}
               </button>
             </div>
           ) : (
@@ -244,7 +248,7 @@ export function Header() {
                     Impostazioni
                   </Link>
                   <button onClick={handleSignOut} className="btn-ghost">
-                    Esci
+                    {etichettaEsci}
                   </button>
                 </>
               ) : (
