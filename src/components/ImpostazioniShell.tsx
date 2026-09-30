@@ -15,59 +15,98 @@
 // separazione sta anche negli indirizzi, non solo nel disegno — perche' un
 // indirizzo dice a cosa serve una pagina, e /dashboard/accesso non lo diceva.
 //
-// La navigazione e' un solo elenco (NAV_PRO / NAV_CLIENTE): per aggiungere una
-// sezione si aggiunge una riga qui e una pagina sotto src/app/impostazioni/.
+// La navigazione e' un solo elenco per ruolo (NAV_PRO / NAV_CLIENTE /
+// NAV_STAFF): per aggiungere una sezione si aggiunge una riga qui e una pagina
+// sotto src/app/impostazioni/. Lo stesso elenco disegna la colonna, le pillole
+// a 390px e la griglia di /impostazioni (30/09, modello Amazon).
+//
+// LO STAFF HA LE SUE IMPOSTAZIONI (30/09). Fino a qui il guscio si faceva da
+// parte per admin e cs, e le pagine si vedevano senza navigazione: niente
+// strada per la password, e dal 30/09 niente strada per uscire, che sta nella
+// tendina degli account. Due voci sole: i dati personali e l'accesso. Un
+// accesso dedicato allo staff e' un'altra decisione, non presa.
 
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Clock,
+  CreditCard,
+  Images,
+  KeyRound,
+  LifeBuoy,
+  Mail,
+  MapPin,
+  Store,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
+import { AccountTendina } from "@/components/AccountTendina";
 import { GuidaBarra } from "@/components/GuidaBarra";
+import type { UserRole } from "@/lib/supabase/types";
 
-interface VoceNav {
+export interface VoceNav {
   href: string;
   label: string;
   /** Riga di aiuto sotto la voce, solo su desktop: dice cosa ci si trova. */
   hint: string;
+  /** Icona del riquadro nella griglia di /impostazioni. */
+  icona: LucideIcon;
 }
 
 // L'ordine non e' alfabetico: parte da chi sei, poi cosa offri, poi il resto.
 const NAV_PRO: VoceNav[] = [
-  { href: "/impostazioni/dati", label: "I tuoi dati", hint: "Nome e telefono" },
-  { href: "/impostazioni/azienda", label: "La tua azienda", hint: "Profilo pubblico, servizi, tariffe" },
-  { href: "/impostazioni/zone", label: "Dove lavori", hint: "Zone, raggio, quanto ti allontani" },
-  { href: "/impostazioni/verifica", label: "Verifica", hint: "Partita IVA, documenti, badge" },
-  { href: "/impostazioni/orari", label: "Orari", hint: "Disponibilità e prenotazione diretta" },
-  { href: "/impostazioni/lavori", label: "Lavori", hint: "Le foto dei tuoi interventi" },
-  { href: "/impostazioni/piano", label: "Piano e pagamenti", hint: "Abbonamento e fatture" },
-  { href: "/impostazioni/comunicazioni", label: "Comunicazioni", hint: "Cosa ti scriviamo e quando" },
-  { href: "/impostazioni/accesso", label: "Accesso e sicurezza", hint: "Email, password, account" },
-  { href: "/impostazioni/assistenza", label: "Assistenza", hint: "Le tue richieste e le risposte" },
+  { href: "/impostazioni/dati", label: "I tuoi dati", hint: "Nome e telefono", icona: User },
+  { href: "/impostazioni/azienda", label: "La tua azienda", hint: "Profilo pubblico, servizi, tariffe", icona: Store },
+  { href: "/impostazioni/zone", label: "Dove lavori", hint: "Zone, raggio, quanto ti allontani", icona: MapPin },
+  { href: "/impostazioni/verifica", label: "Verifica", hint: "Partita IVA, documenti, badge", icona: BadgeCheck },
+  { href: "/impostazioni/orari", label: "Orari", hint: "Disponibilità e prenotazione diretta", icona: Clock },
+  { href: "/impostazioni/lavori", label: "Lavori", hint: "Le foto dei tuoi interventi", icona: Images },
+  { href: "/impostazioni/piano", label: "Piano e pagamenti", hint: "Abbonamento e fatture", icona: CreditCard },
+  { href: "/impostazioni/comunicazioni", label: "Comunicazioni", hint: "Cosa ti scriviamo e quando", icona: Mail },
+  { href: "/impostazioni/accesso", label: "Accesso e sicurezza", hint: "Email, password, account", icona: KeyRound },
+  { href: "/impostazioni/assistenza", label: "Assistenza", hint: "Le tue richieste e le risposte", icona: LifeBuoy },
 ];
 
 const NAV_CLIENTE: VoceNav[] = [
-  { href: "/impostazioni/dati", label: "I tuoi dati", hint: "Nome e informazioni personali" },
-  { href: "/impostazioni/indirizzi", label: "Indirizzi", hint: "Dove ti raggiungono i professionisti" },
-  { href: "/impostazioni/comunicazioni", label: "Comunicazioni", hint: "Cosa ti scriviamo e quando" },
-  { href: "/impostazioni/accesso", label: "Accesso e sicurezza", hint: "Email, password, account" },
-  { href: "/impostazioni/assistenza", label: "Assistenza", hint: "Le tue richieste e le risposte" },
+  { href: "/impostazioni/dati", label: "I tuoi dati", hint: "Nome e informazioni personali", icona: User },
+  { href: "/impostazioni/indirizzi", label: "Indirizzi", hint: "Dove ti raggiungono i professionisti", icona: MapPin },
+  { href: "/impostazioni/comunicazioni", label: "Comunicazioni", hint: "Cosa ti scriviamo e quando", icona: Mail },
+  { href: "/impostazioni/accesso", label: "Accesso e sicurezza", hint: "Email, password, account", icona: KeyRound },
+  { href: "/impostazioni/assistenza", label: "Assistenza", hint: "Le tue richieste e le risposte", icona: LifeBuoy },
 ];
+
+const NAV_STAFF: VoceNav[] = [
+  { href: "/impostazioni/dati", label: "I tuoi dati", hint: "Nome e informazioni personali", icona: User },
+  { href: "/impostazioni/accesso", label: "Accesso e sicurezza", hint: "Email e password", icona: KeyRound },
+];
+
+export function isStaff(role: UserRole | null): boolean {
+  return role === "admin" || role === "cs";
+}
+
+/** Le sezioni che vede chi ha questo ruolo: colonna, pillole e griglia. */
+export function vociImpostazioni(role: UserRole | null): VoceNav[] {
+  if (isStaff(role)) return NAV_STAFF;
+  return role === "professional" ? NAV_PRO : NAV_CLIENTE;
+}
 
 export function ImpostazioniShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { role, loading } = useAuth();
 
-  // Lo staff non ha impostazioni personali qui (la pagina lo rimanda su
-  // /admin): senza questa uscita il guscio disegnerebbe per un istante una
-  // navigazione da cliente addosso a un amministratore.
-  if (role === "admin" || role === "cs") {
-    return <>{children}</>;
-  }
-
   const isPro = role === "professional";
-  const nav = isPro ? NAV_PRO : NAV_CLIENTE;
+  const staff = isStaff(role);
+  // Finche' il ruolo non e' arrivato nessun elenco: disegnare quello del
+  // cliente per un istante addosso a un professionista o a un admin e' peggio
+  // di una colonna vuota.
+  const nav = loading ? [] : vociImpostazioni(role);
   const attivo = (href: string) => pathname === href;
+  // /impostazioni nuda e' la griglia: li' la colonna ripeterebbe i riquadri.
+  const radice = pathname === "/impostazioni";
 
   return (
     <div className="container-bob py-8 sm:py-10">
@@ -88,79 +127,110 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
             li' questo link e' l'unica strada di ritorno visibile, quindi
             resta. Terzo doppione nato da 58f4ca5, dopo Impostazioni (29/08) e
             «Cerca un professionista» (05/09). */}
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo md:hidden"
-          data-testid="link-torna-al-lavoro"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {loading ? "Indietro" : isPro ? "Il mio lavoro" : "I miei lavori"}
-        </Link>
+        {/* Lo staff non ha un'area di lavoro qui: /dashboard lo rimanda in
+            /admin, che ha la sua voce nel menu. */}
+        {!staff && (
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo md:hidden"
+            data-testid="link-torna-al-lavoro"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            {loading ? "Indietro" : isPro ? "Il mio lavoro" : "I miei lavori"}
+          </Link>
+        )}
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
           Impostazioni
         </h1>
         <p className="mt-1.5 text-sm text-bob-ink/70">
           {isPro
             ? "Il tuo account, il tuo profilo pubblico e come lavori."
-            : "Il tuo account e le tue preferenze."}
+            : staff
+              ? "Il tuo account."
+              : "Il tuo account e le tue preferenze."}
         </p>
       </header>
 
-      {/* Mobile (fino a lg): fila di sezioni scorrevole. Sborda oltre il
-          padding del contenitore di proposito, cosi' a 390px si capisce che
-          si scorre invece di sembrare tagliata. */}
-      <nav
-        aria-label="Sezioni delle impostazioni"
-        className="-mx-5 mb-6 overflow-x-auto px-5 lg:hidden"
-      >
-        <ul className="flex w-max gap-2 pb-1">
-          {nav.map((v) => (
-            <li key={v.href}>
-              <Link
-                href={v.href}
-                aria-current={attivo(v.href) ? "page" : undefined}
-                className={`inline-flex whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition ${
-                  attivo(v.href)
-                    ? "bg-bob-indigo text-white shadow-sm"
-                    : "border border-black/10 bg-white text-bob-ink/70 hover:border-bob-indigo/30 hover:text-bob-indigo"
-                }`}
-                data-testid={`nav-${v.href.split("/").pop()}`}
-              >
-                {v.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {radice ? (
+        <>
+          {children}
+          <div className="mt-8 max-w-xs">
+            <AccountTendina forma="colonna" />
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Mobile (fino a lg): fila di sezioni scorrevole. Sborda oltre il
+              padding del contenitore di proposito, cosi' a 390px si capisce che
+              si scorre invece di sembrare tagliata. */}
+          <nav
+            aria-label="Sezioni delle impostazioni"
+            className="-mx-5 mb-6 overflow-x-auto px-5 lg:hidden"
+          >
+            <ul className="flex w-max gap-2 pb-1">
+              {nav.map((v) => (
+                <li key={v.href}>
+                  <Link
+                    href={v.href}
+                    aria-current={attivo(v.href) ? "page" : undefined}
+                    className={`inline-flex whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition ${
+                      attivo(v.href)
+                        ? "bg-bob-indigo text-white shadow-sm"
+                        : "border border-black/10 bg-white text-bob-ink/70 hover:border-bob-indigo/30 hover:text-bob-indigo"
+                    }`}
+                    data-testid={`nav-${v.href.split("/").pop()}`}
+                  >
+                    {v.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-      <div className="lg:grid lg:grid-cols-[228px_1fr] lg:gap-8">
-        {/* Desktop: colonna laterale che resta ferma mentre il contenuto scorre. */}
-        <nav aria-label="Sezioni delle impostazioni" className="hidden lg:block">
-          <ul className="sticky top-24 space-y-1">
-            {nav.map((v) => (
-              <li key={v.href}>
-                <Link
-                  href={v.href}
-                  aria-current={attivo(v.href) ? "page" : undefined}
-                  className={`block rounded-xl px-3.5 py-2.5 transition ${
-                    attivo(v.href)
-                      ? "bg-bob-indigo-50 text-bob-indigo"
-                      : "text-bob-ink/70 hover:bg-black/[0.03] hover:text-bob-ink"
-                  }`}
-                  data-testid={`nav-desktop-${v.href.split("/").pop()}`}
-                >
-                  <span className="block text-sm font-semibold">{v.label}</span>
-                  <span className="mt-0.5 block text-xs leading-snug text-bob-ink/65">
-                    {v.hint}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+          <div className="lg:grid lg:grid-cols-[228px_1fr] lg:gap-8">
+            {/* Desktop: colonna laterale che resta ferma mentre il contenuto
+                scorre, e in fondo il blocco dell'account (modello ProntoPro):
+                sempre li', da qualunque sezione. */}
+            <div className="hidden lg:block">
+              <div className="sticky top-24 space-y-4">
+                <nav aria-label="Sezioni delle impostazioni">
+                  <ul className="space-y-1">
+                    {nav.map((v) => (
+                      <li key={v.href}>
+                        <Link
+                          href={v.href}
+                          aria-current={attivo(v.href) ? "page" : undefined}
+                          className={`block rounded-xl px-3.5 py-2.5 transition ${
+                            attivo(v.href)
+                              ? "bg-bob-indigo-50 text-bob-indigo"
+                              : "text-bob-ink/70 hover:bg-black/[0.03] hover:text-bob-ink"
+                          }`}
+                          data-testid={`nav-desktop-${v.href.split("/").pop()}`}
+                        >
+                          <span className="block text-sm font-semibold">{v.label}</span>
+                          <span className="mt-0.5 block text-xs leading-snug text-bob-ink/65">
+                            {v.hint}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+                <div className="border-t border-black/5 pt-3">
+                  <AccountTendina forma="colonna" />
+                </div>
+              </div>
+            </div>
 
-        <div className="min-w-0">{children}</div>
-      </div>
+            <div className="min-w-0">{children}</div>
+          </div>
+
+          {/* Sotto lg la colonna non c'e': il blocco sta in fondo alla pagina. */}
+          <div className="mt-8 max-w-xs border-t border-black/5 pt-4 lg:hidden">
+            <AccountTendina forma="colonna" />
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -783,6 +783,20 @@ Decisioni di Lucio, sul ramo `feat/sessioni-multiple` (voce 5 della spike sul do
 
 ---
 
+## 30 settembre 2026 — «Esci» esce dall'account attivo, e sta nella tendina degli account
+
+Decisione di Lucio, sul ramo `feat/impostazioni-griglia-e-account`. **Sostituisce la voce del 29/09** («sessioni multiple: uscire vale per questo browser…») nella parte «Tre gesti, non uno». Il resto di quella voce — scope `local`, `bob-attesa` non cifrato — resta valido.
+
+- **Prima (29/09):** «Esci» nell'intestazione usciva da **tutti** gli account del browser (`esciAccount("tutti")`), e con due account la scritta diventava «Esci da tutti gli account». In `/impostazioni/accesso` c'erano anche «Esci da questo account» ed «Esci da tutti e due».
+- **Da adesso:** c'è un gesto solo, **«Esci»**, e esce **dall'account attivo**: `POST /api/sessioni/esci { quale: "questo" }`. Se in questo browser c'è un altro account, diventa attivo quello; se va riconnesso, resta «da riconnettere» e non è attivo nessuno. La scritta non cambia mai e non chiede conferma.
+- **«Esci da tutti» sparisce dall'interfaccia.** La route continua ad accettare `quale: "tutti"`.
+- **Dove sta:** non più da solo nell'intestazione (né su desktop né nel menu ☰), ma nella tendina degli account (`AccountTendina`): in fondo alla colonna delle impostazioni, in fondo alla pagina dove la colonna non c'è, e dal cerchio con le iniziali nell'intestazione.
+- **Scope locale, come dal 29/09:** gli altri dispositivi restano connessi.
+- **Lo staff esce come tutti:** stessa tendina, stesso «Esci». Da oggi lo staff ha anche le sue impostazioni (i suoi dati, email e password). Un accesso dedicato allo staff resta da decidere.
+- **Perché:** con due account «esci da tutti» era il gesto più drastico messo nel posto più a portata di mano. Chi ha due cappelli e ne vuole togliere uno non deve rientrare nell'altro.
+
+---
+
 ## 30 settembre 2026 — `bob:manutenzione-chiusa` resta condivisa, di proposito
 
 Decisione di Lucio (voce V3 della chiusura del doppio cappello). Delle cinque chiavi di `localStorage` elencate nella spike §10.2, quattro passano da `chiaveConUtente()` (`src/lib/sessioni/chiavi.ts`); questa no, e non è una dimenticanza.

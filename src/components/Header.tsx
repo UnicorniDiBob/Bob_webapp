@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Bell, House, Settings, UserCog } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "./AuthProvider";
+import { AccountTendina } from "./AccountTendina";
 import { NotificheCampanella } from "./NotificheCampanella";
 import { useNotifiche } from "./NotificheProvider";
 import { VERIFICATION_LABEL } from "@/lib/vat";
@@ -27,20 +28,9 @@ const NAV = [
 
 export function Header() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, role, verificationLevel, signOut, loading, altroAccount } = useAuth();
-  // Con due account nello stesso browser «Esci» esce da tutti e due: lo deve
-  // dire (29/09). Un pulsante che fa piu' di quel che dice e' come si perde
-  // la fiducia in una sessione.
-  const etichettaEsci = altroAccount ? "Esci da tutti gli account" : "Esci";
+  const { user, role, verificationLevel, loading } = useAuth();
   const { daContare } = useNotifiche();
   const [open, setOpen] = useState(false);
-
-  async function handleSignOut() {
-    await signOut();
-    router.push("/");
-    router.refresh();
-  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/85 backdrop-blur-md">
@@ -135,27 +125,13 @@ export function Header() {
                   <House className="h-5 w-5" aria-hidden="true" />
                 </Link>
               )}
-              {/* Icona e non parola: si apre raramente e non deve competere col
-                  bottone del lavoro. UserCog e non Settings perche' quella
-                  chiave e' gia' usata sopra per il pannello Admin, e due
-                  ingranaggi diversi nello stesso header si confondono. */}
-              <Link
-                href="/impostazioni/dati"
-                className="rounded-xl p-2.5 text-bob-ink/70 transition hover:bg-bob-indigo-50 hover:text-bob-indigo"
-                aria-label="Impostazioni del tuo account"
-                title="Impostazioni"
-                data-testid="link-impostazioni"
-                data-tour="impostazioni"
-              >
-                <UserCog className="h-5 w-5" aria-hidden="true" />
-              </Link>
-              <button
-                onClick={handleSignOut}
-                className="btn-ghost"
-                data-testid="button-signout"
-              >
-                {etichettaEsci}
-              </button>
+              {/* IL CERCHIO DELL'ACCOUNT (30/09, modello Gmail). Al posto
+                  dell'icona delle impostazioni e del pulsante «Esci»: apre la
+                  tendina con gli account di questo browser, le impostazioni,
+                  «Aggiungi un altro account» ed «Esci». «Esci» non sta piu'
+                  nell'header da solo (NOTE_E_DECISIONI 30/09). Vale anche
+                  per lo staff, che vive in /admin e da li' deve poter uscire. */}
+              <AccountTendina forma="header" />
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -255,8 +231,10 @@ export function Header() {
                       )}
                     </Link>
                   )}
+                  {/* Su telefono la tendina degli account sta in fondo a
+                      /impostazioni: di li' si cambia account e si esce. */}
                   <Link
-                    href="/impostazioni/dati"
+                    href="/impostazioni"
                     onClick={() => setOpen(false)}
                     className="btn-ghost inline-flex items-center gap-1.5"
                     data-testid="link-impostazioni-mobile"
@@ -264,9 +242,6 @@ export function Header() {
                     <UserCog className="h-4 w-4" aria-hidden="true" />
                     Impostazioni
                   </Link>
-                  <button onClick={handleSignOut} className="btn-ghost">
-                    {etichettaEsci}
-                  </button>
                 </>
               ) : (
                 <>

@@ -95,7 +95,11 @@ export function CancellazioneAccount({
     return (
       <button
         onClick={() => setAperto(true)}
-        className="btn-secondary py-2.5 text-sm"
+        // Rosso (30/09): e' l'unico gesto della pagina che non si disfa da
+        // solo. red-700 e non red-600: misurato, il 600 sul fondo red-50 del
+        // passaggio del mouse fa 4.41:1, sotto la soglia di 4.5. Il 700 fa
+        // 6.47:1 sul bianco della scheda e 5.91:1 sul red-50.
+        className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-700/30"
         data-testid="apri-cancellazione"
       >
         Chiudi il mio account

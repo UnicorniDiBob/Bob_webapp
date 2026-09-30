@@ -193,7 +193,7 @@ export default function DashboardPage() {
               md:flex`: su telefono sparisce e resta solo la voce nel menu ☰.
               Quindi il link resta, ma solo sotto md, dove la rotella non c'e'. */}
           <Link
-            href="/impostazioni/dati"
+            href="/impostazioni"
             className="btn-ghost text-sm md:hidden"
             data-testid="link-impostazioni-dashboard"
           >

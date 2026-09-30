@@ -21,9 +21,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
-import { SectionHeader } from "@/components/ImpostazioniShell";
+import { SectionHeader, isStaff } from "@/components/ImpostazioniShell";
 import { CancellazioneAccount } from "@/components/CancellazioneAccount";
-import { AccountInQuestoBrowser } from "@/components/AccountInQuestoBrowser";
+import { AggiungiAccount } from "@/components/AggiungiAccount";
 import { GIORNI_RIPENSAMENTO } from "@/lib/cancellazione";
 
 // Deve restare allineata a Supabase > Authentication > Providers > Email.
@@ -33,7 +33,18 @@ const PASSWORD_MIN = 8;
 export default function AccessoPage() {
   const supabase = createClient();
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
+
+  // Il modulo per aggiungere o riconnettere un account compare solo se ci si
+  // arriva dalla tendina (percorsoAggiungiAccount). Letto qui e non con
+  // useSearchParams, che in una pagina prerenderizzata chiederebbe un confine
+  // di Suspense tutto suo.
+  const [aggiunta, setAggiunta] = useState<{ riconnetti: string | null } | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("riconnetti")) setAggiunta({ riconnetti: q.get("riconnetti") });
+    else if (q.get("aggiungi")) setAggiunta({ riconnetti: null });
+  }, []);
 
   const [editingEmail, setEditingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -167,8 +178,7 @@ export default function AccessoPage() {
         Come entri in Bob, e come si chiude.
       </SectionHeader>
 
-      {/* ---- Account in questo browser (29/09, sessioni multiple) ---- */}
-      <AccountInQuestoBrowser />
+      {aggiunta && <AggiungiAccount emailDaRiconnettere={aggiunta.riconnetti} />}
 
       {/* ---- Email di accesso ---- */}
       <section className="card p-5 sm:p-6">
@@ -329,37 +339,42 @@ export default function AccessoPage() {
           controlla la persona; il profilo si spegne subito, perche' un'attesa
           in cui l'account continua a funzionare sarebbe davvero un ritardo.
           La nota lunga, con le fonti, sta nella migrazione 056. */}
-      <section className="card p-5 sm:p-6">
-        <h3 className="text-sm font-semibold text-bob-ink">
-          Chiudere l&apos;account
-        </h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
-          Puoi chiudere il tuo account quando vuoi, senza spiegare perché. Il
-          profilo si spegne subito; i dati vengono cancellati dopo{" "}
-          {GIORNI_RIPENSAMENTO} giorni, così hai il tempo di ripensarci.
-        </p>
-        <p className="mt-2.5 text-sm leading-relaxed text-bob-ink/70">
-          Cosa succede: spariscono profilo, richieste, messaggi, appuntamenti e
-          i documenti che hai caricato. Le fatture, se ce ne sono, restano per il
-          tempo che ci impone la legge. Le recensioni che hai scritto restano
-          visibili al professionista che le ha ricevute, senza più alcun legame
-          con te.
-        </p>
+      {/* Lo staff non chiude il proprio account da qui: un account staff
+          porta con se' le tracce di chi ha fatto cosa, e come si entra e si
+          esce come staff e' una decisione ancora da prendere (30/09). */}
+      {!isStaff(role) && (
+        <section className="card p-5 sm:p-6">
+          <h3 className="text-sm font-semibold text-bob-ink">
+            Chiudere l&apos;account
+          </h3>
+          <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
+            Puoi chiudere il tuo account quando vuoi, senza spiegare perché. Il
+            profilo si spegne subito; i dati vengono cancellati dopo{" "}
+            {GIORNI_RIPENSAMENTO} giorni, così hai il tempo di ripensarci.
+          </p>
+          <p className="mt-2.5 text-sm leading-relaxed text-bob-ink/70">
+            Cosa succede: spariscono profilo, richieste, messaggi, appuntamenti e
+            i documenti che hai caricato. Le fatture, se ce ne sono, restano per il
+            tempo che ci impone la legge. Le recensioni che hai scritto restano
+            visibili al professionista che le ha ricevute, senza più alcun legame
+            con te.
+          </p>
 
-        <div className="mt-4">
-          <CancellazioneAccount
-            giorni={GIORNI_RIPENSAMENTO}
-            scadenzaIniziale={scadenzaCancellazione}
-          />
-        </div>
+          <div className="mt-4">
+            <CancellazioneAccount
+              giorni={GIORNI_RIPENSAMENTO}
+              scadenzaIniziale={scadenzaCancellazione}
+            />
+          </div>
 
-        <Link
-          href="/privacy"
-          className="btn-ghost mt-4 text-sm"
-        >
-          Come esercitare i tuoi diritti
-        </Link>
-      </section>
+          <Link
+            href="/privacy"
+            className="btn-ghost mt-4 text-sm"
+          >
+            Come esercitare i tuoi diritti
+          </Link>
+        </section>
+      )}
     </div>
   );
 }
