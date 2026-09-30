@@ -100,20 +100,3 @@ export function stessaOrigine(request: Request): boolean {
     return false;
   }
 }
-
-/**
- * Login con email e password su un client isolato: la sessione che nasce non
- * tocca i cookie di nessuno, e chi chiama decide se tenerla (in bob-attesa) o
- * revocarla. null per QUALUNQUE rifiuto di Supabase, senza distinguere: la
- * route non deve dire se l'email esiste. Ne' la password ne' l'email finiscono
- * in un log.
- */
-export async function accediIsolato(email: string, password: string): Promise<SessioneSupabase | null> {
-  try {
-    const { data, error } = await clientIsolato().auth.signInWithPassword({ email, password });
-    if (error || !data.session) return null;
-    return data.session as unknown as SessioneSupabase;
-  } catch {
-    return null;
-  }
-}

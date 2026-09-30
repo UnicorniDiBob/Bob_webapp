@@ -23,7 +23,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { SectionHeader, isStaff } from "@/components/ImpostazioniShell";
 import { CancellazioneAccount } from "@/components/CancellazioneAccount";
-import { AggiungiAccount } from "@/components/AggiungiAccount";
 import { GIORNI_RIPENSAMENTO } from "@/lib/cancellazione";
 
 // Deve restare allineata a Supabase > Authentication > Providers > Email.
@@ -34,17 +33,6 @@ export default function AccessoPage() {
   const supabase = createClient();
   const router = useRouter();
   const { user, role, loading } = useAuth();
-
-  // Il modulo per aggiungere o riconnettere un account compare solo se ci si
-  // arriva dalla tendina (percorsoAggiungiAccount). Letto qui e non con
-  // useSearchParams, che in una pagina prerenderizzata chiederebbe un confine
-  // di Suspense tutto suo.
-  const [aggiunta, setAggiunta] = useState<{ riconnetti: string | null } | null>(null);
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
-    if (q.get("riconnetti")) setAggiunta({ riconnetti: q.get("riconnetti") });
-    else if (q.get("aggiungi")) setAggiunta({ riconnetti: null });
-  }, []);
 
   const [editingEmail, setEditingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -178,7 +166,6 @@ export default function AccessoPage() {
         Come entri in Bob, e come si chiude.
       </SectionHeader>
 
-      {aggiunta && <AggiungiAccount emailDaRiconnettere={aggiunta.riconnetti} />}
 
       {/* ---- Email di accesso ---- */}
       <section className="card p-5 sm:p-6">

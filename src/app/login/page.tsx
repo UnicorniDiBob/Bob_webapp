@@ -11,6 +11,8 @@ import { TermsDialog } from "@/components/TermsDialog";
 import { ultimaPubblicata } from "@/lib/termini/registro";
 import type { UserRole } from "@/lib/supabase/types";
 import { ContoAllaRovescia } from "@/components/ContoAllaRovescia";
+import { AccessoAggiuntivo } from "@/components/AccessoAggiuntivo";
+import { ritornoInterno } from "@/lib/ritorno";
 import {
   fermoAdesso,
   leggiManutenzioni,
@@ -35,8 +37,34 @@ export default function LoginPage() {
         </div>
       }
     >
-      <LoginInner />
+      <LoginOAggiunta />
     </Suspense>
+  );
+}
+
+// /login?aggiungi=1 (30/09, R6): con una sessione aperta e' «aggiungi un
+// altro account», e l'accesso avviene in AccessoAggiuntivo, isolato dai
+// cookie dell'account attivo. Tutto il resto della pagina qui sotto accede
+// con i cookie dell'attivo, quindi in quella modalita' non si monta neppure.
+// Senza sessione non c'e' niente da aggiungere: e' l'accesso di sempre.
+function LoginOAggiunta() {
+  const params = useSearchParams();
+  const { user, loading } = useAuth();
+  if (params.get("aggiungi") !== "1") return <LoginInner />;
+  if (loading) {
+    return (
+      <div className="container-bob py-16 text-center text-sm text-bob-ink/65">
+        Carico…
+      </div>
+    );
+  }
+  if (!user) return <LoginInner />;
+  return (
+    <AccessoAggiuntivo
+      emailAttiva={user.email ?? ""}
+      emailDaRiconnettere={params.get("email")}
+      ritorno={ritornoInterno(params.get("returnTo"), "/impostazioni")}
+    />
   );
 }
 

@@ -797,6 +797,19 @@ Decisione di Lucio, sul ramo `feat/impostazioni-griglia-e-account`. **Sostituisc
 
 ---
 
+## 30 settembre 2026 — «Aggiungi un altro account» passa dal pannello di accesso, e nessuna nostra route riceve una password
+
+Decisione di Lucio (R6), sul ramo `feat/aggiungi-account-dal-login`.
+
+- **Prima:** un modulo con email e password dentro le impostazioni, e `POST /api/sessioni/aggiungi` che faceva il login sul server. Con la 2FA, il link magico o l'accesso Google la seconda prova non avrebbe avuto dove avvenire.
+- **Da adesso:** «Aggiungi un altro account» e «Riconnetti» portano a `/login?aggiungi=1&returnTo=…`. Il pannello dice che l'account di adesso resta, e alla fine riporta da dove si era partiti.
+- **Come si isola l'accesso:** il resto di `/login` accede con il client che scrive i cookie `sb-` della sessione attiva, e lì l'account verrebbe sostituito. In questa modalità l'accesso avviene su un client supabase-js **solo in memoria** (`persistSession: false`), che non legge e non scrive cookie. Il refresh token della sessione nata lì va a `POST /api/sessioni/adotta`, che **non riceve password**, lo rinnova sul server e mette il token nuovo in `bob-attesa`. Provato: i cookie `sb-` dell'attivo sono identici prima e dopo il giro.
+- **Il ritorno** usa `ritornoInterno()` (`src/lib/ritorno.ts`): la regola di `/login` («/» ma non «//») più la verifica dell'origine con URL, perché quella regola da sola lascia passare `/\dominio` (open redirect, in roadmap/findings.csv).
+- **Via** `/api/sessioni/aggiungi`, il suo tetto di tentativi (`tetto.ts`) e il login con password sul server. Registro dei trattamenti A24 ristretto di conseguenza.
+- **Pronto, non costruito:** la 2FA si verifica sullo stesso client in memoria prima di `adotta`; link magico e Google avranno bisogno di una pagina di rientro dedicata che scambi il codice con un client isolato, mai `/auth/conferma`.
+
+---
+
 ## 30 settembre 2026 — `bob:manutenzione-chiusa` resta condivisa, di proposito
 
 Decisione di Lucio (voce V3 della chiusura del doppio cappello). Delle cinque chiavi di `localStorage` elencate nella spike §10.2, quattro passano da `chiaveConUtente()` (`src/lib/sessioni/chiavi.ts`); questa no, e non è una dimenticanza.
