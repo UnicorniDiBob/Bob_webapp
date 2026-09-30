@@ -68,6 +68,10 @@ La 049 aggiunge system_job_runs e registraGiro() in api/cron/verifica-piva, ma l
 
 BOB-FOUNDER-2026 concede Bob Business e la descrizione dice 'revocabile'. Nel database, pero', max_uses e' NULL e expires_at e' NULL: chiunque abbia il codice ottiene Business gratis, per un numero illimitato di account, senza data di fine. 'Revocabile' oggi significa soltanto 'finche' non lo disattiva qualcuno a mano da admin'. Il piano del 18/08 assume che i promo dei primi sessanta scadano a febbraio (P2.16, procedura di decadenza) e costruisce sopra quell'assunzione: nel database non c'e' niente che scada. Con 3 professionisti a piano pagante non e' un problema; da ottobre, con il codice che gira nell'outreach, e' un problema di ricavi e anche di P2B (un declassamento a sorpresa richiede preavviso e motivazione, art. 4). SEGNALATA ANCHE UNA DERIVA MINORE, sulla stessa tabella: promo_codes.used_count dice 1 mentre le righe in promo_redemptions sono 0. Il contatore viene incrementato al riscatto e non decrementato quando il riscatto sparisce - e' emerso cancellando l'account di test sig.mozzato@gmail.com il 19/08. Va deciso se used_count conta i riscatti vivi (allora serve un trigger, e va riportato a 0) o quelli di sempre (allora e' corretto, ma un account cancellato consuma per sempre uno slot quando max_uses esistera').
 
+**«Esci» senza un altro account porta a /login invece che alla home** — _Trovata 30 set 2026_
+
+Con un solo account nel browser, esciAccount() (src/lib/sessioni/client.ts) chiude la sessione e vuole ricaricare verso «/». Da una pagina protetta si finisce invece su /login: signOut() in AuthProvider azzera la sessione in React subito dopo, e la guardia client della pagina (router.replace('/login')) arriva prima della ricarica. Non tocca la sicurezza: la sessione e' revocata davvero su Supabase. Tocca solo la destinazione, che non e' quella scritta nel codice. Esisteva gia' prima del 30/09 con la vecchia uscita da Header. Rimedio da decidere: o /login e' la destinazione voluta (e si scrive), o signOut() non azzera lo stato quando la route ha risposto, visto che la pagina si ricarica comunque.
+
 
 ## M1 · The build tells the truth
 
