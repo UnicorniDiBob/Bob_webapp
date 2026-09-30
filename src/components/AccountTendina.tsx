@@ -27,20 +27,22 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { LogOut, Settings, UserPlus } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import { scambiaAccount } from "@/lib/sessioni/client";
 
 /**
- * Dove si va per aggiungere o riconnettere un account. Un punto solo, perche'
- * cambiera': oggi e' il modulo in /impostazioni/accesso, domani il pannello di
- * accesso (R6, feat/aggiungi-account-dal-login).
+ * Dove si va per aggiungere o riconnettere un account: il pannello di accesso
+ * in modalita' «aggiungi» (R6, AccessoAggiuntivo), che alla fine riporta a
+ * `ritorno` con l'account attivo intatto. Il ritorno lo ricontrolla /login
+ * (ritornoInterno): qui non ci si fida di se stessi.
  */
-export function percorsoAggiungiAccount(riconnetti?: string): string {
-  return riconnetti
-    ? `/impostazioni/accesso?riconnetti=${encodeURIComponent(riconnetti)}#aggiungi-account`
-    : "/impostazioni/accesso?aggiungi=1#aggiungi-account";
+export function percorsoAggiungiAccount(ritorno: string, riconnetti?: string): string {
+  const q = new URLSearchParams({ aggiungi: "1", returnTo: ritorno });
+  if (riconnetti) q.set("email", riconnetti);
+  return `/login?${q.toString()}`;
 }
 
 /** Iniziali per il cerchio: dal nome se c'e', altrimenti dall'email. */
@@ -75,6 +77,7 @@ export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
   const bottone = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const idMenu = useId();
+  const pathname = usePathname();
 
   const voci = () =>
     Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
@@ -228,7 +231,7 @@ export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
               {altroAccount.daRiconnettere ? (
                 <Link
                   role="menuitem"
-                  href={percorsoAggiungiAccount(altroAccount.email)}
+                  href={percorsoAggiungiAccount(pathname, altroAccount.email)}
                   onClick={() => chiudi(false)}
                   className={voce}
                   data-testid="voce-account-da-riconnettere"
@@ -281,7 +284,7 @@ export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
             {!altroAccount && (
               <Link
                 role="menuitem"
-                href={percorsoAggiungiAccount()}
+                href={percorsoAggiungiAccount(pathname)}
                 onClick={() => chiudi(false)}
                 className={voce}
                 data-testid="voce-aggiungi-account"

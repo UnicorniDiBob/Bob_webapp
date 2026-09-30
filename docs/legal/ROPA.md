@@ -377,6 +377,8 @@ per conto suo.
 
 *Allargata il 29 settembre 2026 con la migrazione 104: la finalità ora comprende i tentativi di accesso per aggiungere un secondo account.*
 
+*Ristretta il 30 settembre 2026 (ramo `feat/aggiungi-account-dal-login`): `/api/sessioni/aggiungi` non esiste più, e con lei il trattamento per la rotta `accesso` — niente più HMAC dell'email tentata né IP per questa rotta. «Aggiungi un altro account» ora accede dal pannello di `/login` direttamente su Supabase, e le nostre route non ricevono né l'email tentata né la password (`/api/sessioni/adotta` riceve solo il refresh token della sessione già nata). Le righe `accesso` rimaste in `rate_limit_counters` le cancella `purge_stale_rate_limit_counters()` entro 48 ore; il vincolo della 104 ammette ancora il valore `accesso` finché una migrazione non lo toglie (roadmap/findings.csv). Il resto della voce, per `chat` e `brief`, resta com'è.*
+
 | | |
 |---|---|
 | **Finalità** | Sicurezza e anti-abuso: impedire che un chiamante (script, flood) esaurisca la spesa di Claude o inondi `job_briefs` di scritture, su due rotte senza autenticazione (G20-G22, P1.5). **Dal 29/09 (mig 104):** impedire che «aggiungi un altro account» (`/api/sessioni/aggiungi`, che accetta email e password) diventi il modo per provare password a raffica o per scoprire chi ha un account su Bob |
