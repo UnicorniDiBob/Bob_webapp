@@ -56,13 +56,9 @@ const nextConfig = {
         destination: "/impostazioni/:sezione+",
         permanent: false,
       },
-      // /impostazioni da sola non e' una pagina: porta alla prima sezione, che
-      // e' la stessa per entrambi i ruoli.
-      {
-        source: "/impostazioni",
-        destination: "/impostazioni/dati",
-        permanent: false,
-      },
+      // /impostazioni da sola E' una pagina dal 30/09 (la griglia delle
+      // sezioni): il redirect verso /impostazioni/dati non c'e' piu'. Era
+      // permanent: false, quindi nessun browser se lo tiene in cache.
     ];
   },
 };

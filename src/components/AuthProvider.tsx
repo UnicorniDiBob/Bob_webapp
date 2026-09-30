@@ -12,7 +12,14 @@ import type { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/lib/supabase/types";
 import type { VerificationLevel } from "@/lib/vat";
-import { ascoltaSegnali, esciAccount, leggiStatoSessioni } from "@/lib/sessioni/client";
+import {
+  ascoltaSegnali,
+  esciAccount,
+  leggiStatoSessioni,
+  type StatoSessioni,
+} from "@/lib/sessioni/client";
+
+export type AltroAccount = NonNullable<StatoSessioni["attesa"]>;
 
 interface AuthState {
   session: Session | null;
@@ -23,11 +30,11 @@ interface AuthState {
   verificationLevel: VerificationLevel | null;
   loading: boolean;
   /**
-   * C'e' un secondo account in questo browser (in attesa o da riconnettere).
-   * Serve all'etichetta di «Esci», che in quel caso esce da tutti e due e
-   * deve dirlo (29/09).
+   * L'altro account di questo browser, se c'e' (in attesa o da
+   * riconnettere). Lo mostra la tendina degli account (AccountTendina): di
+   * lui si sa solo l'email, perche' bob-attesa non contiene altro (29/09).
    */
-  altroAccount: boolean;
+  altroAccount: AltroAccount | null;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -42,15 +49,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [verificationLevel, setVerificationLevel] =
     useState<VerificationLevel | null>(null);
   const [loading, setLoading] = useState(true);
-  const [altroAccount, setAltroAccount] = useState(false);
+  const [altroAccount, setAltroAccount] = useState<AltroAccount | null>(null);
   // L'utente che questa scheda ha in memoria: serve a scoprire, quando la
   // scheda torna in primo piano, che nei cookie c'e' ormai un altro account.
   const utenteInMemoria = useRef<string | null>(null);
   useEffect(() => {
     utenteInMemoria.current = session?.user?.id ?? null;
     // bob-attesa e' httpOnly: se c'e' un secondo account lo dice il server.
-    if (session?.user) leggiStatoSessioni().then((st) => setAltroAccount(!!st?.attesa));
-    else setAltroAccount(false);
+    if (session?.user) leggiStatoSessioni().then((st) => setAltroAccount(st?.attesa ?? null));
+    else setAltroAccount(null);
   }, [session]);
 
   async function loadProfile(userId: string) {
@@ -148,13 +155,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase]);
 
-  // «Esci» (il pulsante in alto) = ESCI DA TUTTI gli account di questo
-  // browser, e SOLO in questo browser (scope local, 29/09). Prima era
-  // supabase.auth.signOut() con lo scope predefinito, globale: uscire dal
-  // portatile chiudeva anche il telefono. «Esci da questo account», che
-  // passa all'altro, sta in /impostazioni/accesso. Vedi NOTE_E_DECISIONI 29/09.
+  // «Esci» = esci dall'ACCOUNT ATTIVO, e SOLO in questo browser (scope
+  // local). Se in questo browser c'e' un altro account, diventa attivo quello.
+  // Fino al 30/09 usciva da tutti gli account insieme: vedi NOTE_E_DECISIONI
+  // 30/09, che sostituisce la voce del 29/09. Sta nella tendina degli account
+  // (AccountTendina), non piu' in Header.
   async function signOut() {
-    const ok = await esciAccount(supabase, "tutti");
+    const ok = await esciAccount(supabase, "questo");
     if (!ok) {
       // La route non ha risposto: si esce almeno in locale, cosi' il pulsante
       // non resta senza effetto. Scope local anche qui, mai globale.
