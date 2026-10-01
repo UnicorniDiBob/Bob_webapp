@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const { data: appt } = await admin
     .from("appointments")
     .select(
-      "id, professional_id, request_id, customer_name, title, duration_minutes, status"
+      "id, professional_id, request_id, customer_name, title, duration_minutes, status, price, notes, location_address, location_city, location_notes"
     )
     .eq("id", appointmentId)
     .maybeSingle();
@@ -100,6 +100,14 @@ export async function POST(request: Request) {
       title: appt.title,
       starts_at: when.toISOString(),
       duration_minutes: appt.duration_minutes,
+      // Il cliente sposta l'orario, non il biglietto (01/10): prezzo, note e
+      // luogo restano quelli che il professionista aveva proposto. Senza,
+      // la controproposta arrivava al pro con il prezzo sparito.
+      price: appt.price,
+      notes: appt.notes,
+      location_address: appt.location_address,
+      location_city: appt.location_city,
+      location_notes: appt.location_notes,
       status: "proposed",
       proposed_by: "customer",
     })

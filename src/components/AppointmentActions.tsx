@@ -12,14 +12,23 @@
 //
 // Lo stesso componente serve le due parti: chi ha proposto vede lo stato,
 // la controparte vede i tasti.
+//
+// DAL 01/10 E' UN BIGLIETTO (BigliettoAppuntamento): data, ora, durata, cosa,
+// dove e prezzo, con i tasti in fondo. Le proposte rifiutate, annullate o
+// scadute restano una riga sola: in una trattativa con tre controproposte,
+// tre biglietti morti coprirebbero quello vivo.
 
 import { useState } from "react";
-import { Calendar, Check, Clock, PencilLine, X } from "lucide-react";
+import { Check, Clock, PencilLine, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { sendMessage, updateAppointment } from "@/lib/messages";
 import { notifyEvent } from "@/lib/notify";
 import type { Appointment } from "@/lib/supabase/types";
 import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
+import {
+  BigliettoAppuntamento,
+  prezzoLeggibile,
+} from "@/components/BigliettoAppuntamento";
 
 // Solo i campi che ci servono: la chat fa una select ristretta.
 export type ThreadAppointment = Pick<
@@ -32,7 +41,19 @@ export type ThreadAppointment = Pick<
   | "status"
   | "proposed_by"
   | "title"
+  | "price"
+  | "notes"
+  | "location_address"
+  | "location_city"
+  | "location_notes"
 >;
+
+/** Dove: l'indirizzo se c'e' (dopo la conferma), se no la zona della richiesta. */
+function luogoDi(a: ThreadAppointment, zona: string | null): string | null {
+  if (a.location_address)
+    return [a.location_address, a.location_city].filter(Boolean).join(", ");
+  return a.location_city ?? zona;
+}
 
 function fmtWhen(iso: string): string {
   return new Date(iso).toLocaleString("it-IT", {
@@ -66,6 +87,7 @@ export function AppointmentActions({
   userId,
   professionalId,
   counterpartName,
+  zona = null,
   onChanged,
   onProModify,
 }: {
@@ -75,6 +97,8 @@ export function AppointmentActions({
   // Id del pro del thread: serve a sendMessage per instradare la conversazione.
   professionalId: string | null;
   counterpartName: string;
+  /** La zona della richiesta, finche' l'indirizzo non e' condiviso. */
+  zona?: string | null;
   onChanged: () => void | Promise<void>;
   // Il pro non contropropone via API: riusa il dialog "Proponi appuntamento",
   // che sa già calcolare i suoi slot liberi ed evitare le sovrapposizioni.
@@ -97,24 +121,51 @@ export function AppointmentActions({
   const isPast = new Date(a.starts_at).getTime() < Date.now();
   // Chi deve rispondere è la controparte di chi ha proposto.
   const mineToAnswer = a.proposed_by !== viewer;
+  const intestazione =
+    a.proposed_by === viewer ? "La tua proposta" : `Proposta di ${counterpartName}`;
+  const biglietto = {
+    inizio: new Date(a.starts_at),
+    durataMinuti: a.duration_minutes,
+    titolo: a.title,
+    luogo: luogoDi(a, zona),
+    prezzo: a.price,
+    note: a.notes,
+  };
+  // La data e' cliccabile: apre «lo metto nel tuo calendario?» (05/09).
+  const avvolgiData = (data: React.ReactNode) => (
+    <AggiungiAlCalendario appuntamento={a}>{data}</AggiungiAlCalendario>
+  );
+
+  // --- Confermato o concluso: il biglietto resta, senza tasti. --------------
+  if (a.status === "confirmed" || a.status === "completed") {
+    return (
+      <div className="mt-1.5" data-testid={`appt-status-${a.id}`}>
+        <BigliettoAppuntamento
+          {...biglietto}
+          intestazione={
+            a.status === "completed" ? "Lavoro concluso" : "Appuntamento"
+          }
+          stato={{ etichetta: STATUS_LABEL[a.status] ?? "", tono: "ok" }}
+          avvolgiData={avvolgiData}
+          testId={`biglietto-${a.id}`}
+        />
+      </div>
+    );
+  }
 
   // --- Stati chiusi: nessuna azione, solo l'esito. --------------------------
   if (a.status !== "proposed") {
     const label = STATUS_LABEL[a.status] ?? "Proposta chiusa";
-    const ok = a.status === "confirmed" || a.status === "completed";
     return (
       <div
-        className={`mt-1.5 inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold ${
-          ok ? "bg-emerald-50 text-emerald-700" : "bg-black/[0.04] text-bob-ink/70"
-        }`}
+        className="mt-1.5 inline-flex items-center gap-1.5 rounded-xl bg-black/[0.04] px-3 py-1.5 text-xs font-semibold text-bob-ink/70"
         data-testid={`appt-status-${a.id}`}
       >
-        {ok ? (
-          <Check className="h-3.5 w-3.5" aria-hidden="true" />
-        ) : (
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
-        )}
-        {label} · {when}
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="line-through decoration-black/30">
+          {label} · {when}
+          {a.price != null ? ` · ${prezzoLeggibile(a.price)}` : ""}
+        </span>
       </div>
     );
   }
@@ -135,12 +186,14 @@ export function AppointmentActions({
   // In attesa: l'ha proposto chi sta guardando.
   if (!mineToAnswer) {
     return (
-      <div
-        className="mt-1.5 inline-flex items-center gap-1.5 rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800"
-        data-testid={`appt-waiting-${a.id}`}
-      >
-        <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-        In attesa di risposta
+      <div className="mt-1.5" data-testid={`appt-waiting-${a.id}`}>
+        <BigliettoAppuntamento
+          {...biglietto}
+          intestazione={intestazione}
+          stato={{ etichetta: "In attesa di risposta", tono: "attesa" }}
+          avvolgiData={avvolgiData}
+          testId={`biglietto-${a.id}`}
+        />
       </div>
     );
   }
@@ -249,49 +302,48 @@ export function AppointmentActions({
 
   return (
     <>
-      <div
-        className="mt-1.5 rounded-xl border border-black/10 bg-white p-3"
-        data-testid={`appt-actions-${a.id}`}
-      >
-        {/* La data e' cliccabile: apre «lo metto nel tuo calendario?» (05/09). */}
-        <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-bob-ink">
-          <Calendar className="h-3.5 w-3.5 text-bob-indigo" aria-hidden="true" />
-          <AggiungiAlCalendario appuntamento={a}>
-            <span>
-              {when} · {a.duration_minutes} min
-            </span>
-          </AggiungiAlCalendario>
-        </p>
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          <button
-            onClick={() => respond(true)}
-            disabled={busy}
-            className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50"
-            data-testid={`appt-approve-${a.id}`}
-          >
-            <Check className="h-3.5 w-3.5" aria-hidden="true" />
-            Approva
-          </button>
-          <button
-            onClick={openPicker}
-            disabled={busy}
-            className="inline-flex items-center gap-1 rounded-xl border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-bob-ink hover:bg-black/[0.03] disabled:opacity-50"
-            data-testid={`appt-modify-${a.id}`}
-          >
-            <PencilLine className="h-3.5 w-3.5" aria-hidden="true" />
-            Modifica
-          </button>
-          <button
-            onClick={() => respond(false)}
-            disabled={busy}
-            className="inline-flex items-center gap-1 rounded-xl border border-black/10 bg-white px-3 py-1.5 text-xs font-semibold text-bob-ink/70 hover:bg-black/[0.03] disabled:opacity-50"
-            data-testid={`appt-reject-${a.id}`}
-          >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-            Rifiuta
-          </button>
-        </div>
-        {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
+      <div className="mt-1.5" data-testid={`appt-actions-${a.id}`}>
+        <BigliettoAppuntamento
+          {...biglietto}
+          intestazione={intestazione}
+          stato={{ etichetta: "Da confermare", tono: "azione" }}
+          avvolgiData={avvolgiData}
+          testId={`biglietto-${a.id}`}
+          azioni={
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  onClick={() => respond(true)}
+                  disabled={busy}
+                  className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-50"
+                  data-testid={`appt-approve-${a.id}`}
+                >
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                  Approva
+                </button>
+                <button
+                  onClick={openPicker}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-semibold text-bob-ink hover:bg-black/[0.03] disabled:opacity-50"
+                  data-testid={`appt-modify-${a.id}`}
+                >
+                  <PencilLine className="h-3.5 w-3.5" aria-hidden="true" />
+                  Modifica
+                </button>
+                <button
+                  onClick={() => respond(false)}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-semibold text-bob-ink/70 hover:bg-black/[0.03] disabled:opacity-50"
+                  data-testid={`appt-reject-${a.id}`}
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                  Rifiuta
+                </button>
+              </div>
+              {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
+            </>
+          }
+        />
       </div>
 
       {pickerOpen && (
