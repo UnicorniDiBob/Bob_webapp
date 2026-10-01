@@ -81,6 +81,9 @@ export type NotifyEvent =
   | "appointment_proposed"
   | "appointment_confirmed"
   | "appointment_declined"
+  // Il cliente disdice una prenotazione diretta (106). Non passa da
+  // /api/notify: la manda la route della disdetta, dopo averla decisa.
+  | "appointment_cancelled"
   // Esiti della verifica del profilo (blocco 10). Non passano da /api/notify:
   // non nascono da una richiesta, li invia la route admin che decide il caso.
   | "verification_granted"
@@ -204,6 +207,25 @@ export function buildEmail(
         quote;
       cta = "Apri la conversazione";
       text = `${hi}\n${who} non può nell'orario proposto.\n${href}`;
+      break;
+
+    case "appointment_cancelled":
+      subject = `Prenotazione disdetta`;
+      bodyHtml =
+        p(`${hi}`) +
+        p(
+          `<b>${who}</b> ha disdetto la prenotazione${
+            ctx.serviceName ? ` per ${svc}` : ""
+          }, entro la finestra di disdetta che avevi indicato. L'orario torna libero nel tuo calendario.`
+        ) +
+        quote;
+      cta = "Apri la conversazione";
+      text = `${hi}
+${who} ha disdetto la prenotazione.
+${
+        ctx.preview ?? ""
+      }
+${href}`;
       break;
 
     // --- Esiti della verifica (blocco 10) ---

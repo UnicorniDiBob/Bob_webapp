@@ -392,7 +392,7 @@ export default function InstantBookingConfig({
                 </div>
                 <div>
                   <label className="label-bob">
-                    Cancellazione gratuita fino a (ore prima)
+                    Il cliente può disdire fino a (ore prima)
                   </label>
                   <input
                     type="number"
@@ -407,7 +407,7 @@ export default function InstantBookingConfig({
                   <p className="mt-1 text-xs text-bob-ink/65">
                     {"Minimo "}
                     {MIN_CANCELLATION_WINDOW_HOURS}
-                    {" ore, imposto dalla piattaforma."}
+                    {" ore, imposto dalla piattaforma. Vale per le prenotazioni che arrivano da ora: quelle già prese tengono la finestra del giorno in cui sono state fatte."}
                   </p>
                 </div>
               </div>
