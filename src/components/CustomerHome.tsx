@@ -18,6 +18,7 @@ import { ReviewDialog } from "@/components/ReviewDialog";
 import { sendMessage } from "@/lib/messages";
 import { notifyEvent } from "@/lib/notify";
 import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
+import { statoDisdetta } from "@/lib/disdettaPrenotazione";
 
 interface CustomerRequest {
   id: string;
@@ -38,6 +39,19 @@ interface Appointment {
   duration_minutes: number;
   status: string;
   proposed_by: "professional" | "customer";
+  source: "pro" | "direct" | null;
+  cancellation_window_hours: number | null;
+}
+
+/** «giovedì 9 ottobre, 10:00»: il termine della disdetta, scritto per intero. */
+function fmtTermine(d: Date) {
+  return d.toLocaleString("it-IT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 const OPEN_STATUSES = ["sent", "quote_request", "matched"];
@@ -142,6 +156,10 @@ export function CustomerHome() {
   const [orariConfermati, setOrariConfermati] = useState(true);
   const [slotSaving, setSlotSaving] = useState(false);
   const [slotErr, setSlotErr] = useState<string | null>(null);
+  const [disdicendo, setDisdicendo] = useState<string | null>(null);
+  const [disdettaErr, setDisdettaErr] = useState<{ id: string; testo: string } | null>(
+    null
+  );
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -228,7 +246,7 @@ export function CustomerHome() {
       // Appuntamenti futuri (proposti o confermati) sulle mie richieste.
       const { data: appts } = await supabase
         .from("appointments")
-        .select("id, request_id, professional_id, title, starts_at, duration_minutes, status, proposed_by")
+        .select("id, request_id, professional_id, title, starts_at, duration_minutes, status, proposed_by, source, cancellation_window_hours")
         .in("request_id", ids)
         .in("status", ["proposed", "confirmed"])
         .gte("starts_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
@@ -294,6 +312,40 @@ export function CustomerHome() {
       await load();
     }
     setRespondingAppt(null);
+  }
+
+  // LA DISDETTA LA DECIDE IL SERVER (01/10). Qui si chiede e si mostra
+  // l'esito; se la finestra e' chiusa la route risponde no anche se questa
+  // pagina, aperta da ore, mostrava ancora il bottone.
+  async function disdici(a: Appointment) {
+    const { dow, day, time } = fmtDayParts(a.starts_at);
+    if (
+      !window.confirm(
+        `Disdire la prenotazione di ${dow} ${day} alle ${time} con ${proName(
+          a.professional_id
+        )}? Glielo scriviamo noi in chat.`
+      )
+    )
+      return;
+    setDisdicendo(a.id);
+    setDisdettaErr(null);
+    try {
+      const res = await fetch(`/api/appointments/${a.id}/disdici`, {
+        method: "POST",
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDisdettaErr({
+          id: a.id,
+          testo: (d as { error?: string }).error ?? "Disdetta non riuscita. Riprova.",
+        });
+      } else {
+        await load();
+      }
+    } catch {
+      setDisdettaErr({ id: a.id, testo: "Disdetta non riuscita. Riprova." });
+    }
+    setDisdicendo(null);
   }
 
   async function openSlotPicker(a: Appointment) {
@@ -660,8 +712,8 @@ export function CustomerHome() {
           </h2>
           {appointments.length === 0 ? (
             <p className="mt-4 text-sm text-bob-ink/65">
-              Nessun appuntamento in programma. Quando un professionista te ne
-              propone uno, lo trovi qui.
+              Nessun appuntamento in programma. Quando prenoti un servizio o un
+              professionista te ne propone uno, lo trovi qui.
             </p>
           ) : (
             <ul className="mt-3 flex flex-col gap-3">
@@ -669,8 +721,9 @@ export function CustomerHome() {
                 const { dow, day, time } = fmtDayParts(a.starts_at);
                 const req = requestById(a.request_id);
                 const proposed = a.status === "proposed";
+                const disdetta = statoDisdetta(a);
                 return (
-                  <li key={a.id} className="flex items-center gap-3" data-testid={`appt-${a.id}`}>
+                  <li key={a.id} className="flex flex-wrap items-center gap-3" data-testid={`appt-${a.id}`}>
                     {/* LA DATA E' CLICCABILE (05/09): apre «lo metto nel tuo
                         calendario?». Prima era testo da ricopiare a mano. */}
                     <AggiungiAlCalendario
@@ -722,6 +775,42 @@ export function CustomerHome() {
                           Conferma
                         </button>
                       ))}
+                    {/* Prenotazione diretta: si disdice da qui finche' la
+                        finestra e' aperta, e la pagina dice fino a quando. */}
+                    {disdetta.tipo !== "no" && (
+                      <div className="basis-full pl-[58px] text-2xs text-bob-ink/65">
+                        {disdetta.tipo === "si" ? (
+                          <>
+                            Puoi disdire fino a {fmtTermine(disdetta.finoA)}.{" "}
+                            <button
+                              onClick={() => disdici(a)}
+                              disabled={disdicendo === a.id}
+                              className="font-semibold text-bob-ink/75 underline-offset-2 hover:text-red-600 hover:underline disabled:opacity-50"
+                              data-testid={`appt-disdici-${a.id}`}
+                            >
+                              {disdicendo === a.id ? "Disdico…" : "Disdici"}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            Il termine per disdire era {fmtTermine(disdetta.finoA)}:
+                            per cambiare qualcosa{" "}
+                            <Link
+                              href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
+                              className="font-semibold text-bob-indigo hover:underline"
+                            >
+                              scrivi a {proName(a.professional_id)}
+                            </Link>
+                            .
+                          </>
+                        )}
+                        {disdettaErr?.id === a.id && (
+                          <span className="mt-0.5 block text-red-600">
+                            {disdettaErr.testo}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}

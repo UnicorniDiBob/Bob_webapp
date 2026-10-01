@@ -5,8 +5,18 @@
 // dettagli facoltativi a scomparsa → scegli lo slot da una vista settimanale →
 // conferma → appuntamento creato e contatti del pro svelati.
 // Il passaggio di pagamento si aggiungerà tra "conferma" e creazione (2027).
+//
+// OGNI FRASE DICE UNA COSA CHE SUCCEDE (01/10, Lucio). Questo dialog
+// prometteva «Trovi la prenotazione anche nella tua area personale» — e non
+// c'era — e «Cancellazione gratuita fino a X ore prima» — e nessuno la
+// applicava. Dalla 106 la prenotazione ha una richiesta: compare nell'area
+// personale, ha una chat, e si disdice entro la finestra con il controllo
+// lato server (/api/appointments/[id]/disdici). «Gratuita» e' sparito: oggi
+// non si paga niente, quindi non c'e' niente che una disdetta tardiva
+// costerebbe. La durata scritta e' quella prenotata, non quella di uno slot.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -34,6 +44,8 @@ interface SavedAddress {
 }
 
 interface BookResult {
+  requestId: string;
+  professionalId: string;
   price: number;
   startsAt: string;
   durationMinutes: number;
@@ -596,8 +608,9 @@ export default function InstantBookingDialog({
             </div>
             {service.cancellation_window_hours != null && (
               <p className="text-xs text-bob-ink/65">
-                Cancellazione gratuita fino a {service.cancellation_window_hours}{" "}
-                ore prima.
+                Potrai disdire dalla tua area personale fino a{" "}
+                {service.cancellation_window_hours} ore prima. Dopo, solo
+                d&apos;accordo con il professionista.
               </p>
             )}
 
@@ -638,7 +651,7 @@ export default function InstantBookingDialog({
                 </p>
                 {result.cancellationWindowHours != null && (
                   <p className="text-xs text-bob-ink/65">
-                    Cancellazione gratuita fino a{" "}
+                    Puoi disdire dalla tua area personale fino a{" "}
                     {result.cancellationWindowHours} ore prima.
                   </p>
                 )}
@@ -649,12 +662,25 @@ export default function InstantBookingDialog({
                   {result.contact.name ?? professionalName}
                   {result.contact.phone ? ` · ${result.contact.phone}` : ""}
                 </p>
-                {!result.contact.phone && (
-                  <p className="mt-0.5 text-xs text-bob-ink/65">
-                    Trovi la prenotazione anche nella tua area personale.
-                  </p>
-                )}
               </div>
+              <p className="text-sm text-bob-ink/70">
+                La trovi nella tua{" "}
+                <Link
+                  href="/dashboard"
+                  className="font-medium text-bob-indigo hover:underline"
+                >
+                  area personale
+                </Link>
+                , e per qualunque cosa c&apos;è la{" "}
+                <Link
+                  href={`/messaggi?r=${result.requestId}&p=${result.professionalId}`}
+                  className="font-medium text-bob-indigo hover:underline"
+                  data-testid="instant-book-chat"
+                >
+                  chat con {result.contact.name ?? professionalName}
+                </Link>
+                .
+              </p>
               <button onClick={onClose} className="btn-primary w-full py-2.5">
                 Fatto
               </button>

@@ -390,6 +390,9 @@ export interface Appointment {
   location_address?: string | null;
   location_city?: string | null;
   location_notes?: string | null;
+  // Fino a quante ore prima il cliente puo' disdire da solo (106).
+  // Fotografata alla prenotazione diretta; null = non si disdice da qui.
+  cancellation_window_hours?: number | null;
 }
 
 export interface ConversationSummary {

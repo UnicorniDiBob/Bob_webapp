@@ -5,6 +5,14 @@
 //
 // Via service role: il cliente non ha INSERT su appointments. Prezzo e slot
 // sono ricalcolati lato server (mai fidarsi del client).
+//
+// OGNI PRENOTAZIONE HA LA SUA RICHIESTA (01/10, migrazione 106). Prima
+// l'appuntamento nasceva senza request_id e restava fuori da tutto: dall'area
+// personale del cliente, dalla chat, dalla disdetta. Adesso prima si crea la
+// richiesta (gia' «matched»: le parti sono in contatto) e il collegamento al
+// pro, poi l'appuntamento che la cita. E la finestra di disdetta si fotografa
+// sull'appuntamento: e' la promessa fatta oggi, non quella che il pro
+// scrivera' domani nella sua configurazione.
 
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
@@ -79,7 +87,7 @@ export async function POST(request: Request) {
   const { data: ps } = await admin
     .from("professional_services")
     .select(
-      "id, professional_id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, professionals!inner ( deactivated_at )"
+      "id, professional_id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, professionals!inner ( deactivated_at, city_id )"
     )
     .eq("id", psid)
     .maybeSingle();
@@ -114,7 +122,7 @@ export async function POST(request: Request) {
   // 2. Campi del job → individua il campo fatturabile.
   const { data: sub } = await admin
     .from("subservices")
-    .select("name, booking_fields")
+    .select("name, service_id, booking_fields")
     .eq("id", ps.subservice_id)
     .maybeSingle();
   const fields = (sub?.booking_fields ?? []) as BookingField[];
@@ -198,15 +206,60 @@ export async function POST(request: Request) {
     .maybeSingle();
   const customerName = (prof?.full_name as string | null) ?? "Cliente";
 
-  // 7. Crea l'appuntamento confermato.
+  // 7. La richiesta e il collegamento al pro: sono loro che danno alla
+  // prenotazione un posto nell'area personale e una chat.
+  const titolo = (sub?.name as string | null) ?? "Prenotazione diretta";
+  const cityId = (
+    ps as unknown as { professionals?: { city_id: string | null } | null }
+  ).professionals?.city_id;
+  if (!cityId || !sub?.service_id) {
+    return NextResponse.json(
+      { error: "Configurazione servizio incompleta" },
+      { status: 400 }
+    );
+  }
+  const { data: req, error: reqErr } = await admin
+    .from("requests")
+    .insert({
+      customer_id: user.id,
+      city_id: cityId,
+      service_id: sub.service_id,
+      subservice_id: ps.subservice_id,
+      status: "matched",
+      quote_mode: "bookable",
+      problem_description: `Prenotazione diretta: ${titolo}`,
+    })
+    .select("id")
+    .single();
+  if (reqErr || !req) {
+    return NextResponse.json({ error: "Prenotazione non riuscita" }, { status: 500 });
+  }
+  const annullaRichiesta = () => admin.from("requests").delete().eq("id", req.id);
+  const { error: linkErr } = await admin.from("request_professionals").insert({
+    request_id: req.id,
+    professional_id: ps.professional_id,
+    // «responded», non «contacted»: e' gia' un accordo, non una richiesta da
+    // guardare, e il riassunto delle nuove richieste del pro legge solo
+    // suggested/contacted/quote_requested.
+    status: "responded",
+  });
+  if (linkErr) {
+    await annullaRichiesta();
+    return NextResponse.json({ error: "Prenotazione non riuscita" }, { status: 500 });
+  }
+
+  // 8. Crea l'appuntamento confermato.
+  const finestra = ps.cancellation_window_hours ?? null;
   const { data: ins, error: insErr } = await admin
     .from("appointments")
     .insert({
+      request_id: req.id,
+      cancellation_window_hours: finestra,
       professional_id: ps.professional_id,
       customer_id: user.id,
       professional_service_id: ps.id,
       customer_name: customerName,
-      title: (sub?.name as string | null) ?? "Prenotazione diretta",
+      title: titolo,
       starts_at: when.toISOString(),
       duration_minutes: duration,
       price,
@@ -218,11 +271,14 @@ export async function POST(request: Request) {
     })
     .select("id")
     .single();
-  if (insErr) {
+  if (insErr || !ins) {
+    // La richiesta senza appuntamento sarebbe un lavoro fantasma
+    // nell'area personale: si toglie (il collegamento va con lei, cascade).
+    await annullaRichiesta();
     return NextResponse.json({ error: "Prenotazione non riuscita" }, { status: 500 });
   }
 
-  // 8. Progressive disclosure: solo ORA si svelano i contatti del pro.
+  // 9. Progressive disclosure: solo ORA si svelano i contatti del pro.
   const { data: proRow } = await admin
     .from("professionals")
     .select("user_id")
@@ -254,10 +310,14 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     appointmentId: ins.id,
+    requestId: req.id,
+    professionalId: ps.professional_id,
     price,
-    durationMinutes: ps.slot_duration_min,
+    // La durata prenotata, non quella di uno slot: su un lavoro a ore sono
+    // diverse, e il dialog la scrive al cliente.
+    durationMinutes: duration,
     startsAt: when.toISOString(),
-    cancellationWindowHours: ps.cancellation_window_hours ?? null,
+    cancellationWindowHours: finestra,
     contact,
   });
 }
