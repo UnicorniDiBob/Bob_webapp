@@ -56,6 +56,20 @@ const ETICHETTA_VISTA: Record<CalView, string> = {
   year: "Anno",
 };
 
+/**
+ * L'orario che si sta proponendo, prima che diventi un appuntamento. Non e'
+ * una riga di `appointments`: vive solo nel dialog che lo compila.
+ */
+export interface Bozza {
+  start: Date;
+  durationMinutes: number;
+  /** Si sovrappone a un appuntamento confermato o in attesa. */
+  conflitto?: boolean;
+}
+
+/** Il passo del trascinamento: un quarto d'ora, come i campi del dialog. */
+const PASSO_TRASCINA = 15;
+
 export function ProCalendar({
   appointments,
   loading,
@@ -64,6 +78,8 @@ export function ProCalendar({
   onFocusDayChange,
   onViewChange,
   selectedId,
+  bozza = null,
+  onBozzaChange,
 }: {
   appointments: Appointment[];
   loading: boolean;
@@ -79,6 +95,19 @@ export function ProCalendar({
    */
   onViewChange?: (v: CalView) => void;
   selectedId?: string | null;
+  /**
+   * LO SLOT SCELTO SI VEDE (01/10, Lucio). Prima un click su uno spazio vuoto
+   * chiamava onCreateAt e basta: il calendario non disegnava niente, e la
+   * conferma dell'orario stava in una riga di testo sotto, fuori vista. Con
+   * una bozza il blocco compare dove l'hai messo.
+   */
+  bozza?: Bozza | null;
+  /**
+   * Se c'e', il blocco della bozza si trascina (sposta) e si allunga dal
+   * bordo in basso (durata), come su Google Calendar. Si chiama al rilascio,
+   * non a ogni pixel: chi ascolta puo' anche fare lavoro vero.
+   */
+  onBozzaChange?: (start: Date, durationMinutes: number) => void;
 }) {
   const [view, setView] = useState<CalView>("week");
   const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()));
@@ -206,10 +235,48 @@ export function ProCalendar({
     return m;
   }, [appointments]);
 
+  // Il trascinamento in corso: posizione provvisoria, in minuti dalla
+  // mezzanotte del giorno, e indice della colonna. Null = nessun trascinamento.
+  const [trascina, setTrascina] = useState<{
+    giorno: number;
+    inizioMin: number;
+    durata: number;
+  } | null>(null);
+  const colonneRef = useRef<HTMLDivElement>(null);
+
+  // Anche la bozza allarga la finestra delle ore: una proposta alle 6:30 che
+  // cade fuori dalla griglia e' una proposta che non si vede.
   const { startHour, endHour } = useMemo(
-    () => hourBounds(appointments, days, fullDay),
-    [appointments, days, fullDay]
+    () =>
+      hourBounds(
+        bozza
+          ? [
+              ...appointments,
+              {
+                starts_at: bozza.start.toISOString(),
+                duration_minutes: bozza.durationMinutes,
+              } as Appointment,
+            ]
+          : appointments,
+        days,
+        fullDay
+      ),
+    [appointments, days, fullDay, bozza]
   );
+
+  // Una data scritta a mano porta il calendario su quel giorno: la bozza
+  // deve stare dove si guarda, non in una settimana che nessuno ha aperto.
+  const bozzaGiorno = bozza ? startOfDay(bozza.start).getTime() : null;
+  useEffect(() => {
+    if (bozzaGiorno === null || (view !== "day" && view !== "week")) return;
+    if (!days.some((d) => d.getTime() === bozzaGiorno))
+      setAnchor(new Date(bozzaGiorno));
+    // Anche al cambio di vista: da telefono il calendario nasce in settimana
+    // e passa al giorno subito dopo, e il giorno sarebbe oggi, non quello
+    // della bozza (provato a 375px il 01/10). Le frecce invece no: chi va a
+    // guardare un altro giorno ci deve poter restare.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bozzaGiorno, view]);
 
   // In vista giorno è il giorno mostrato; in vista settimana è oggi se cade
   // nella settimana aperta, altrimenti il lunedì di quella settimana.
@@ -248,12 +315,32 @@ export function ProCalendar({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || loading) return;
-    // Solo al primo render utile e ai cambi di periodo/vista.
-    const target = Math.max(0, (firstStartMin - 30) * pxPerMin);
+    // Solo al primo render utile e ai cambi di periodo/vista. Se c'e' una
+    // bozza si va da lei: e' la cosa che si sta guardando, il primo
+    // appuntamento del periodo no (01/10: aprendo il dialog la proposta
+    // delle 10 restava sopra il riquadro, scorso alle 14).
+    const rif = bozza
+      ? bozza.start.getHours() * 60 + bozza.start.getMinutes() - startHour * 60
+      : firstStartMin;
+    const target = Math.max(0, (rif - 30) * pxPerMin);
     el.scrollTo({ top: target, behavior: didAutoScroll.current ? "smooth" : "auto" });
     didAutoScroll.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, anchor, loading, startHour, endHour]);
+
+  // E la bozza deve stare anche nella parte di griglia che si vede: dopo una
+  // data o un'ora scritte a mano, se e' sopra o sotto il riquadro, ci si va.
+  const bozzaInizio = bozza ? bozza.start.getTime() : null;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !bozza || loading) return;
+    const min = bozza.start.getHours() * 60 + bozza.start.getMinutes();
+    const top = (min - startHour * 60) * pxPerMin;
+    const h = bozza.durationMinutes * pxPerMin;
+    if (top < el.scrollTop + 40 || top + h > el.scrollTop + el.clientHeight)
+      el.scrollTo({ top: Math.max(0, top - 60), behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bozzaInizio, view, loading]);
 
   const goToday = useCallback(() => setAnchor(startOfDay(new Date())), []);
   const step = useCallback(
@@ -308,6 +395,74 @@ export function ProCalendar({
   const altezzaGriglia = espanso ? "calc(100vh - 12rem)" : VIEWPORT_PX;
   const cellaAnno = espanso ? "h-8 text-xs" : "h-6 text-[11px]";
   const quantiNelGiorno = espanso ? 6 : 3;
+
+  // TRASCINARE IL BLOCCO (01/10, Lucio). Due gesti sullo stesso blocco: dal
+  // corpo si sposta (ora e, in settimana, giorno), dal bordo in basso si
+  // allunga. Tutto a passi di un quarto d'ora e dentro la finestra visibile,
+  // cosi' la griglia non cambia misura sotto il dito. Eventi «pointer»:
+  // funziona uguale con mouse, penna e dito.
+  //
+  // GLI ASCOLTATORI STANNO SULLA FINESTRA, NON SUL BLOCCO. Il blocco e' figlio
+  // della colonna del suo giorno: quando lo trascini a un altro giorno React
+  // lo ridisegna nell'altra colonna, cioe' e' un elemento nuovo, e quello su
+  // cui ascoltavi non c'e' piu'. Con gli ascoltatori sul blocco il rilascio
+  // non arrivava mai e il blocco restava a mezz'aria (provato il 01/10).
+  function iniziaTrascina(
+    e: React.PointerEvent<HTMLElement>,
+    modo: "sposta" | "allunga",
+    giorno: number,
+    inizioMin: number,
+    durata: number
+  ) {
+    if (!onBozzaChange) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = e.pointerId;
+    const y0 = e.clientY;
+    const minWin = startHour * 60;
+    const maxWin = endHour * 60;
+    let ultimo = { giorno, inizioMin, durata };
+    setTrascina(ultimo);
+
+    const muovi = (ev: PointerEvent) => {
+      if (ev.pointerId !== id) return;
+      const passi = Math.round((ev.clientY - y0) / pxPerMin / PASSO_TRASCINA);
+      const delta = passi * PASSO_TRASCINA;
+      if (modo === "allunga") {
+        const d = Math.max(
+          PASSO_TRASCINA,
+          Math.min(durata + delta, maxWin - inizioMin)
+        );
+        ultimo = { giorno, inizioMin, durata: d };
+      } else {
+        const inizio = Math.max(
+          minWin,
+          Math.min(inizioMin + delta, maxWin - durata)
+        );
+        let g = giorno;
+        const box = colonneRef.current?.getBoundingClientRect();
+        if (box && days.length > 1) {
+          const x = Math.max(0, Math.min(ev.clientX - box.left, box.width - 1));
+          g = Math.floor((x / box.width) * days.length);
+        }
+        ultimo = { giorno: g, inizioMin: inizio, durata };
+      }
+      setTrascina(ultimo);
+    };
+    const fine = (ev: PointerEvent) => {
+      if (ev.pointerId !== id) return;
+      window.removeEventListener("pointermove", muovi);
+      window.removeEventListener("pointerup", fine);
+      window.removeEventListener("pointercancel", fine);
+      setTrascina(null);
+      const d = new Date(days[ultimo.giorno]);
+      d.setHours(Math.floor(ultimo.inizioMin / 60), ultimo.inizioMin % 60, 0, 0);
+      onBozzaChange(d, ultimo.durata);
+    };
+    window.addEventListener("pointermove", muovi);
+    window.addEventListener("pointerup", fine);
+    window.addEventListener("pointercancel", fine);
+  }
 
   function handleSlotClick(day: Date, minutesFromWindowStart: number) {
     const d = new Date(day);
@@ -544,6 +699,7 @@ export function ProCalendar({
               const delMese = d.getMonth() === anchor.getMonth();
               const oggi = sameDay(d, now);
               const delGiorno = perGiorno.get(d.toDateString()) ?? [];
+              const conBozza = !!bozza && sameDay(bozza.start, d);
               return (
                 <button
                   key={d.toISOString()}
@@ -554,7 +710,7 @@ export function ProCalendar({
                   }}
                   className={`overflow-hidden border-b border-l border-black/[0.06] p-1 text-left align-top transition first:border-l-0 hover:bg-bob-indigo-50/50 ${
                     delMese ? "bg-white" : "bg-black/[0.015]"
-                  }`}
+                  } ${conBozza ? "ring-2 ring-inset ring-bob-indigo" : ""}`}
                   aria-label={`${fmtDayLong(d)}: ${
                     delGiorno.length === 0
                       ? "nessun appuntamento"
@@ -574,6 +730,11 @@ export function ProCalendar({
                     {d.getDate()}
                   </span>
                   <span className="mt-0.5 flex flex-col gap-0.5">
+                    {conBozza && bozza && (
+                      <span className="truncate rounded bg-bob-indigo px-1 py-0.5 text-[10px] font-semibold leading-tight text-white">
+                        {fmtHour(bozza.start)} Proposta
+                      </span>
+                    )}
                     {delGiorno.slice(0, quantiNelGiorno).map((a) => (
                       <span
                         key={a.id}
@@ -660,6 +821,7 @@ export function ProCalendar({
             </div>
 
             {/* Colonne dei giorni */}
+            <div ref={colonneRef} className="flex min-w-0 flex-1">
             {days.map((d, di) => {
               const isToday = sameDay(d, new Date());
               const nowMin =
@@ -806,9 +968,104 @@ export function ProCalendar({
                       </button>
                     );
                   })}
+
+                  {/* La bozza: l'orario che si sta proponendo. */}
+                  {(() => {
+                    if (!bozza && !trascina) return null;
+                    const pos = trascina
+                      ? trascina
+                      : bozza && sameDay(bozza.start, d)
+                        ? {
+                            giorno: di,
+                            inizioMin:
+                              bozza.start.getHours() * 60 +
+                              bozza.start.getMinutes(),
+                            durata: bozza.durationMinutes,
+                          }
+                        : null;
+                    if (!pos || pos.giorno !== di) return null;
+                    const daMin = pos.inizioMin - startHour * 60;
+                    const top = daMin * pxPerMin;
+                    const height = Math.max(pos.durata * pxPerMin, MIN_BLOCK_PX);
+                    const inizio = new Date(d);
+                    inizio.setHours(
+                      Math.floor(pos.inizioMin / 60),
+                      pos.inizioMin % 60,
+                      0,
+                      0
+                    );
+                    const fineOra = new Date(
+                      inizio.getTime() + pos.durata * 60000
+                    );
+                    const conflitto = !trascina && bozza?.conflitto;
+                    const trascinabile = !!onBozzaChange;
+                    return (
+                      <div
+                        className={`absolute inset-x-0.5 z-[25] flex select-none flex-col overflow-hidden rounded-md border-2 text-left shadow-card ${
+                          conflitto
+                            ? "border-red-500 bg-red-50/75 text-red-800"
+                            : "border-bob-indigo bg-bob-indigo text-white"
+                        } ${
+                          trascinabile
+                            ? "cursor-grab touch-none active:cursor-grabbing"
+                            : "pointer-events-none"
+                        } ${
+                          trascina ? "opacity-90 ring-4 ring-bob-indigo/20" : ""
+                        }`}
+                        style={{ top, height }}
+                        onPointerDown={(e) =>
+                          iniziaTrascina(
+                            e,
+                            "sposta",
+                            di,
+                            pos.inizioMin,
+                            pos.durata
+                          )
+                        }
+                        data-testid="cal-bozza"
+                        aria-label={`Orario proposto: ${fmtHour(inizio)} – ${fmtHour(
+                          fineOra
+                        )}`}
+                      >
+                        <span className="min-w-0 flex-1 px-1.5 py-0.5 leading-tight">
+                          <span className="block truncate text-2xs font-bold tabular-nums">
+                            {fmtHour(inizio)} – {fmtHour(fineOra)}
+                          </span>
+                          {height >= 30 && (
+                            <span className="block truncate text-2xs font-medium opacity-80">
+                              {conflitto ? "Sovrapposto" : "Proposta"}
+                            </span>
+                          )}
+                        </span>
+                        {trascinabile && (
+                          <span
+                            className="absolute inset-x-0 bottom-0 flex h-3 cursor-ns-resize touch-none items-end justify-center pb-1"
+                            onPointerDown={(e) =>
+                              iniziaTrascina(
+                                e,
+                                "allunga",
+                                di,
+                                pos.inizioMin,
+                                pos.durata
+                              )
+                            }
+                            data-testid="cal-bozza-allunga"
+                            aria-hidden="true"
+                          >
+                            <span
+                              className={`h-0.5 w-6 rounded-full ${
+                                conflitto ? "bg-red-400" : "bg-white/70"
+                              }`}
+                            />
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       )}
