@@ -35,6 +35,15 @@
 // come inclusa. Ha la sua casella, `ARRIVO`, che in tabella si vede ed e'
 // diversa da una spunta — e non entra negli elenchi puntati, che dicono cosa
 // hai comprato oggi.
+//
+// IL CALENDARIO E UNA FOTO AL FREE (01/10, decisione di Lucio). Il calendario
+// il Free ce l'aveva gia': nessun controllo per piano lo chiudeva, ne' nel
+// codice ne' nel database. La riga diceva NO ed era falsa; adesso dice il
+// vero. Le foto invece cambiano davvero, e con loro il limite nel database
+// (migrazione 105, `portfolio_limit`): Free 1, Plus e Business illimitate.
+// Con Plus e Business uguali la riga delle foto esce dall'elenco del Business,
+// che oggi resta «Tutto di Bob Plus» e basta: tutto il resto che li separa
+// e' ancora in arrivo, e in arrivo non entra negli elenchi.
 
 import type { SubscriptionTier } from "@/lib/supabase/types";
 
@@ -126,14 +135,18 @@ export const FUNZIONI: Funzione[] = [
   {
     gruppo: "Profilo e clienti",
     nome: "Foto dei lavori nel portfolio",
-    celle: { free: NO, pro: testo("1 foto"), business: testo("Illimitate") },
+    celle: {
+      free: testo("1 foto"),
+      pro: testo("Illimitate"),
+      business: testo("Illimitate"),
+    },
   },
 
   // --- Strumenti di lavoro ---
   {
     gruppo: "Strumenti di lavoro",
     nome: "Calendario e appuntamenti",
-    celle: { free: NO, pro: SI, business: SI },
+    celle: { free: SI, pro: SI, business: SI },
   },
   {
     gruppo: "Strumenti di lavoro",
@@ -250,7 +263,8 @@ function puntiDi(id: SubscriptionTier): string[] {
       const sua = f.celle[prima];
       if (!inclusa(sua)) return true;
       // Tutti e due ce l'hanno, ma non nella stessa misura (1 foto /
-      // illimitate): e' proprio quella la differenza da mostrare.
+      // illimitate): e' proprio quella la differenza da mostrare. Se la
+      // misura e' la stessa la riga non compare: non distingue niente.
       return (
         mia.tipo === "testo" && sua.tipo === "testo" && mia.testo !== sua.testo
       );

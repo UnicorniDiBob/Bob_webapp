@@ -1,22 +1,18 @@
 "use client";
 
 // Portfolio lavori del professionista (dashboard pro).
-// Free = nessuna foto (upsell), Pro = max 1 foto, Business = illimitato.
-// Il limite è applicato anche lato DB (trigger portfolio_limit_trigger).
+// Free = 1 foto, Bob Plus e Bob Business = illimitate (dal 01/10).
+// Il limite è applicato anche lato DB (trigger portfolio_limit_trigger,
+// funzione portfolio_limit: migrazione 105).
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { pianoById } from "@/lib/piani";
 import {
   PORTFOLIO_LIMITS,
   type PortfolioItem,
   type SubscriptionTier,
 } from "@/lib/supabase/types";
-
-const TIER_LABEL: Record<SubscriptionTier, string> = {
-  free: "Free",
-  pro: "Plus",
-  business: "Business",
-};
 
 export function ProPortfolio({
   professionalId,
@@ -124,34 +120,6 @@ export function ProPortfolio({
     }
   }
 
-  // ----- Free: blocco upsell -----
-  if (tier === "free") {
-    return (
-      <div className="card p-5">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-lg font-semibold text-bob-ink">
-            Portfolio lavori
-          </h2>
-          <span className="chip border-bob-indigo/20 bg-bob-indigo-50 text-bob-indigo">
-            Piano Pro
-          </span>
-        </div>
-        <p className="mt-2 text-sm text-bob-ink/70">
-          Mostra ai clienti le foto dei tuoi lavori conclusi con una
-          descrizione: i profili con portfolio ricevono più contatti. Disponibile
-          dal piano <strong>Pro</strong> (1 foto) — illimitato con{" "}
-          <strong>Business</strong>.
-        </p>
-        <a
-          href="/per-i-professionisti"
-          className="btn-primary mt-4 inline-block px-5 py-2.5 text-sm"
-        >
-          Passa a Pro
-        </a>
-      </div>
-    );
-  }
-
   return (
     <div className="card p-5" data-testid="pro-portfolio">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -160,7 +128,7 @@ export function ProPortfolio({
             Portfolio lavori
           </h2>
           <p className="text-xs text-bob-ink/70">
-            Piano {TIER_LABEL[tier]} ·{" "}
+            Piano {pianoById(tier).nome} ·{" "}
             {limit === null
               ? `${items.length} foto (illimitate)`
               : `${items.length}/${limit} foto`}
@@ -177,8 +145,8 @@ export function ProPortfolio({
         ) : (
           <span className="text-xs text-bob-ink/65">
             Limite raggiunto —{" "}
-            <a href="/per-i-professionisti" className="text-bob-indigo underline">
-              passa a Business
+            <a href="/impostazioni/piano" className="text-bob-indigo underline">
+              passa a Bob Plus
             </a>{" "}
             per foto illimitate
           </span>
