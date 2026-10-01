@@ -115,8 +115,11 @@ export async function POST(
     minute: "2-digit",
   });
 
-  // Il professionista lo legge dove si parlano: in chat. Best effort — la
-  // disdetta e' gia' valida, un messaggio mancato non la annulla.
+  // Il professionista lo legge dove si parlano: in chat, con il biglietto
+  // (che adesso dice «annullato»). Lo scrive questa route e non il trigger
+  // della 107: qui agisce il servizio, e il trigger non saprebbe a nome di chi
+  // parlare. Best effort — la disdetta e' gia' valida, un messaggio mancato
+  // non la annulla.
   if (a.request_id) {
     await admin.from("request_messages").insert({
       request_id: a.request_id,
@@ -126,10 +129,12 @@ export async function POST(
       message: `Ho disdetto la prenotazione di ${quando}${
         a.title ? ` (${a.title})` : ""
       }.`,
+      kind: "appointment_proposal",
+      appointment_id: a.id,
     });
   }
 
-  // E per email, se le email sono accese (transazionale, non promozionale).
+  // E per email, quando la posta e' accesa (src/lib/email.ts: oggi no).
   try {
     const { data: proRow } = await admin
       .from("professionals")

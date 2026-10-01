@@ -1,7 +1,8 @@
 // POST /api/notify  { event, requestId, professionalId? }
 // Notifica email transazionale: risolve il destinatario SERVER-SIDE (la
 // controparte del thread, o i pro di una richiesta) e invia via Resend.
-// Dormiente senza RESEND_API_KEY. Best-effort: risponde sempre 200, non
+// Spenta finche' l'interruttore in src/lib/email.ts e' «spenta» (lo e' per
+// scelta, dal 01/10), e comunque senza RESEND_API_KEY. Best-effort: risponde sempre 200, non
 // blocca mai i flussi. Le email dei destinatari (auth.users) non escono
 // mai dal server.
 
@@ -23,10 +24,14 @@ const EVENTS: NotifyEvent[] = [
   "appointment_proposed",
   "appointment_confirmed",
   "appointment_declined",
+  // 107: annullato o spostato dal professionista. Il messaggio in chat lo
+  // scrive il database; questa e' la copia per email, quando sara' accesa.
+  "appointment_cancelled",
+  "appointment_moved",
 ];
 
 export async function POST(request: Request) {
-  // Dormiente: senza chiave rispondiamo subito, nessun lavoro inutile.
+  // Posta spenta (interruttore o chiave): rispondiamo subito, nessun lavoro inutile.
   if (!emailEnabled()) return NextResponse.json({ sent: false });
 
   let body: { event?: string; requestId?: string; professionalId?: string; preview?: string };

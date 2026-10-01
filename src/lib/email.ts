@@ -1,9 +1,12 @@
 // Invio email transazionali via Resend (server-only).
-// DORMANTE finché RESEND_API_KEY non è configurata: senza chiave ogni invio
-// è un no-op silenzioso, così il codice può stare in produzione prima
-// dell'attivazione dell'account. Solo email transazionali (nuova richiesta,
-// nuovo messaggio, appuntamenti): niente marketing, niente soft opt-in —
-// coerente con le regole privacy del progetto (base giuridica: contratto).
+// Solo email transazionali (nuova richiesta, nuovo messaggio, appuntamenti,
+// esito della verifica): niente marketing, niente soft opt-in — coerente con
+// le regole privacy del progetto (base giuridica: contratto).
+//
+// NON SONO LE EMAIL DI AUTENTICAZIONE. Conferma dell'indirizzo, reimpostazione
+// della password e magic link le manda il mailer di Supabase (2 all'ora per
+// tutto il progetto, finche' non c'e' un SMTP personalizzato). Questo file e
+// questo interruttore non le toccano.
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.meetonda.com";
 
@@ -18,14 +21,39 @@ export interface OutgoingEmail {
   text: string;
 }
 
+// ---------------------------------------------------------------------------
+// L'INTERRUTTORE DELLA POSTA — SPENTA PER SCELTA (01/10, Lucio)
+// ---------------------------------------------------------------------------
+// Fino a oggi la posta era «dormiente»: spenta perche' su Vercel manca
+// RESEND_API_KEY. Spenta per un'assenza, non per una decisione — il giorno in
+// cui qualcuno avesse messo la chiave per provare una cosa, sarebbero partite
+// tutte. Adesso e' spenta perche' lo dice questa riga. Il motivo: il piano di
+// invio ha un numero di email limitato, e vogliamo decidere noi quando
+// cominciare a consumarlo.
+//
+// Gli avvisi non spariscono: ogni evento scrive anche nella chat della
+// conversazione, che e' il canale che c'e' sempre. L'email ne e' la copia.
+//
+// PER ACCENDERLA servono tutte e tre, e la prima da sola non basta:
+//   1. qui sotto "spenta" -> "accesa";
+//   2. in src/lib/email.test.ts il test «la posta e' spenta» va cambiato
+//      insieme (e' fatto apposta per fallire se cambia solo la riga qui sotto);
+//   3. su Vercel RESEND_API_KEY (e EMAIL_FROM se il mittente non e' quello di
+//      default), con il dominio verificato su Resend.
+export const POSTA_TRANSAZIONALE: "spenta" | "accesa" = "spenta";
+
 export function emailEnabled(): boolean {
-  return !!process.env.RESEND_API_KEY;
+  return POSTA_TRANSAZIONALE === "accesa" && !!process.env.RESEND_API_KEY;
 }
 
 // Invio best-effort: non lancia mai; le notifiche non devono rompere i flussi.
+// Il controllo e' QUI, non solo in /api/notify: le route che spediscono da
+// sole (controproposta, disdetta, prenotazione, esito della verifica)
+// chiamano sendEmail direttamente, e devono trovare la porta chiusa anche
+// loro.
 export async function sendEmail(email: OutgoingEmail): Promise<boolean> {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return false; // dormant: nessuna chiave, nessun invio
+  if (!emailEnabled()) return false;
+  const key = process.env.RESEND_API_KEY as string;
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -84,6 +112,11 @@ export type NotifyEvent =
   // Il cliente disdice una prenotazione diretta (106). Non passa da
   // /api/notify: la manda la route della disdetta, dopo averla decisa.
   | "appointment_cancelled"
+  // Il professionista sposta un appuntamento con un cliente: torna da
+  // confermare (107).
+  | "appointment_moved"
+  // Un cliente prenota direttamente uno slot (106/107).
+  | "appointment_booked"
   // Esiti della verifica del profilo (blocco 10). Non passano da /api/notify:
   // non nascono da una richiesta, li invia la route admin che decide il caso.
   | "verification_granted"
@@ -210,22 +243,47 @@ export function buildEmail(
       break;
 
     case "appointment_cancelled":
-      subject = `Prenotazione disdetta`;
+      subject = `Appuntamento annullato`;
       bodyHtml =
         p(`${hi}`) +
         p(
-          `<b>${who}</b> ha disdetto la prenotazione${
+          `<b>${who}</b> ha annullato l'appuntamento${
             ctx.serviceName ? ` per ${svc}` : ""
-          }, entro la finestra di disdetta che avevi indicato. L'orario torna libero nel tuo calendario.`
+          }.`
         ) +
         quote;
       cta = "Apri la conversazione";
-      text = `${hi}
-${who} ha disdetto la prenotazione.
-${
+      text = `${hi}\n${who} ha annullato l'appuntamento.\n${
         ctx.preview ?? ""
-      }
-${href}`;
+      }\n${href}`;
+      break;
+    case "appointment_moved":
+      subject = `${who} ha spostato l'appuntamento`;
+      bodyHtml =
+        p(`${hi}`) +
+        p(
+          `<b>${who}</b> ha spostato l'appuntamento${
+            ctx.serviceName ? ` per ${svc}` : ""
+          } a un nuovo orario. Finché non lo confermi resta da confermare.`
+        ) +
+        quote;
+      cta = "Conferma o proponi un altro orario";
+      text = `${hi}\n${who} ha spostato l'appuntamento.\n${
+        ctx.preview ?? ""
+      }\n${href}`;
+      break;
+    case "appointment_booked":
+      subject = `Nuova prenotazione da ${who}`;
+      bodyHtml =
+        p(`${hi}`) +
+        p(
+          `<b>${who}</b> ha prenotato${
+            ctx.serviceName ? ` <b>${svc}</b>` : ""
+          } in uno dei tuoi orari liberi. È già nel tuo calendario.`
+        ) +
+        quote;
+      cta = "Apri la conversazione";
+      text = `${hi}\n${who} ha prenotato.\n${ctx.preview ?? ""}\n${href}`;
       break;
 
     // --- Esiti della verifica (blocco 10) ---
