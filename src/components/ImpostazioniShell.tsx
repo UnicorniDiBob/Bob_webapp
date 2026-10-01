@@ -44,7 +44,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
-import { AccountTendina } from "@/components/AccountTendina";
 import { GuidaBarra } from "@/components/GuidaBarra";
 import type { UserRole } from "@/lib/supabase/types";
 
@@ -94,6 +93,53 @@ export function vociImpostazioni(role: UserRole | null): VoceNav[] {
   return role === "professional" ? NAV_PRO : NAV_CLIENTE;
 }
 
+/**
+ * IL RITORNO, IN FONDO (01/10, Lucio). Qui c'era il cerchio dell'account, che
+ * apriva una tendina verso l'alto: l'unica cosa che si muoveva in una pagina
+ * fatta di righe ferme, e un secondo posto da cui fare quello che si fa gia'
+ * dal cerchio nell'intestazione. Adesso gli account sono una sezione dentro
+ * «Accesso e sicurezza» e qui resta solo la cosa che serviva davvero in fondo
+ * a una pagina lunga: tornare da dove si veniva.
+ *
+ * SI VEDE DA md IN SU, non prima, perche' sotto md c'e' gia' lo stesso link in
+ * cima alla pagina (quello dentro `md:hidden`): su un telefono due «indietro»
+ * identici, uno sopra e uno sotto, sono un doppione — che e' esattamente il
+ * difetto che stiamo togliendo.
+ *
+ * TRANNE PER LO STAFF, che in cima non ce l'ha: quel link e' dentro un
+ * `!staff` perche' un admin non ha un'area di lavoro, ha /admin. Per lui
+ * questo e' l'unico ritorno, quindi si vede a ogni larghezza — se no un
+ * account staff su telefono resta chiuso nelle impostazioni.
+ */
+function RitornoIndietro({
+  staff,
+  isPro,
+  loading,
+}: {
+  staff: boolean;
+  isPro: boolean;
+  loading: boolean;
+}) {
+  const href = staff ? "/admin" : "/dashboard";
+  const label = loading
+    ? "Indietro"
+    : staff
+      ? "Pannello staff"
+      : isPro
+        ? "Il mio lavoro"
+        : "I miei lavori";
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1.5 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo"
+      data-testid="link-ritorno-impostazioni"
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      {label}
+    </Link>
+  );
+}
+
 export function ImpostazioniShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { role, loading } = useAuth();
@@ -107,6 +153,11 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
   const attivo = (href: string) => pathname === href;
   // /impostazioni nuda e' la griglia: li' la colonna ripeterebbe i riquadri.
   const radice = pathname === "/impostazioni";
+  // Il ritorno in fondo si vede da md in su, dove quello in cima non c'e'
+  // (`md:hidden`). Per lo staff si vede sempre: in cima non ne ha mai uno.
+  // Sta sul CONTENITORE e non sul link, se no sotto md resterebbe in pagina il
+  // filetto grigio sopra il vuoto.
+  const mostraRitorno = staff ? "" : "hidden md:block";
 
   return (
     <div className="container-bob py-8 sm:py-10">
@@ -154,8 +205,8 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
       {radice ? (
         <>
           {children}
-          <div className="mt-8 max-w-xs">
-            <AccountTendina forma="colonna" />
+          <div className={`mt-8 ${mostraRitorno}`}>
+            <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
           </div>
         </>
       ) : (
@@ -217,7 +268,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
                   </ul>
                 </nav>
                 <div className="border-t border-black/5 pt-3">
-                  <AccountTendina forma="colonna" />
+                  <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
                 </div>
               </div>
             </div>
@@ -225,9 +276,9 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
             <div className="min-w-0">{children}</div>
           </div>
 
-          {/* Sotto lg la colonna non c'e': il blocco sta in fondo alla pagina. */}
-          <div className="mt-8 max-w-xs border-t border-black/5 pt-4 lg:hidden">
-            <AccountTendina forma="colonna" />
+          {/* Sotto lg la colonna non c'e': il ritorno sta in fondo alla pagina. */}
+          <div className={`mt-8 border-t border-black/5 pt-4 lg:hidden ${mostraRitorno}`}>
+            <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
           </div>
         </>
       )}

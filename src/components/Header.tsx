@@ -127,11 +127,15 @@ export function Header() {
               )}
               {/* IL CERCHIO DELL'ACCOUNT (30/09, modello Gmail). Al posto
                   dell'icona delle impostazioni e del pulsante «Esci»: apre la
-                  tendina con gli account di questo browser, le impostazioni,
-                  «Aggiungi un altro account» ed «Esci». «Esci» non sta piu'
-                  nell'header da solo (NOTE_E_DECISIONI 30/09). Vale anche
-                  per lo staff, che vive in /admin e da li' deve poter uscire. */}
-              <AccountTendina forma="header" />
+                  tendina con gli account di questo browser, le impostazioni
+                  ed «Esci». «Esci» non sta piu' nell'header da solo
+                  (NOTE_E_DECISIONI 30/09). Vale anche per lo staff, che vive
+                  in /admin e da li' deve poter uscire.
+                  «Aggiungi un altro account» non e' piu' qui dentro (01/10):
+                  stava anche in fondo alle impostazioni, e due posti per la
+                  stessa cosa sono due posti in cui cercarla. Adesso e' uno
+                  solo, in Impostazioni → Accesso e sicurezza. */}
+              <AccountTendina />
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -231,8 +235,10 @@ export function Header() {
                       )}
                     </Link>
                   )}
-                  {/* Su telefono la tendina degli account sta in fondo a
-                      /impostazioni: di li' si cambia account e si esce. */}
+                  {/* Su telefono il cerchio dell'account non c'e' (sta nel
+                      blocco `hidden md:flex` qui sopra): cambiare account e
+                      uscire si fa da Impostazioni → Accesso e sicurezza, ed e'
+                      questa la voce che ci porta. */}
                   <Link
                     href="/impostazioni"
                     onClick={() => setOpen(false)}

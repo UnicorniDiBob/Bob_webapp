@@ -296,9 +296,15 @@ export function ProCalendar({
   // mappe: se le celle restano quelle della colonna stretta, allargare la
   // finestra non serve a niente — piu' bianco intorno e gli stessi quadratini.
   const righeMese = Math.max(1, Math.round(monthCells.length / 7));
-  const altezzaCellaMese = espanso
-    ? `calc((100vh - 15rem) / ${righeMese})`
-    : 104;
+  // UNA MISURA SOLA PER TUTTE LE VISTE (01/10, Lucio). Prima ogni vista si
+  // dimensionava per conto suo: la settimana su VIEWPORT_PX, il mese su celle
+  // da 104px (quindi 520px con cinque righe e 624 con sei: cambiava anche fra
+  // un mese e l'altro), l'anno su quanto venivano i dodici quadratini. Il
+  // risultato era che cambiando vista — o solo scorrendo a un mese con una
+  // riga in piu' — il riquadro saltava su e giu' e tutto quello che gli stava
+  // sotto si spostava. Adesso l'altezza la decide questa riga e basta: dentro,
+  // ogni vista si arrangia (la settimana scorre, il mese divide, l'anno
+  // scorre).
   const altezzaGriglia = espanso ? "calc(100vh - 12rem)" : VIEWPORT_PX;
   const cellaAnno = espanso ? "h-8 text-xs" : "h-6 text-[11px]";
   const quantiNelGiorno = espanso ? 6 : 3;
@@ -438,12 +444,16 @@ export function ProCalendar({
       </div>
 
       {loading ? (
-        <div className="h-64 animate-pulse rounded-xl bg-black/[0.03]" />
+        <div
+          className="animate-pulse rounded-xl bg-black/[0.03]"
+          style={{ height: altezzaGriglia }}
+        />
       ) : view === "year" ? (
         <div
-          className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${
+          className={`grid auto-rows-min grid-cols-2 content-start overflow-y-auto overscroll-contain sm:grid-cols-3 lg:grid-cols-4 ${
             espanso ? "gap-4" : "gap-3"
           }`}
+          style={{ height: altezzaGriglia }}
           data-testid="cal-year"
         >
           {mesiDellAnno.map((m) => (
@@ -510,10 +520,11 @@ export function ProCalendar({
         </div>
       ) : view === "month" ? (
         <div
-          className="overflow-hidden rounded-xl border border-black/[0.07]"
+          className="flex flex-col overflow-hidden rounded-xl border border-black/[0.07]"
+          style={{ height: altezzaGriglia }}
           data-testid="cal-month"
         >
-          <div className="grid grid-cols-7 border-b border-black/[0.06] bg-black/[0.02]">
+          <div className="grid shrink-0 grid-cols-7 border-b border-black/[0.06] bg-black/[0.02]">
             {DAY_LABELS.map((l) => (
               <div
                 key={l}
@@ -523,7 +534,12 @@ export function ProCalendar({
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7">
+          {/* Le righe si spartiscono quello che resta: cinque righe o sei, il
+              riquadro e' alto uguale. */}
+          <div
+            className="grid min-h-0 flex-1 grid-cols-7"
+            style={{ gridTemplateRows: `repeat(${righeMese}, minmax(0, 1fr))` }}
+          >
             {monthCells.map((d) => {
               const delMese = d.getMonth() === anchor.getMonth();
               const oggi = sameDay(d, now);
@@ -536,8 +552,7 @@ export function ProCalendar({
                     setAnchor(startOfDay(d));
                     setView("day");
                   }}
-                  style={{ minHeight: altezzaCellaMese }}
-                  className={`border-b border-l border-black/[0.06] p-1 text-left align-top transition first:border-l-0 hover:bg-bob-indigo-50/50 ${
+                  className={`overflow-hidden border-b border-l border-black/[0.06] p-1 text-left align-top transition first:border-l-0 hover:bg-bob-indigo-50/50 ${
                     delMese ? "bg-white" : "bg-black/[0.015]"
                   }`}
                   aria-label={`${fmtDayLong(d)}: ${
@@ -586,7 +601,7 @@ export function ProCalendar({
         <div
           ref={scrollRef}
           className="relative overflow-y-auto overscroll-contain rounded-xl border border-black/[0.07]"
-          style={{ maxHeight: altezzaGriglia }}
+          style={{ height: altezzaGriglia }}
         >
           {/* Intestazione giorni: resta visibile durante lo scroll */}
           <div className="sticky top-0 z-30 flex border-b border-black/[0.07] bg-white/95 backdrop-blur-sm">

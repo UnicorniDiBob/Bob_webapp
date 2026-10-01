@@ -9,18 +9,25 @@
 // cliccabile. «Da riconnettere» invece resta, perche' cambia cosa succede se
 // ci clicchi.
 //
-// In fondo, «Aggiungi un altro account» ed «Esci». «Esci» esce solo
-// dall'account attivo, solo in questo browser: se ce n'e' un altro, diventa
-// attivo quello (NOTE_E_DECISIONI 30/09). «Esci da tutti» non c'e' piu'
-// nell'interfaccia.
+// In fondo, «Impostazioni» ed «Esci». «Esci» esce solo dall'account attivo,
+// solo in questo browser: se ce n'e' un altro, diventa attivo quello
+// (NOTE_E_DECISIONI 30/09). «Esci da tutti» non c'e' piu' nell'interfaccia.
 //
-// Due forme, stessa tendina:
-//   - «colonna»: il blocco in fondo alla colonna delle impostazioni (e in
-//     fondo alla pagina dove la colonna non c'e'); si apre verso l'alto.
-//   - «header»: il cerchio con le iniziali nell'intestazione; si apre verso
-//     il basso. E' l'unica strada per uscire da una pagina che non sia
-//     /impostazioni, e per lo staff, che vive in /admin, e' quella di tutti
-//     i giorni.
+// UNA FORMA SOLA, E «AGGIUNGI UN ALTRO ACCOUNT» NON STA PIU' QUI (01/10,
+// Lucio e André). La tendina esisteva in due forme: questa, nel cerchio
+// dell'intestazione, e una «colonna» in fondo alle impostazioni. Due posti da
+// cui si fa la stessa cosa sono due posti in cui cercarla, e la seconda si
+// apriva per giunta verso l'alto in mezzo a una pagina di impostazioni, dove
+// tutto il resto sono righe ferme. Adesso il cerchio resta la via rapida —
+// cambia account, vai nelle impostazioni, esci — mentre GESTIRE gli account
+// (aggiungerne uno, riconnetterlo) e' una sezione vera in
+// /impostazioni/accesso: vedi `AccountSezione.tsx`.
+//
+// ATTENZIONE, SE TOCCHI QUESTO FILE: il cerchio sta in un blocco
+// `hidden md:flex` dell'header, quindi su telefono NON c'e'. Da li' in giu'
+// l'unica strada per uscire e per cambiare account e' quella sezione delle
+// impostazioni. Toglierla senza rimpiazzarla lascia chi usa il telefono
+// dentro l'account, senza porta.
 //
 // Nessuna voce «casa»: lo staff non ne ha una (/dashboard lo rimanda in
 // /admin), e qui non serve a nessuno.
@@ -28,10 +35,11 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Settings, UserPlus } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { createClient } from "@/lib/supabase/client";
 import { scambiaAccount } from "@/lib/sessioni/client";
+import { coloreAccount } from "@/lib/coloreAccount";
 
 /**
  * Dove si va per aggiungere o riconnettere un account: il pannello di accesso
@@ -54,11 +62,26 @@ export function iniziali(nome: string | null | undefined, email: string | null |
   return e ? e[0].toUpperCase() : "?";
 }
 
-function Cerchio({ testo, piccolo }: { testo: string; piccolo?: boolean }) {
+/**
+ * Il cerchio con le iniziali. IL COLORE VIENE DALL'EMAIL (01/10, Lucio): con
+ * due account nello stesso browser due cerchi identici obbligano a leggere le
+ * iniziali per sapere dove sei. Vedi `lib/coloreAccount.ts` per il perche'
+ * l'email e non una colonna sul profilo.
+ */
+function Cerchio({
+  testo,
+  email,
+  piccolo,
+}: {
+  testo: string;
+  email: string | null | undefined;
+  piccolo?: boolean;
+}) {
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-bob-indigo font-semibold text-white ${
+      style={{ backgroundColor: coloreAccount(email) }}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${
         piccolo ? "h-8 w-8 text-xs" : "h-10 w-10 text-sm"
       }`}
     >
@@ -67,7 +90,7 @@ function Cerchio({ testo, piccolo }: { testo: string; piccolo?: boolean }) {
   );
 }
 
-export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
+export function AccountTendina() {
   const { user, fullName, altroAccount, signOut, loading } = useAuth();
   const supabase = useMemo(() => createClient(), []);
   const [aperta, setAperta] = useState(false);
@@ -168,43 +191,23 @@ export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
     "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-bob-ink transition hover:bg-bob-indigo-50 focus:bg-bob-indigo-50 focus:outline-none disabled:opacity-50";
 
   return (
-    <div ref={radice} className="relative" data-testid={`account-tendina-${forma}`}>
-      {forma === "colonna" ? (
-        <button
-          ref={bottone}
-          type="button"
-          onClick={() => setAperta((a) => !a)}
-          onKeyDown={suTastoBottone}
-          aria-haspopup="menu"
-          aria-expanded={aperta}
-          aria-controls={idMenu}
-          className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left transition hover:bg-black/[0.03] focus:outline-none focus:ring-2 focus:ring-bob-indigo/30"
-          data-testid="button-account-colonna"
-        >
-          <Cerchio testo={sigla} />
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold text-bob-ink">{mio.nome ?? mio.email}</span>
-            <span className="block text-xs text-bob-ink/65">Impostazioni</span>
-          </span>
-        </button>
-      ) : (
-        <button
-          ref={bottone}
-          type="button"
-          onClick={() => setAperta((a) => !a)}
-          onKeyDown={suTastoBottone}
-          aria-haspopup="menu"
-          aria-expanded={aperta}
-          aria-controls={idMenu}
-          aria-label={`Account: ${mio.nome ?? mio.email}`}
-          title={mio.nome ?? mio.email}
-          className="rounded-full p-1 transition hover:bg-bob-indigo-50 focus:outline-none focus:ring-2 focus:ring-bob-indigo/30"
-          data-testid="button-account-header"
-          data-tour="impostazioni"
-        >
-          <Cerchio testo={sigla} piccolo />
-        </button>
-      )}
+    <div ref={radice} className="relative" data-testid="account-tendina-header">
+      <button
+        ref={bottone}
+        type="button"
+        onClick={() => setAperta((a) => !a)}
+        onKeyDown={suTastoBottone}
+        aria-haspopup="menu"
+        aria-expanded={aperta}
+        aria-controls={idMenu}
+        aria-label={`Account: ${mio.nome ?? mio.email}`}
+        title={mio.nome ?? mio.email}
+        className="rounded-full p-1 transition hover:bg-bob-indigo-50 focus:outline-none focus:ring-2 focus:ring-bob-indigo/30"
+        data-testid="button-account-header"
+        data-tour="impostazioni"
+      >
+        <Cerchio testo={sigla} email={mio.email} piccolo />
+      </button>
 
       {aperta && (
         <div
@@ -213,13 +216,11 @@ export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
           role="menu"
           aria-label="Account in questo browser"
           onKeyDown={suTastoMenu}
-          className={`absolute z-50 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-black/10 bg-white py-2 shadow-card-hover ${
-            forma === "colonna" ? "bottom-full left-0 mb-2" : "right-0 top-full mt-2"
-          }`}
+          className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-black/10 bg-white py-2 shadow-card-hover"
         >
           {/* Il tuo account, in cima. Non e' una voce: ci sei gia'. */}
           <div className="flex items-center gap-3 px-4 pb-3 pt-1.5">
-            <Cerchio testo={sigla} />
+            <Cerchio testo={sigla} email={mio.email} />
             <span className="min-w-0">
               {mio.nome && <span className="block truncate text-sm font-semibold text-bob-ink">{mio.nome}</span>}
               <span className="block truncate text-xs text-bob-ink/70">{mio.email}</span>
@@ -236,7 +237,11 @@ export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
                   className={voce}
                   data-testid="voce-account-da-riconnettere"
                 >
-                  <Cerchio testo={iniziali(null, altroAccount.email)} piccolo />
+                  <Cerchio
+                    testo={iniziali(null, altroAccount.email)}
+                    email={altroAccount.email}
+                    piccolo
+                  />
                   <span className="min-w-0">
                     <span className="block truncate">{altroAccount.email}</span>
                     <span className="block text-xs text-amber-800">
@@ -253,7 +258,11 @@ export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
                   className={voce}
                   data-testid="voce-account-altro"
                 >
-                  <Cerchio testo={iniziali(null, altroAccount.email)} piccolo />
+                  <Cerchio
+                    testo={iniziali(null, altroAccount.email)}
+                    email={altroAccount.email}
+                    piccolo
+                  />
                   <span className="block min-w-0 truncate">{altroAccount.email}</span>
                 </button>
               )}
@@ -267,32 +276,16 @@ export function AccountTendina({ forma }: { forma: "colonna" | "header" }) {
           )}
 
           <div className="border-t border-black/5 pt-1">
-            {forma === "header" && (
-              <Link
-                role="menuitem"
-                href="/impostazioni"
-                onClick={() => chiudi(false)}
-                className={voce}
-                data-testid="voce-impostazioni"
-              >
-                <Settings className="h-4 w-4 text-bob-ink/70" aria-hidden="true" />
-                Impostazioni
-              </Link>
-            )}
-            {/* Due account al massimo in un browser: con l'altro gia' dentro,
-                aggiungerne un terzo non si puo', quindi la voce non c'e'. */}
-            {!altroAccount && (
-              <Link
-                role="menuitem"
-                href={percorsoAggiungiAccount(pathname)}
-                onClick={() => chiudi(false)}
-                className={voce}
-                data-testid="voce-aggiungi-account"
-              >
-                <UserPlus className="h-4 w-4 text-bob-ink/70" aria-hidden="true" />
-                Aggiungi un altro account
-              </Link>
-            )}
+            <Link
+              role="menuitem"
+              href="/impostazioni"
+              onClick={() => chiudi(false)}
+              className={voce}
+              data-testid="voce-impostazioni"
+            >
+              <Settings className="h-4 w-4 text-bob-ink/70" aria-hidden="true" />
+              Impostazioni
+            </Link>
             <button
               role="menuitem"
               type="button"
