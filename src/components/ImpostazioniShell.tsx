@@ -105,6 +105,11 @@ export function vociImpostazioni(role: UserRole | null): VoceNav[] {
  * cima alla pagina (quello dentro `md:hidden`): su un telefono due «indietro»
  * identici, uno sopra e uno sotto, sono un doppione — che e' esattamente il
  * difetto che stiamo togliendo.
+ *
+ * TRANNE PER LO STAFF, che in cima non ce l'ha: quel link e' dentro un
+ * `!staff` perche' un admin non ha un'area di lavoro, ha /admin. Per lui
+ * questo e' l'unico ritorno, quindi si vede a ogni larghezza — se no un
+ * account staff su telefono resta chiuso nelle impostazioni.
  */
 function RitornoIndietro({
   staff,
@@ -148,6 +153,11 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
   const attivo = (href: string) => pathname === href;
   // /impostazioni nuda e' la griglia: li' la colonna ripeterebbe i riquadri.
   const radice = pathname === "/impostazioni";
+  // Il ritorno in fondo si vede da md in su, dove quello in cima non c'e'
+  // (`md:hidden`). Per lo staff si vede sempre: in cima non ne ha mai uno.
+  // Sta sul CONTENITORE e non sul link, se no sotto md resterebbe in pagina il
+  // filetto grigio sopra il vuoto.
+  const mostraRitorno = staff ? "" : "hidden md:block";
 
   return (
     <div className="container-bob py-8 sm:py-10">
@@ -195,7 +205,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
       {radice ? (
         <>
           {children}
-          <div className="mt-8 hidden md:block">
+          <div className={`mt-8 ${mostraRitorno}`}>
             <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
           </div>
         </>
@@ -267,7 +277,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
           </div>
 
           {/* Sotto lg la colonna non c'e': il ritorno sta in fondo alla pagina. */}
-          <div className="mt-8 hidden border-t border-black/5 pt-4 md:block lg:hidden">
+          <div className={`mt-8 border-t border-black/5 pt-4 lg:hidden ${mostraRitorno}`}>
             <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
           </div>
         </>
