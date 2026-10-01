@@ -9,6 +9,7 @@ import {
   type NewAppointment,
 } from "@/lib/messages";
 import type { Appointment } from "@/lib/supabase/types";
+import { notifyEvent } from "@/lib/notify";
 
 // Converte una data ISO in valore per <input type="datetime-local">.
 function toLocalInput(iso?: string): string {
@@ -111,6 +112,34 @@ export function AppointmentDialog({
       setError("Salvataggio non riuscito. Riprova.");
       return;
     }
+    // Spostato o annullato con un cliente dall'altra parte: il messaggio in
+    // chat e il ritorno a «da confermare» li fa il database (107); questa e'
+    // la copia per email, che parte solo quando la posta e' accesa.
+    if (existing?.request_id) {
+      const spostato =
+        new Date(existing.starts_at).getTime() !==
+          new Date(payload.starts_at).getTime() ||
+        existing.duration_minutes !== payload.duration_minutes;
+      const evento =
+        payload.status === "cancelled" && existing.status === "confirmed"
+          ? "appointment_cancelled"
+          : spostato
+            ? "appointment_moved"
+            : null;
+      if (evento) {
+        notifyEvent(evento, {
+          requestId: existing.request_id,
+          professionalId,
+          preview: new Date(payload.starts_at).toLocaleString("it-IT", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        });
+      }
+    }
     onSaved();
     onClose();
   }
@@ -123,6 +152,18 @@ export function AppointmentDialog({
     if (res.error) {
       setError("Eliminazione non riuscita.");
       return;
+    }
+    // Per il cliente eliminare e' annullare: il messaggio lo scrive il
+    // database (107), questa e' la copia per email.
+    if (
+      existing.request_id &&
+      (existing.status === "confirmed" || existing.status === "proposed") &&
+      new Date(existing.starts_at).getTime() > Date.now()
+    ) {
+      notifyEvent("appointment_cancelled", {
+        requestId: existing.request_id,
+        professionalId,
+      });
     }
     onSaved();
     onClose();
@@ -294,12 +335,31 @@ export function AppointmentDialog({
                 className="input-bob"
                 data-testid="select-status"
               >
+                {/* Una proposta aperta qui dentro deve leggersi per quello
+                    che e': senza questa voce il menu mostrava «Confermato». */}
+                {existing?.status === "proposed" && (
+                  <option value="proposed">Da confermare</option>
+                )}
                 <option value="confirmed">Confermato</option>
                 <option value="completed">Completato</option>
                 <option value="cancelled">Annullato</option>
               </select>
             </div>
           </div>
+          {/* CON UN CLIENTE DALL'ALTRA PARTE (107). Spostare un orario
+              accettato lo rimanda a lui: lo riceve in chat e lo riconferma.
+              E «Confermato» lo puo' dire solo lui, a meno che non sia una
+              sua proposta che accetti cosi' com'e'. */}
+          {existing?.request_id && (
+            <p
+              className="rounded-xl bg-bob-indigo-50 px-3 py-2 text-xs text-bob-ink/75"
+              data-testid="dialog-avviso-cliente"
+            >
+              {existing.customer_name || "Il cliente"} vede questo appuntamento.
+              Se cambi giorno, ora o durata gli arriva in chat e torna da
+              confermare; se lo annulli o lo elimini, glielo scriviamo noi.
+            </p>
+          )}
           {/* Luogo: serve al pro per sapere dove andare e per il giro del giorno */}
           <div className="rounded-xl border border-black/[0.07] p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-bob-ink/65">

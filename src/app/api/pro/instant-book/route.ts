@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { buildEmail, sendEmail } from "@/lib/email";
 import {
   busyFromAppointments,
   bookingDurationMinutes,
@@ -278,7 +279,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Prenotazione non riuscita" }, { status: 500 });
   }
 
-  // 9. Progressive disclosure: solo ORA si svelano i contatti del pro.
+  // 9. IL PRO LO SA (01/10, 107). Prima una prenotazione finiva nel suo
+  // calendario e basta: se non lo apriva, non lo sapeva. Adesso c'e' un
+  // messaggio nella conversazione, a nome del cliente (e' lui che ha
+  // prenotato), con il biglietto dell'appuntamento: accende il badge dei non
+  // letti del pro come qualunque messaggio. Non fa partire il cronometro del
+  // suo tempo di risposta: dalla 107 quello conta solo i messaggi di testo.
+  // Best effort: la prenotazione e' gia' valida, un avviso mancato non la
+  // annulla.
+  const quando = when.toLocaleString("it-IT", {
+    timeZone: "Europe/Rome",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const riassunto = `${quando} · ${duration} min · ${price.toLocaleString("it-IT")} €`;
+  await admin.from("request_messages").insert({
+    request_id: req.id,
+    professional_id: ps.professional_id,
+    sender_type: "customer",
+    sender_id: user.id,
+    message: `Ho prenotato ${titolo}: ${riassunto}.`,
+    kind: "appointment_proposal",
+    appointment_id: ins.id,
+  });
+
+  // 10. Progressive disclosure: solo ORA si svelano i contatti del pro.
   const { data: proRow } = await admin
     .from("professionals")
     .select("user_id")
@@ -305,6 +333,26 @@ export async function POST(request: Request) {
       name: (proProfile?.full_name as string | null) ?? null,
       phone: (proPhone?.phone as string | null) ?? null,
     };
+
+    // E per email, quando la posta e' accesa (src/lib/email.ts: oggi no).
+    try {
+      const { data: proUser } = await admin.auth.admin.getUserById(proRow.user_id);
+      const to = proUser.user?.email ?? null;
+      if (to) {
+        await sendEmail(
+          buildEmail("appointment_booked", to, {
+            recipientName: contact.name,
+            senderName: customerName,
+            serviceName: titolo,
+            cityName: null,
+            preview: riassunto,
+            link: `/messaggi?r=${req.id}&p=${ps.professional_id}`,
+          })
+        );
+      }
+    } catch {
+      // notifica non critica
+    }
   }
 
   return NextResponse.json({

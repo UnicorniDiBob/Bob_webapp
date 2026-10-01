@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { updateAppointment } from "@/lib/messages";
+import { notifyEvent } from "@/lib/notify";
 import type { Appointment } from "@/lib/supabase/types";
 import { Key } from "lucide-react";
 import {
@@ -65,6 +66,15 @@ export function AppointmentDetail({
     if (res.error) {
       setError("Aggiornamento non riuscito. Riprova.");
       return;
+    }
+    // Il messaggio in chat al cliente lo scrive il database (107); questa e'
+    // la copia per email, che parte solo quando la posta e' accesa.
+    if (status === "cancelled" && appt.request_id) {
+      notifyEvent("appointment_cancelled", {
+        requestId: appt.request_id,
+        professionalId: appt.professional_id,
+        preview: `${fmtDayLong(start)}, ${fmtHour(start)}`,
+      });
     }
     onChanged();
     onClose();
@@ -238,7 +248,11 @@ export function AppointmentDetail({
             Modifica appuntamento
           </button>
 
-          {appt.status === "proposed" && (
+          {/* Confermare spetta a chi NON ha proposto: su una proposta sua,
+              legata a un cliente, il database la lascerebbe da confermare
+              (107) e il bottone non farebbe niente. */}
+          {appt.status === "proposed" &&
+            (appt.proposed_by === "customer" || !appt.request_id) && (
             <button
               onClick={() => setStatus("confirmed")}
               disabled={busy}
@@ -279,6 +293,12 @@ export function AppointmentDetail({
             >
               Annulla appuntamento
             </button>
+          )}
+          {appt.request_id && appt.status !== "cancelled" && appt.status !== "completed" && (
+            <p className="text-center text-2xs text-bob-ink/65">
+              Se lo annulli o lo sposti, {appt.customer_name || "il cliente"} lo
+              legge subito nella vostra conversazione.
+            </p>
           )}
         </div>
       </div>

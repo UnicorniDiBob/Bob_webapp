@@ -74,7 +74,8 @@ const SERVIZIO: { titolo: string; quando: string }[] = [
   },
   {
     titolo: "Un appuntamento cambia",
-    quando: "Proposta, conferma, spostamento o annullamento.",
+    quando:
+      "Prenotazione, proposta, conferma, spostamento o annullamento: lo scrive nella conversazione chi l'ha fatto.",
   },
   {
     titolo: "L'esito della tua verifica",
@@ -176,19 +177,24 @@ export function ComunicazioniForm({ emailAttive }: { emailAttive: boolean }) {
         sono diverse fra loro, e la differenza conta.
       </SectionHeader>
 
-      {/* Se la pipeline e' spenta lo diciamo qui, invece di elencare email che
-          non partono. Il valore arriva dal server: quando la chiave Resend c'e',
-          questo avviso scompare da solo. */}
+      {/* Se la posta e' spenta lo diciamo qui, invece di elencare email che
+          non partono. Il valore arriva dal server (emailEnabled): dal 01/10 e'
+          spenta PER SCELTA, con un interruttore in src/lib/email.ts, non per
+          una configurazione a meta'. Il giorno che si accende, questo avviso
+          sparisce da solo. Le email di sicurezza dell'account non c'entrano:
+          le manda Supabase, e arrivano anche oggi. */}
       {!emailAttive && (
         <div
           className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4"
           data-testid="email-non-attive"
         >
           <p className="text-sm leading-relaxed text-amber-900">
-            <strong>Le email non partono ancora.</strong> Stiamo completando la
-            configurazione del dominio di invio: fino ad allora le
-            comunicazioni qui sotto le trovi solo dentro Bob, non nella tua
-            casella. Le tue scelte le registriamo comunque da subito.
+            <strong>Per ora le email di Bob sono spente, per scelta.</strong>{" "}
+            Le comunicazioni di servizio qui sotto le trovi dentro Bob — nella
+            conversazione con il cliente o il professionista e nelle notifiche
+            — e non nella tua casella. Fanno eccezione quelle sulla sicurezza
+            dell&apos;account, che arrivano sempre. Le tue scelte qui sotto le
+            registriamo comunque da subito.
           </p>
         </div>
       )}
