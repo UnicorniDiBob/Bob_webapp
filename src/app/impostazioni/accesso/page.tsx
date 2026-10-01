@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { SectionHeader, isStaff } from "@/components/ImpostazioniShell";
 import { CancellazioneAccount } from "@/components/CancellazioneAccount";
+import { AccountSezione } from "@/components/AccountSezione";
 import { GIORNI_RIPENSAMENTO } from "@/lib/cancellazione";
 
 // Deve restare allineata a Supabase > Authentication > Providers > Email.
@@ -316,6 +317,12 @@ export default function AccessoPage() {
           {savingPwd ? "Aggiorno…" : "Aggiorna password"}
         </button>
       </form>
+
+      {/* ---- Gli account di questo browser ----
+          Era la tendina in fondo alla colonna; da oggi e' una sezione, qui,
+          accanto a email e password (01/10). Su telefono e' anche l'unico
+          posto da cui si cambia account e si esce. */}
+      <AccountSezione />
 
       {/* ---- Chiusura dell'account ----
           Costruita il 19/08 partendo dalle fonti e non dal buon senso: il
