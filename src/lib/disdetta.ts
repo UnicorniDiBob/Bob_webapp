@@ -29,9 +29,13 @@
 // Il giorno del primo pagamento il ramo cambia da solo. Nessun deploy da
 // sincronizzare con niente, che era il punto.
 //
-// NIENTE DECLASSAMENTO NASCOSTO. `funzioniPerse` elenca solo cio' che il tier
-// governa DAVVERO oggi (12.4: foto portfolio e prenotazione diretta, piu'
-// l'accesso al percorso di verifica). Il badge gia' ottenuto non si tocca da
+// NIENTE DECLASSAMENTO NASCOSTO. `funzioniPerse` elenca cio' che il listino
+// (`piani.ts`) da' in piu' rispetto al Free. Di questo, oggi il tier governa
+// DAVVERO tre cose: la prenotazione diretta, l'accesso al percorso di verifica
+// e le foto del portfolio oltre la prima (dal 01/10 il Free ne ha una; le foto
+// gia' caricate restano, il limite vale solo per le nuove). Il calendario non
+// e' fra queste: dal 01/10 e' anche del Free, e prima lo era gia' di fatto,
+// perche' nessun controllo lo chiudeva. Il badge gia' ottenuto non si tocca da
 // qui — `professionals.verification_level` e' una colonna a parte e nessun
 // declassamento e' automatico (art. 22, regola del blocco 10).
 
