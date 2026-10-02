@@ -76,13 +76,12 @@ function LoginInner() {
 
   // Ritorno post-login: /login?returnTo=/percorso rimanda dove l'utente
   // stava lavorando (es. la chat di Bob con il brief ripristinato dal
-  // draft locale) invece di forzare /dashboard. Accettiamo solo path
-  // interni ("/..." ma non "//...") per evitare open redirect.
-  const returnToParam = params.get("returnTo");
-  const returnTo =
-    returnToParam && returnToParam.startsWith("/") && !returnToParam.startsWith("//")
-      ? returnToParam
-      : "/dashboard";
+  // draft locale) invece di forzare /dashboard. ritornoInterno() risolve
+  // il percorso come fa il browser e controlla l'origine del risultato:
+  // un controllo sulla sola stringa (com'era prima) lascia passare
+  // "/\dominio", che il browser legge come "//dominio" ed esce dal sito
+  // (roadmap/findings.csv, «open redirect», 30/09).
+  const returnTo = ritornoInterno(params.get("returnTo"), "/dashboard");
 
   // Deep link dal funnel pro: /login?mode=signup&role=professional
   // apre direttamente la registrazione con il ruolo giusto preselezionato.

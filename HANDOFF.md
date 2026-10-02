@@ -1,3 +1,11 @@
+# Handoff — 2 ottobre 2026, André (con Claude)
+
+**Fatto:** chiuso l'open redirect su `/login` (roadmap/findings.csv, «serious», trovato 30/09). `LoginInner` leggeva `returnTo` con un controllo sulla sola stringa (`startsWith("/")` e non `startsWith("//")`): il browser legge `/\dominio` come `//dominio` e il controllo lo lasciava passare. Ora usa `ritornoInterno()` da `src/lib/ritorno.ts`, già in uso sul ramo «aggiungi un altro account», che risolve il percorso con `URL` e controlla l'origine. Aggiunto `src/lib/ritorno.guard.test.ts`: scansiona i file sorgente e fa fallire la build se qualcuno legge `returnTo` senza passare da `ritornoInterno()`, o se il vecchio controllo debole `startsWith("//")` ricompare fuori da `ritorno.ts`. Provato anche a mano in locale con te: `returnTo=%2F%5Cexample.com` ora atterra su `/dashboard`, non su example.com.
+**A metà:** la correzione non è ancora verificata dal vivo dopo il deploy. Restano da fare anche la mia revisione delle PR #118, #119, #123, #124 e #125, e la prova dal vivo del flusso di prenotazione che l'handoff di Lucio dell'1/10 dice che nessuno ha ancora fatto.
+**Applicato in produzione:** niente. Il codice va live tramite Vercel dopo il merge.
+
+---
+
 # Handoff — 1 ottobre 2026, Lucio (con Claude)
 
 **Fatto:** unite #122 (listino: calendario e 1 foto al Free, foto illimitate al Plus; il Free il calendario lo aveva già, nessun blocco per piano esisteva), #123 (proposta di appuntamento come biglietto con prezzo; slot visibile e trascinabile nel calendario del dialog), #124 (la prenotazione diretta crea richiesta e collegamento: compare nell'area personale, ha la chat, si disdice entro la finestra con il controllo in `/api/appointments/[id]/disdici`), #125 (ogni annullamento, spostamento, eliminazione e prenotazione scrive in chat all'altra parte; uno spostamento torna «da confermare»; la posta transazionale è SPENTA per scelta con `POSTA_TRANSAZIONALE` in `src/lib/email.ts`, e `email.test.ts` fallisce se si riaccende — come accenderla è scritto nella #125).
