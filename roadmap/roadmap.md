@@ -84,6 +84,42 @@ La migrazione 104 ha aggiunto 'accesso' al check della colonna route per il tett
 
 Supabase ruota il refresh token a ogni rinnovo. Con il rilevamento del riuso attivo, un token vecchio ripresentato fuori dalla finestra di riuso (predefinita 10 secondi) fa revocare tutta la sessione: e' la difesa contro un token rubato. Su questo progetto no: un token rinnovato dal server e ripresentato 20 secondi dopo e' stato rinnovato di nuovo (200). Vale per ogni sessione di Bob, non solo per R6: chi copia un refresh token (dai cookie sb-, leggibili dal JavaScript della pagina) puo' usarlo anche dopo che il browser legittimo l'ha gia' ruotato. Da guardare in Supabase > Authentication > Sessions / refresh token: 'Detect and revoke potentially compromised refresh tokens' e 'Refresh token reuse interval'. Non toccato: e' un'impostazione di produzione e cambia il comportamento di tutte le sessioni.
 
+**Nessun avviso al pro per una prenotazione diretta: né campanella né «nuove richieste»** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+La prenotazione diretta collega il pro con request_professionals.status = 'responded' (il commento nel codice lo dice: già un accordo, non una richiesta da guardare), ma /api/pro/request-summary legge solo gli status suggested/contacted/quote_requested per il riquadro «Nuove richieste»: 'responded' resta fuori, quindi ProRequestSummary mostra sempre "Nessuna nuova richiesta da revisionare." anche con una prenotazione diretta appena arrivata. La campanella non supplisce: le notifiche di servizio (src/lib/notifiche.ts) coprono per scelta di progetto solo account e stato nel prodotto (verifica, staff, cancellazione, visibilità), e non leggono mai request_messages né appointments. Un pro che non apre il calendario non ha quindi nessun modo di sapere che è arrivata una prenotazione.
+
+**La barra di avanzamento della prenotazione diretta non arriva mai a «Appuntamento»** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+apptByRequest (CustomerHome.tsx) include solo gli appuntamenti con status 'confirmed'; StatusTimeline salta allo step «Appuntamento» solo se la richiesta è in quell'insieme, altrimenti con status 'matched' resta fermo su «In contatto». Il trigger riproponi_se_spostato (migrazione 107) riporta però l'appuntamento a status 'proposed' ogni volta che il pro sposta data o durata, anche se era già 'confirmed': da quel momento apptByRequest perde la richiesta e la barra ricade su «In contatto», mentre l'appuntamento resta visibile e corretto in «Prossimi appuntamenti» (che include sia 'proposed' sia 'confirmed'). Stesso meccanismo del rilievo su questo audit riguardo lo spostamento in chat.
+
+**La prenotazione diretta disdetta resta in «Lavori in corso» con «Segna come concluso»** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+/api/appointments/[id]/disdici porta l'appuntamento a status 'cancelled' ma non tocca mai requests.status. La richiesta di una prenotazione diretta nasce con status 'matched' (src/app/api/pro/instant-book/route.ts), e CustomerHome.tsx la mostra in «Lavori in corso» finché resta in OPEN_STATUSES = ['sent','quote_request','matched']: una disdetta non la sposta da lì. Il bottone «Segna come concluso» è renderizzato per ogni voce di quella lista senza condizione sullo stato dell'appuntamento, quindi resta visibile anche su una prenotazione già disdetta, con la stessa barra di avanzamento di una in corso.
+
+**Uno spostamento del pro duplica la proposta in chat e trasforma la conferma originale** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+riproponi_se_spostato (migrazione 107) riporta l'appuntamento spostato a status 'proposed', e avvisa_cambio_appuntamento inserisce un nuovo messaggio request_messages con kind 'appointment_proposal' sullo stesso appointment_id. src/app/messaggi/page.tsx carica però il biglietto di ogni messaggio 'appointment_proposal' leggendo lo stato VIVO dell'appuntamento (threadAppts[appointment_id]), non uno scatto del messaggio al momento in cui è stato scritto: il messaggio originale della prenotazione e il nuovo avviso di spostamento puntano allo stesso appointment_id, quindi finiscono entrambi per mostrare lo stesso biglietto «Proposta... Da confermare» con Approva/Modifica/Rifiuta, e il biglietto che prima diceva «Appuntamento confermato» cambia da solo in proposta.
+
+**Il titolo del dialog di prenotazione finisce in parte sotto l'intestazione del sito (desktop 1512x794)** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+Il wrapper del dialog (InstantBookingDialog.tsx) è fixed inset-0 z-50, e l'intestazione del sito (Header.tsx) è sticky top-0 z-40: per z-index il dialog dovrebbe dipingere sopra, e una ricerca nell'albero degli antenati (layout.tsx, pagina del professionista) non ha trovato un transform, filter o isolate che crei un nuovo contesto di stacking e spieghi la sovrapposizione. Non trovata una causa a livello di codice dopo una ricerca ragionevole: da verificare dal vivo con gli strumenti per sviluppatori esattamente a 1512x794 (possibile un quirk di 100dvh o del viewport visivo del browser, non uno z-index sbagliato).
+
+**Una disdetta lascia tre biglietti «Appuntamento annullato» invece di uno** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+La disdetta (src/app/api/appointments/[id]/disdici/route.ts) inserisce un altro messaggio request_messages con lo stesso kind 'appointment_proposal' sullo stesso appointment_id. Si somma ai due messaggi già lasciati da uno spostamento precedente (vedi il rilievo su questo audit riguardo i biglietti duplicati), e poiché ogni biglietto legge lo stato vivo dell'appuntamento tramite threadAppts[appointment_id] (src/app/messaggi/page.tsx), tutti e tre i messaggi mostrano ora STATUS_LABEL['cancelled'] = «Appuntamento annullato» barrato: un biglietto per ogni messaggio che punta a quell'appointment_id, non uno per la prenotazione.
+
+**Il pro vede il nome del cliente in dashboard, ma in chat ogni conversazione è solo «Cliente»** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+getConversations (src/lib/messages.ts) prende il nome del cliente da una query lato client su public.profiles, ma l'unica policy di lettura su quella tabella (migrazione 003) permette di leggere una riga solo se appartiene a un professionista: un cliente non è mai in professionals, quindi la query non torna mai righe per un customer_id e il fallback 'Cliente' scatta per ogni conversazione lato pro. ProCalendar.tsx invece legge il nome da appointments.customer_name, una colonna scritta lato server con la service role al momento della prenotazione (instant-book route), che non passa dalla RLS di profiles: per questo lì il nome è giusto e in chat no.
+
+**Quattro righe identiche «Recensisci» in dashboard, e l'orario originale di una prenotazione spostata sparisce** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+CustomerHome.tsx aggiunge una riga «Com'è andata con ...? Recensisci» per ogni richiesta chiusa non ancora recensita, con solo il nome del servizio nel sottotitolo: niente data, ora o indirizzo che distingua una prenotazione dall'altra, quindi più richieste chiuse con lo stesso pro e servizio appaiono come la stessa riga ripetuta. Separatamente: lo spostamento di un appuntamento (trigger riproponi_se_spostato, migrazione 107) fa un UPDATE diretto su appointments.starts_at, senza nessuna tabella di storico; ogni punto che mostra l'orario (Prossimi appuntamenti in CustomerHome.tsx, il biglietto in chat) legge solo lo starts_at corrente, quindi l'orario originale non resta visibile da nessuna parte dopo lo spostamento.
+
+**subscription_tier_events non registra chi ha cambiato il piano** — _Aperta, trovata dal vivo il 3 ott 2026_
+
+La tabella (migrazione 025) ha solo id, professional_id, old_tier, new_tier, changed_at: nessuna colonna per l'autore. L'unico punto che scrive righe è il trigger log_subscription_tier_change (security definer, after update of subscription_tier su professionals), che legge old_tier/new_tier ma non auth.uid() né altro identificativo di chi ha fatto il cambio — e nessuna migrazione successiva (controllata anche la 032, che tocca solo i permessi della funzione, non il corpo) ha aggiunto una colonna attore. Il trigger scatta identico che il cambio arrivi dall'auto-servizio del pro, da un'azione dello staff in /admin/professionals, o dal cron di disdetta a fine periodo: tutte le righe sono indistinguibili.
+
 
 ## M1 · The build tells the truth
 
