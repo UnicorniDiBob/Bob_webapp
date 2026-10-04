@@ -1,3 +1,11 @@
+# Handoff — 4 ottobre 2026 (advisor dopo la 111), Lucio (con Claude)
+
+**Fatto:** #139 (ricavi esterni) è unita e la 111 è applicata, con gli hash di tutte e quattro le funzioni che coincidono. L'advisor ha segnalato `cancella_tutti_i_ricavi_esterni()` come SECURITY DEFINER eseguibile da authenticated. La PR `analisi-permessi` (mig 112) la rende SECURITY INVOKER, con una policy di delete solo sui mesi 'esterno' del pro, e chiude l'esecuzione delle funzioni dei trigger della 108 e della 111 (regola della 063). Provata in una transazione annullata: il pro cancella solo i suoi mesi esterni, i trigger scattano ancora, `anon` è rifiutato.
+**A metà:** la 112 si applica al merge, e dopo va rifatto l'advisor. Mancano la clausola art. 28 nei ToS del Professionista e le prove a mano di import CSV e copia.
+**Applicato in produzione:** 108, 109, 110, 111; la 112 al merge.
+
+---
+
 # Handoff — 4 ottobre 2026 (ricavi esterni), Lucio (con Claude)
 
 **Fatto:** #138 (Analisi avanzate) è unita, la 110 applicata con l'hash che coincide. PR `ricavi-esterni`:
