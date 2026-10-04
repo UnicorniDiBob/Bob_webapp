@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-// La testata comune delle due pagine dei numeri: il ritorno, il titolo e le
-// due schede. La scheda «Avanzata» si vede su tutti i piani: il Free ci trova
-// cosa contiene e in quale piano c'e', non una porta nascosta.
-export function SchedeNumeri({ attiva }: { attiva: "base" | "avanzata" }) {
-  const scheda = (chiave: "base" | "avanzata", href: string, testo: string) => (
+// La testata comune delle pagine dei numeri: il ritorno, il titolo e le tre
+// schede. «Analisi avanzate» e «Ricavi esterni» si vedono su tutti i piani:
+// il Free ci trova cosa contengono e in quale piano ci sono, non una porta
+// nascosta.
+export function SchedeNumeri({ attiva }: { attiva: "base" | "avanzata" | "esterni" }) {
+  const scheda = (chiave: "base" | "avanzata" | "esterni", href: string, testo: string) => (
     <Link
       href={href}
       aria-current={attiva === chiave ? "page" : undefined}
@@ -35,6 +36,7 @@ export function SchedeNumeri({ attiva }: { attiva: "base" | "avanzata" }) {
       <nav aria-label="Tipo di analisi" className="mt-3 flex flex-wrap gap-2">
         {scheda("base", "/numeri", "Il conto del mese")}
         {scheda("avanzata", "/numeri/avanzate", "Analisi avanzate")}
+        {scheda("esterni", "/numeri/esterni", "Ricavi esterni")}
       </nav>
     </div>
   );

@@ -5,8 +5,8 @@
 // per un Free risponde 42501, e qui diventa la scheda che dice cosa contiene
 // e in quale piano c'e'. Una pagina che nasconde e basta non e' un limite.
 //
-// Il periodo sta nell'URL (?da=2026-01&a=2026-10&contro=anno), cosi' un link
-// riapre esattamente gli stessi numeri.
+// Il periodo sta nell'URL (?da=2026-01&a=2026-10&contro=anno&esterni=1), cosi'
+// un link riapre esattamente gli stessi numeri.
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -22,7 +22,7 @@ export const revalidate = 0;
 export default async function AvanzatePage({
   searchParams,
 }: {
-  searchParams: { da?: string; a?: string; contro?: string };
+  searchParams: { da?: string; a?: string; contro?: string; esterni?: string };
 }) {
   const supabase = createClient();
   const {
@@ -33,12 +33,14 @@ export default async function AvanzatePage({
   const oggi = meseDiOggi();
   const { periodo, confronto } = periodoDaUrl(searchParams, oggi);
   const contro = periodoContro(periodo, confronto);
+  const conEsterni = searchParams.esterni === "1";
 
   const { data, error } = await supabase.rpc("analisi_avanzata", {
     p_da: `${periodo.da}-01`,
     p_a: `${periodo.a}-01`,
     p_contro_da: contro ? `${contro.da}-01` : null,
     p_contro_a: contro ? `${contro.a}-01` : null,
+    p_con_esterni: conEsterni,
   });
 
   if (error?.code === "42501") return <AnalisiAvanzataChiusa />;
@@ -50,11 +52,12 @@ export default async function AvanzatePage({
     <AnalisiAvanzata
       // Il periodo nuovo arriva come pagina nuova: la chiave riparte da zero i
       // campi «Da» e «A», che altrimenti terrebbero i valori di prima.
-      key={`${periodo.da}-${periodo.a}-${confronto}`}
+      key={`${periodo.da}-${periodo.a}-${confronto}-${conEsterni}`}
       dati={data as DatiAvanzati}
       periodo={periodo}
       confronto={confronto}
       oggi={oggi}
+      conEsterni={conEsterni}
     />
   );
 }

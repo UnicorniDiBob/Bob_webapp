@@ -1,3 +1,18 @@
+# Handoff — 4 ottobre 2026 (ricavi esterni), Lucio (con Claude)
+
+**Fatto:** #138 (Analisi avanzate) è unita, la 110 applicata con l'hash che coincide. PR `ricavi-esterni`:
+- la migrazione 111: tabella `ricavi_esterni` con RLS del solo proprietario; scrittura per Plus e Business; tetto di 5.000 righe l'anno; condensazione dopo 25 mesi; `cancella_tutti_i_ricavi_esterni()`; `analisi_avanzata()` con `p_con_esterni`, riscritta dal corpo vivo della 110;
+- la pagina `/numeri/esterni`: a mano con il codice cliente suggerito, CSV con anteprima, annulla import, Excel, cancella tutto, avviso prima della condensazione;
+- l'interruttore «Solo Bob / Tutto il mio lavoro» nelle avanzate;
+- il test di separazione;
+- ROPA A27.
+
+La 111 è provata in produzione in una transazione annullata: solo Bob 0 € e tutto 500 €; tetto 54000; Free e scrittura per un altro pro rifiutati; **admin vede 0 righe**; la condensazione conserva i totali.
+**A metà:** la 111 si applica al merge. Manca la clausola art. 28 nei ToS del Professionista (ROPA A27). «Copia immagine/numeri» e l'import CSV vanno provati a mano da un pro di prova.
+**Applicato in produzione:** 108, 109, 110; la 111 al merge.
+
+---
+
 # Handoff — 4 ottobre 2026 (Analisi avanzate), Lucio (con Claude)
 
 **Fatto:** PR `analisi-avanzata`, che contiene:
