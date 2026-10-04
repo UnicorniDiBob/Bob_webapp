@@ -256,7 +256,7 @@ export function ProWorkspace({
           piani, quindi il link c'e' sempre. */}
       <div className="-mt-3 flex justify-end">
         <Link
-          href="/dashboard/numeri"
+          href="/numeri"
           className="text-sm font-medium text-bob-indigo hover:underline"
           data-testid="link-numeri"
         >

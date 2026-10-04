@@ -10,7 +10,7 @@ import {
  * Rotte che non esistono per chi non e' autenticato. /admin NON sta qui: ha un
  * controllo suo piu' sotto, che oltre alla sessione guarda anche il ruolo.
  */
-const ROTTE_PRIVATE = ["/dashboard", "/messaggi", "/impostazioni"];
+const ROTTE_PRIVATE = ["/dashboard", "/messaggi", "/impostazioni", "/numeri"];
 
 // Middleware: aggiorna i cookie di sessione Supabase su ogni richiesta
 // così la sessione utente resta valida tra Server Components e client.

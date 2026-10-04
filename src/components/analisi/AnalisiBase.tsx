@@ -247,7 +247,7 @@ export function AnalisiBase({ dati }: { dati: DatiAnalisiBase }) {
           <button
             type="button"
             disabled={!precedente}
-            onClick={() => precedente && router.push(`/dashboard/numeri?mese=${meseParam(precedente)}`)}
+            onClick={() => precedente && router.push(`/numeri?mese=${meseParam(precedente)}`)}
             className="rounded-lg p-2 text-bob-ink/70 hover:bg-black/5 disabled:opacity-30"
             aria-label="Mese precedente"
           >
@@ -255,7 +255,7 @@ export function AnalisiBase({ dati }: { dati: DatiAnalisiBase }) {
           </button>
           <select
             value={dati.mese}
-            onChange={(e) => router.push(`/dashboard/numeri?mese=${meseParam(e.target.value)}`)}
+            onChange={(e) => router.push(`/numeri?mese=${meseParam(e.target.value)}`)}
             className="input-bob w-auto py-2 pr-8 font-semibold"
             aria-label="Mese"
           >
@@ -268,7 +268,7 @@ export function AnalisiBase({ dati }: { dati: DatiAnalisiBase }) {
           <button
             type="button"
             disabled={!successivo}
-            onClick={() => successivo && router.push(`/dashboard/numeri?mese=${meseParam(successivo)}`)}
+            onClick={() => successivo && router.push(`/numeri?mese=${meseParam(successivo)}`)}
             className="rounded-lg p-2 text-bob-ink/70 hover:bg-black/5 disabled:opacity-30"
             aria-label="Mese successivo"
           >
