@@ -8,7 +8,7 @@ import { Stars, VerificationLevelBadge } from "@/components/ui";
 import type { VerificationLevel } from "@/lib/vat";
 import { AppointmentDialog } from "@/components/AppointmentDialog";
 import { AppointmentDetail } from "@/components/AppointmentDetail";
-import { ProCalendar, type CalView } from "@/components/ProCalendar";
+import { ProCalendar } from "@/components/ProCalendar";
 import { DayItinerary } from "@/components/DayItinerary";
 import { ProRequestSummary } from "@/components/ProRequestSummary";
 import { StatoProfiloCard } from "@/components/StatoProfiloCard";
@@ -58,10 +58,6 @@ export function ProWorkspace({
   // Giornata a fuoco nel calendario: alimenta il giro del giorno.
   const [focusDay, setFocusDay] = useState<Date>(() => new Date());
   const handleFocusDay = useCallback((d: Date) => setFocusDay(d), []);
-  // Quale vista del calendario e' aperta. Giorno e settimana convivono con la
-  // colonna di fianco; mese e anno no: sono mappe, e una mappa stretta non si
-  // legge. Quando si aprono, il calendario si prende la pagina.
-  const [calView, setCalView] = useState<CalView>("week");
 
   const proId = profile?.id ?? null;
 
@@ -257,18 +253,14 @@ export function ProWorkspace({
         />
       </div>
 
-      {/* DUE COLONNE, MA NON SEMPRE (12/09). Con le ore davanti — giorno e
-          settimana — di fianco ci stanno gli impegni, ed e' li' che si
-          guardano. Mese e anno invece sono mappe: stretti in una colonna non
-          si leggono, quindi la colonna di fianco sparisce e il calendario si
-          prende la pagina. */}
-      <div
-        className={`grid grid-cols-1 gap-5 ${
-          calView === "month" || calView === "year"
-            ? ""
-            : "lg:grid-cols-[1fr_320px]"
-        }`}
-      >
+      {/* DUE COLONNE, SEMPRE (04/10, Lucio). Dal 12/09 mese e anno si
+          prendevano la pagina e la colonna di fianco spariva: cambiare vista
+          bastava a far saltare il riquadro in larghezza e a riorganizzare
+          tutto quello che c'era intorno. Adesso la misura non dipende dalla
+          vista — come l'altezza dal 01/10 — e per guardare il mese in grande
+          c'e' un tasto, «Ingrandisci», che e' una scelta di chi usa il
+          calendario e non un effetto collaterale della vista. */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         {/* IL LAVORO: stato, calendario, chi sei.
             Lo stato del profilo sta SOPRA il calendario e non piu' in cima
             alla colonna di fianco: quando e' tutto a posto e' un pallino
@@ -294,7 +286,6 @@ export function ProWorkspace({
               }}
               onSelect={(a) => setDetailId(a.id)}
               onFocusDayChange={handleFocusDay}
-              onViewChange={setCalView}
               selectedId={detailId}
             />
 
@@ -357,64 +348,61 @@ export function ProWorkspace({
           </div>
         </div>
 
-        {/* DI FIANCO, GLI IMPEGNI. Solo con giorno e settimana: mese e anno si
-            prendono la pagina. Prima il giro della giornata che il calendario
-            ha a fuoco, poi cosa arriva dopo. */}
-        {(calView === "day" || calView === "week") && (
-          <div className="space-y-4">
-            <DayItinerary
-              day={focusDay}
-              appointments={appointments}
-              onSelect={(a) => setDetailId(a.id)}
-            />
+        {/* DI FIANCO, GLI IMPEGNI. In ogni vista: prima il giro della giornata
+            che il calendario ha a fuoco, poi cosa arriva dopo. */}
+        <div className="space-y-4">
+          <DayItinerary
+            day={focusDay}
+            appointments={appointments}
+            onSelect={(a) => setDetailId(a.id)}
+          />
 
-            <div className="card p-5">
-              <h3 className="mb-3 text-sm font-semibold text-bob-ink">
-                Prossimi appuntamenti
-              </h3>
-              {upcoming.length === 0 ? (
-                <p className="text-sm text-bob-ink/65">
-                  Nessun appuntamento in programma.
-                </p>
-              ) : (
-                <ul className="space-y-2.5">
-                  {upcoming.map((a) => (
-                    <li
-                      key={a.id}
-                      className="border-b border-black/5 pb-2.5 last:border-0 last:pb-0"
+          <div className="card p-5">
+            <h3 className="mb-3 text-sm font-semibold text-bob-ink">
+              Prossimi appuntamenti
+            </h3>
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-bob-ink/65">
+                Nessun appuntamento in programma.
+              </p>
+            ) : (
+              <ul className="space-y-2.5">
+                {upcoming.map((a) => (
+                  <li
+                    key={a.id}
+                    className="border-b border-black/5 pb-2.5 last:border-0 last:pb-0"
+                  >
+                    <button
+                      onClick={() => setDetailId(a.id)}
+                      className="flex w-full items-start justify-between gap-2 text-left"
+                      data-testid={`appt-upcoming-${a.id}`}
                     >
-                      <button
-                        onClick={() => setDetailId(a.id)}
-                        className="flex w-full items-start justify-between gap-2 text-left"
-                        data-testid={`appt-upcoming-${a.id}`}
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-bob-ink">
-                            {a.customer_name}
-                          </p>
-                          <p className="truncate text-xs text-bob-ink/70">
-                            {a.title ?? "Appuntamento"}
-                          </p>
-                          <p className="mt-0.5 text-xs tabular-nums text-bob-indigo">
-                            {fmtDay(new Date(a.starts_at))} · {fmtRange(a)}
-                          </p>
-                          <p className="text-2xs text-bob-ink/65">
-                            {fmtDuration(a.duration_minutes)}
-                          </p>
-                        </div>
-                        {a.price != null && (
-                          <span className="shrink-0 text-sm font-semibold text-bob-ink">
-                            € {a.price}
-                          </span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-bob-ink">
+                          {a.customer_name}
+                        </p>
+                        <p className="truncate text-xs text-bob-ink/70">
+                          {a.title ?? "Appuntamento"}
+                        </p>
+                        <p className="mt-0.5 text-xs tabular-nums text-bob-indigo">
+                          {fmtDay(new Date(a.starts_at))} · {fmtRange(a)}
+                        </p>
+                        <p className="text-2xs text-bob-ink/65">
+                          {fmtDuration(a.duration_minutes)}
+                        </p>
+                      </div>
+                      {a.price != null && (
+                        <span className="shrink-0 text-sm font-semibold text-bob-ink">
+                          € {a.price}
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Il portfolio e' uscito da qui: e' un blocco che si aggiorna una volta
