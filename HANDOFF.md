@@ -1,3 +1,18 @@
+# Handoff — 4 ottobre 2026 (Analisi avanzate), Lucio (con Claude)
+
+**Fatto:** PR `analisi-avanzata`, che contiene:
+- la migrazione 110 `analisi_avanzata()`: il piano si controlla dentro la funzione, e un Free riceve 42501;
+- la pagina `/numeri/avanzate`: periodo e confronto nell'URL; andamento, imbuto, prima risposta, richieste senza risposta, servizi, zone, clienti che tornano, agenda; ogni riquadro con «copia numeri» e i grafici anche con «copia immagine»;
+- le schede «Il conto del mese» / «Analisi avanzate» in testa alle due pagine;
+- il listino con «Analisi avanzate» `SI` su Plus e Business;
+- `src/lib/analisi.ts` con 9 test.
+
+La 110 è provata in produzione in una transazione annullata: Business 005 in 82 ms, Free 004 rifiutato con 42501, anonimo rifiutato. La pagina è controllata in locale, con dati finti, a desktop e a 375px: nessuno sborda.
+**A metà:** la 110 si applica al merge. «Copia immagine» e «Copia numeri» vanno provati a mano: il browser di Claude non concede gli appunti. Poi i ricavi esterni.
+**Applicato in produzione:** 108 e 109; la 110 al merge.
+
+---
+
 # Handoff — 4 ottobre 2026 (notte, dopo il deploy), Lucio (con Claude)
 
 **Fatto:** #134 è unita e la 109 è applicata: gli hash coincidono, `anon` non può eseguire le funzioni, l'advisor non segnala niente di nuovo. La prova dal vivo ha trovato che `/dashboard/numeri` risponde 307 verso `/impostazioni/numeri`, perché il jolly `/dashboard/:sezione+` di next.config scatta prima del routing. La pagina si sposta su `/numeri`, aggiunta alle rotte private del middleware (PR `fix-numeri-percorso`). Aperta anche #135: via la colonna laterale nelle impostazioni.
