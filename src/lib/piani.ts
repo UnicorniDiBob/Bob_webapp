@@ -48,8 +48,11 @@
 // L'ANALISI BASE E' INCLUSA, UGUALE PER TUTTI (04/10, decisione di Lucio).
 // Da `ARRIVO` a `SI` sui tre piani con /numeri (mig 109): la stessa
 // funzione per Free, Plus e Business, senza nessun controllo di piano dentro.
-// «Se promettiamo che sia uguale, deve essere uguale.» Le Analisi avanzate
-// restano in arrivo, e saranno uguali fra Plus e Business.
+// «Se promettiamo che sia uguale, deve essere uguale.»
+//
+// LE ANALISI AVANZATE SONO INCLUSE IN PLUS E BUSINESS, UGUALI (04/10).
+// /numeri/avanzate (mig 110): il piano lo controlla la funzione, non la
+// pagina. I ricavi esterni arrivano dopo, dentro la stessa riga.
 
 import type { SubscriptionTier } from "@/lib/supabase/types";
 
@@ -188,7 +191,7 @@ export const FUNZIONI: Funzione[] = [
     gruppo: "Numeri e amministrazione",
     nome: "Analisi avanzate",
     nota: "Il ragionamento sui numeri: conversioni, tempi di risposta, servizi, zone e confronto fra periodi.",
-    celle: { free: NO, pro: ARRIVO, business: ARRIVO },
+    celle: { free: NO, pro: SI, business: SI },
   },
   {
     gruppo: "Numeri e amministrazione",

@@ -13,10 +13,8 @@
 // bisogno per mostrarsi.
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   ChevronLeft,
   ChevronRight,
   ClipboardCopy,
@@ -24,6 +22,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { SchedeNumeri } from "@/components/analisi/SchedeNumeri";
 
 export interface LavoroConcluso {
   data: string;
@@ -221,23 +220,12 @@ export function AnalisiBase({ dati }: { dati: DatiAnalisiBase }) {
 
   return (
     <div className="container-bob py-8 sm:py-10" data-testid="analisi-base">
-      <Link
-        href="/dashboard"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Il mio lavoro
-      </Link>
+      <SchedeNumeri attiva="base" />
 
-      <header className="mt-2 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
-            I tuoi numeri
-          </h1>
-          <p className="mt-1.5 text-sm text-bob-ink/70">
-            Il lavoro passato da Bob, mese per mese.
-          </p>
-        </div>
+      <header className="mt-5 flex flex-wrap items-end justify-between gap-4">
+        <p className="text-sm text-bob-ink/70">
+          Il lavoro passato da Bob, mese per mese. Uguale su tutti i piani.
+        </p>
 
         <nav
           aria-label="Scegli il mese"
