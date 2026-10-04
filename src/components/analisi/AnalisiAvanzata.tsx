@@ -160,11 +160,14 @@ export function AnalisiAvanzata({
   periodo,
   confronto,
   oggi,
+  conEsterni,
 }: {
   dati: DatiAvanzati;
   periodo: Periodo;
   confronto: Confronto;
   oggi: MeseUrl;
+  /** «Tutto il mio lavoro»: dentro anche i ricavi esterni (mig 111). */
+  conEsterni: boolean;
 }) {
   const router = useRouter();
   const [da, setDa] = useState(periodo.da);
@@ -183,11 +186,15 @@ export function AnalisiAvanzata({
         ? `al ${c.da.slice(0, 4)}`
         : "all'anno prima"
       : "al periodo prima";
-  const didascalia = `${nomePeriodo(periodo)}${nomeContro ? ` contro ${nomeContro}` : ""} · solo lavoro su Bob`;
+  const didascalia = `${nomePeriodo(periodo)}${nomeContro ? ` contro ${nomeContro}` : ""} · ${
+    conEsterni ? "lavoro su Bob e fuori da Bob" : "solo lavoro su Bob"
+  }`;
   const file = `bob_${periodo.da}_${periodo.a}`;
 
-  function vai(nuovo: Periodo, conf: Confronto = confronto) {
-    router.push(`/numeri/avanzate?da=${nuovo.da}&a=${nuovo.a}&contro=${conf}`);
+  function vai(nuovo: Periodo, conf: Confronto = confronto, esterni: boolean = conEsterni) {
+    router.push(
+      `/numeri/avanzate?da=${nuovo.da}&a=${nuovo.a}&contro=${conf}${esterni ? "&esterni=1" : ""}`
+    );
   }
 
   const medio = t.conclusi > 0 ? t.importo_cent / t.conclusi : 0;
@@ -343,6 +350,32 @@ export function AnalisiAvanzata({
               <option value="no">Nessun confronto</option>
             </select>
           </label>
+        </div>
+        {/* SOLO BOB / TUTTO IL MIO LAVORO (§4.4). Per difetto solo Bob: e' il
+            numero che possiamo garantire. Con i ricavi esterni cambiano gli
+            importi, i lavori conclusi, i servizi e i comuni; imbuto, risposte,
+            clienti e agenda restano di Bob, perche' fuori da Bob non c'e'
+            una richiesta da contare. */}
+        <div className="flex flex-wrap items-center gap-2" data-testid="interruttore-esterni">
+          {[
+            { v: false, t: "Solo Bob" },
+            { v: true, t: "Tutto il mio lavoro" },
+          ].map((x) => (
+            <button
+              key={x.t}
+              type="button"
+              onClick={() => vai(periodo, confronto, x.v)}
+              aria-pressed={conEsterni === x.v}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                conEsterni === x.v ? "bg-bob-ink text-white" : "border border-black/10 bg-white text-bob-ink/70 hover:text-bob-indigo"
+              }`}
+            >
+              {x.t}
+            </button>
+          ))}
+          <Link href="/numeri/esterni" className="text-xs font-medium text-bob-indigo hover:underline">
+            Aggiungi i lavori fatti fuori da Bob
+          </Link>
         </div>
         <p className="text-sm font-semibold text-bob-ink">
           {nomePeriodo(periodo)}
@@ -632,8 +665,10 @@ export function AnalisiAvanzata({
       </div>
 
       <p className="text-xs leading-relaxed text-bob-ink/60">
-        Solo il lavoro passato da Bob. Gli importi sono quelli che scrivi negli
-        appuntamenti. Le percentuali compaiono da dieci casi in su: prima vedi
+        {conEsterni
+          ? "Dentro anche i ricavi esterni che hai scritto tu: cambiano importi, lavori conclusi, servizi e comuni; imbuto, risposte, clienti e agenda restano solo di Bob."
+          : "Solo il lavoro passato da Bob."}{" "}
+        Gli importi sono quelli che scrivi negli appuntamenti. Le percentuali compaiono da dieci casi in su: prima vedi
         i conteggi. Gli orari disponibili dei mesi passati sono quelli di oggi.
         {dettaglioMancante &&
           " Per i mesi più vecchi di due anni la prima risposta e le richieste senza risposta non hanno più il dettaglio."}

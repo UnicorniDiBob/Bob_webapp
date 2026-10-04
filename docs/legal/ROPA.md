@@ -434,3 +434,25 @@ per conto suo.
 | **Diritti** | L'export artt. 15/20 dei professionisti **non esiste ancora** (`src/app/api/account/esporta/route.ts`, «Perché solo i clienti, per ora»): quando arriverà il blocco pro, `professional_work_events` e `analisi_mesi` ci vanno dentro. Nel frattempo «I tuoi numeri» (`/numeri`, mig 109) dà al pro, in Excel, il riepilogo di ogni mese e tutti i lavori conclusi: non sostituisce l'export, ma il pro non resta senza i suoi numeri |
 | **DPIA** | Non innesca: nessuna profilazione di clienti, nessun punteggio, nessuna decisione automatizzata. I numeri informano il pro, non decidono niente su di lui |
 | **Note** | Gli eventi con `ricostruito = true` vengono dal recupero della 108: le date dei passaggi di stato prima del 4 ottobre 2026 non esistevano e sono stimate dalla data di creazione. L'informativa deve dire, in una riga, che i numeri del pro restano dopo la cancellazione dell'account del cliente, senza dati del cliente |
+
+---
+
+## A27 — Ricavi esterni del professionista
+
+*Aggiunta il 4 ottobre 2026, con la migrazione 111. Spec: `docs/SPEC_analisi_professionista.md` §4.*
+
+| | |
+|---|---|
+| **Finalità** | Permettere al professionista di aggiungere alle proprie Analisi i lavori fatti **fuori da Bob**, scritti da lui a mano o da CSV, per vedere il quadro del suo anno intero. Nessun'altra finalità: Bob non li usa per sé |
+| **Ruolo di Bob** | **Responsabile del trattamento** (art. 28 GDPR) per conto del professionista, che è titolare di quello che scrive. **DA FARE**: la clausola nei ToS del Professionista (`docs/legal/BOZZA_ToS_Professionisti.md`) che lo dice, con le istruzioni (conservare e fare i conti, nient'altro) |
+| **Base giuridica** | Del professionista, per i dati dei suoi clienti esterni; di Bob verso il professionista, contratto — art. 6(1)(b) |
+| **Interessati** | Il professionista. Indirettamente i suoi clienti esterni, ma **solo come codice** scelto dal pro (max 20 caratteri), con l'avvertenza in pagina di non scrivere nomi, indirizzi o telefoni. Nessun campo per i contatti |
+| **Dati** | Data del lavoro, importo, servizio (catalogo), comune e CAP, codice cliente, nota (max 200), origine (a mano / CSV), lotto di import. Il file CSV **non si conserva**: si legge nel browser, al server arrivano solo le righe |
+| **Tabelle** | `ricavi_esterni`; oltre i 25 mesi riassunte in `analisi_mesi` con origine `esterno` (A26) |
+| **Codice** | `src/app/numeri/esterni/`, `src/components/analisi/RicaviEsterni.tsx`, `src/lib/csvRicavi.ts` |
+| **Destinatari** | Nessuno oltre ai responsabili di A1 (Supabase, Vercel). **Nessuna policy per lo staff**, né admin né cs: solo il proprietario legge e scrive. Il test `src/lib/ricaviEsterniSeparati.test.ts` impedisce che il codice dello staff li nomini |
+| **Trasferimenti** | Come A1 |
+| **Conservazione** | Finché c'è l'account del professionista; a cascata con lui (A20). Dettaglio per 25 mesi, poi riassunto per mese, servizio e comune (`condensa_analisi()`, il 2 di ogni mese); la pagina avvisa prima, perché il pro possa scaricarle intere. Il pro cancella una riga, un import o tutto (`cancella_tutti_i_ricavi_esterni()`, che toglie anche i mesi riassunti). **Restano se il pro torna al Free**: le vede, le scarica e le cancella, non ne aggiunge |
+| **Sicurezza** | RLS: lettura e cancellazione del proprietario, scrittura solo per Plus e Business. Tetto di 5.000 righe per pro e per anno, controllato a fine istruzione |
+| **Diritti** | Scaricabili in Excel dalla pagina in ogni momento e su ogni piano. Quando arriverà l'export artt. 15/20 dei professionisti, ci entrano |
+| **DPIA** | Non innesca: nessuna profilazione, nessuna decisione automatizzata, nessuna combinazione con dati di Bob se non nei numeri del pro stesso, su sua richiesta |
