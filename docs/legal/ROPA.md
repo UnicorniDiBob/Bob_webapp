@@ -411,3 +411,26 @@ per conto suo.
 | **Diritti** | Inclusa nell'export artt. 15/20 (`src/lib/export-dati.ts`, voce `termini_accettati`). **Una richiesta di cancellazione non la cancella subito**: è il caso dell'art. 17(3)(e), e va detto nell'informativa |
 | **DPIA** | Non innesca: nessuna profilazione, nessuna decisione automatizzata, nessuna tecnologia innovativa, nessuna larga scala |
 | **Note** | (1) Le due righe con `method = 'backfill'` hanno l'ora dichiarata dal browser prima del 28/09/2026: **non valgono come prova** e la colonna lo dice. (2) Il **preavviso** delle modifiche (campanella con la data, email come supporto durevole per i professionisti, art. 3(2) Reg. UE 2019/1150) non è ancora costruito: quando lo sarà, il registro degli invii è un trattamento con base **obbligo legale — art. 6(1)(c)** per i professionisti e **contratto** per i clienti, e questa riga va aggiornata insieme a A9 (Resend). (3) **DA CONFERMARE da una persona**: l'informativa deve dire che la prova dell'accettazione sopravvive dieci anni alla cancellazione dell'account |
+
+---
+
+## A26 — Analisi per il professionista: il registro del lavoro
+
+*Aggiunta il 4 ottobre 2026, con la migrazione 108. Spec: `docs/SPEC_analisi_professionista.md`.*
+
+| | |
+|---|---|
+| **Finalità** | Dare al professionista i numeri del proprio lavoro su Bob (quanto ha incassato, quante richieste, proposte e lavori conclusi, in che tempi) e il confronto fra periodi (mesi, anni, intervalli a scelta). **Non** comprende ancora i ricavi esterni scritti dal pro (Fase 2: avranno una riga propria, perché lì Bob è responsabile del trattamento per conto del pro) |
+| **Base giuridica** | Contratto — art. 6(1)(b). È una funzione del servizio, Free compreso, calcolata su dati che trattiamo già per eseguire quel contratto |
+| **Interessati** | Professionisti. **Non i clienti**: il registro non contiene nessuna loro colonna |
+| **Dati** | Per evento: professionista, tipo di passo (richiesta ricevuta, prima risposta, proposta inviata/accettata/rifiutata, prenotazione diretta, lavoro concluso, disdetto), data, id della richiesta o dell'appuntamento **senza chiave esterna**, servizio, comune ISTAT, importo, minuti. Sugli appuntamenti: `completed_at`, comune e CAP del lavoro. Niente nome, contatti o indirizzo del cliente |
+| **Tabelle** | `professional_work_events` (dettaglio), `analisi_mesi` (mesi condensati), vista `analisi_mesi_vive`; colonne nuove su `appointments` (migrazione 108) |
+| **Codice** | Solo trigger nel database (`private.analisi_*`). Le pagine arrivano con la Fase 1 |
+| **Destinatari** | Nessuno oltre ai responsabili di A1 (Supabase, Vercel). Legge solo il professionista proprietario, per RLS. **Nessuna policy per lo staff** |
+| **Trasferimenti** | Come A1 |
+| **Conservazione** | Dettaglio per **25 mesi**, poi riassunto in `analisi_mesi` (una riga per mese, servizio e comune, solo conteggi e somme) da `condensa_analisi()`, il 2 di ogni mese, con traccia in `system_job_runs`. Tutto si cancella **a cascata con il professionista**, quindi lo prende il percorso di chiusura dell'account (A20) senza codice in più |
+| **Perché sopravvive al cliente** | `requests.customer_id` è `on delete cascade`: senza registro, quando un cliente cancella l'account l'imbuto passato del pro si accorcerebbe. Il registro non contiene niente del cliente: dopo la cancellazione resta il ricordo del pro («un lavoro di idraulica a Sesto, 180 €, il 12 marzo»), non la traccia del cliente. L'id della richiesta resta, ma non punta più a niente |
+| **Sicurezza** | RLS attiva, sola lettura per il proprietario, nessuna policy di scrittura: scrivono solo i trigger (`SECURITY DEFINER`, `search_path` vuoto, nessun parametro dall'esterno). `condensa_analisi` non è eseguibile da `anon` né da `authenticated` |
+| **Diritti** | **DA FARE nella Fase 1**: aggiungere il registro all'export artt. 15/20 (`src/lib/export-dati.ts`) |
+| **DPIA** | Non innesca: nessuna profilazione di clienti, nessun punteggio, nessuna decisione automatizzata. I numeri informano il pro, non decidono niente su di lui |
+| **Note** | Gli eventi con `ricostruito = true` vengono dal recupero della 108: le date dei passaggi di stato prima del 4 ottobre 2026 non esistevano e sono stimate dalla data di creazione. L'informativa deve dire, in una riga, che i numeri del pro restano dopo la cancellazione dell'account del cliente, senza dati del cliente |

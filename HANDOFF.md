@@ -1,3 +1,9 @@
+# Handoff — 4 ottobre 2026 (sera), Lucio (con Claude)
+
+**Fatto:** Fase 0 delle Analisi: `supabase/migrations/108_registro_lavoro_pro.sql`. Contiene il registro `professional_work_events`, scritto solo da trigger e senza dati del cliente; i mesi condensati `analisi_mesi` e la vista `analisi_mesi_vive` per confrontare i periodi; `condensa_analisi()` in cron il 2 del mese; `completed_at`, comune e CAP sugli appuntamenti; il recupero di quello che c'è. Provata in produzione dentro una transazione annullata: recupero = 7 lavori conclusi per 1.620 €, come le caselle di oggi; concluso, riaperto, disdetto ed eliminato tornano giusti; prima risposta 30 minuti su 30; la condensazione non perde un'unità. Dopo, verificato che non è rimasto niente. ROPA A26 e riga in DATA_COMPLIANCE §5.
+**A metà:** la migrazione NON è applicata: si applica al merge, con l'advisor subito dopo. Manca il dialogo dell'appuntamento (comune con `SceltaComune`, servizio da tendina): la lettura di `types.ts` e `messages.ts` è stata bloccata dai permessi della sessione. Poi la Fase 1, l'Analisi base.
+**Applicato in produzione:** niente. Solo letture, e la prova in una transazione annullata.
+
 # Handoff — 4 ottobre 2026 (pomeriggio), Lucio (con Claude)
 
 **Fatto:** scritta la specifica delle Analisi per il professionista, `docs/SPEC_analisi_professionista.md`, con le due decisioni di Lucio: «Analisi base» resta sui tre piani, e per ora niente confronto con la categoria. Tre cose lette sullo schema vivo cambiano il piano. Gli stati non hanno storia. Le richieste spariscono a cascata quando il cliente cancella l'account, quindi l'imbuto del pro si accorcia all'indietro. E 27 appuntamenti su 34 non hanno né servizio né cliente, 28 nessuna città. Da qui la Fase 0: un registro degli eventi senza dati del cliente, più `completed_at`, comune e servizio sugli appuntamenti. Nessuna riga di codice di prodotto.
