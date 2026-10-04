@@ -419,7 +419,7 @@ function Casella({
       <p className={`text-xs font-medium ${accento ? "text-white/70" : "text-bob-ink/70"}`}>
         {etichetta}
       </p>
-      <p className={`mt-1 text-xl font-bold tabular-nums ${accento ? "text-white" : "text-bob-ink"}`}>
+      <p className={`mt-1 text-xl font-bold ${accento ? "text-white" : "text-bob-ink"}`}>
         {valore}
       </p>
       {nota && (
