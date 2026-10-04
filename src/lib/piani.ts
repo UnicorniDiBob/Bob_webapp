@@ -46,7 +46,7 @@
 // e' ancora in arrivo, e in arrivo non entra negli elenchi.
 //
 // L'ANALISI BASE E' INCLUSA, UGUALE PER TUTTI (04/10, decisione di Lucio).
-// Da `ARRIVO` a `SI` sui tre piani con /dashboard/numeri (mig 109): la stessa
+// Da `ARRIVO` a `SI` sui tre piani con /numeri (mig 109): la stessa
 // funzione per Free, Plus e Business, senza nessun controllo di piano dentro.
 // «Se promettiamo che sia uguale, deve essere uguale.» Le Analisi avanzate
 // restano in arrivo, e saranno uguali fra Plus e Business.

@@ -5,6 +5,12 @@
 // (mig 109). Quanto un professionista ha fatturato su Bob e' un fatto suo, e
 // il conto non si vende.
 //
+// PERCHE' /numeri E NON /dashboard/numeri. La prima versione stava sotto
+// /dashboard, e dal vivo rispondeva 307 verso /impostazioni/numeri: il jolly
+// /dashboard/:sezione+ di next.config (19/08) scatta PRIMA del middleware e
+// del routing, quindi nessuna pagina sotto /dashboard/ e' raggiungibile.
+// Trovato con un curl sulla produzione, non leggendo il codice.
+//
 // Pagina server: i numeri arrivano gia' fatti da public.analisi_base(), che
 // gira come l'utente (SECURITY INVOKER) e quindi vede solo le sue righe. Al
 // browser arriva il riassunto di un mese, non le tabelle.

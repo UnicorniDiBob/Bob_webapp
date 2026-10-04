@@ -1,3 +1,11 @@
+# Handoff — 4 ottobre 2026 (notte, dopo il deploy), Lucio (con Claude)
+
+**Fatto:** #134 è unita e la 109 è applicata: gli hash coincidono, `anon` non può eseguire le funzioni, l'advisor non segnala niente di nuovo. La prova dal vivo ha trovato che `/dashboard/numeri` risponde 307 verso `/impostazioni/numeri`, perché il jolly `/dashboard/:sezione+` di next.config scatta prima del routing. La pagina si sposta su `/numeri`, aggiunta alle rotte private del middleware (PR `fix-numeri-percorso`). Aperta anche #135: via la colonna laterale nelle impostazioni.
+**A metà:** dopo il merge del fix, `/numeri` va provata da un pro di prova a desktop e a 390px. Lo stesso vale per #135, come cliente, pro e staff. Nel browser di Claude non c'è una sessione.
+**Applicato in produzione:** migrazioni 108 e 109.
+
+---
+
 # Handoff — 4 ottobre 2026 (notte), Lucio (con Claude)
 
 **Fatto:** migrazione 108 applicata in produzione dopo il merge di #133: i 7 corpi di funzione coincidono con il file (md5), il recupero dà 7 lavori conclusi per 1.620 €, il cron `condensa-analisi` è attivo e l'advisor non segnala niente di nuovo. Fase 1 nella PR `analisi-base`: la migrazione 109 (`analisi_base`, `analisi_base_storico`, uguali per tutti i piani), la pagina `/dashboard/numeri` con il mese, i conteggi, i lavori e tre strade verso Excel, il link dalla dashboard, il listino con «Analisi base» `SI` sui tre piani, e il dialogo dell'appuntamento con comune e servizio. La 109 è provata in produzione in una transazione annullata, impersonando i pro di prova: 003 a giugno 5 lavori per 800 €, 006 vede solo i suoi, un anonimo viene rifiutato.
