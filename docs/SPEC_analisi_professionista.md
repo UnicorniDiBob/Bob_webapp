@@ -7,7 +7,8 @@ numero di questo documento è stato letto sullo schema vivo
 
 Sostituisce l'artifact «Analisi nei piani di Bob» del 01/10, che sul Free era
 confuso. Nessuna riga di codice di prodotto parte da qui finché Lucio non
-approva il documento e risponde alle tre domande del §1.3.
+approva il documento. Aggiornato il 4 ottobre pomeriggio con le risposte di
+Lucio (§1.3) e con la Fase 0 costruita (migrazione 108).
 
 ---
 
@@ -43,28 +44,30 @@ il 21%, e quando rispondi entro un'ora il 38%» è Plus.
 piani. Il §5 fissa comunque la soglia per quando tornerà, perché è la parte
 che non si improvvisa.
 
-### 1.3 Le domande ancora aperte per Lucio
+### 1.3 Le risposte del 4 ottobre pomeriggio
+
+- **Plus e Business hanno le stesse analisi.** Tutte e due hanno «Analisi
+  avanzate», e per ora la parte analitica non li distingue. Niente riga
+  «Analisi dei ricavi» solo Business: quello che il §3.4 descrive va su
+  tutti e due.
+- **Si confrontano i periodi, quali si vuole**: un anno con l'altro, un mese
+  con lo stesso mese dell'anno prima, due intervalli qualunque. Vedi §3.7.
+- **I dati si condensano.** Con i ricavi esterni le righe crescono in fretta,
+  e il peso non deve esplodere dal nostro lato. Vedi §3.8.
+- **Nei ricavi esterni un codice cliente, non un nome**, ma veloce da
+  scrivere. Vedi §4.3.
+- **Fase 0 approvata.** Si comincia dall'Analisi base.
+
+Resta aperta una domanda sola:
 
 1. **Confermi la linea «conteggio = Free, rapporto = Plus»?** È
    un'interpretazione della risposta (a), non una cosa che hai detto. In
    alternativa il Free vede solo le quattro caselle e l'elenco dei lavori, e
    l'«Analisi base» del listino diventa quella; ma allora la nota del listino
    («quanti contatti, quanti preventivi…») va riscritta.
-2. **Cosa resta al Business, senza il confronto di categoria.** Oggi
-   «Analisi avanzate» è `ARRIVO` su Plus **e** su Business, e la sua nota
-   («da dove arrivano i tuoi ricavi: per servizio, per zona, per periodo»)
-   descrive la parte che il prompt metteva sul solo Business. **Proposta:**
-   dividere la riga in due.
-   - «Analisi avanzate» (Plus e Business): da dove arriva il tuo lavoro.
-   - una riga nuova, «Analisi dei ricavi» (solo Business): da dove arrivano i
-     tuoi ricavi.
 
-   Se dici no, Plus e Business hanno le stesse analisi e il Business non ha
-   niente di analitico in più.
-3. **Il campo «cliente» nei ricavi esterni.** Proposta: nessun nome, solo un
-   codice facoltativo scelto dal pro (vedi §4.3). Il nome di un terzo scritto
-   a mano renderebbe Bob responsabile del trattamento per conto del pro
-   (art. 28 GDPR) di dati che non abbiamo mai visto.
+   Lucio ha detto «iniziamo dall'Analisi base» senza obiezioni, ma non l'ha
+   confermata in modo esplicito. La Fase 1 la segue.
 
 ---
 
@@ -81,10 +84,11 @@ che non si improvvisa.
 | Andamento mese per mese di lavori e importi | — | sì | sì |
 | Quali servizi portano lavori e quali solo proposte a vuoto | — | sì | sì |
 | Ricavi esterni (inserimento a mano e da CSV, interruttore «solo Bob / tutto il mio lavoro») | — | sì | sì |
-| Ricavi per zona (comune e CAP), valore medio e come cambia per zona | — | — | sì |
-| Stagionalità contro lo stesso mese dell'anno prima | — | — | sì |
-| Clienti che tornano | — | — | sì |
-| Saturazione dell'agenda (ore vendute contro ore disponibili) | — | — | sì |
+| Ricavi per zona (comune e CAP), valore medio e come cambia per zona | — | sì | sì |
+| Confronto fra periodi: anno con anno, mese con mese, due intervalli qualunque (§3.7) | — | sì | sì |
+| Stagionalità contro lo stesso mese dell'anno prima | — | sì | sì |
+| Clienti che tornano | — | sì | sì |
+| Saturazione dell'agenda (ore vendute contro ore disponibili) | — | sì | sì |
 | «Copia immagine» e «copia numeri» su ogni grafico | — | sì | sì |
 | Esportazione dei propri dati (art. 15/20) | sì | sì | sì |
 
@@ -93,9 +97,9 @@ perché nessuno la metta dietro un abbonamento. Un pro che passa da Plus a Free
 **continua a poter esportare** i ricavi esterni che ha scritto, anche se non
 li vede più nei grafici.
 
-Il Business si **guarda**, non si legge: ogni sezione apre con un grafico, e i
-numeri stanno sotto. Il Plus invece può essere fatto di frasi con un numero
-dentro («Entro un'ora chiudi 5 richieste su 13»).
+Le Analisi avanzate si **guardano**, non si leggono: ogni sezione apre con un
+grafico, e i numeri stanno sotto, con una frase che dice il numero che conta
+(«Entro un'ora chiudi 5 richieste su 13»).
 
 ---
 
@@ -163,7 +167,7 @@ del §6, così ogni piano legge gli stessi numeri da una fonte sola.
 solo se il denominatore è **almeno 10**. Sotto, si mostrano i conteggi («3 su
 7»). «Chiudi il 100%» su una richiesta sola è un numero vero e inutile.
 
-### 3.4 Business — da dove arrivano i tuoi ricavi
+### 3.4 Plus e Business — da dove arrivano i tuoi ricavi
 
 | Numero | Come si calcola | Calcolabile oggi? | Cosa registrare da subito |
 |---|---|---|---|
@@ -222,7 +226,10 @@ trigger su RP (insert), RM (primo messaggio del pro per richiesta) e AP
 
 **B. Sugli appuntamenti:**
 - `completed_at timestamptz`: valorizzato dal trigger al passaggio a
-  `completed`. Il mese di un lavoro concluso diventa quello vero.
+  `completed`, tolto se il lavoro torna aperto. È **quando è stato segnato**
+  concluso. Il mese dell'importo resta quello di `starts_at`, cioè quando si
+  è lavorato, come fanno già le caselle della dashboard: un lavoro di
+  settembre segnato il 3 ottobre è un incasso di settembre.
 - `comune_istat`, `postal_code`: nel dialogo del pro con `SceltaComune`, al
   posto della città in testo libero. Copiati dalla richiesta quando c'è.
 - Il servizio: nel dialogo del pro, una tendina dai suoi
@@ -236,8 +243,68 @@ questo che va fatto **prima** del pilota: da gennaio 2027 tutto il registro è
 storia vera.
 
 Né A né B sono interfaccia: sono una migrazione e due campi in un dialogo.
-Sono la Fase 0, e possono uscire prima che questo documento sia approvato in
-tutte le sue parti.
+Sono la Fase 0, approvata da Lucio il 4 ottobre: la migrazione è
+`supabase/migrations/108_registro_lavoro_pro.sql`.
+
+### 3.7 Il confronto fra periodi
+
+Tutti i confronti leggono **una vista sola**, `analisi_mesi_vive`: una riga
+per pro, mese, servizio e comune, con i conteggi e le somme. Da lì si compone
+qualunque periodo **a grana di mese**:
+
+- un anno contro l'altro (gennaio-dicembre 2027 contro 2028);
+- un mese contro lo stesso mese dell'anno prima;
+- l'anno finora contro lo stesso tratto dell'anno prima;
+- due intervalli qualunque di mesi interi, anche di lunghezza diversa
+  (allora si confrontano le medie al mese, non i totali, e la pagina lo
+  scrive).
+
+Sotto il mese (settimane, giorni) si scende solo negli ultimi 25 mesi, dove il
+registro ha ancora il dettaglio. Chi chiede «marzo 2025 giorno per giorno» nel
+2028 riceve il totale di marzo e una riga che dice perché.
+
+Il periodo si sceglie con due selettori («questo periodo» / «contro»), con
+le scorciatoie che servono davvero: questo mese, mese scorso, anno finora,
+ultimi 12 mesi, anno scorso. Il secondo selettore propone da solo lo stesso
+periodo dell'anno prima.
+
+**Regola che vale per tutti i grafici**: chi legge la vista **somma** le
+righe del mese, non ne prende una. Un mese può avere una riga condensata e
+una di dettaglio insieme (un lavoro di tre anni fa segnato concluso oggi).
+
+### 3.8 Il peso dei dati: si condensa
+
+Il registro del dettaglio vive **25 mesi**: abbastanza perché il confronto
+con lo stesso mese dell'anno prima abbia sempre il dettaglio da tutte e due
+le parti. Il 2 di ogni mese `condensa_analisi()` prende gli eventi più
+vecchi, li riassume in `analisi_mesi` e li cancella, in un'istruzione sola:
+gli eventi tolti sono esattamente quelli riassunti.
+
+| | Una riga | Un pro attivo in un anno |
+|---|---|---|
+| Registro (dettaglio) | ~150 byte, più gli indici | ~1.500 eventi, ~350 KB |
+| Mesi condensati | ~130 byte | ~120 righe, ~20 KB |
+
+Con mille professionisti il registro si ferma intorno a 700-800 MB (25 mesi
+di dettaglio) e il passato condensato cresce di ~20 MB l'anno. Senza
+condensare cresceremmo di ~350 MB l'anno per sempre.
+
+Le scelte che tengono piccola la riga: un enum per il tipo di evento (4 byte
+contro ~20 di un testo), gli importi in centesimi interi, le colonne in
+ordine di allineamento così che Postgres non sprechi spazio fra una e
+l'altra, nessun dato del cliente.
+
+**Un mese condensato non cambia più.** Se un lavoro di tre anni fa viene
+riaperto, il dettaglio non c'è più e il mese resta com'era. È il prezzo della
+compressione, e lo diciamo nella pagina dove serve.
+
+**I ricavi esterni (Fase 2) seguono la stessa strada**: `analisi_mesi` ha già
+la colonna `origine` (`bob` / `esterno`). Le righe scritte dal pro restano
+intere per 25 mesi; poi si condensano nello stesso modo, e **prima**, quando
+il pro apre la pagina, gli si propone di esportarle. Sono sue, e devono
+poterle avere intere. Più un tetto: 5.000 righe esterne per pro e per anno,
+largamente sopra il lavoro di un artigiano e abbastanza basso da fermare un
+import sbagliato.
 
 ---
 
@@ -274,6 +341,12 @@ non ci serve. Al grafico «clienti che tornano» basta sapere che due righe
 riguardano la stessa persona. Quindi: un **codice libero** («C12», «condominio
 Viale Monza») con l'avvertenza in pagina «non scrivere nomi né indirizzi», e
 nessun campo per i contatti.
+
+**Veloce da scrivere** (Lucio, 04/10). Il campo è una casella con
+suggerimenti: mentre scrivi propone i codici che hai già usato, ordinati per
+uso recente, e in cima c'è sempre «Cliente nuovo → C14», cioè il numero dopo
+l'ultimo. Un cliente che torna si sceglie con due tasti, uno nuovo con uno. Nel
+CSV la colonna `cliente` accetta qualunque testo e lo tratta come codice.
 
 Anche così, un codice può identificare qualcuno. Per questo i ToS del Pro
 avranno una riga: il pro è titolare di quello che scrive, Bob lo conserva per
@@ -393,8 +466,8 @@ si toccano.
 Il dataset è piccolo (6 pro, 34 appuntamenti oggi; nel pilota qualche decina
 di pro e qualche migliaio di righe). Quindi:
 
-- **Una funzione SQL per cruscotto**: `analisi_base(p_da date, p_a date)`,
-  `analisi_avanzate(p_da, p_a, p_con_esterni bool)` e `analisi_ricavi(...)`.
+- **Una funzione SQL per cruscotto**: `analisi_base(p_da date, p_a date)` e
+  `analisi_avanzate(p_da, p_a, p_contro_da, p_contro_a, p_con_esterni bool)`.
   Restituiscono `jsonb`, già aggregato. Lette da una pagina server.
 - **`SECURITY INVOKER`**: il pro legge solo le sue righe perché la RLS lo
   vuole, non perché la funzione lo filtra. Il pro viene ricavato da
@@ -444,8 +517,8 @@ di pro e qualche migliaio di righe). Quindi:
 |---|---|---|---|
 | **0 — subito** | Migrazione: registro degli eventi con i trigger, `completed_at`, comune e servizio sugli appuntamenti, recupero una tantum. Dialogo del pro con `SceltaComune` e il servizio. Riga ROPA A26, nota DPIA. | niente: si può fare anche prima dell'approvazione delle Fasi 1-3 | nessun cambio |
 | **1 — Analisi base** | `analisi_base`, pagina «I tuoi numeri» nell'area del pro, le caselle spostate sul server, l'elenco dei lavori, i conteggi del mese, l'esportazione | Fase 0, risposta 1 del §1.3 | «Analisi base» `SI` sui tre piani |
-| **2 — Analisi avanzate** | `analisi_avanzate`, imbuto, prima risposta, servizi, andamento; ricavi esterni con l'import CSV; copia immagine e copia numeri | Fase 1, risposta 3 | «Analisi avanzate» `SI` su Plus e Business |
-| **3 — Analisi dei ricavi** | `analisi_ricavi`: zone, valore medio, clienti che tornano, saturazione; stagionalità nascosta fino a 13 mesi | Fase 2, risposta 2 | riga nuova `SI` solo sul Business |
+| **2 — Analisi avanzate** | `analisi_avanzate`, imbuto, prima risposta, servizi, andamento, il confronto fra periodi (§3.7); ricavi esterni con l'import CSV; copia immagine e copia numeri | Fase 1 | «Analisi avanzate» `SI` su Plus e Business |
+| **3 — I ricavi** | Dentro le Analisi avanzate: zone, valore medio, clienti che tornano, saturazione; stagionalità nascosta fino a 13 mesi | Fase 2 | nessun cambio: è sempre «Analisi avanzate», Plus e Business |
 
 Ogni fase con la sua PR. La migrazione della Fase 0 si applica **nel giorno
 del merge**, e dopo si fa girare l'advisor di sicurezza (RLS, `SECURITY
