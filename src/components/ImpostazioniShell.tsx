@@ -94,22 +94,16 @@ export function vociImpostazioni(role: UserRole | null): VoceNav[] {
 }
 
 /**
- * IL RITORNO, IN FONDO (01/10, Lucio). Qui c'era il cerchio dell'account, che
- * apriva una tendina verso l'alto: l'unica cosa che si muoveva in una pagina
- * fatta di righe ferme, e un secondo posto da cui fare quello che si fa gia'
- * dal cerchio nell'intestazione. Adesso gli account sono una sezione dentro
- * «Accesso e sicurezza» e qui resta solo la cosa che serviva davvero in fondo
- * a una pagina lunga: tornare da dove si veniva.
+ * IL RITORNO, IN CIMA E UNO SOLO (04/10, Lucio). Il 01/10 stava in fondo alla
+ * colonna, sotto un filetto, e per non sdoppiarsi con quello in cima alla
+ * pagina cambiava a seconda della larghezza: in fondo da md in su, in cima
+ * sotto md, in fondo sempre per lo staff. Tre posti e una regola per fascia di
+ * schermo per una cosa sola. Adesso e' in cima, per tutti e a ogni larghezza:
+ * e' la prima cosa della pagina, prima del titolo, e da qui si esce piu'
+ * spesso di quanto si entri.
  *
- * SI VEDE DA md IN SU, non prima, perche' sotto md c'e' gia' lo stesso link in
- * cima alla pagina (quello dentro `md:hidden`): su un telefono due «indietro»
- * identici, uno sopra e uno sotto, sono un doppione — che e' esattamente il
- * difetto che stiamo togliendo.
- *
- * TRANNE PER LO STAFF, che in cima non ce l'ha: quel link e' dentro un
- * `!staff` perche' un admin non ha un'area di lavoro, ha /admin. Per lui
- * questo e' l'unico ritorno, quindi si vede a ogni larghezza — se no un
- * account staff su telefono resta chiuso nelle impostazioni.
+ * Lo staff torna in /admin e non in /dashboard: non ha un'area di lavoro qui,
+ * e /dashboard lo rimanderebbe comunque li'.
  */
 function RitornoIndietro({
   staff,
@@ -153,11 +147,6 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
   const attivo = (href: string) => pathname === href;
   // /impostazioni nuda e' la griglia: li' la colonna ripeterebbe i riquadri.
   const radice = pathname === "/impostazioni";
-  // Il ritorno in fondo si vede da md in su, dove quello in cima non c'e'
-  // (`md:hidden`). Per lo staff si vede sempre: in cima non ne ha mai uno.
-  // Sta sul CONTENITORE e non sul link, se no sotto md resterebbe in pagina il
-  // filetto grigio sopra il vuoto.
-  const mostraRitorno = staff ? "" : "hidden md:block";
 
   return (
     <div className="container-bob py-8 sm:py-10">
@@ -167,29 +156,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
       <GuidaBarra />
 
       <header className="mb-6">
-        {/* Il ritorno al lavoro sta in cima e per primo: da qui si esce piu'
-            spesso di quanto si entri, e l'etichetta dice dove si torna.
-            SOLO SOTTO md (05/09), esattamente come il link «Impostazioni»
-            della dashboard il 29/08. Da md in su l'header mostra gia' un
-            bottone con la STESSA etichetta e la STESSA destinazione — «Il mio
-            lavoro» / «I miei lavori» verso /dashboard — e su ogni pagina
-            /impostazioni/* i due si vedevano insieme. Sotto md quel bottone
-            vive dentro un blocco `hidden md:flex` e sparisce nel menu ☰:
-            li' questo link e' l'unica strada di ritorno visibile, quindi
-            resta. Terzo doppione nato da 58f4ca5, dopo Impostazioni (29/08) e
-            «Cerca un professionista» (05/09). */}
-        {/* Lo staff non ha un'area di lavoro qui: /dashboard lo rimanda in
-            /admin, che ha la sua voce nel menu. */}
-        {!staff && (
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-bob-ink/70 transition hover:text-bob-indigo md:hidden"
-            data-testid="link-torna-al-lavoro"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            {loading ? "Indietro" : isPro ? "Il mio lavoro" : "I miei lavori"}
-          </Link>
-        )}
+        <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-bob-ink sm:text-3xl">
           Impostazioni
         </h1>
@@ -203,12 +170,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
       </header>
 
       {radice ? (
-        <>
-          {children}
-          <div className={`mt-8 ${mostraRitorno}`}>
-            <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
-          </div>
-        </>
+        children
       ) : (
         <>
           {/* Mobile (fino a lg): fila di sezioni scorrevole. Sborda oltre il
@@ -240,8 +202,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
 
           <div className="lg:grid lg:grid-cols-[228px_1fr] lg:gap-8">
             {/* Desktop: colonna laterale che resta ferma mentre il contenuto
-                scorre, e in fondo il blocco dell'account (modello ProntoPro):
-                sempre li', da qualunque sezione. */}
+                scorre. Solo le sezioni: il ritorno sta in cima alla pagina. */}
             <div className="hidden lg:block">
               <div className="sticky top-24 space-y-4">
                 <nav aria-label="Sezioni delle impostazioni">
@@ -267,18 +228,10 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
                     ))}
                   </ul>
                 </nav>
-                <div className="border-t border-black/5 pt-3">
-                  <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
-                </div>
               </div>
             </div>
 
             <div className="min-w-0">{children}</div>
-          </div>
-
-          {/* Sotto lg la colonna non c'e': il ritorno sta in fondo alla pagina. */}
-          <div className={`mt-8 border-t border-black/5 pt-4 lg:hidden ${mostraRitorno}`}>
-            <RitornoIndietro staff={staff} isPro={isPro} loading={loading} />
           </div>
         </>
       )}
