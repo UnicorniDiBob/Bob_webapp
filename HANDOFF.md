@@ -1,8 +1,8 @@
 # Handoff — 4 ottobre 2026, Lucio (con Claude)
 
-**Fatto:** il calendario del pro non cambia più larghezza da solo. `ProWorkspace` tiene sempre le due colonne (`lg:grid-cols-[1fr_320px]`) e la colonna di fianco (giro del giorno + prossimi appuntamenti) c'è in tutte e quattro le viste; `onViewChange` e lo stato `calView` sono stati tolti perché servivano solo a quello. Il tasto a tutto schermo ora si chiama «Ingrandisci» / «Riduci» (da 640px in su; sotto resta l'icona) e si colora di indaco su mese e anno; a tutto schermo l'anno si stende su sei colonne da xl. `altezzaGriglia` non è toccata. Misurato in locale su una pagina di prova con la stessa griglia: a 390, 1024 e 1440 riquadro, blocco sotto e colonna di fianco hanno le stesse coordinate nelle quattro viste.
-**A metà:** la verifica dal vivo su www.meetonda.com col pro di prova (desktop e 390px, giro fra le quattro viste) va fatta dopo il deploy: nel browser di Claude non c'era una sessione aperta e la password non la può inserire lui.
-**Applicato in produzione:** niente oltre al codice che Vercel manda fuori con il merge. Nessuna migrazione, nessuna variabile.
+**Fatto:** unita #130: il calendario del pro non cambia più larghezza con la vista (due colonne sempre, colonna di fianco in tutte le viste, tasto «Ingrandisci» con nome e colorato su mese e anno; `altezzaGriglia` intatta). Nella PR delle impostazioni il ritorno è uno solo, in cima alla pagina, a ogni larghezza e per tutti (lo staff torna a /admin): tolti il filetto e il link in fondo alla colonna, il blocco in fondo sotto lg e `mostraRitorno`. Misurato in locale a 390, 800 e 1440: un solo link di ritorno visibile e nessun filetto.
+**A metà:** nessuna delle due è stata verificata dal vivo su www.meetonda.com: nel browser di Claude non c'era una sessione aperta. Da fare con il pro di prova (calendario: le quattro viste, desktop e 390) e con cliente, pro e staff (/impostazioni e una sezione interna, desktop e 390).
+**Applicato in produzione:** solo codice, tramite Vercel al merge. Nessuna migrazione, nessuna variabile.
 
 ---
 
