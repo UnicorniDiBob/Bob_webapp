@@ -17,8 +17,9 @@
 //
 // La navigazione e' un solo elenco per ruolo (NAV_PRO / NAV_CLIENTE /
 // NAV_STAFF): per aggiungere una sezione si aggiunge una riga qui e una pagina
-// sotto src/app/impostazioni/. Lo stesso elenco disegna la colonna, le pillole
-// a 390px e la griglia di /impostazioni (30/09, modello Amazon).
+// sotto src/app/impostazioni/. Lo stesso elenco disegna le pillole in cima a
+// ogni sezione e la griglia di /impostazioni (30/09, modello Amazon; la
+// colonna laterale da desktop e' stata tolta il 04/10).
 //
 // LO STAFF HA LE SUE IMPOSTAZIONI (30/09). Fino a qui il guscio si faceva da
 // parte per admin e cs, e le pagine si vedevano senza navigazione: niente
@@ -87,7 +88,7 @@ export function isStaff(role: UserRole | null): boolean {
   return role === "admin" || role === "cs";
 }
 
-/** Le sezioni che vede chi ha questo ruolo: colonna, pillole e griglia. */
+/** Le sezioni che vede chi ha questo ruolo: pillole e griglia. */
 export function vociImpostazioni(role: UserRole | null): VoceNav[] {
   if (isStaff(role)) return NAV_STAFF;
   return role === "professional" ? NAV_PRO : NAV_CLIENTE;
@@ -142,10 +143,10 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
   const staff = isStaff(role);
   // Finche' il ruolo non e' arrivato nessun elenco: disegnare quello del
   // cliente per un istante addosso a un professionista o a un admin e' peggio
-  // di una colonna vuota.
+  // di una fila vuota.
   const nav = loading ? [] : vociImpostazioni(role);
   const attivo = (href: string) => pathname === href;
-  // /impostazioni nuda e' la griglia: li' la colonna ripeterebbe i riquadri.
+  // /impostazioni nuda e' la griglia: li' le pillole ripeterebbero i riquadri.
   const radice = pathname === "/impostazioni";
 
   return (
@@ -173,19 +174,25 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
         children
       ) : (
         <>
-          {/* Mobile (fino a lg): fila di sezioni scorrevole. Sborda oltre il
-              padding del contenitore di proposito, cosi' a 390px si capisce che
-              si scorre invece di sembrare tagliata. */}
+          {/* UNA SOLA NAVIGAZIONE, IN ALTO, A OGNI LARGHEZZA (04/10, Lucio).
+              Da lg in su c'era anche una colonna laterale con le sezioni, e
+              due navigazioni per la stessa cosa erano una di troppo: la
+              colonna si mangiava 228px accanto al contenuto e si leggeva come
+              una barra in piu'. Adesso c'e' solo la fila di pillole: sotto lg
+              scorre e sborda oltre il padding di proposito, cosi' a 390px si
+              capisce che si scorre invece di sembrare tagliata; da lg in su
+              va a capo e sta tutta nella pagina. */}
           <nav
             aria-label="Sezioni delle impostazioni"
-            className="-mx-5 mb-6 overflow-x-auto px-5 lg:hidden"
+            className="-mx-5 mb-6 overflow-x-auto px-5 lg:mx-0 lg:overflow-visible lg:px-0"
           >
-            <ul className="flex w-max gap-2 pb-1">
+            <ul className="flex w-max gap-2 pb-1 lg:w-auto lg:flex-wrap">
               {nav.map((v) => (
                 <li key={v.href}>
                   <Link
                     href={v.href}
                     aria-current={attivo(v.href) ? "page" : undefined}
+                    title={v.hint}
                     className={`inline-flex whitespace-nowrap rounded-full px-3.5 py-2 text-sm font-medium transition ${
                       attivo(v.href)
                         ? "bg-bob-indigo text-white shadow-sm"
@@ -200,39 +207,7 @@ export function ImpostazioniShell({ children }: { children: ReactNode }) {
             </ul>
           </nav>
 
-          <div className="lg:grid lg:grid-cols-[228px_1fr] lg:gap-8">
-            {/* Desktop: colonna laterale che resta ferma mentre il contenuto
-                scorre. Solo le sezioni: il ritorno sta in cima alla pagina. */}
-            <div className="hidden lg:block">
-              <div className="sticky top-24 space-y-4">
-                <nav aria-label="Sezioni delle impostazioni">
-                  <ul className="space-y-1">
-                    {nav.map((v) => (
-                      <li key={v.href}>
-                        <Link
-                          href={v.href}
-                          aria-current={attivo(v.href) ? "page" : undefined}
-                          className={`block rounded-xl px-3.5 py-2.5 transition ${
-                            attivo(v.href)
-                              ? "bg-bob-indigo-50 text-bob-indigo"
-                              : "text-bob-ink/70 hover:bg-black/[0.03] hover:text-bob-ink"
-                          }`}
-                          data-testid={`nav-desktop-${v.href.split("/").pop()}`}
-                        >
-                          <span className="block text-sm font-semibold">{v.label}</span>
-                          <span className="mt-0.5 block text-xs leading-snug text-bob-ink/65">
-                            {v.hint}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-              </div>
-            </div>
-
-            <div className="min-w-0">{children}</div>
-          </div>
+          <div className="min-w-0">{children}</div>
         </>
       )}
     </div>
