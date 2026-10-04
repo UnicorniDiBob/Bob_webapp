@@ -252,6 +252,17 @@ export function ProWorkspace({
           hint={`${stats.completedCount} lavori conclusi`}
         />
       </div>
+      {/* L'Analisi base (04/10): mese per mese, con l'Excel. Uguale per tutti i
+          piani, quindi il link c'e' sempre. */}
+      <div className="-mt-3 flex justify-end">
+        <Link
+          href="/dashboard/numeri"
+          className="text-sm font-medium text-bob-indigo hover:underline"
+          data-testid="link-numeri"
+        >
+          I tuoi numeri, mese per mese →
+        </Link>
+      </div>
 
       {/* DUE COLONNE, SEMPRE (04/10, Lucio). Dal 12/09 mese e anno si
           prendevano la pagina e la colonna di fianco spariva: cambiare vista

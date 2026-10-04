@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { ProCalendar } from "@/components/ProCalendar";
+import SceltaComune, { type ComuneScelto } from "@/components/SceltaComune";
+import { createClient } from "@/lib/supabase/client";
 import {
   createAppointment,
   updateAppointment,
@@ -65,10 +67,68 @@ export function AppointmentDialog({
   // nuovo qui (disclosure progressiva, DATA_COMPLIANCE §4). Nelle prenotazioni
   // dirette l'indirizzo arriva dal cliente stesso al momento della prenotazione.
   const [locAddress, setLocAddress] = useState(existing?.location_address ?? "");
-  const [locCity, setLocCity] = useState(existing?.location_city ?? "");
   const [locNotes, setLocNotes] = useState(existing?.location_notes ?? "");
+  // IL COMUNE E IL SERVIZIO (04/10, Analisi, mig 108). La citta' era testo
+  // libero e il servizio non c'era: su 34 appuntamenti, 28 senza comune e 27
+  // senza servizio, quindi i numeri per zona e per servizio non vedevano
+  // quasi niente di quello che il pro annota da se'. Il comune si sceglie da
+  // elenco (lo stesso campo della base del pro), il servizio fra i suoi.
+  const [comune, setComune] = useState<ComuneScelto | null>(null);
+  // Il comune salvato arriva dal server dopo l'apertura: chi salva prima che
+  // arrivi non deve cancellarlo. Conta solo quello che il pro tocca.
+  const [comuneToccato, setComuneToccato] = useState(false);
+  const [cap, setCap] = useState(existing?.postal_code ?? "");
+  const [servizioId, setServizioId] = useState(
+    existing?.professional_service_id ?? ""
+  );
+  const [servizi, setServizi] = useState<{ id: string; nome: string }[]>([]);
+  // Una citta' scritta a mano prima della 108 resta finche' non si sceglie
+  // un comune: buttarla via aprendo il dialogo sarebbe perdere un dato.
+  const cittaVecchia =
+    !existing?.comune_istat && existing?.location_city
+      ? existing.location_city
+      : null;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    if (existing?.comune_istat) {
+      fetch(`/api/geo/comuni?istat=${encodeURIComponent(existing.comune_istat)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (vivo && d?.comune) setComune(d.comune as ComuneScelto);
+        })
+        .catch(() => null);
+    }
+    createClient()
+      .from("professional_services")
+      .select("id, services(name), subservices(name, superseded_by)")
+      .eq("professional_id", professionalId)
+      .then(({ data }) => {
+        if (!vivo) return;
+        const uno = <T,>(x: T | T[] | null | undefined) =>
+          (Array.isArray(x) ? x[0] : x) ?? null;
+        const elenco = ((data ?? []) as Record<string, unknown>[])
+          .map((r) => {
+            const srv = uno(r.services as { name: string } | null);
+            const sub = uno(
+              r.subservices as { name: string; superseded_by: string | null } | null
+            );
+            if (sub?.superseded_by) return null;
+            return {
+              id: r.id as string,
+              nome: sub?.name ?? srv?.name ?? "Servizio",
+            };
+          })
+          .filter((x): x is { id: string; nome: string } => x !== null)
+          .sort((a, b) => a.nome.localeCompare(b.nome, "it"));
+        setServizi(elenco);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [existing?.comune_istat, professionalId]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -99,8 +159,20 @@ export function AppointmentDialog({
       status,
       notes: notes.trim() || null,
       location_address: locAddress.trim().slice(0, 200) || null,
-      location_city: locCity.trim().slice(0, 80) || null,
+      location_city: comune
+        ? comune.nome
+        : comuneToccato
+          ? null
+          : (existing?.location_city ?? null),
       location_notes: locNotes.trim().slice(0, 300) || null,
+      comune_istat: comune
+        ? comune.istat
+        : comuneToccato
+          ? null
+          : (existing?.comune_istat ?? null),
+      postal_code: /^\d{5}$/.test(cap) ? cap : null,
+      // Su una richiesta il servizio e' gia' quello della richiesta.
+      ...(existing?.request_id ? {} : { professional_service_id: servizioId || null }),
     };
 
     const res = existing
@@ -216,6 +288,27 @@ export function AppointmentDialog({
               data-testid="input-customer"
             />
           </div>
+          {!existing?.request_id && servizi.length > 0 && (
+            <div>
+              <label className="label-bob" htmlFor="servizio-appuntamento">
+                Servizio
+              </label>
+              <select
+                id="servizio-appuntamento"
+                value={servizioId}
+                onChange={(e) => setServizioId(e.target.value)}
+                className="input-bob"
+                data-testid="select-servizio"
+              >
+                <option value="">Non specificato</option>
+                {servizi.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="label-bob">Tipo di lavoro</label>
             <input
@@ -377,29 +470,31 @@ export function AppointmentDialog({
                   data-testid="input-location-address"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="min-w-0">
-                  <label className="label-bob">Città</label>
-                  <input
-                    value={locCity}
-                    onChange={(e) => setLocCity(e.target.value)}
-                    className="input-bob"
-                    placeholder="Es. Milano"
-                    maxLength={80}
-                    data-testid="input-location-city"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <label className="label-bob">Accesso</label>
-                  <input
-                    value={locNotes}
-                    onChange={(e) => setLocNotes(e.target.value)}
-                    className="input-bob"
-                    placeholder="Citofono, piano…"
-                    maxLength={300}
-                    data-testid="input-location-notes"
-                  />
-                </div>
+              <SceltaComune
+                comune={comune}
+                cap={cap}
+                onComune={(c) => {
+                  setComune(c);
+                  setComuneToccato(true);
+                }}
+                onCap={setCap}
+              />
+              {cittaVecchia && !comune && (
+                <p className="text-xs text-bob-ink/65" data-testid="citta-vecchia">
+                  Avevi scritto «{cittaVecchia}». Scegli il comune per
+                  ritrovarlo nei tuoi numeri.
+                </p>
+              )}
+              <div>
+                <label className="label-bob">Accesso</label>
+                <input
+                  value={locNotes}
+                  onChange={(e) => setLocNotes(e.target.value)}
+                  className="input-bob"
+                  placeholder="Citofono, piano…"
+                  maxLength={300}
+                  data-testid="input-location-notes"
+                />
               </div>
             </div>
           </div>

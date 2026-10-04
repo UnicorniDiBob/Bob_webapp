@@ -322,6 +322,11 @@ export interface NewAppointment {
   location_address?: string | null;
   location_city?: string | null;
   location_notes?: string | null;
+  // Per le Analisi (108): dove e che lavoro, senza i quali le scomposizioni
+  // per zona e per servizio non vedono gli appuntamenti creati dal pro.
+  comune_istat?: string | null;
+  postal_code?: string | null;
+  professional_service_id?: string | null;
 }
 
 export async function createAppointment(

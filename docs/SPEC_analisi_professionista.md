@@ -58,16 +58,23 @@ che non si improvvisa.
   scrivere. Vedi §4.3.
 - **Fase 0 approvata.** Si comincia dall'Analisi base.
 
-Resta aperta una domanda sola:
+E la sera del 4 ottobre, l'ultima:
 
-1. **Confermi la linea «conteggio = Free, rapporto = Plus»?** È
+- **L'Analisi base è uguale per tutti, l'avanzata è uguale per Plus e
+  Business.** «Se promettiamo che sia uguale, deve essere uguale.» Quindi i
+  conteggi stanno nella base, e la base non ha nessun controllo di piano,
+  né nella pagina né nella funzione (mig 109).
+- **Excel**: la base si porta in Excel in tre modi: scarica il mese,
+  scarica tutto (un foglio per i mesi e uno per tutti i lavori), copia per
+  Excel (la tabella negli appunti, già in colonne).
+
+~~Domanda aperta: confermi la linea «conteggio = Free, rapporto = Plus»?~~ È
    un'interpretazione della risposta (a), non una cosa che hai detto. In
    alternativa il Free vede solo le quattro caselle e l'elenco dei lavori, e
    l'«Analisi base» del listino diventa quella; ma allora la nota del listino
    («quanti contatti, quanti preventivi…») va riscritta.
 
-   Lucio ha detto «iniziamo dall'Analisi base» senza obiezioni, ma non l'ha
-   confermata in modo esplicito. La Fase 1 la segue.
+   Confermata il 4 ottobre sera.
 
 ---
 
@@ -478,9 +485,12 @@ di pro e qualche migliaio di righe). Quindi:
   01/10).
 - **Nessuna vista materializzata** finché una funzione non supera i 300 ms su
   dati veri. Si misura, non si prevede.
-- **Le quattro caselle si spostano nella funzione `analisi_base`** e
-  `computeStats` diventa una lettura. Così il Free e il Plus non possono
-  avere due «guadagni del mese» diversi.
+- **Le quattro caselle della dashboard restano, per ora, calcolate nel
+  browser** (`computeStats`): si aggiornano subito quando il pro segna un
+  lavoro concluso, senza rileggere il server. La pagina «I tuoi numeri»
+  legge `analisi_base`. Le due strade sono state confrontate sui dati veri
+  il 4 ottobre (7 lavori, 1.620 €, uguali) e, con la base uguale per tutti,
+  il rischio di due «guadagni del mese» diversi fra piani non c'è più.
 
 ### 7.2 Cosa si riusa da `src/app/admin/analisi/AnalisiDashboard.tsx`
 

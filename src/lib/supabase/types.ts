@@ -393,6 +393,11 @@ export interface Appointment {
   // Fino a quante ore prima il cliente puo' disdire da solo (106).
   // Fotografata alla prenotazione diretta; null = non si disdice da qui.
   cancellation_window_hours?: number | null;
+  // Per le Analisi (108): quando e' stato SEGNATO concluso (lo scrive il
+  // trigger), e il comune del lavoro, copiato dalla richiesta o scelto qui.
+  completed_at?: string | null;
+  comune_istat?: string | null;
+  postal_code?: string | null;
 }
 
 export interface ConversationSummary {
