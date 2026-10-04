@@ -19,6 +19,8 @@ const RADICE = join(__dirname, "..", "..");
 const AMMESSI = new Set([
   // la tabella, le policy e la condensazione
   "supabase/migrations/111_ricavi_esterni.sql",
+  // «cancella tutto» del pro, passata a SECURITY INVOKER
+  "supabase/migrations/112_analisi_permessi.sql",
   // la pagina del pro e il suo componente
   "src/app/numeri/esterni/page.tsx",
   "src/components/analisi/RicaviEsterni.tsx",
