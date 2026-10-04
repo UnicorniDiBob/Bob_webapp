@@ -44,6 +44,12 @@
 // Con Plus e Business uguali la riga delle foto esce dall'elenco del Business,
 // che oggi resta «Tutto di Bob Plus» e basta: tutto il resto che li separa
 // e' ancora in arrivo, e in arrivo non entra negli elenchi.
+//
+// L'ANALISI BASE E' INCLUSA, UGUALE PER TUTTI (04/10, decisione di Lucio).
+// Da `ARRIVO` a `SI` sui tre piani con /dashboard/numeri (mig 109): la stessa
+// funzione per Free, Plus e Business, senza nessun controllo di piano dentro.
+// «Se promettiamo che sia uguale, deve essere uguale.» Le Analisi avanzate
+// restano in arrivo, e saranno uguali fra Plus e Business.
 
 import type { SubscriptionTier } from "@/lib/supabase/types";
 
@@ -175,13 +181,13 @@ export const FUNZIONI: Funzione[] = [
   {
     gruppo: "Numeri e amministrazione",
     nome: "Analisi base",
-    nota: "Da dove arriva il tuo lavoro: quanti contatti, quanti preventivi, quanti chiusi.",
-    celle: { free: ARRIVO, pro: ARRIVO, business: ARRIVO },
+    nota: "Il tuo lavoro mese per mese: richieste, proposte, lavori conclusi e importi. Si scarica in Excel.",
+    celle: { free: SI, pro: SI, business: SI },
   },
   {
     gruppo: "Numeri e amministrazione",
     nome: "Analisi avanzate",
-    nota: "Da dove arrivano i tuoi ricavi: per servizio, per zona, per periodo.",
+    nota: "Il ragionamento sui numeri: conversioni, tempi di risposta, servizi, zone e confronto fra periodi.",
     celle: { free: NO, pro: ARRIVO, business: ARRIVO },
   },
   {
