@@ -1,3 +1,11 @@
+# Handoff — 4 ottobre 2026 (pomeriggio), Lucio (con Claude)
+
+**Fatto:** scritta la specifica delle Analisi per il professionista, `docs/SPEC_analisi_professionista.md`, con le due decisioni di Lucio: «Analisi base» resta sui tre piani, e per ora niente confronto con la categoria. Tre cose lette sullo schema vivo cambiano il piano. Gli stati non hanno storia. Le richieste spariscono a cascata quando il cliente cancella l'account, quindi l'imbuto del pro si accorcia all'indietro. E 27 appuntamenti su 34 non hanno né servizio né cliente, 28 nessuna città. Da qui la Fase 0: un registro degli eventi senza dati del cliente, più `completed_at`, comune e servizio sugli appuntamenti. Nessuna riga di codice di prodotto.
+**A metà:** la PR della specifica aspetta l'approvazione di Lucio e le tre risposte del §1.3: conteggi al Free, una riga «Analisi dei ricavi» solo Business, un codice cliente al posto del nome nei ricavi esterni. Il codice parte dopo.
+**Applicato in produzione:** niente. Solo letture sullo schema vivo.
+
+---
+
 # Handoff — 4 ottobre 2026, Lucio (con Claude)
 
 **Fatto:** unita #130: il calendario del pro non cambia più larghezza con la vista (due colonne sempre, colonna di fianco in tutte le viste, tasto «Ingrandisci» con nome e colorato su mese e anno; `altezzaGriglia` intatta). Nella PR delle impostazioni il ritorno è uno solo, in cima alla pagina, a ogni larghezza e per tutti (lo staff torna a /admin): tolti il filetto e il link in fondo alla colonna, il blocco in fondo sotto lg e `mostraRitorno`. Misurato in locale a 390, 800 e 1440: un solo link di ritorno visibile e nessun filetto.
