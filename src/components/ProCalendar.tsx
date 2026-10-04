@@ -30,7 +30,7 @@ import {
 // anno rispondono a «com'e' messo il mese / l'anno», che e' la domanda di chi
 // deve promettere una data a un cliente: non hanno le ore perche' sono mappe,
 // non agende. Si clicca e si scende — dall'anno al mese, dal mese al giorno.
-export type CalView = "week" | "day" | "month" | "year";
+type CalView = "week" | "day" | "month" | "year";
 
 /** Granularità dei click sulle zone vuote: mezz'ora. */
 const SLOT_MINUTES = 30;
@@ -76,7 +76,6 @@ export function ProCalendar({
   onCreateAt,
   onSelect,
   onFocusDayChange,
-  onViewChange,
   selectedId,
   bozza = null,
   onBozzaChange,
@@ -89,11 +88,6 @@ export function ProCalendar({
   onSelect: (a: Appointment) => void;
   /** Giornata "a fuoco": alimenta il giro del giorno accanto al calendario. */
   onFocusDayChange?: (day: Date) => void;
-  /**
-   * Quale vista e' aperta. Serve fuori: mese e anno vogliono tutta la pagina,
-   * e la pagina non puo' saperlo se il calendario non glielo dice.
-   */
-  onViewChange?: (v: CalView) => void;
   selectedId?: string | null;
   /**
    * LO SLOT SCELTO SI VEDE (01/10, Lucio). Prima un click su uno spazio vuoto
@@ -116,6 +110,8 @@ export function ProCalendar({
   // francobollo: per guardare quattro settimane intere serve la finestra
   // tutta, anche da PC. Non usa l'API fullscreen del browser — su iOS non
   // funziona sugli elementi normali — ma un pannello che copre la finestra.
+  // Dal 04/10 e' l'UNICO modo di vedere il calendario grande: cambiare vista
+  // non allarga piu' niente (ProWorkspace).
   const [espanso, setEspanso] = useState(false);
   const [menuVista, setMenuVista] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -129,11 +125,6 @@ export function ProCalendar({
       setView("day");
     }
   }, []);
-
-  useEffect(() => {
-    onViewChange?.(view);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view]);
 
   // Il pannello delle viste si chiude cliccando fuori.
   useEffect(() => {
@@ -580,9 +571,21 @@ export function ProCalendar({
           >
             ›
           </button>
+          {/* IL TASTO HA UN NOME (04/10, Lucio). Era un'icona sola accanto a
+              «Oggi», e finche' mese e anno si allargavano da soli bastava.
+              Adesso e' l'unica strada per il calendario grande, quindi si
+              legge: «Ingrandisci» / «Riduci». Su mese e anno, le viste che
+              ne hanno bisogno, si colora: e' li' che va trovato. Sotto i
+              640px la parola non ci sta (a 390 la barra sbordava di 17px in
+              settimana) e resta l'icona colorata: sul telefono il calendario
+              e' gia' largo quanto la pagina. */}
           <button
             onClick={() => setEspanso((v) => !v)}
-            className="rounded-lg border border-black/10 px-2.5 py-1.5 text-bob-ink/70 transition hover:bg-black/[0.03]"
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+              !espanso && (view === "month" || view === "year")
+                ? "border-bob-indigo/30 bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-50/70"
+                : "border-black/10 text-bob-ink/75 hover:bg-black/[0.03]"
+            }`}
             aria-label={
               espanso ? "Riduci il calendario" : "Calendario a tutto schermo"
             }
@@ -590,10 +593,13 @@ export function ProCalendar({
             data-testid="cal-fullscreen"
           >
             {espanso ? (
-              <Minimize2 className="h-4 w-4" aria-hidden="true" />
+              <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
             ) : (
-              <Maximize2 className="h-4 w-4" aria-hidden="true" />
+              <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
             )}
+            <span className="hidden sm:inline">
+              {espanso ? "Riduci" : "Ingrandisci"}
+            </span>
           </button>
         </div>
       </div>
@@ -605,8 +611,11 @@ export function ProCalendar({
         />
       ) : view === "year" ? (
         <div
-          className={`grid auto-rows-min grid-cols-2 content-start overflow-y-auto overscroll-contain sm:grid-cols-3 lg:grid-cols-4 ${
-            espanso ? "gap-4" : "gap-3"
+          // Le colonne seguono la larghezza vera: nella colonna del cruscotto
+          // quattro mesi in fila stanno solo da xl in su, a tutto schermo
+          // l'anno si stende su sei e si vede in due righe.
+          className={`grid auto-rows-min grid-cols-2 content-start overflow-y-auto overscroll-contain sm:grid-cols-3 ${
+            espanso ? "gap-4 lg:grid-cols-4 xl:grid-cols-6" : "gap-3 xl:grid-cols-4"
           }`}
           style={{ height: altezzaGriglia }}
           data-testid="cal-year"
