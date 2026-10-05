@@ -609,8 +609,8 @@ export default function InstantBookingDialog({
             {service.cancellation_window_hours != null && (
               <p className="text-xs text-bob-ink/65">
                 Potrai disdire dalla tua area personale fino a{" "}
-                {service.cancellation_window_hours} ore prima. Dopo, solo
-                d&apos;accordo con il professionista.
+                {service.cancellation_window_hours} ore prima. Dopo, per
+                annullare chiami il professionista.
               </p>
             )}
 

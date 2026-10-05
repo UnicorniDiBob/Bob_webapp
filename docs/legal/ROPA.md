@@ -90,11 +90,12 @@ DATA_COMPLIANCE.md §8.
 | **Finalità** | Fissare, confermare e gestire l'incontro |
 | **Base giuridica** | Contratto — art. 6(1)(b) |
 | **Interessati** | Clienti, professionisti |
-| **Dati** | Data e ora, luogo (`location_address`), stato, disponibilità del professionista |
-| **Tabelle** | `appointments`, `professional_availability`, `professional_availability_blocks` |
-| **Destinatari** | Le due parti; staff admin/cs |
-| **Conservazione** | Come A2 |
-| **Sicurezza** | RLS; la conferma dell'appuntamento è il fatto che apre l'indirizzo (vedi A3) |
+| **Dati** | Data e ora, luogo (`location_address`), stato, disponibilità del professionista. Dalla migrazione 113: preavviso per annullare del professionista e quello fotografato sull'appuntamento; **storico di ogni appuntamento con un cliente** (`appointment_events`: chi ha prenotato, proposto, confermato, spostato da che ora a che ora, annullato, e il **motivo scritto a mano**, se l'annullamento è stato concordato al telefono). Dopo la conferma, il **numero di telefono dell'altra parte**, solo per «Chiama per annullare» dentro il preavviso |
+| **Tabelle** | `appointments`, `appointment_events`, `professional_availability`, `professional_availability_blocks`; `professionals.preavviso_annullamento_ore`, `requests.closed_reason` |
+| **Destinatari** | Le due parti. Lo staff admin/cs non ha policy di lettura su `appointments` né su `appointment_events` |
+| **Conservazione** | Come A2. `appointment_events` vive con la richiesta e con il professionista (cascade): alla cancellazione dell'account del cliente le sue richieste spariscono e lo storico con loro, come la chat (A4) |
+| **Sicurezza** | RLS; la conferma dell'appuntamento è il fatto che apre l'indirizzo (vedi A3) e il telefono dell'altra parte (`contatto_controparte()`, SECURITY DEFINER: `profile_phone` resta leggibile solo dal proprietario). Lo storico lo scrive solo un trigger; le parti lo leggono, nessuno lo modifica dal browser |
+| **Note** | *Aggiornata il 5 ottobre 2026, con la migrazione 113.* Il motivo di un annullamento è testo libero: può contenere categorie particolari non richieste («sono in ospedale»). Vale quanto scritto per la chat (A4): non si chiede, non si usa per altro, non si ripete. Entra nell'export dell'art. 15/20 dentro ogni appuntamento |
 
 ## A6 — Recensioni e punteggi
 

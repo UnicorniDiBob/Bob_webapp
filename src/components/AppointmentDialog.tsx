@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProCalendar } from "@/components/ProCalendar";
 import SceltaComune, { type ComuneScelto } from "@/components/SceltaComune";
 import { createClient } from "@/lib/supabase/client";
@@ -8,8 +8,16 @@ import {
   createAppointment,
   updateAppointment,
   deleteAppointment,
+  ERRORE_SOVRAPPOSIZIONE,
+  TESTO_SOVRAPPOSIZIONE,
   type NewAppointment,
 } from "@/lib/messages";
+import {
+  busyFromAppointments,
+  fuoriDalleFasce,
+  siSovrappone,
+  type AvailabilityWindow,
+} from "@/lib/slots";
 import type { Appointment } from "@/lib/supabase/types";
 import { notifyEvent } from "@/lib/notify";
 
@@ -90,6 +98,66 @@ export function AppointmentDialog({
       : null;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // SPOSTARE CONTROLLA QUALCOSA (113, 05/10). Prima il dialog salvava
+  // qualunque orario: addosso a un altro appuntamento, o fuori dalle fasce
+  // del pro. Adesso lo dice prima di salvare. Sono avvisi, e un secondo clic
+  // («Salva lo stesso») li supera: un sabato concordato a voce e' legittimo,
+  // e una voce privata sopra un'altra e' affare del pro. Il divieto vero —
+  // due appuntamenti con un cliente nello stesso orario — sta nel database
+  // (vincolo della 113), e quello non si supera.
+  const [finestre, setFinestre] = useState<AvailabilityWindow[]>([]);
+  const [avvisiVisti, setAvvisiVisti] = useState(false);
+  const [confermaElimina, setConfermaElimina] = useState(false);
+  // Un appuntamento confermato con un cliente si annulla dal pannello di
+  // dettaglio (motivo, preavviso, messaggio in chat): non da questo menu.
+  const conCliente = Boolean(existing?.request_id);
+  const confermatoConCliente = conCliente && existing?.status === "confirmed";
+  const attivoConCliente =
+    conCliente &&
+    (existing?.status === "confirmed" || existing?.status === "proposed");
+
+  useEffect(() => {
+    let vivo = true;
+    createClient()
+      .from("professional_availability")
+      .select("weekday, start_time, end_time")
+      .eq("professional_id", professionalId)
+      .then(({ data }) => {
+        if (!vivo) return;
+        setFinestre(
+          ((data ?? []) as { weekday: number; start_time: string; end_time: string }[]).map(
+            (w) => ({
+              weekday: w.weekday,
+              start: w.start_time.slice(0, 5),
+              end: w.end_time.slice(0, 5),
+            })
+          )
+        );
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [professionalId]);
+
+  const inizioScelto = useMemo(() => new Date(startsAt), [startsAt]);
+  const fuoriOrario = useMemo(
+    () => status !== "cancelled" && fuoriDalleFasce(inizioScelto, duration, finestre),
+    [status, inizioScelto, duration, finestre]
+  );
+  const sovrapposto = useMemo(
+    () =>
+      status !== "cancelled" &&
+      siSovrappone(
+        inizioScelto,
+        duration,
+        busyFromAppointments(appointments.filter((a) => a.id !== existing?.id))
+      ),
+    [status, inizioScelto, duration, appointments, existing?.id]
+  );
+  // Un avviso visto vale per l'orario per cui e' stato visto.
+  useEffect(() => {
+    setAvvisiVisti(false);
+  }, [startsAt, duration]);
 
   useEffect(() => {
     let vivo = true;
@@ -147,6 +215,10 @@ export function AppointmentDialog({
       setError("Inserisci il nome del cliente.");
       return;
     }
+    if ((fuoriOrario || sovrapposto) && !avvisiVisti) {
+      setAvvisiVisti(true);
+      return;
+    }
     setSaving(true);
     setError(null);
 
@@ -181,7 +253,13 @@ export function AppointmentDialog({
 
     setSaving(false);
     if (res.error) {
-      setError("Salvataggio non riuscito. Riprova.");
+      setError(
+        "code" in res && res.code === ERRORE_SOVRAPPOSIZIONE
+          ? TESTO_SOVRAPPOSIZIONE
+          : res.error.includes("Annulla appuntamento")
+            ? "Per annullarlo usa «Annulla appuntamento» nel dettaglio: avvisa il cliente e ti chiede il motivo."
+            : "Salvataggio non riuscito. Riprova."
+      );
       return;
     }
     // Spostato o annullato con un cliente dall'altra parte: il messaggio in
@@ -218,6 +296,10 @@ export function AppointmentDialog({
 
   async function handleDelete() {
     if (!existing) return;
+    if (!confermaElimina) {
+      setConfermaElimina(true);
+      return;
+    }
     setSaving(true);
     const res = await deleteAppointment(existing.id);
     setSaving(false);
@@ -435,7 +517,9 @@ export function AppointmentDialog({
                 )}
                 <option value="confirmed">Confermato</option>
                 <option value="completed">Completato</option>
-                <option value="cancelled">Annullato</option>
+                {(!confermatoConCliente || existing?.status === "cancelled") && (
+                  <option value="cancelled">Annullato</option>
+                )}
               </select>
             </div>
           </div>
@@ -450,7 +534,8 @@ export function AppointmentDialog({
             >
               {existing.customer_name || "Il cliente"} vede questo appuntamento.
               Se cambi giorno, ora o durata gli arriva in chat e torna da
-              confermare; se lo annulli o lo elimini, glielo scriviamo noi.
+              confermare. Per annullarlo usa «Annulla appuntamento» nel
+              dettaglio: ti chiede il motivo e lo avvisa in chat.
             </p>
           )}
           {/* Luogo: serve al pro per sapere dove andare e per il giro del giorno */}
@@ -522,15 +607,34 @@ export function AppointmentDialog({
               {error}
             </p>
           )}
+          {(sovrapposto || fuoriOrario) && (
+            <p
+              className={`mb-2.5 text-sm ${sovrapposto ? "text-red-600" : "text-amber-800"}`}
+              data-testid="text-appt-avviso"
+            >
+              {sovrapposto
+                ? "Si sovrappone a un altro tuo appuntamento."
+                : "È fuori dalle fasce orarie che hai dichiarato."}
+              {avvisiVisti && " Se va bene così, salva di nuovo."}
+            </p>
+          )}
+          {confermaElimina && (
+            <p className="mb-2.5 text-sm text-red-600" data-testid="text-conferma-elimina">
+              Lo tolgo dal calendario per sempre. Clicca di nuovo «Elimina» per
+              confermare.
+            </p>
+          )}
           <div className="flex items-center gap-2">
-            {existing && (
+            {/* Un appuntamento attivo con un cliente non si elimina: si
+                annulla, cosi' lui lo sa (anche il database lo rifiuta, 113). */}
+            {existing && !attivoConCliente && (
               <button
                 onClick={handleDelete}
                 disabled={saving}
                 className="btn-ghost text-red-600 hover:bg-red-50"
                 data-testid="button-delete-appt"
               >
-                Elimina
+                {confermaElimina ? "Elimina davvero" : "Elimina"}
               </button>
             )}
             <button
@@ -539,7 +643,13 @@ export function AppointmentDialog({
               className="btn-primary ml-auto px-5 py-2.5"
               data-testid="button-save-appt"
             >
-              {saving ? "Salvo…" : existing ? "Salva modifiche" : "Aggiungi"}
+              {saving
+                ? "Salvo…"
+                : avvisiVisti && (sovrapposto || fuoriOrario)
+                  ? "Salva lo stesso"
+                  : existing
+                    ? "Salva modifiche"
+                    : "Aggiungi"}
             </button>
           </div>
         </div>

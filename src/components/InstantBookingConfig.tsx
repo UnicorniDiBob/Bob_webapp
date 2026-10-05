@@ -2,12 +2,14 @@
 
 // Prenotazione diretta (instant booking) — configurazione lato professionista.
 // Per ogni subservice idoneo (instant_book_eligible) che il pro offre, permette
-// di impostare tariffa, unità, minimo, durata slot e finestra di cancellazione,
-// e di attivare/disattivare la prenotazione diretta.
+// di impostare tariffa, unità, minimo e durata slot, e di attivare/disattivare
+// la prenotazione diretta.
 //
 // Vincoli replicati dal trigger DB (migration 028): per attivare servono
-// rate_amount, rate_unit, min_units, slot_duration_min e una finestra di
-// cancellazione >= MIN_CANCELLATION_WINDOW_HOURS. Il salvataggio crea/aggiorna
+// rate_amount, rate_unit, min_units, slot_duration_min. La finestra di
+// cancellazione per servizio non c'e' piu' (113, 05/10): il preavviso per
+// annullare e' uno solo, del professionista, in «Orari» sopra questo riquadro,
+// e vale per tutti i suoi appuntamenti con un cliente. Il salvataggio crea/aggiorna
 // una riga professional_services dedicata, con subservice_id valorizzato
 // (separata dalla riga "servizio principale" a forbice usata per i preventivi).
 //
@@ -17,7 +19,6 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
-  MIN_CANCELLATION_WINDOW_HOURS,
   RATE_UNIT_LABELS,
   type BookingField,
   type RateUnit,
@@ -42,7 +43,6 @@ interface Cfg {
   rate: string;
   minUnits: string;
   slotDuration: string;
-  cancelHours: string;
 }
 
 function billableLabelOf(fields: BookingField[]): string {
@@ -148,7 +148,7 @@ export default function InstantBookingConfig({
       const { data: existing } = await supabase
         .from("professional_services")
         .select(
-          "id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours"
+          "id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min"
         )
         .eq("professional_id", professionalId)
         .in(
@@ -176,10 +176,6 @@ export default function InstantBookingConfig({
           minUnits: r?.min_units != null ? String(r.min_units) : "1",
           slotDuration:
             r?.slot_duration_min != null ? String(r.slot_duration_min) : "60",
-          cancelHours:
-            r?.cancellation_window_hours != null
-              ? String(r.cancellation_window_hours)
-              : String(MIN_CANCELLATION_WINDOW_HOURS),
         };
       });
 
@@ -205,12 +201,9 @@ export default function InstantBookingConfig({
     const rate = Number(c.rate);
     const min = Number(c.minUnits);
     const slot = Number(c.slotDuration);
-    const cancel = Number(c.cancelHours);
     if (!(rate > 0)) return `${c.name}: inserisci una tariffa valida.`;
     if (!(min > 0)) return `${c.name}: il minimo deve essere maggiore di zero.`;
     if (!(slot > 0)) return `${c.name}: la durata dello slot non è valida.`;
-    if (!(cancel >= MIN_CANCELLATION_WINDOW_HOURS))
-      return `${c.name}: la finestra di cancellazione deve essere di almeno ${MIN_CANCELLATION_WINDOW_HOURS} ore.`;
     return null;
   }
 
@@ -239,9 +232,6 @@ export default function InstantBookingConfig({
           rate_unit: c.unit,
           min_units: c.minUnits ? Number(c.minUnits) : null,
           slot_duration_min: c.slotDuration ? Number(c.slotDuration) : null,
-          cancellation_window_hours: c.cancelHours
-            ? Number(c.cancelHours)
-            : null,
         };
 
         if (c.rowId) {
@@ -389,26 +379,6 @@ export default function InstantBookingConfig({
                     className="input-bob"
                     placeholder="Es. 60"
                   />
-                </div>
-                <div>
-                  <label className="label-bob">
-                    Il cliente può disdire fino a (ore prima)
-                  </label>
-                  <input
-                    type="number"
-                    min={MIN_CANCELLATION_WINDOW_HOURS}
-                    value={c.cancelHours}
-                    onChange={(e) =>
-                      patch(c.subserviceId, { cancelHours: e.target.value })
-                    }
-                    className="input-bob"
-                    placeholder={String(MIN_CANCELLATION_WINDOW_HOURS)}
-                  />
-                  <p className="mt-1 text-xs text-bob-ink/65">
-                    {"Minimo "}
-                    {MIN_CANCELLATION_WINDOW_HOURS}
-                    {" ore, imposto dalla piattaforma. Vale per le prenotazioni che arrivano da ora: quelle già prese tengono la finestra del giorno in cui sono state fatte."}
-                  </p>
                 </div>
               </div>
             )}

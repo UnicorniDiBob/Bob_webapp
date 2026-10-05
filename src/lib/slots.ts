@@ -145,3 +145,42 @@ export function computeFreeSlotsWithAvailability(opts: {
   out.sort((a, b) => a.getTime() - b.getTime());
   return out;
 }
+
+// --- Avvisi per chi fissa un orario a mano (113) ------------------------------
+// Il pro sceglie lui l'orario (dialog del calendario, proposta in chat): qui
+// non si calcolano slot, si dice soltanto se quello scelto cade fuori dalle
+// fasce dichiarate o addosso a un altro impegno. Sono AVVISI: il divieto vero,
+// per due appuntamenti con un cliente nello stesso orario, e' nel database.
+
+/**
+ * Vero se l'intervallo non sta tutto dentro una fascia dello stesso giorno.
+ * Ora locale del browser, come il campo da cui arriva. Con zero fasce salvate
+ * non c'e' niente da cui essere fuori: false.
+ */
+export function fuoriDalleFasce(
+  inizio: Date,
+  durataMinuti: number,
+  finestre: AvailabilityWindow[]
+): boolean {
+  if (finestre.length === 0 || isNaN(inizio.getTime())) return false;
+  const da = inizio.getHours() * 60 + inizio.getMinutes();
+  const a = da + durataMinuti;
+  return !finestre.some((w) => {
+    if (w.weekday !== inizio.getDay()) return false;
+    const [h1, m1] = w.start.split(":").map(Number);
+    const [h2, m2] = w.end.split(":").map(Number);
+    return da >= h1 * 60 + m1 && a <= h2 * 60 + m2;
+  });
+}
+
+/** Vero se [inizio, inizio+durata) tocca uno degli intervalli occupati. */
+export function siSovrappone(
+  inizio: Date,
+  durataMinuti: number,
+  occupato: BusyInterval[]
+): boolean {
+  const s = inizio.getTime();
+  if (isNaN(s)) return false;
+  const e = s + durataMinuti * 60000;
+  return occupato.some((b) => s < b.end && e > b.start);
+}

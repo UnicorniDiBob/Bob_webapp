@@ -193,6 +193,7 @@ export async function raccogliDatiCliente(
     messaggi,
     apptPerCliente,
     apptPerRichiesta,
+    storicoAppuntamenti,
     recensioni,
     brief,
   ] = await Promise.all([
@@ -203,6 +204,10 @@ export async function raccogliDatiCliente(
     // quelle nate da una proposta in chat, che hanno customer_id NULL.
     leggi(admin, "appointments", "customer_id", utente.id),
     leggiIn(admin, "appointments", "request_id", idRichieste),
+    // Lo storico di ogni appuntamento (113): chi ha prenotato, spostato,
+    // annullato e con quale motivo. Vive con la richiesta, quindi si legge
+    // per richiesta come la chat.
+    leggiIn(admin, "appointment_events", "request_id", idRichieste),
     leggi(admin, "ratings", "customer_id", utente.id),
     // per user_id e non per richiesta: un brief nato in chat e mai diventato
     // una richiesta e' comunque un dato che la persona ci ha dato.
@@ -308,6 +313,19 @@ export async function raccogliDatiCliente(
     appuntamenti: appuntamenti.map((r) => ({
       ...senza(r, "customer_id"),
       professionista: nomePro[String(r.professional_id)] ?? null,
+      // autore_id e' un id interno: «tu» o il professionista dice di piu'.
+      storico: storicoAppuntamenti
+        .filter((e) => e.appointment_id === r.id)
+        .sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")))
+        .map((e) => ({
+          ...senza(e, "autore_id"),
+          autore:
+            e.autore === "customer"
+              ? "tu"
+              : e.autore === "professional"
+                ? nomePro[String(r.professional_id)] ?? "Professionista"
+                : "Bob",
+        })),
     })),
     recensioni_che_hai_scritto: recensioni.map((r) => ({
       ...senza(r, "customer_id"),

@@ -21,6 +21,7 @@ import {
 } from "@/components/SectionStates";
 import AvailabilityEditor from "@/components/AvailabilityEditor";
 import InstantBookingConfig from "@/components/InstantBookingConfig";
+import PreavvisoAnnullamento from "@/components/PreavvisoAnnullamento";
 
 export default function OrariPage() {
   const router = useRouter();
@@ -56,6 +57,19 @@ export default function OrariPage() {
         </p>
         <div className="mt-3">
           <AvailabilityEditor professionalId={pro.id} />
+        </div>
+      </div>
+
+      <div className="card p-5">
+        <h3 className="text-sm font-semibold text-bob-ink">
+          Annullare un appuntamento
+        </h3>
+        <p className="mt-1 text-sm text-bob-ink/70">
+          Vale per tutti i tuoi appuntamenti con un cliente, prenotati online o
+          fissati in chat, e vale per entrambi.
+        </p>
+        <div className="mt-3">
+          <PreavvisoAnnullamento professionalId={pro.id} />
         </div>
       </div>
 

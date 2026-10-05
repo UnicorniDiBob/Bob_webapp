@@ -113,8 +113,19 @@ export async function POST(request: Request) {
     })
     .select("id")
     .single();
-  if (insErr || !created)
+  if (insErr || !created) {
+    // Lo slot l'ha preso qualcun altro fra il controllo qui sopra e l'INSERT:
+    // lo ferma il vincolo della 113 (23P01). La proposta del pro torna com'era,
+    // altrimenti resterebbe rifiutata senza che il cliente l'abbia deciso.
+    if (insErr?.code === "23P01") {
+      await admin.from("appointments").update({ status: "proposed" }).eq("id", appt.id);
+      return NextResponse.json(
+        { error: "Questo orario non è più disponibile: scegline un altro." },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: "Salvataggio fallito" }, { status: 500 });
+  }
 
   // Traccia in chat, nel thread giusto.
   // timeZone esplicita: il server gira in UTC, il messaggio deve dire
