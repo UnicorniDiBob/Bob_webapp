@@ -13,6 +13,14 @@
 // pro, poi l'appuntamento che la cita. E la finestra di disdetta si fotografa
 // sull'appuntamento: e' la promessa fatta oggi, non quella che il pro
 // scrivera' domani nella sua configurazione.
+//
+// LO SLOT E' UNO SOLO DAVVERO (113, 05/10). Il controllo «slot libero» qui
+// sotto e l'INSERT sono due istruzioni: due clienti nello stesso istante
+// passavano entrambi. Adesso il secondo lo ferma il database (vincolo
+// appuntamenti_cliente_senza_sovrapposizioni, errore 23P01) e riceve lo
+// stesso 409 di chi trova lo slot gia' preso. E il preavviso per annullare
+// non e' piu' quello del servizio: e' quello del professionista, e lo
+// fotografa il database alla conferma (trigger proteggi_finestra_disdetta).
 
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
@@ -88,7 +96,7 @@ export async function POST(request: Request) {
   const { data: ps } = await admin
     .from("professional_services")
     .select(
-      "id, professional_id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, professionals!inner ( deactivated_at, city_id )"
+      "id, professional_id, subservice_id, instant_book_enabled, rate_amount, rate_unit, min_units, slot_duration_min, professionals!inner ( deactivated_at, city_id )"
     )
     .eq("id", psid)
     .maybeSingle();
@@ -249,13 +257,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Prenotazione non riuscita" }, { status: 500 });
   }
 
-  // 8. Crea l'appuntamento confermato.
-  const finestra = ps.cancellation_window_hours ?? null;
+  // 8. Crea l'appuntamento confermato. Il preavviso lo scrive il database.
   const { data: ins, error: insErr } = await admin
     .from("appointments")
     .insert({
       request_id: req.id,
-      cancellation_window_hours: finestra,
       professional_id: ps.professional_id,
       customer_id: user.id,
       professional_service_id: ps.id,
@@ -270,14 +276,21 @@ export async function POST(request: Request) {
       booking_answers: answers,
       ...location,
     })
-    .select("id")
+    .select("id, cancellation_window_hours")
     .single();
   if (insErr || !ins) {
     // La richiesta senza appuntamento sarebbe un lavoro fantasma
     // nell'area personale: si toglie (il collegamento va con lei, cascade).
     await annullaRichiesta();
+    if (insErr?.code === "23P01") {
+      return NextResponse.json(
+        { error: "Questo orario non è più disponibile: scegline un altro." },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ error: "Prenotazione non riuscita" }, { status: 500 });
   }
+  const finestra = (ins.cancellation_window_hours as number | null) ?? null;
 
   // 9. IL PRO LO SA (01/10, 107). Prima una prenotazione finiva nel suo
   // calendario e basta: se non lo apriva, non lo sapeva. Adesso c'e' un

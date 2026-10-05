@@ -18,11 +18,13 @@ import { ReviewDialog } from "@/components/ReviewDialog";
 import { sendMessage } from "@/lib/messages";
 import { notifyEvent } from "@/lib/notify";
 import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
-import { statoDisdetta } from "@/lib/disdettaPrenotazione";
+import { AnnullaAppuntamento } from "@/components/AnnullaAppuntamento";
 
 interface CustomerRequest {
   id: string;
   status: string;
+  /** «disdetto» = prenotazione annullata (113): non e' un lavoro fatto. */
+  closed_reason: string | null;
   problem_description: string | null;
   created_at: string | null;
   service: { name: string } | null;
@@ -41,17 +43,6 @@ interface Appointment {
   proposed_by: "professional" | "customer";
   source: "pro" | "direct" | null;
   cancellation_window_hours: number | null;
-}
-
-/** «giovedì 9 ottobre, 10:00»: il termine della disdetta, scritto per intero. */
-function fmtTermine(d: Date) {
-  return d.toLocaleString("it-IT", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 const OPEN_STATUSES = ["sent", "quote_request", "matched"];
@@ -79,28 +70,37 @@ function fmtDayParts(d: string) {
 }
 
 // Timeline di stato: mostra al cliente a che punto è il lavoro.
+// L'APPUNTAMENTO CONTA ANCHE QUANDO E' DA CONFERMARE (113, 05/10). Prima la
+// barra guardava solo i «confirmed»: quando il pro spostava un orario gia'
+// accettato, il database lo riportava a «proposed» (107) e la barra tornava
+// a «In contatto» proprio mentre al cliente toccava rispondere. Adesso resta
+// su «Appuntamento» e dice «da confermare».
+type StatoAppuntamento = "confermato" | "da-confermare" | null;
+
 function StatusTimeline({
   status,
-  hasAppointment,
+  appuntamento,
   quoteCount,
 }: {
   status: string;
-  hasAppointment: boolean;
+  appuntamento: StatoAppuntamento;
   quoteCount: number;
 }) {
   const isQuote = status === "quote_request";
+  const passoAppuntamento =
+    appuntamento === "da-confermare" ? "Appuntamento da confermare" : "Appuntamento";
   const steps = [
     "Inviata",
     ...(isQuote ? [quoteCount > 1 ? `${quoteCount} pro contattati` : "Preventivo chiesto"] : []),
     "In contatto",
-    "Appuntamento",
+    passoAppuntamento,
     "Conclusa",
   ];
   const currentIdx =
     status === "closed"
       ? steps.length - 1
-      : hasAppointment
-      ? steps.indexOf("Appuntamento")
+      : appuntamento
+      ? steps.indexOf(passoAppuntamento)
       : status === "matched"
       ? steps.indexOf("In contatto")
       : isQuote
@@ -156,17 +156,13 @@ export function CustomerHome() {
   const [orariConfermati, setOrariConfermati] = useState(true);
   const [slotSaving, setSlotSaving] = useState(false);
   const [slotErr, setSlotErr] = useState<string | null>(null);
-  const [disdicendo, setDisdicendo] = useState<string | null>(null);
-  const [disdettaErr, setDisdettaErr] = useState<{ id: string; testo: string } | null>(
-    null
-  );
 
   const load = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from("requests")
       .select(
-        "id, status, problem_description, created_at, services ( name ), cities ( name ), request_professionals ( professional_id, professionals ( id, user_id ) )"
+        "id, status, closed_reason, problem_description, created_at, services ( name ), cities ( name ), request_professionals ( professional_id, professionals ( id, user_id ) )"
       )
       .eq("customer_id", user.id)
       // «draft» = mai partita. Ci finiscono le richieste declassate quando la
@@ -212,6 +208,7 @@ export function CustomerHome() {
       return {
         id: r.id as string,
         status: r.status as string,
+        closed_reason: (r.closed_reason as string | null) ?? null,
         problem_description: (r.problem_description as string) ?? null,
         created_at: (r.created_at as string) ?? null,
         service: r.services as { name: string } | null,
@@ -314,40 +311,6 @@ export function CustomerHome() {
     setRespondingAppt(null);
   }
 
-  // LA DISDETTA LA DECIDE IL SERVER (01/10). Qui si chiede e si mostra
-  // l'esito; se la finestra e' chiusa la route risponde no anche se questa
-  // pagina, aperta da ore, mostrava ancora il bottone.
-  async function disdici(a: Appointment) {
-    const { dow, day, time } = fmtDayParts(a.starts_at);
-    if (
-      !window.confirm(
-        `Disdire la prenotazione di ${dow} ${day} alle ${time} con ${proName(
-          a.professional_id
-        )}? Glielo scriviamo noi in chat.`
-      )
-    )
-      return;
-    setDisdicendo(a.id);
-    setDisdettaErr(null);
-    try {
-      const res = await fetch(`/api/appointments/${a.id}/disdici`, {
-        method: "POST",
-      });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setDisdettaErr({
-          id: a.id,
-          testo: (d as { error?: string }).error ?? "Disdetta non riuscita. Riprova.",
-        });
-      } else {
-        await load();
-      }
-    } catch {
-      setDisdettaErr({ id: a.id, testo: "Disdetta non riuscita. Riprova." });
-    }
-    setDisdicendo(null);
-  }
-
   async function openSlotPicker(a: Appointment) {
     setSlotPickerFor(a);
     setSlots([]);
@@ -405,9 +368,15 @@ export function CustomerHome() {
 
   const openRequests = requests.filter((r) => OPEN_STATUSES.includes(r.status));
   const closedRequests = requests.filter((r) => r.status === "closed");
-  const apptByRequest = new Set(
-    appointments.filter((a) => a.status === "confirmed").map((a) => a.request_id)
-  );
+  // Una prenotazione disdetta non si recensisce: non e' un lavoro fatto, e la
+  // policy delle recensioni la rifiuta comunque (113).
+  const recensibile = (r: CustomerRequest) => r.closed_reason !== "disdetto";
+  const apptByRequest = new Map<string | null, StatoAppuntamento>();
+  for (const a of appointments) {
+    if (a.status === "confirmed") apptByRequest.set(a.request_id, "confermato");
+    else if (a.status === "proposed" && !apptByRequest.has(a.request_id))
+      apptByRequest.set(a.request_id, "da-confermare");
+  }
 
   // ---- Da fare ora ----
   type Todo = { key: string; text: string; sub: string; node: React.ReactNode };
@@ -503,11 +472,17 @@ export function CustomerHome() {
     }
   }
   for (const r of closedRequests) {
-    if (r.pros.length > 0 && r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`))) {
+    if (
+      recensibile(r) &&
+      r.pros.length > 0 &&
+      r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`))
+    ) {
       todos.push({
         key: `review-${r.id}`,
         text: `Com'è andata con ${r.pros[0]?.name}?`,
-        sub: `${r.service?.name ?? "Lavoro"} concluso · la tua recensione aiuta gli altri`,
+        // La data distingue due lavori con lo stesso pro e lo stesso
+        // servizio: senza, erano righe identiche (rilievo del 3/10).
+        sub: `${r.service?.name ?? "Lavoro"} del ${fmtDate(r.created_at)} · la tua recensione aiuta gli altri`,
         node: (
           <button
             onClick={() => setReviewFor(r)}
@@ -638,7 +613,7 @@ export function CustomerHome() {
                     </div>
                     <StatusTimeline
                       status={r.status}
-                      hasAppointment={apptByRequest.has(r.id)}
+                      appuntamento={apptByRequest.get(r.id) ?? null}
                       quoteCount={r.pros.length}
                     />
                     {r.pros.length > 1 ? (
@@ -721,7 +696,6 @@ export function CustomerHome() {
                 const { dow, day, time } = fmtDayParts(a.starts_at);
                 const req = requestById(a.request_id);
                 const proposed = a.status === "proposed";
-                const disdetta = statoDisdetta(a);
                 return (
                   <li key={a.id} className="flex flex-wrap items-center gap-3" data-testid={`appt-${a.id}`}>
                     {/* LA DATA E' CLICCABILE (05/09): apre «lo metto nel tuo
@@ -775,42 +749,30 @@ export function CustomerHome() {
                           Conferma
                         </button>
                       ))}
-                    {/* Prenotazione diretta: si disdice da qui finche' la
-                        finestra e' aperta, e la pagina dice fino a quando. */}
-                    {disdetta.tipo !== "no" && (
-                      <div className="basis-full pl-[58px] text-2xs text-bob-ink/65">
-                        {disdetta.tipo === "si" ? (
-                          <>
-                            Puoi disdire fino a {fmtTermine(disdetta.finoA)}.{" "}
-                            <button
-                              onClick={() => disdici(a)}
-                              disabled={disdicendo === a.id}
-                              className="font-semibold text-bob-ink/75 underline-offset-2 hover:text-red-600 hover:underline disabled:opacity-50"
-                              data-testid={`appt-disdici-${a.id}`}
-                            >
-                              {disdicendo === a.id ? "Disdico…" : "Disdici"}
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            Il termine per disdire era {fmtTermine(disdetta.finoA)}:
-                            per cambiare qualcosa{" "}
-                            <Link
-                              href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
-                              className="font-semibold text-bob-indigo hover:underline"
-                            >
-                              scrivi a {proName(a.professional_id)}
-                            </Link>
-                            .
-                          </>
-                        )}
-                        {disdettaErr?.id === a.id && (
-                          <span className="mt-0.5 block text-red-600">
-                            {disdettaErr.testo}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    {/* DALLA PRENOTAZIONE ALLA SUA CHAT (05/10), e l'annullamento
+                        con le regole del preavviso (113): fuori si disdice da
+                        qui, dentro si chiama il professionista. */}
+                    {/* Area di tocco di 40px: a 390px un link alto quanto la
+                        riga di testo (18px) non si prende col dito (rilievo
+                        del 5/10 sui link vicini di questa pagina). */}
+                    <div className="flex basis-full flex-wrap items-center gap-x-5 pl-[58px] text-xs">
+                      {a.request_id && (
+                        <Link
+                          href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
+                          className="inline-flex min-h-[40px] items-center font-semibold text-bob-indigo hover:underline"
+                          data-testid={`appt-chat-${a.id}`}
+                        >
+                          Apri la chat →
+                        </Link>
+                      )}
+                      <AnnullaAppuntamento
+                        appt={a}
+                        ruolo="customer"
+                        nomeAltro={proName(a.professional_id)}
+                        onAnnullato={load}
+                        compatto
+                      />
+                    </div>
                   </li>
                 );
               })}
@@ -863,9 +825,9 @@ export function CustomerHome() {
             data-testid="toggle-history"
           >
             <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
-              Storico · {closedRequests.length} lavor
-              {closedRequests.length === 1 ? "o" : "i"} conclus
-              {closedRequests.length === 1 ? "o" : "i"}
+              Storico · {closedRequests.length} richiest
+              {closedRequests.length === 1 ? "a" : "e"} chius
+              {closedRequests.length === 1 ? "a" : "e"}
             </h2>
             <span className="text-bob-ink/65">{showHistory ? "▲" : "▼"}</span>
           </button>
@@ -886,7 +848,10 @@ export function CustomerHome() {
                         </span>
                       ) : null}
                     </p>
-                    <p className="text-xs text-bob-ink/65">{fmtDate(r.created_at)}</p>
+                    <p className="text-xs text-bob-ink/65">
+                      {fmtDate(r.created_at)}
+                      {r.closed_reason === "disdetto" && " · Disdetta"}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <Link
@@ -898,6 +863,7 @@ export function CustomerHome() {
                       Conversazione
                     </Link>
                     {r.pros.length > 0 &&
+                      recensibile(r) &&
                       (r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`)) ? (
                         <button
                           onClick={() => setReviewFor(r)}

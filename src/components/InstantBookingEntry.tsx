@@ -34,7 +34,7 @@ export default function InstantBookingEntry({
         await Promise.all([
           supabase
             .from("professionals")
-            .select("subscription_tier")
+            .select("subscription_tier, preavviso_annullamento_ore")
             .eq("id", professionalId)
             // Spento = niente prenotazione diretta (mig 056).
             .is("deactivated_at", null)
@@ -42,7 +42,7 @@ export default function InstantBookingEntry({
           supabase
             .from("professional_services")
             .select(
-              "id, rate_amount, rate_unit, min_units, slot_duration_min, cancellation_window_hours, subservices(name, booking_fields, superseded_by)"
+              "id, rate_amount, rate_unit, min_units, slot_duration_min, subservices(name, booking_fields, superseded_by)"
             )
             .eq("professional_id", professionalId)
             .eq("instant_book_enabled", true),
@@ -56,6 +56,11 @@ export default function InstantBookingEntry({
 
       const tier = (pro as { subscription_tier?: string } | null)
         ?.subscription_tier;
+      // Il preavviso per annullare e' del professionista, non del servizio
+      // (113): lo stesso per tutto quello che prenoti da lui.
+      const preavviso =
+        (pro as { preavviso_annullamento_ore?: number | null } | null)
+          ?.preavviso_annullamento_ore ?? null;
       // Senza orari salvati non ci sono slot: non mostrare un ingresso che
       // porterebbe il cliente a un vicolo cieco.
       if (tier === "free" || !availCount || availCount === 0) {
@@ -85,10 +90,7 @@ export default function InstantBookingEntry({
             rate_unit: (r.rate_unit as RateUnit) ?? "hour",
             min_units: Number(r.min_units),
             slot_duration_min: Number(r.slot_duration_min),
-            cancellation_window_hours:
-              r.cancellation_window_hours != null
-                ? Number(r.cancellation_window_hours)
-                : null,
+            cancellation_window_hours: preavviso,
             subserviceName: sub.name ?? "Servizio",
             bookingFields: Array.isArray(sub.booking_fields)
               ? sub.booking_fields

@@ -1,12 +1,32 @@
-# Handoff — 4 ottobre 2026, Lucio (con Claude)
+# Handoff — 5 ottobre 2026, Lucio (con Claude)
 
-**Fatto:** le Analisi per il professionista, dalla specifica alla produzione (PR #132–#140, `docs/SPEC_analisi_professionista.md`). L'**Analisi base** (`/numeri`) è uguale per tutti i piani: il mese, i conteggi, i lavori conclusi e l'Excel. Le **Analisi avanzate** (`/numeri/avanzate`) sono uguali per Plus e Business, e il Free è bloccato con 42501 nel database:
-- confronto fra periodi, imbuto, prima risposta, richieste senza risposta, servizi, comuni, clienti che tornano, agenda;
-- «Copia numeri» e «Copia immagine».
+**Fatto:** le regole della prenotazione, PR #144, branch `conferma-prenotazione`.
+- **Uno slot, un cliente.** Un vincolo nel database impedisce che due appuntamenti con un cliente si sovrappongano.
+- **Preavviso per annullare.** È un'impostazione del pro in Impostazioni → Orari, 48 ore di base, fotografata alla conferma. Sostituisce la finestra per singolo servizio.
+- **Annullamento.** Una sola strada per pro e cliente, `annulla_appuntamento`:
+  - fuori dal preavviso si annulla dal sito, con un messaggio standard in chat;
+  - dentro il preavviso si chiama: il numero dell'altra parte compare solo su un appuntamento confermato, e il pro registra l'annullamento con «concordato al telefono»;
+  - il pro scrive sempre il motivo;
+  - una prenotazione diretta disdetta chiude la richiesta come «disdetto», e su quella non si può recensire.
+- **Storico.** Nuova tabella `appointment_events`.
+- **Divieti.** Niente annullamento secco né eliminazione dal browser per gli appuntamenti attivi con un cliente.
+- **Campanella.** Notifica prenotazioni, spostamenti, annullamenti e proposte da confermare, per pro e cliente.
+- **Chat.** Un solo biglietto vivo per appuntamento; «Apri la chat» dal calendario e dagli appuntamenti del cliente.
+- **Barra del cliente.** Arriva a «Appuntamento da confermare».
 
-I **ricavi esterni** (`/numeri/esterni`) si inseriscono a mano o da CSV. Il cliente è un codice. Lo staff non li vede: lo garantiscono la RLS e un test in CI. Sotto c'è il registro del lavoro (`professional_work_events`): senza dati del cliente, sopravvive alla sua cancellazione e si condensa dopo 25 mesi in `analisi_mesi`. Il dialogo dell'appuntamento ora ha comune e servizio. Il listino ha «Analisi base» `SI` sui tre piani e «Analisi avanzate» `SI` su Plus e Business. Al mattino: calendario a larghezza fissa (#130) e impostazioni con un solo ritorno in cima e senza colonna laterale (#131, #135). Il clone locale `/Users/luciomozzaglia/BOB` era fermo su un ramo vecchio: ora è su `main` aggiornato. ROPA A26 e A27.
-**A metà:** niente è stato provato **da utente entrato**: nel browser di Claude non c'è una sessione. Va fatto con un pro di prova, desktop e 390px, su `/numeri`, `/numeri/avanzate`, `/numeri/esterni`, impostazioni e calendario; con «Copia immagine/numeri» e un import CSV provati a mano. Manca la clausola art. 28 nei ToS del Professionista per i ricavi esterni (ROPA A27). Le caselle della dashboard restano calcolate nel browser (`computeStats`), mentre `/numeri` legge il server: sui dati di oggi coincidono.
-**Applicato in produzione:** migrazioni **108** (registro, mesi condensati, cron `condensa-analisi` il 2 del mese alle 03:50 UTC, `completed_at`/comune/CAP sugli appuntamenti), **109** (`analisi_base`), **110** (`analisi_avanzata`), **111** (`ricavi_esterni`, tetto di 5.000 righe l'anno), **112** (permessi: «cancella tutto» SECURITY INVOKER, trigger chiusi). Per ognuna: corpi delle funzioni con l'hash uguale al file, advisor pulito (restano solo `rate_limit_counters` senza policy e la protezione password, che c'erano già). Nessuna variabile d'ambiente toccata.
+Prove: 13 prove che possono fallire, `scripts/prova_113_prenotazione_regole.sql`, tutte passate su Postgres 16 in Docker, insieme alla ricostruzione dai soli file. ROPA A5 e conservazione aggiornate.
+
+**A metà:**
+- **Verifica dal vivo.** Va fatta dopo il deploy, desktop e 390px, con pro e cliente di prova: si chiudono solo dopo quella i 6 rilievi di André del 3/10 e quello del 5/10 sull'appuntamento nato in chat.
+- **Spostamento del pro dentro il preavviso.** Resta una proposta da accettare, senza la regola della telefonata.
+- **Il cliente non sposta un appuntamento già confermato.**
+- **Cron mancante.** `system_job_runs` non viene mai ripulita: `purge_stale_job_runs()` (049) non ha nessun cron, in produzione e nel repo. Va schedulata.
+- **Pulizia del codice.** Sono pronti i candidati della ricerca sul codice inutile (~430 righe sicure, la prima è `src/app/api/admin/cs/route.ts`), ma non è stato toccato niente.
+
+**Applicato in produzione:**
+- **Migrazione 113.** Funzioni condivise riscritte dalle vive, con l'md5 verificato subito prima.
+- **Migrazione 114.** Le due funzioni chiamabili dal browser spostate in `private`, con involucri SECURITY INVOKER.
+- **Esito.** Advisor pulito, salvo i due rilievi vecchi. Nessuna variabile d'ambiente toccata.
 
 ---
 

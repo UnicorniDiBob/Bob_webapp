@@ -19,9 +19,6 @@ export const RATE_UNIT_LABELS: Record<RateUnit, string> = {
   session: "sessione",
 };
 
-// Finestra minima di cancellazione imposta dalla piattaforma (mirror del trigger DB).
-export const MIN_CANCELLATION_WINDOW_HOURS = 24;
-
 // Un campo del modulo di prenotazione, definito per subservice (catalogo).
 // Esattamente un campo per job ha is_billable_unit = true.
 export interface BookingField {
@@ -390,8 +387,8 @@ export interface Appointment {
   location_address?: string | null;
   location_city?: string | null;
   location_notes?: string | null;
-  // Fino a quante ore prima il cliente puo' disdire da solo (106).
-  // Fotografata alla prenotazione diretta; null = non si disdice da qui.
+  // Preavviso per annullare, in ore (106, 113): sotto, si chiama. Lo
+  // fotografa il database alla conferma dal preavviso del professionista.
   cancellation_window_hours?: number | null;
   // Per le Analisi (108): quando e' stato SEGNATO concluso (lo scrive il
   // trigger), e il comune del lavoro, copiato dalla richiesta o scelto qui.

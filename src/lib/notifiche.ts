@@ -38,6 +38,16 @@
 // tutte le altre voci, perche' dopo la finestra del primo accesso e' qui che
 // una persona va a cercarle.
 //
+// LA SECONDA ECCEZIONE: GLI APPUNTAMENTI (113, Lucio 05/10). Una
+// prenotazione arrivata, un appuntamento spostato o annullato dall'altra
+// parte, una proposta che aspetta una risposta. Prima vivevano solo come
+// messaggio in chat, e la chat li confondeva con il resto: il pro con una
+// prenotazione appena arrivata leggeva «Nessuna nuova richiesta», e il
+// cliente scopriva lo spostamento quando il pro non arrivava. Non sono
+// messaggi fra persone, sono FATTI del calendario, e qui hanno la loro voce.
+// Restano derivati, come tutto il resto: dallo storico appointment_events e
+// dalle proposte aperte. Nessuna tabella di notifiche.
+//
 // LO STATO «LETTO» STA NEL BROWSER, non sul server: e' una preferenza
 // d'interfaccia, dura quanto il dispositivo e non deve finire in nessun
 // registro dei trattamenti (stessa logica di lib/guidaProgresso.ts). Prezzo
@@ -47,6 +57,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leggiAvvisiInCorso } from "@/lib/avvisi";
+import { caricaNotificheAppuntamenti } from "@/lib/notificheAppuntamenti";
 import { chiaveUtente } from "@/lib/sessioni/chiavi";
 import {
   MOTIVO_RICONTROLLO_TESTO,
@@ -168,6 +179,10 @@ export async function caricaNotifiche(
       mittente: "Bob",
     });
   }
+
+  // 0bis. Gli appuntamenti (113): per tutti e due i ruoli, prima del resto
+  //       dell'account perche' hanno un'ora e qualcuno dall'altra parte.
+  out.push(...(await caricaNotificheAppuntamenti(supabase, ctx)));
 
   const [cancellazione, ticket, profilo] = await Promise.all([
     supabase

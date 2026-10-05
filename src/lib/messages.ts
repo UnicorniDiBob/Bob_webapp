@@ -343,11 +343,20 @@ export async function createAppointment(
 export async function updateAppointment(
   id: string,
   data: Partial<NewAppointment>
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; code?: string | null }> {
   const supabase = createClient();
   const { error } = await supabase.from("appointments").update(data).eq("id", id);
-  return { error: error ? error.message : null };
+  return { error: error ? error.message : null, code: error?.code ?? null };
 }
+
+/**
+ * 23P01: il vincolo della 113 (appuntamenti_cliente_senza_sovrapposizioni).
+ * Due appuntamenti con un cliente non stanno nello stesso orario, da
+ * qualunque parte arrivino: questo e' il modo di riconoscerlo e dirlo.
+ */
+export const ERRORE_SOVRAPPOSIZIONE = "23P01";
+export const TESTO_SOVRAPPOSIZIONE =
+  "In quell'orario hai già un altro appuntamento con un cliente: scegline un altro.";
 
 export async function deleteAppointment(
   id: string
@@ -355,6 +364,59 @@ export async function deleteAppointment(
   const supabase = createClient();
   const { error } = await supabase.from("appointments").delete().eq("id", id);
   return { error: error ? error.message : null };
+}
+
+// ----- Annullare un appuntamento con un cliente (113) -----
+//
+// Una strada sola, per tutte e due le parti: la funzione annulla_appuntamento
+// nel database. Controlla il preavviso con l'ora del server, pretende il
+// motivo dal professionista, scrive il messaggio standard in chat e, su una
+// prenotazione diretta, chiude la richiesta come «disdetta». Un UPDATE dal
+// browser su un appuntamento confermato con un cliente il database lo
+// rifiuta (trigger proteggi_appuntamento_cliente).
+
+export type MotivoRifiuto = "chiama" | "motivo" | "non_attivo" | "non_trovato" | "errore";
+
+export type EsitoAnnullamento =
+  | { ok: true }
+  | { ok: false; motivo: MotivoRifiuto; messaggio: string };
+
+export async function annullaAppuntamento(
+  id: string,
+  opts: { motivo?: string | null; concordatoTelefono?: boolean } = {}
+): Promise<EsitoAnnullamento> {
+  const supabase = createClient();
+  const { error } = await supabase.rpc("annulla_appuntamento", {
+    p_id: id,
+    p_motivo: opts.motivo ?? null,
+    p_concordato_telefono: opts.concordatoTelefono ?? false,
+  });
+  if (!error) return { ok: true };
+  const noti: MotivoRifiuto[] = ["chiama", "motivo", "non_attivo", "non_trovato"];
+  const motivo = noti.includes(error.hint as MotivoRifiuto)
+    ? (error.hint as MotivoRifiuto)
+    : "errore";
+  return {
+    ok: false,
+    motivo,
+    messaggio: motivo === "errore" ? "Annullamento non riuscito. Riprova." : error.message,
+  };
+}
+
+/**
+ * Nome e telefono dell'altra parte di un appuntamento CONFERMATO, per
+ * «Chiama per annullare». null se non sei una delle parti o l'appuntamento
+ * non e' confermato; telefono null se l'altra parte non l'ha lasciato.
+ */
+export async function contattoControparte(
+  appointmentId: string
+): Promise<{ nome: string | null; telefono: string | null } | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("contatto_controparte", {
+    p_appuntamento: appointmentId,
+  });
+  logQueryError(`contattoControparte(${appointmentId})`, error);
+  return (data as { nome: string | null; telefono: string | null } | null) ?? null;
 }
 
 // Statistiche del professionista calcolate dagli appuntamenti.

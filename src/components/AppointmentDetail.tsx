@@ -16,6 +16,7 @@ import {
   mapsSearchUrl,
 } from "@/lib/calendar";
 import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
+import { AnnullaAppuntamento } from "@/components/AnnullaAppuntamento";
 
 /**
  * Pannello di dettaglio di un appuntamento.
@@ -57,6 +58,13 @@ export function AppointmentDetail({
   const end = apptEnd(appt);
   const isPast = end < new Date();
   const mapsUrl = mapsSearchUrl(appt);
+  // Confermato con un cliente e non ancora cominciato: si annulla solo dal
+  // percorso con le regole (113), non con un cambio di stato secco.
+  const annullabileConCliente =
+    Boolean(appt.request_id) && appt.status === "confirmed" && start > new Date();
+  const chat = appt.request_id
+    ? `/messaggi?r=${appt.request_id}&p=${appt.professional_id}`
+    : null;
 
   async function setStatus(status: Appointment["status"]) {
     setBusy(true);
@@ -240,6 +248,18 @@ export function AppointmentDetail({
 
         {/* Azioni */}
         <div className="mt-5 flex flex-col gap-2 border-t border-black/5 pt-4">
+          {/* DAL CALENDARIO ALLA CHAT IN UN CLIC (05/10). La conversazione
+              e' quella di questa richiesta con questo pro, non l'elenco. */}
+          {chat && (
+            <Link
+              href={chat}
+              className="btn-secondary w-full py-2 text-center text-sm"
+              data-testid="detail-conversation"
+            >
+              Apri la chat con {appt.customer_name || "il cliente"}
+            </Link>
+          )}
+
           <button
             onClick={() => onEdit(appt)}
             className="btn-primary w-full py-2.5 text-sm"
@@ -274,30 +294,43 @@ export function AppointmentDetail({
             </button>
           )}
 
-          {appt.request_id && (
-            <Link
-              href={`/messaggi?r=${appt.request_id}`}
-              className="btn-secondary w-full py-2 text-center text-sm"
-              data-testid="detail-conversation"
-            >
-              Vai alla conversazione
-            </Link>
+          {annullabileConCliente && (
+            <AnnullaAppuntamento
+              appt={appt}
+              ruolo="professional"
+              nomeAltro={appt.customer_name || "il cliente"}
+              onAnnullato={() => {
+                onChanged();
+                onClose();
+              }}
+            />
           )}
 
-          {appt.status !== "cancelled" && appt.status !== "completed" && (
+          {/* Agenda privata, o una proposta da ritirare: un cambio di stato
+              basta, e per le proposte il messaggio lo scrive il database
+              (107). Su una proposta con un cliente il bottone dice cosa fa. */}
+          {!annullabileConCliente &&
+            !(appt.request_id && appt.status === "confirmed") &&
+            appt.status !== "cancelled" &&
+            appt.status !== "completed" &&
+            appt.status !== "declined" && (
             <button
               onClick={() => setStatus("cancelled")}
               disabled={busy}
               className="btn-ghost w-full justify-center text-sm text-red-600 hover:bg-red-50"
               data-testid="detail-cancel"
             >
-              Annulla appuntamento
+              {appt.request_id && appt.status === "proposed" && appt.proposed_by !== "customer"
+                ? "Ritira la proposta"
+                : appt.request_id && appt.status === "proposed"
+                  ? "Rifiuta la proposta"
+                  : "Annulla appuntamento"}
             </button>
           )}
           {appt.request_id && appt.status !== "cancelled" && appt.status !== "completed" && (
             <p className="text-center text-2xs text-bob-ink/65">
-              Se lo annulli o lo sposti, {appt.customer_name || "il cliente"} lo
-              legge subito nella vostra conversazione.
+              Se lo sposti, {appt.customer_name || "il cliente"} lo legge subito
+              nella vostra chat e lo riconferma.
             </p>
           )}
         </div>

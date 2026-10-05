@@ -21,6 +21,8 @@ import {
 } from "@/lib/slots";
 import { notifyEvent } from "@/lib/notify";
 import {
+  ERRORE_SOVRAPPOSIZIONE,
+  TESTO_SOVRAPPOSIZIONE,
   getConversations,
   getMessages,
   markConversationRead,
@@ -330,6 +332,23 @@ function MessaggiInner() {
     return occupato.some((b) => s < b.end && e > b.start);
   }, [inizioScelto, apptDuration, occupato]);
 
+  // UN APPUNTAMENTO, UN BIGLIETTO (05/10). Ogni biglietto legge lo stato VIVO
+  // dell'appuntamento: prenota -> sposta -> disdici lasciava tre biglietti
+  // «Appuntamento annullato» per un solo appuntamento, e i primi due
+  // mentivano su com'era andata in quel momento. Il biglietto vivo sta
+  // sull'ultimo messaggio che cita l'appuntamento; i precedenti tornano la
+  // frase che erano («Ho prenotato…», «Ho spostato… da… a…»), che racconta
+  // lo stato di allora. Lo storico completo e' in appointment_events (113).
+  const ultimoMessaggioPerAppuntamento = useMemo(() => {
+    const ultimo = new Map<string, string>();
+    for (const m of messages) {
+      if (m.kind === "appointment_proposal" && m.appointmentId) {
+        ultimo.set(m.appointmentId, m.id);
+      }
+    }
+    return ultimo;
+  }, [messages]);
+
   function chiudiProposta() {
     setProposeOpen(false);
     setReplacingApptId(null);
@@ -401,7 +420,11 @@ function MessaggiInner() {
       .select("id")
       .single();
     if (error || !created) {
-      setApptErr("Non sono riuscito a salvare la proposta. Riprova.");
+      setApptErr(
+        error?.code === ERRORE_SOVRAPPOSIZIONE
+          ? TESTO_SOVRAPPOSIZIONE
+          : "Non sono riuscito a salvare la proposta. Riprova."
+      );
       setApptSaving(false);
       return;
     }
@@ -745,7 +768,9 @@ function MessaggiInner() {
                       // (033) proposta di appuntamento: sotto la bolla
                       // compaiono approva / modifica / rifiuta.
                       const appt =
-                        m.kind === "appointment_proposal" && m.appointmentId
+                        m.kind === "appointment_proposal" &&
+                        m.appointmentId &&
+                        ultimoMessaggioPerAppuntamento.get(m.appointmentId) === m.id
                           ? threadAppts[m.appointmentId]
                           : undefined;
                       return (
