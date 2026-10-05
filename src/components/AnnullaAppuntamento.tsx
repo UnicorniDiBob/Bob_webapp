@@ -152,7 +152,7 @@ export function AnnullaAppuntamento({
         onClick={() => setAperto(true)}
         className={
           compatto
-            ? "text-xs font-medium text-red-600 hover:underline"
+            ? "inline-flex min-h-[40px] items-center text-xs font-medium text-red-600 hover:underline"
             : "btn-ghost w-full justify-center text-sm text-red-600 hover:bg-red-50"
         }
         data-testid={`annulla-apri-${appt.id}`}
@@ -192,7 +192,7 @@ export function AnnullaAppuntamento({
           {chat && (
             <Link
               href={chat}
-              className="mt-2 block text-xs font-semibold text-bob-indigo hover:underline"
+              className="mt-1 flex min-h-[40px] items-center text-xs font-semibold text-bob-indigo hover:underline"
             >
               Apri la chat →
             </Link>
@@ -272,7 +272,7 @@ export function AnnullaAppuntamento({
             setAperto(false);
             setErrore(null);
           }}
-          className="text-xs font-medium text-bob-ink/65 hover:underline"
+          className="inline-flex min-h-[40px] items-center px-2 text-xs font-medium text-bob-ink/65 hover:underline"
         >
           Lascia stare
         </button>

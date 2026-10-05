@@ -752,11 +752,14 @@ export function CustomerHome() {
                     {/* DALLA PRENOTAZIONE ALLA SUA CHAT (05/10), e l'annullamento
                         con le regole del preavviso (113): fuori si disdice da
                         qui, dentro si chiama il professionista. */}
-                    <div className="flex basis-full flex-wrap items-center gap-x-4 gap-y-1 pl-[58px] text-2xs">
+                    {/* Area di tocco di 40px: a 390px un link alto quanto la
+                        riga di testo (18px) non si prende col dito (rilievo
+                        del 5/10 sui link vicini di questa pagina). */}
+                    <div className="flex basis-full flex-wrap items-center gap-x-5 pl-[58px] text-xs">
                       {a.request_id && (
                         <Link
                           href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
-                          className="font-semibold text-bob-indigo hover:underline"
+                          className="inline-flex min-h-[40px] items-center font-semibold text-bob-indigo hover:underline"
                           data-testid={`appt-chat-${a.id}`}
                         >
                           Apri la chat →
