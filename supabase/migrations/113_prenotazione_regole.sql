@@ -664,6 +664,16 @@ begin
      where id = a.request_id and status <> 'closed';
   end if;
 
+  -- L'interruttore si spegne qui, non a fine transazione: da PostgREST ogni
+  -- chiamata e' una transazione sua, ma chi chiamasse questa funzione dentro
+  -- una transazione piu' lunga si ritroverebbe i trigger ancora disarmati
+  -- per tutto il resto (le prove della 113 l'hanno mostrato).
+  perform set_config('bob.annullamento', '', true);
+  perform set_config('bob.autore', '', true);
+  perform set_config('bob.motivo', '', true);
+  perform set_config('bob.concordato', '', true);
+  perform set_config('bob.dentro', '', true);
+
   return jsonb_build_object(
     'ok', true,
     'ruolo', v_ruolo,

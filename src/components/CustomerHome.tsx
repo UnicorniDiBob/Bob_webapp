@@ -480,7 +480,9 @@ export function CustomerHome() {
       todos.push({
         key: `review-${r.id}`,
         text: `Com'è andata con ${r.pros[0]?.name}?`,
-        sub: `${r.service?.name ?? "Lavoro"} concluso · la tua recensione aiuta gli altri`,
+        // La data distingue due lavori con lo stesso pro e lo stesso
+        // servizio: senza, erano righe identiche (rilievo del 3/10).
+        sub: `${r.service?.name ?? "Lavoro"} del ${fmtDate(r.created_at)} · la tua recensione aiuta gli altri`,
         node: (
           <button
             onClick={() => setReviewFor(r)}
