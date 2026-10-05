@@ -19,11 +19,21 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  Funnel,
+  FunnelChart,
+  LabelList,
   Legend,
+  Line,
+  LineChart,
+  ReferenceLine,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
+  ZAxis,
 } from "recharts";
 import { SchedeNumeri } from "@/components/analisi/SchedeNumeri";
 import { GraficoCopiabile, type Cella } from "@/components/analisi/GraficoCopiabile";
@@ -92,7 +102,19 @@ export interface DatiAvanzati {
   dettaglio_dal: string;
 }
 
-const COLORE = { periodo: "#3730a3", contro: "#c7c4ef", arrivate: "#10b981", altre: "#e5e7eb" };
+// Palette passata al validatore dei colori: banda di luminosita', soglia di
+// croma, contrasto >= 3:1 sul fondo e separazione sufficiente per chi non
+// distingue i colori. L'indaco di Bob sale di un gradino (#3730a3 -> #4338ca):
+// sotto la banda si impastava col testo. Il confronto era un lilla cosi'
+// slavato da leggersi grigio, e diventa il verde-acqua.
+const COLORE = {
+  periodo: "#4338ca",
+  contro: "#0d9488",
+  arrivate: "#0d9488",
+  altre: "#e5e7eb",
+  meglio: "#0d9488",
+  peggio: "#b45309",
+};
 
 const FASCE: Record<number, string> = {
   1: "Entro 1 ora",
@@ -220,6 +242,38 @@ export function AnalisiAvanzata({
     }),
   ];
 
+  // I lavori conclusi sono un conteggio, l'importo sono euro: due scale
+  // diverse. Non si mettono due assi y sullo stesso grafico — e' il modo
+  // classico di far dire a un grafico quello che si vuole — quindi sotto
+  // all'andamento ci va un secondo grafico piccolo, con la stessa x.
+  const andamentoConclusi = p.per_mese.map((m, i) => ({
+    etichetta: nomeMese(mese7(m.mese), true),
+    [nomePeriodo(periodo)]: m.conclusi,
+    ...(c && nomeContro ? { [nomeContro]: c.per_mese[i]?.conclusi ?? 0 } : {}),
+  }));
+
+  // --- Stagionalita' ---
+  // Il confronto «anno» mette gli stessi mesi un anno prima (periodoContro in
+  // src/lib/analisi.ts): e' gia' la stagionalita'. Mancava solo mostrarla come
+  // scarto mese per mese, invece di lasciare due serie da sottrarre a occhio.
+  const stagionalita =
+    confronto === "anno" && c
+      ? p.per_mese.map((m, i) => {
+          const prima = c.per_mese[i]?.importo_cent ?? 0;
+          return {
+            etichetta: nomeMese(mese7(m.mese), true),
+            scarto: variazione(m.importo_cent, prima),
+            adesso: m.importo_cent,
+            prima,
+          };
+        })
+      : [];
+  const stagionalitaVisibile = stagionalita.filter((x) => x.scarto !== null);
+  const righeStagionalita: Cella[][] = [
+    ["Mese", "Importo (€)", "Stesso mese l'anno prima (€)", "Scarto (%)"],
+    ...stagionalita.map((x) => [x.etichetta, x.adesso / 100, x.prima / 100, x.scarto]),
+  ];
+
   // --- Imbuto ---
   const passi = [
     { passo: "Richieste ricevute", n: t.richieste, prima: ct?.richieste },
@@ -253,7 +307,30 @@ export function AnalisiAvanzata({
     ...fasce.map((f) => [f.fascia, f.n, f.arr, quota(f.arr, f.n)]),
   ];
 
+  // L'imbuto come imbuto: ogni passo e' largo quanto il precedente lo lascia,
+  // e la percentuale sta sul grafico invece che solo nelle caselle sotto.
+  const imbuto = passi.map((x, i) => ({
+    passo: x.passo,
+    valore: Math.max(x.n, 0),
+    etichetta:
+      i === 0
+        ? `${x.passo}: ${x.n}`
+        : `${x.passo}: ${x.n} (${quota(x.n, passi[i - 1].n)})`,
+  }));
+  const imbutoVuoto = passi[0].n === 0;
+
   // --- Servizi ---
+  // Proposte sull'asse x, lavori conclusi sull'asse y: un servizio in basso a
+  // destra e' un servizio su cui fai preventivi che non chiudono mai. I numeri
+  // c'erano gia' tutti nella tabella, ma andavano letti riga per riga.
+  const servizi = p.per_servizio.map((x) => ({
+    servizio: x.servizio,
+    proposte: x.proposte,
+    conclusi: x.conclusi,
+    importo: x.importo_cent / 100,
+    vuoto: x.proposte > 0 && x.conclusi === 0,
+  }));
+  const serviziVuoti = servizi.filter((x) => x.vuoto);
   const righeServizi: Cella[][] = [
     ["Servizio", "Richieste", "Proposte", "Accettate", "Prenotazioni dirette", "Lavori conclusi", "Importo (€)"],
     ...p.per_servizio.map((s) => [s.servizio, s.richieste, s.proposte, s.accettate, s.dirette, s.conclusi, s.importo_cent / 100]),
@@ -400,18 +477,97 @@ export function AnalisiAvanzata({
       >
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={andamento}>
+            <LineChart data={andamento} margin={{ top: 8, right: 12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#ececf3" vertical={false} />
               <XAxis dataKey="etichetta" fontSize={12} tickLine={false} axisLine={false} />
               <YAxis fontSize={12} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => `${v} €`} />
-              <Tooltip formatter={(v) => euro(Number(v) * 100)} cursor={{ fill: "rgba(55,48,163,0.05)" }} />
+              <Tooltip formatter={(v) => euro(Number(v) * 100)} />
+              {c && <Legend iconType="plainline" />}
+              {c && nomeContro && (
+                <Line
+                  type="monotone"
+                  dataKey={nomeContro}
+                  stroke={COLORE.contro}
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={{ r: 3, strokeWidth: 0, fill: COLORE.contro }}
+                  activeDot={{ r: 6 }}
+                />
+              )}
+              <Line
+                type="monotone"
+                dataKey={nomePeriodo(periodo)}
+                stroke={COLORE.periodo}
+                strokeWidth={2}
+                dot={{ r: 4, strokeWidth: 2, stroke: "#ffffff", fill: COLORE.periodo }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </GraficoCopiabile>
+
+      <GraficoCopiabile
+        titolo="Quanti lavori, mese per mese"
+        sottotitolo="Quanti lavori hai concluso in ogni mese. Un mese che vale tanto con pochi lavori, e uno che vale uguale con il doppio dei lavori, non sono lo stesso mese."
+        didascalia={didascalia}
+        righe={righeAndamento}
+        nomeFile={`${file}_lavori`}
+        testId="riquadro-lavori-mese"
+      >
+        <div className="h-44">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={andamentoConclusi} margin={{ top: 8, right: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ececf3" vertical={false} />
+              <XAxis dataKey="etichetta" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} width={32} />
+              <Tooltip cursor={{ fill: "rgba(67,56,202,0.05)" }} />
               {c && <Legend iconType="circle" />}
-              <Bar dataKey={nomePeriodo(periodo)} fill={COLORE.periodo} radius={[4, 4, 0, 0]} maxBarSize={36} />
-              {c && nomeContro && <Bar dataKey={nomeContro} fill={COLORE.contro} radius={[4, 4, 0, 0]} maxBarSize={36} />}
+              <Bar dataKey={nomePeriodo(periodo)} fill={COLORE.periodo} radius={[4, 4, 0, 0]} maxBarSize={28} />
+              {c && nomeContro && <Bar dataKey={nomeContro} fill={COLORE.contro} radius={[4, 4, 0, 0]} maxBarSize={28} />}
             </BarChart>
           </ResponsiveContainer>
         </div>
       </GraficoCopiabile>
+
+      {stagionalitaVisibile.length > 0 && (
+        <GraficoCopiabile
+          titolo="Come va rispetto all&apos;anno scorso"
+          sottotitolo="Ogni mese contro lo stesso mese un anno prima. Sopra lo zero hai fatturato di piu&apos;, sotto di meno: e&apos; il confronto che tiene conto della stagione."
+          didascalia={didascalia}
+          righe={righeStagionalita}
+          nomeFile={`${file}_stagionalita`}
+          testId="riquadro-stagionalita"
+        >
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stagionalita} margin={{ top: 20, right: 12 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ececf3" vertical={false} />
+                <XAxis dataKey="etichetta" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis fontSize={12} tickLine={false} axisLine={false} width={48} tickFormatter={(v: number) => `${v}%`} />
+                <ReferenceLine y={0} stroke="#9a98b5" />
+                <Tooltip formatter={(v) => (v == null ? "—" : `${v}%`)} cursor={{ fill: "rgba(67,56,202,0.05)" }} />
+                <Bar dataKey="scarto" maxBarSize={36} radius={[4, 4, 0, 0]}>
+                  {stagionalita.map((x) => (
+                    <Cell key={x.etichetta} fill={(x.scarto ?? 0) >= 0 ? COLORE.meglio : COLORE.peggio} />
+                  ))}
+                  <LabelList
+                    dataKey="scarto"
+                    position="top"
+                    fontSize={11}
+                    fill="#2b2a3f"
+                    formatter={(v) => (v === null || v === undefined ? "" : `${v}%`)}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="mt-2 text-xs text-bob-ink/60">
+            I mesi in cui l&apos;anno scorso non avevi fatturato niente restano senza
+            barra: da zero non si calcola una variazione.
+          </p>
+        </GraficoCopiabile>
+      )}
 
       <GraficoCopiabile
         titolo="Da dove arriva il tuo lavoro"
@@ -428,24 +584,45 @@ export function AnalisiAvanzata({
         nomeFile={`${file}_imbuto`}
         testId="riquadro-imbuto"
       >
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={passi.map((x) => ({ passo: x.passo, Quante: x.n }))} layout="vertical" margin={{ left: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ececf3" horizontal={false} />
-              <XAxis type="number" allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis type="category" dataKey="passo" width={130} fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip cursor={{ fill: "rgba(55,48,163,0.05)" }} />
-              <Bar dataKey="Quante" fill={COLORE.periodo} radius={[0, 4, 4, 0]} maxBarSize={28} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <ul className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-          {passi.slice(1).map((x, i) => (
+        {imbutoVuoto ? (
+          <p className="text-sm text-bob-ink/65">Nessuna richiesta nel periodo.</p>
+        ) : (
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <FunnelChart>
+                <Tooltip formatter={(v) => String(v)} />
+                <Funnel
+                  dataKey="valore"
+                  nameKey="passo"
+                  data={imbuto}
+                  isAnimationActive={false}
+                  fill={COLORE.periodo}
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                >
+                  <LabelList
+                    dataKey="valore"
+                    position="center"
+                    fill="#ffffff"
+                    fontSize={13}
+                    fontWeight={700}
+                    stroke="none"
+                  />
+                </Funnel>
+              </FunnelChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        <ul className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          {passi.map((x, i) => (
             <li key={x.passo} className="rounded-xl bg-bob-indigo-50 px-3 py-2">
               <span className="block text-xs text-bob-ink/65">
-                {x.passo} su {passi[i].passo.toLowerCase()}
+                {i === 0 ? x.passo : `${x.passo} su ${passi[i - 1].passo.toLowerCase()}`}
               </span>
-              <span className="text-lg font-bold text-bob-ink">{quota(x.n, passi[i].n)}</span>
+              <span className="text-lg font-bold text-bob-ink">
+                {i === 0 ? x.n : quota(x.n, passi[i - 1].n)}
+              </span>
+              {i > 0 && <span className="ml-1 text-xs text-bob-ink/60">({x.n})</span>}
             </li>
           ))}
         </ul>
@@ -521,9 +698,70 @@ export function AnalisiAvanzata({
         didascalia={didascalia}
         righe={righeServizi}
         nomeFile={`${file}_servizi`}
-        immagine={false}
         testId="riquadro-servizi"
       >
+        {servizi.length > 0 && (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 12, right: 16, bottom: 28, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ececf3" />
+                <XAxis
+                  type="number"
+                  dataKey="proposte"
+                  name="Proposte"
+                  allowDecimals={false}
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  label={{ value: "Proposte inviate", position: "insideBottom", offset: -18, fontSize: 12, fill: "#6b6990" }}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="conclusi"
+                  name="Conclusi"
+                  allowDecimals={false}
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                  width={36}
+                />
+                <ZAxis type="number" dataKey="importo" range={[80, 420]} name="Importo (€)" />
+                <ReferenceLine y={0} stroke={COLORE.peggio} strokeDasharray="4 4" />
+                <Tooltip
+                  cursor={{ strokeDasharray: "3 3" }}
+                  formatter={(v, nome) => (nome === "Importo (€)" ? euro(Number(v) * 100) : String(v))}
+                  labelFormatter={() => ""}
+                />
+                <Legend iconType="circle" />
+                <Scatter
+                  name="Porta lavoro"
+                  data={servizi.filter((x) => !x.vuoto)}
+                  fill={COLORE.periodo}
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                />
+                <Scatter
+                  name="Solo proposte a vuoto"
+                  data={serviziVuoti}
+                  fill={COLORE.peggio}
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  shape="triangle"
+                >
+                  <LabelList dataKey="servizio" position="top" fontSize={11} fill="#2b2a3f" />
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        {serviziVuoti.length > 0 && (
+          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            {serviziVuoti.length === 1
+              ? "Un servizio con proposte e nessun lavoro concluso nel periodo: "
+              : `${serviziVuoti.length} servizi con proposte e nessun lavoro concluso nel periodo: `}
+            {serviziVuoti.map((x) => x.servizio).join(", ")}.
+          </p>
+        )}
         {p.per_servizio.length === 0 ? (
           <p className="text-sm text-bob-ink/65">Nessun servizio con attività nel periodo.</p>
         ) : (
