@@ -29,6 +29,8 @@ import {
   BigliettoAppuntamento,
   prezzoLeggibile,
 } from "@/components/BigliettoAppuntamento";
+import { AnnullaAppuntamento } from "@/components/AnnullaAppuntamento";
+import { statoDisdetta } from "@/lib/disdettaPrenotazione";
 
 // Solo i campi che ci servono: la chat fa una select ristretta.
 export type ThreadAppointment = Pick<
@@ -46,6 +48,7 @@ export type ThreadAppointment = Pick<
   | "location_address"
   | "location_city"
   | "location_notes"
+  | "cancellation_window_hours"
 >;
 
 /** Dove: l'indirizzo se c'e' (dopo la conferma), se no la zona della richiesta. */
@@ -136,8 +139,15 @@ export function AppointmentActions({
     <AggiungiAlCalendario appuntamento={a}>{data}</AggiungiAlCalendario>
   );
 
-  // --- Confermato o concluso: il biglietto resta, senza tasti. --------------
+  // --- Confermato o concluso: il biglietto resta. ---------------------------
+  // IL CLIENTE DISDICE ANCHE DA QUI (rilievo del 5/10). La stessa regola e lo
+  // stesso componente dell'area personale: fuori dal preavviso «Disdici»,
+  // dentro «Chiama per annullare». Quando la regola dice «no» (concluso,
+  // gia' iniziato) il biglietto resta senza la fascia dei tasti. Il pro
+  // annulla dal calendario (AppointmentDetail), non da qui.
   if (a.status === "confirmed" || a.status === "completed") {
+    const disdicibile =
+      viewer === "customer" && statoDisdetta(a).tipo !== "no";
     return (
       <div className="mt-1.5" data-testid={`appt-status-${a.id}`}>
         <BigliettoAppuntamento
@@ -148,6 +158,16 @@ export function AppointmentActions({
           stato={{ etichetta: STATUS_LABEL[a.status] ?? "", tono: "ok" }}
           avvolgiData={avvolgiData}
           testId={`biglietto-${a.id}`}
+          azioni={
+            disdicibile ? (
+              <AnnullaAppuntamento
+                appt={a}
+                ruolo="customer"
+                nomeAltro={counterpartName}
+                onAnnullato={onChanged}
+              />
+            ) : undefined
+          }
         />
       </div>
     );
