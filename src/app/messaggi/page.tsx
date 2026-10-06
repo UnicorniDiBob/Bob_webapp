@@ -484,7 +484,7 @@ function MessaggiInner() {
         const { data } = await supabase
           .from("appointments")
           .select(
-            "id, professional_id, request_id, starts_at, duration_minutes, status, proposed_by, title, price, notes, location_address, location_city, location_notes"
+            "id, professional_id, request_id, starts_at, duration_minutes, status, proposed_by, title, price, notes, location_address, location_city, location_notes, cancellation_window_hours"
           )
           .in("id", ids);
         const map: Record<string, ThreadAppointment> = {};
@@ -782,8 +782,12 @@ function MessaggiInner() {
                         >
                           {/* Una proposta e' un biglietto, non una frase: la
                               bolla resta solo se il biglietto non si e'
-                              potuto leggere. */}
-                          {!appt && (
+                              potuto leggere. TRANNE SULL'ANNULLATO (rilievo
+                              del 5/10): il messaggio che porta quel
+                              biglietto e' l'annullamento stesso, e il suo
+                              testo ha il «Motivo: …» che il biglietto non
+                              dice. Senza la bolla non lo leggeva nessuno. */}
+                          {(!appt || appt.status === "cancelled") && (
                           <div
                             className={`max-w-[80%] lg:max-w-[42rem] rounded-2xl px-4 py-2.5 text-sm ${
                               mine
