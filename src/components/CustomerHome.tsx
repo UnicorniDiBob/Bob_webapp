@@ -617,7 +617,7 @@ export function CustomerHome() {
                       quoteCount={r.pros.length}
                     />
                     {r.pros.length > 1 ? (
-                      <div className="mt-2.5 flex flex-col gap-1.5 border-t border-black/5 pt-2.5">
+                      <div className="mt-2.5 flex flex-col gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1.5">
                         <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
                           Confronta le risposte
                         </p>
@@ -638,7 +638,7 @@ export function CustomerHome() {
                               </span>
                               <Link
                                 href={`/messaggi?r=${r.id}&p=${p.id}`}
-                                className="shrink-0 text-xs font-medium text-bob-indigo hover:underline"
+                                className="inline-flex min-h-[44px] shrink-0 items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
                               >
                                 Apri →
                               </Link>
@@ -648,7 +648,7 @@ export function CustomerHome() {
                         <button
                           onClick={() => setConfirmClose(r.id)}
                           disabled={closing === r.id}
-                          className="mt-1 self-start text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline"
+                          className="mt-1 inline-flex min-h-[44px] items-center self-start text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline sm:min-h-0"
                         >
                           {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
                         </button>

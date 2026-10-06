@@ -135,7 +135,7 @@ export default function InstantBookingEntry({
             </div>
             <button
               onClick={() => setActive(s)}
-              className="btn-primary shrink-0 px-4 py-2 text-sm"
+              className="btn-primary min-h-[44px] shrink-0 px-4 py-2 text-sm sm:min-h-0"
               data-testid={`instant-book-${s.id}`}
             >
               Prenota
