@@ -489,6 +489,38 @@ function MessaggiInner() {
           .in("id", ids);
         const map: Record<string, ThreadAppointment> = {};
         for (const row of (data ?? []) as ThreadAppointment[]) map[row.id] = row;
+        // Uno spostamento chiesto dal cliente e ancora da confermare (115):
+        // l'orario di prima e' nello storico, nello «spostato» del cliente
+        // che ha portato l'appuntamento all'orario attuale. Il biglietto lo
+        // mostra, e il pro sa che dire no non cancella il lavoro.
+        const inAttesa = Object.values(map).filter(
+          (x) => x.status === "proposed" && x.proposed_by === "customer"
+        );
+        if (inAttesa.length > 0) {
+          const { data: ev } = await supabase
+            .from("appointment_events")
+            .select("appointment_id, inizio_prima, inizio_dopo, created_at")
+            .in("appointment_id", inAttesa.map((x) => x.id))
+            .eq("tipo", "spostato")
+            .eq("autore", "customer")
+            .order("created_at", { ascending: false });
+          for (const e of (ev ?? []) as {
+            appointment_id: string;
+            inizio_prima: string | null;
+            inizio_dopo: string | null;
+          }[]) {
+            const x = map[e.appointment_id];
+            if (
+              x &&
+              x.spostato_da === undefined &&
+              e.inizio_prima &&
+              e.inizio_dopo &&
+              new Date(e.inizio_dopo).getTime() === new Date(x.starts_at).getTime()
+            ) {
+              x.spostato_da = e.inizio_prima;
+            }
+          }
+        }
         setThreadAppts(map);
       } else {
         setThreadAppts({});

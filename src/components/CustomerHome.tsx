@@ -19,6 +19,7 @@ import { sendMessage } from "@/lib/messages";
 import { notifyEvent } from "@/lib/notify";
 import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
 import { AnnullaAppuntamento } from "@/components/AnnullaAppuntamento";
+import { SpostaAppuntamento } from "@/components/SpostaAppuntamento";
 
 interface CustomerRequest {
   id: string;
@@ -765,6 +766,15 @@ export function CustomerHome() {
                           Apri la chat →
                         </Link>
                       )}
+                      {/* Cambiare orario segue la regola della disdetta
+                          (115): fuori dal preavviso si sceglie un orario
+                          libero, dentro si chiama. */}
+                      <SpostaAppuntamento
+                        appt={a}
+                        nomeAltro={proName(a.professional_id)}
+                        onSpostato={load}
+                        compatto
+                      />
                       <AnnullaAppuntamento
                         appt={a}
                         ruolo="customer"
