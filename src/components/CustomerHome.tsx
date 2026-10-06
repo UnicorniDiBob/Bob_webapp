@@ -654,19 +654,19 @@ export function CustomerHome() {
                         </button>
                       </div>
                     ) : (
-                      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 border-t border-black/5 pt-2.5">
+                      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1">
                         <Link
                           href={`/messaggi?r=${r.id}${
                             r.pros[0] ? `&p=${r.pros[0].id}` : ""
                           }`}
-                          className="text-xs font-medium text-bob-indigo hover:underline"
+                          className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
                         >
                           Apri la conversazione →
                         </Link>
                         <button
                           onClick={() => setConfirmClose(r.id)}
                           disabled={closing === r.id}
-                          className="text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline"
+                          className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline sm:min-h-0"
                         >
                           {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
                         </button>
