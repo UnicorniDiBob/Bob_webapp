@@ -46,6 +46,14 @@ body {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-bob-ink/70 transition hover:bg-bob-indigo-50 hover:text-bob-indigo;
   }
 
+  /* IL TASTO CHE TOGLIE QUALCOSA (07/10). Disdire un appuntamento era un
+     tasto bianco con la scritta rossa, uguale a «Cambia orario» accanto: non
+     si capiva quale dei due fosse quello che non si torna indietro. Una
+     variante sola, qui, invece di colorare a mano i punti che la usano. */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-600/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
   /* LA SCHEDA E' UN CONTENITORE, NON UN BERSAGLIO.
      Su 118 usi di `.card` nel progetto, TRE sono cliccabili (piu' la scheda
      del professionista in ui.tsx): tutti gli altri sono pannelli. Eppure
@@ -168,5 +176,70 @@ body {
   .banconota-cade {
     animation: none;
     opacity: 1;
+  }
+}
+
+/* LA CHAT SI APRE DAL PUNTO DEL TOCCO (07/10, lib/aperturaChat.ts).
+   --chat-x, --chat-y e --chat-r li scrive lo script al tocco: il centro e il
+   raggio che copre tutto lo schermo da li'. Solo clip-path, transform e
+   opacity, che stanno sulla scheda video. 280ms all'andata, 200 al ritorno:
+   deve finire prima che l'occhio la cerchi. */
+@keyframes chat-si-apre {
+  from {
+    clip-path: circle(0 at var(--chat-x, 50%) var(--chat-y, 50%));
+    transform: scale(0.98);
+    opacity: 0.6;
+  }
+  to {
+    clip-path: circle(var(--chat-r, 150vmax) at var(--chat-x, 50%) var(--chat-y, 50%));
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes chat-si-chiude {
+  from {
+    clip-path: circle(var(--chat-r, 150vmax) at var(--chat-x, 50%) var(--chat-y, 50%));
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    clip-path: circle(0 at var(--chat-x, 50%) var(--chat-y, 50%));
+    transform: scale(0.98);
+    opacity: 0.6;
+  }
+}
+
+/* Con le transizioni di vista: la pagina di prima resta ferma sotto, la
+   nuova cresce sopra (andata); al ritorno quella di prima si stringe sopra
+   la nuova. */
+html.vt-apri-chat::view-transition-old(root),
+html.vt-chiudi-chat::view-transition-new(root) {
+  animation: none;
+}
+
+html.vt-apri-chat::view-transition-new(root) {
+  transform-origin: var(--chat-x, 50%) var(--chat-y, 50%);
+  animation: chat-si-apre 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+html.vt-chiudi-chat::view-transition-old(root) {
+  z-index: 1;
+  transform-origin: var(--chat-x, 50%) var(--chat-y, 50%);
+  animation: chat-si-chiude 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Il ripiego senza transizioni di vista: la cornice della chat appena
+   montata fa la stessa animazione. */
+.chat-apertura {
+  transform-origin: var(--chat-x, 50%) var(--chat-y, 50%);
+  animation: chat-si-apre 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.vt-apri-chat::view-transition-new(root),
+  html.vt-chiudi-chat::view-transition-old(root),
+  .chat-apertura {
+    animation: none;
   }
 }

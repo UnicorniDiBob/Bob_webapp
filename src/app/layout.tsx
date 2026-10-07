@@ -8,6 +8,7 @@ import { PromemoriaProfilo } from "@/components/PromemoriaProfilo";
 import { Header } from "@/components/Header";
 import { CancellazioneBanner } from "@/components/CancellazioneBanner";
 import { Footer } from "@/components/Footer";
+import { NascondiSu } from "@/components/NascondiSu";
 import { MessagesBubble } from "@/components/MessagesBubble";
 import { AvvisiPopup } from "@/components/AvvisiPopup";
 import { ManutenzioneBanner } from "@/components/ManutenzioneBanner";
@@ -137,7 +138,9 @@ export default function RootLayout({
               <ProBanner />
               <MessagesBubble />
               <PromemoriaProfilo />
-              <Footer />
+              <NascondiSu prefissi={["/messaggi"]}>
+                <Footer />
+              </NascondiSu>
             </NotificheProvider>
           </UnreadProvider>
         </AuthProvider>

@@ -159,13 +159,17 @@ export function AppointmentActions({
   // stessa regola e gli stessi componenti dell'area personale: fuori dal
   // preavviso «Cambia orario» e «Disdici», dentro «Chiama per spostare» e
   // «Chiama per annullare». Quando la regola dice «no» (concluso, gia'
-  // iniziato) il biglietto resta senza la fascia dei tasti. Il pro annulla
-  // e sposta dal calendario (AppointmentDetail), non da qui; da qui dichiara
-  // un ritardo (116), lo stesso componente del calendario.
+  // iniziato) il biglietto resta senza la fascia dei tasti.
+  // IL PRO AGISCE DA QUI (07/10). Prima le azioni erano solo del cliente, e il
+  // pro doveva uscire dalla chat e cercare l'appuntamento nel calendario. Ora
+  // ha le stesse del dettaglio nel calendario (AppointmentDetail), con gli
+  // stessi componenti e quindi le stesse regole: il ritardo (oggi), lo
+  // spostamento e l'annullamento con il preavviso.
   if (a.status === "confirmed" || a.status === "completed") {
-    const disdicibile =
-      viewer === "customer" && statoDisdetta(a).tipo !== "no";
-    const inRitardo = viewer === "professional" && ritardoPossibile(a);
+    const regola = statoDisdetta(a).tipo !== "no";
+    const disdicibile = viewer === "customer" && regola;
+    const perIlPro =
+      viewer === "professional" && (regola || ritardoPossibile(a));
     return (
       <div className="mt-1.5" data-testid={`appt-status-${a.id}`}>
         <BigliettoAppuntamento
@@ -191,12 +195,26 @@ export function AppointmentActions({
                   onAnnullato={onChanged}
                 />
               </div>
-            ) : inRitardo ? (
-              <SegnalaRitardo
-                appt={a}
-                nomeCliente={counterpartName}
-                onFatto={onChanged}
-              />
+            ) : perIlPro ? (
+              <div className="flex flex-col gap-1">
+                <SegnalaRitardo
+                  appt={a}
+                  nomeCliente={counterpartName}
+                  onFatto={onChanged}
+                />
+                <SpostaAppuntamento
+                  appt={a}
+                  ruolo="professional"
+                  nomeAltro={counterpartName}
+                  onSpostato={onChanged}
+                />
+                <AnnullaAppuntamento
+                  appt={a}
+                  ruolo="professional"
+                  nomeAltro={counterpartName}
+                  onAnnullato={onChanged}
+                />
+              </div>
             ) : undefined
           }
         />
