@@ -8,7 +8,9 @@
 // quella richiesta. Dentro, si chiama: il cliente vede il numero del pro; il
 // pro vede quello del cliente e, DOPO la telefonata, registra l'annullamento
 // dichiarando di averlo concordato — cosi' il cliente non resta con un
-// appuntamento fantasma. Il pro scrive sempre il motivo; il cliente se vuole.
+// appuntamento fantasma. Il motivo e' facoltativo per tutti e due (116: prima
+// il pro doveva scriverlo sempre); quando c'e', l'altra parte lo legge in
+// chat e resta nello storico.
 //
 // Il conto del preavviso qui serve a scegliere cosa mostrare. Decide il
 // database (annulla_appuntamento), con l'ora del server: se nel frattempo il
@@ -226,7 +228,7 @@ export function AnnullaAppuntamento({
       {(pro || !dentro) && (
         <div className="mt-3">
           <label className="label-bob" htmlFor={`motivo-${appt.id}`}>
-            {pro ? "Motivo (lo legge in chat)" : "Motivo (facoltativo)"}
+            {pro ? "Motivo (facoltativo, lo legge in chat)" : "Motivo (facoltativo)"}
           </label>
           <textarea
             id={`motivo-${appt.id}`}
@@ -250,11 +252,7 @@ export function AnnullaAppuntamento({
         {(pro || !dentro) && (
           <button
             onClick={conferma}
-            disabled={
-              busy ||
-              (pro && motivo.trim().length < 3) ||
-              (pro && dentro && !concordato)
-            }
+            disabled={busy || (pro && dentro && !concordato)}
             className="btn-primary bg-red-600 px-4 py-2 text-sm hover:bg-red-700 disabled:opacity-50"
             data-testid="annulla-conferma"
           >

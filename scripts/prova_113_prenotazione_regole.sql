@@ -12,7 +12,9 @@
 --
 -- Uso, dalla radice del repo, dopo ./scripts/schema_check.sh:
 --   psql -h /tmp -p 55432 -U postgres -d bobclone -f scripts/prova_113_prenotazione_regole.sql
--- Il 05/10 e' passata intera (13 prove) su Postgres 16 in container.
+-- Il 05/10 e' passata intera (13 prove) su Postgres 16 in container. Il 07/10
+-- ritoccata per la 116 (P9 senza il motivo obbligatorio, P11 senza il 23P01
+-- del pro) e ripassata.
 \set ON_ERROR_STOP 1
 \set QUIET 1
 set client_min_messages = notice;
@@ -155,17 +157,12 @@ do $$ begin
   raise notice 'P8 ok: il pro vede il numero del cliente';
 end $$;
 
--- P9. Il pro: senza motivo no; dentro il preavviso senza telefonata no; con entrambi si'
+-- P9. Il pro: dentro il preavviso senza telefonata no; con la telefonata si'.
+-- (116: il motivo non e' piu' obbligatorio per il pro; la prova del «senza
+-- motivo si annulla» sta in prova_116_ritardo_e_sovrapposizione.sql.)
 do $$
 declare h text;
 begin
-  begin
-    perform public.annulla_appuntamento('00000000-0000-0000-0000-00000000aa03', '', true);
-    raise exception 'P9 FALLITA: annullato senza motivo';
-  exception when raise_exception then
-    get stacked diagnostics h = pg_exception_hint;
-    if h is distinct from 'motivo' then raise exception 'P9 FALLITA: hint % invece di motivo (%)', h, sqlerrm; end if;
-  end;
   begin
     perform public.annulla_appuntamento('00000000-0000-0000-0000-00000000aa03', 'Sono malato', false);
     raise exception 'P9 FALLITA: annullato dentro il preavviso senza telefonata';
@@ -215,17 +212,11 @@ do $$ begin
   end;
 end $$;
 
--- P11. Spostare: l'ora di partenza resta nello storico; sopra un altro cliente no
+-- P11. Spostare: l'ora di partenza resta nello storico.
+-- (116: sopra un altro cliente il PRO ora passa — la sovrapposizione e'
+-- permessa a lui e vietata al cliente; le due facce le prova
+-- prova_116_ritardo_e_sovrapposizione.sql. Qui non si prova piu' il 23P01.)
 update public.appointments set starts_at = starts_at + interval '2 hours' where id = '00000000-0000-0000-0000-00000000aa04';
-do $$ begin
-  begin
-    update public.appointments a set starts_at = (select v + interval '30 minutes' from t where k = 'g')
-     where a.id = '00000000-0000-0000-0000-00000000aa04';
-    raise exception 'P11 FALLITA: spostato sopra la prenotazione del cliente due';
-  exception when exclusion_violation then
-    raise notice 'P11a ok: 23P01 spostando sopra un altro cliente';
-  end;
-end $$;
 reset role;
 do $$ begin
   if (select status from public.appointments where id = '00000000-0000-0000-0000-00000000aa04') <> 'proposed' then

@@ -174,6 +174,29 @@ export function fuoriDalleFasce(
 }
 
 /** Vero se [inizio, inizio+durata) tocca uno degli intervalli occupati. */
+/**
+ * CON CHI SI SOVRAPPONE (116). Non basta dire «si sovrappone»: il pro deve
+ * sapere a cosa, per decidere se gli va bene. Gli appuntamenti attivi
+ * (confermati o proposti) che toccano l'intervallo, in ordine di orario.
+ * `escludi` e' l'appuntamento che si sta spostando: non si sovrappone a se
+ * stesso.
+ */
+export function conChiSiSovrappone<
+  T extends { id: string; starts_at: string; duration_minutes: number; status: string },
+>(inizio: Date, durataMinuti: number, righe: T[], escludi?: string | null): T[] {
+  const s = inizio.getTime();
+  if (isNaN(s)) return [];
+  const e = s + durataMinuti * 60000;
+  return righe
+    .filter((r) => r.id !== escludi)
+    .filter((r) => r.status === "confirmed" || r.status === "proposed")
+    .filter((r) => {
+      const rs = new Date(r.starts_at).getTime();
+      return s < rs + r.duration_minutes * 60000 && e > rs;
+    })
+    .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+}
+
 export function siSovrappone(
   inizio: Date,
   durataMinuti: number,

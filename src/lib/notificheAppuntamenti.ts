@@ -57,6 +57,16 @@ function quando(iso: string | null): string {
   });
 }
 
+/** Solo l'ora, per un ritardo: il giorno e' oggi. */
+function ora(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString("it-IT", {
+    timeZone: "Europe/Rome",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function chat(requestId: string, professionalId: string): string {
   return `/messaggi?r=${requestId}&p=${professionalId}`;
 }
@@ -220,7 +230,17 @@ async function carica(
       case "spostato":
         t = {
           titolo: `${nome} ha spostato l'appuntamento`,
-          testo: `Da ${quando(e.inizio_prima)} a ${quando(e.inizio_dopo)}${titolo}.`,
+          testo: `Da ${quando(e.inizio_prima)} a ${quando(e.inizio_dopo)}${titolo}.${
+            e.concordato_telefono ? " Come concordato al telefono." : ""
+          }`,
+        };
+        break;
+      // IL RITARDO (116): non e' uno spostamento da confermare, e' una
+      // notizia. L'appuntamento resta confermato all'ora nuova.
+      case "ritardo":
+        t = {
+          titolo: `${nome} è in ritardo`,
+          testo: `Arriva alle ${ora(e.inizio_dopo)} invece che alle ${ora(e.inizio_prima)}${titolo}. L'appuntamento resta confermato.${motivo}`,
         };
         break;
       default:

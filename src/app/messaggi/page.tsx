@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   busyFromAppointments,
   computeFreeSlotsWithAvailability,
+  conChiSiSovrappone,
   type AvailabilityWindow,
 } from "@/lib/slots";
 import { notifyEvent } from "@/lib/notify";
@@ -34,6 +35,10 @@ import type {
   ConversationSummary,
 } from "@/lib/supabase/types";
 import { ProCalendar } from "@/components/ProCalendar";
+import {
+  AvvisoSovrapposizione,
+  useAvvisoSovrapposizione,
+} from "@/components/AvvisoSovrapposizione";
 import {
   BigliettoAppuntamento,
   durataLeggibile,
@@ -310,27 +315,29 @@ function MessaggiInner() {
     return isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : NaN;
   }, [apptPrezzo]);
 
-  // Gli impegni che l'orario proposto non deve toccare. Senza la proposta che
-  // si sta sostituendo: spostarla di mezz'ora non e' una sovrapposizione con
-  // se stessa.
-  const occupato = useMemo(
-    () =>
-      replacingApptId
-        ? busyFromAppointments(myAppts.filter((a) => a.id !== replacingApptId))
-        : myBusy,
-    [myAppts, myBusy, replacingApptId]
-  );
-
   const inizioScelto = useMemo(
     () => (apptDate ? new Date(`${apptDate}T${apptTime}:00`) : null),
     [apptDate, apptTime]
   );
-  const conflitto = useMemo(() => {
-    if (!inizioScelto || isNaN(inizioScelto.getTime())) return false;
-    const s = inizioScelto.getTime();
-    const e = s + apptDuration * 60000;
-    return occupato.some((b) => s < b.end && e > b.start);
-  }, [inizioScelto, apptDuration, occupato]);
+  // CON CHI SI SOVRAPPONE (116). Prima una proposta sopra un altro impegno
+  // non partiva: «spostalo». Al pro la sovrapposizione e' permessa (e' lui a
+  // sapere se ci sta), quindi e' un avviso con i nomi, superato da un
+  // secondo clic, e spegnibile per sempre. Senza la proposta che si sta
+  // sostituendo: spostarla di mezz'ora non e' una sovrapposizione con se
+  // stessa.
+  const conflitti = useMemo(
+    () =>
+      inizioScelto
+        ? conChiSiSovrappone(inizioScelto, apptDuration, myAppts, replacingApptId)
+        : [],
+    [inizioScelto, apptDuration, myAppts, replacingApptId]
+  );
+  const conflitto = conflitti.length > 0;
+  const avvisoSovrapposizione = useAvvisoSovrapposizione(myProId);
+  const [sovrapposizioneVista, setSovrapposizioneVista] = useState(false);
+  useEffect(() => {
+    setSovrapposizioneVista(false);
+  }, [apptDate, apptTime, apptDuration]);
 
   // UN APPUNTAMENTO, UN BIGLIETTO (05/10). Ogni biglietto legge lo stato VIVO
   // dell'appuntamento: prenota -> sposta -> disdici lasciava tre biglietti
@@ -386,12 +393,9 @@ function MessaggiInner() {
       setApptErr("Il prezzo dev'essere un numero, per esempio 80 o 75,50.");
       return;
     }
-    // Guardia doppia prenotazione: l'orario scelto non deve sovrapporsi
-    // ai tuoi appuntamenti (confermati o in attesa).
-    if (conflitto) {
-      setApptErr(
-        "Hai già un appuntamento in quell'orario: scegli uno slot libero."
-      );
+    // Sopra un altro impegno: la prima volta si avvisa, la seconda parte.
+    if (conflitto && avvisoSovrapposizione.mostra && !sovrapposizioneVista) {
+      setSovrapposizioneVista(true);
       return;
     }
     setApptSaving(true);
@@ -1217,10 +1221,18 @@ function MessaggiInner() {
                     Scegli un orario nel calendario o scrivi data e ora.
                   </p>
                 )}
-                {conflitto && (
-                  <p className="mt-0.5 text-xs font-medium text-red-600">
-                    Si sovrappone a un tuo appuntamento: spostalo.
-                  </p>
+                {conflitto && avvisoSovrapposizione.mostra && (
+                  <div className="mt-1">
+                    <AvvisoSovrapposizione
+                      conflitti={conflitti}
+                      onSpegni={avvisoSovrapposizione.spegni}
+                      testo={
+                        sovrapposizioneVista
+                          ? "Se va bene così, invia di nuovo."
+                          : undefined
+                      }
+                    />
+                  </div>
                 )}
                 {!conflitto && fuoriOrario && (
                   <p
@@ -1245,13 +1257,15 @@ function MessaggiInner() {
                 </button>
                 <button
                   onClick={proposeAppointment}
-                  disabled={
-                    apptSaving || !apptDate || apptDuration <= 0 || conflitto
-                  }
+                  disabled={apptSaving || !apptDate || apptDuration <= 0}
                   className="btn-primary flex-1 py-2.5"
                   data-testid="button-appt-send"
                 >
-                  {apptSaving ? "Invio…" : "Invia proposta"}
+                  {apptSaving
+                    ? "Invio…"
+                    : sovrapposizioneVista && conflitto
+                      ? "Invia lo stesso"
+                      : "Invia proposta"}
                 </button>
               </div>
             </div>

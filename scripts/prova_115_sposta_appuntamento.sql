@@ -144,19 +144,11 @@ do $$ declare a public.appointments%rowtype; g timestamptz; begin
   raise notice 'P4 ok: rifiuto dal calendario = orario di prima (quello approvato in P3)';
 end $$;
 
--- P5. Chi non e' il cliente non sposta: il pro (non_attivo), un altro cliente (non_trovato)
+-- P5. Chi non e' delle parti non sposta: un altro cliente (non_trovato).
+-- (116: il pro ora sposta da questa funzione, con la regola del preavviso;
+-- le sue prove stanno in prova_116_ritardo_e_sovrapposizione.sql.)
 do $$ begin
-  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
   execute 'set local role authenticated';
-  begin
-    perform public.sposta_appuntamento('00000000-0000-0000-0000-00000000aa01', now() + interval '20 days', null);
-    raise exception 'P5 FALLITA: il pro ha usato la strada del cliente';
-  exception when raise_exception then
-    declare h text; begin
-      get stacked diagnostics h = pg_exception_hint;
-      if h is distinct from 'non_attivo' then raise exception 'P5 FALLITA (pro): % / %', sqlerrm, h; end if;
-    end;
-  end;
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c2', true);
   begin
     perform public.sposta_appuntamento('00000000-0000-0000-0000-00000000aa01', now() + interval '20 days', null);
@@ -168,7 +160,7 @@ do $$ begin
     end;
   end;
   execute 'reset role';
-  raise notice 'P5 ok: il pro e un estraneo non passano';
+  raise notice 'P5 ok: un estraneo non passa';
 end $$;
 
 -- P6. Orario non valido: gia' passato, o lo stesso di adesso (orario)

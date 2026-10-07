@@ -22,6 +22,7 @@ import {
 import AvailabilityEditor from "@/components/AvailabilityEditor";
 import InstantBookingConfig from "@/components/InstantBookingConfig";
 import PreavvisoAnnullamento from "@/components/PreavvisoAnnullamento";
+import AvvisoSovrapposizioneImpostazione from "@/components/AvvisoSovrapposizioneImpostazione";
 
 export default function OrariPage() {
   const router = useRouter();
@@ -70,6 +71,15 @@ export default function OrariPage() {
         </p>
         <div className="mt-3">
           <PreavvisoAnnullamento professionalId={pro.id} />
+        </div>
+      </div>
+
+      <div className="card p-5">
+        <h3 className="text-sm font-semibold text-bob-ink">
+          Appuntamenti sovrapposti
+        </h3>
+        <div className="mt-3">
+          <AvvisoSovrapposizioneImpostazione professionalId={pro.id} />
         </div>
       </div>
 
