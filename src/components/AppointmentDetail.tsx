@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { LinkChat } from "@/components/LinkChat";
 import { updateAppointment } from "@/lib/messages";
 import { notifyEvent } from "@/lib/notify";
 import type { Appointment } from "@/lib/supabase/types";
@@ -253,13 +253,13 @@ export function AppointmentDetail({
           {/* DAL CALENDARIO ALLA CHAT IN UN CLIC (05/10). La conversazione
               e' quella di questa richiesta con questo pro, non l'elenco. */}
           {chat && (
-            <Link
+            <LinkChat
               href={chat}
               className="btn-secondary w-full py-2 text-center text-sm"
               data-testid="detail-conversation"
             >
               Apri la chat con {appt.customer_name || "il cliente"}
-            </Link>
+            </LinkChat>
           )}
 
           <button

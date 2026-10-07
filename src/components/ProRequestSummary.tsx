@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { LinkChat } from "@/components/LinkChat";
 import { zoneLabel, zoneCoords, distanceKm, formatDistance } from "@/lib/zones";
 
 interface RequestSummaryItem {
@@ -192,12 +193,12 @@ export function ProRequestSummary() {
               >
                 {copied === item.id ? "Copiato ✓" : "Copia bozza"}
               </button>
-              <Link
+              <LinkChat
                 href={`/messaggi?r=${item.id}`}
                 className="btn-primary py-1.5 text-xs"
               >
                 Vai ai messaggi →
-              </Link>
+              </LinkChat>
             </div>
           </div>
         );

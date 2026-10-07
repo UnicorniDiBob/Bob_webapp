@@ -4,16 +4,24 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, MessageCircle } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useUnread } from "@/components/UnreadProvider";
 import { createClient } from "@/lib/supabase/client";
+import {
+  chatMontata,
+  puntoDelTocco,
+  transizioneNellaPagina,
+  usaRipiego,
+} from "@/lib/aperturaChat";
 import {
   busyFromAppointments,
   computeFreeSlotsWithAvailability,
@@ -64,6 +72,11 @@ function fmtTime(d: string | null) {
 }
 
 export default function MessaggiPage() {
+  // Chi ha toccato «Apri la chat» altrove aspetta che la pagina ci sia per
+  // far partire il cerchio (lib/aperturaChat.ts): montata, non caricata.
+  useLayoutEffect(() => {
+    chatMontata();
+  }, []);
   return (
     <Suspense
       fallback={
@@ -536,9 +549,24 @@ function MessaggiInner() {
 
   // Cambio conversazione esplicito: sincronizza anche l'URL, così
   // refresh e tasto indietro non perdono la selezione.
-  function selectConversation(c: ConversationSummary) {
-    setActiveId(keyOf(c));
-    setMobileThread(true);
+  function selectConversation(
+    c: ConversationSummary,
+    tocco?: { x: number; y: number }
+  ) {
+    // Dall'elenco la conversazione si apre dal punto del tocco, come dagli
+    // altri tasti «Apri la chat». Il DOM cambia in modo sincrono (flushSync):
+    // la transizione fotografa il prima e il dopo.
+    if (tocco && keyOf(c) !== activeId) {
+      transizioneNellaPagina("apri", tocco, () =>
+        flushSync(() => {
+          setActiveId(keyOf(c));
+          setMobileThread(true);
+        })
+      );
+    } else {
+      setActiveId(keyOf(c));
+      setMobileThread(true);
+    }
     router.replace(
       `/messaggi?r=${c.requestId}${
         c.professionalId ? `&p=${c.professionalId}` : ""
@@ -610,12 +638,60 @@ function MessaggiInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, loadThread, myType, refreshUnread]);
 
-  useEffect(() => {
-    threadRef.current?.scrollTo({
-      top: threadRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages]);
+  // SI APRE GIA' IN FONDO (07/10). La prima volta che una conversazione si
+  // mostra, il salto all'ultimo messaggio e' immediato e avviene prima che
+  // la pagina si disegni: niente scorrimento visibile dall'alto. I messaggi
+  // che arrivano dopo scorrono dolcemente, come prima.
+  const threadInFondo = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const el = threadRef.current;
+    if (!el || loadingMsgs) return;
+    const prima = threadInFondo.current !== activeId;
+    threadInFondo.current = activeId;
+    el.scrollTo({ top: el.scrollHeight, behavior: prima ? "auto" : "smooth" });
+  }, [messages, loadingMsgs, activeId]);
+
+  // L'ALTEZZA UTILE (07/10): dal fondo dell'intestazione di Bob (che resta,
+  // e' l'unico posto della campanella) al fondo dello schermo. Si misura,
+  // non si indovina: sopra l'intestazione puo' esserci l'avviso di un fermo,
+  // sotto quello di una cancellazione dell'account.
+  const cornice = useRef<HTMLDivElement>(null);
+  const [alto, setAlto] = useState(81);
+  useLayoutEffect(() => {
+    function misura() {
+      const el = cornice.current;
+      if (!el) return;
+      setAlto(Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY)));
+    }
+    misura();
+    window.addEventListener("resize", misura);
+    const ro = new ResizeObserver(misura);
+    const header = document.querySelector("header");
+    if (header) ro.observe(header);
+    return () => {
+      window.removeEventListener("resize", misura);
+      ro.disconnect();
+    };
+  }, [loading]);
+
+  // Il ripiego dell'apertura animata, dove non ci sono le transizioni di
+  // vista: la cornice appena montata cresce dal punto del tocco. Le
+  // coordinate del tocco sono dello schermo; la cornice comincia sotto
+  // l'intestazione, quindi si spostano nel suo riquadro.
+  const [ripiego, setRipiego] = useState(false);
+  useLayoutEffect(() => {
+    if (!mobileThread && activeId === null) return;
+    if (!cornice.current || !usaRipiego()) return;
+    const b = cornice.current.getBoundingClientRect();
+    const st = document.documentElement.style;
+    const x = parseFloat(st.getPropertyValue("--chat-x")) || b.width / 2;
+    const y = parseFloat(st.getPropertyValue("--chat-y")) || b.height / 2;
+    cornice.current.style.setProperty("--chat-x", `${x - b.left}px`);
+    cornice.current.style.setProperty("--chat-y", `${y - b.top}px`);
+    setRipiego(true);
+    const t = setTimeout(() => setRipiego(false), 320);
+    return () => clearTimeout(t);
+  }, [mobileThread, activeId, loading]);
 
   async function handleSend() {
     const text = draft.trim();
@@ -674,29 +750,31 @@ function MessaggiInner() {
 
   const active = conversations.find((c) => keyOf(c) === activeId) ?? null;
 
+  // A TUTTO SCHERMO (07/10, Lucio). Prima /messaggi era una finestra alta
+  // 600px dentro la pagina, con l'intestazione «Le tue conversazioni» sopra
+  // e il piede sotto. Adesso e' l'impianto di WhatsApp desktop — senza la
+  // sua barra stretta di navigazione: l'intestazione di Bob resta (e' l'unico
+  // posto della campanella) e sotto c'e' tutta l'altezza dello schermo. A
+  // sinistra l'elenco, che scorre per conto suo; a destra la conversazione,
+  // con il campo di scrittura ancorato in basso. A 390px una colonna alla
+  // volta: l'elenco, o la conversazione con il tasto indietro. Aree di tocco
+  // di 44px (PR #145, #146).
   return (
-    <div className="container-bob py-8">
-      <header className="mb-5">
-        <span className="section-eyebrow">Messaggi</span>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-bob-ink">
-          Le tue conversazioni
-        </h1>
-        <p className="mt-1 text-sm text-bob-ink/70">
-          {myType === "professional"
-            ? "Rispondi ai clienti che ti hanno contattato."
-            : "Continua a parlare con i professionisti che hai contattato."}
-        </p>
-      </header>
-
+    <div
+      ref={cornice}
+      className={`flex w-full overflow-hidden bg-white ${ripiego ? "chat-apertura" : ""}`}
+      style={{ height: `calc(100dvh - ${alto}px)` }}
+      data-testid="chat-cornice"
+    >
       {loadingConvs ? (
-        <div className="card h-64 animate-pulse bg-black/[0.03]" />
+        <div className="m-4 flex-1 animate-pulse rounded-2xl bg-black/[0.03]" />
       ) : conversations.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
+        <div className="mx-auto flex max-w-sm flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-bob-indigo">
             <MessageCircle className="h-6 w-6" aria-hidden="true" />
           </div>
-          <h3 className="font-semibold text-bob-ink">Nessuna conversazione</h3>
-          <p className="max-w-sm text-sm text-bob-ink/70">
+          <h1 className="font-semibold text-bob-ink">Nessuna conversazione</h1>
+          <p className="text-sm text-bob-ink/70">
             {myType === "professional"
               ? "Quando un cliente ti contatta, la conversazione comparirà qui."
               : "Parla con Bob per trovare un professionista e iniziare una conversazione."}
@@ -708,66 +786,81 @@ function MessaggiInner() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-[300px_1fr]">
-          {/* lista conversazioni (su mobile nascosta quando un thread è aperto) */}
+        <>
+          {/* L'elenco: su mobile sparisce quando una conversazione e' aperta. */}
           <aside
-            className={`card max-h-[600px] divide-y divide-black/5 overflow-y-auto p-0 ${
-              mobileThread ? "hidden md:block" : ""
+            className={`min-h-0 w-full shrink-0 flex-col border-r border-black/[0.07] md:flex md:w-[320px] lg:w-[360px] ${
+              mobileThread ? "hidden" : "flex"
             }`}
+            data-testid="chat-elenco"
           >
-            {conversations.map((c) => {
-              const isActive = keyOf(c) === activeId;
-              return (
-                <button
-                  key={keyOf(c)}
-                  onClick={() => selectConversation(c)}
-                  className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition ${
-                    isActive ? "bg-bob-indigo-50" : "hover:bg-black/[0.02]"
-                  }`}
-                  data-testid={`conv-${c.requestId}`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate font-semibold text-bob-ink">
-                      {c.counterpartName}
+            <div className="shrink-0 border-b border-black/[0.07] px-4 py-3">
+              <h1 className="text-lg font-bold tracking-tight text-bob-ink">
+                Messaggi
+              </h1>
+            </div>
+            <div className="min-h-0 flex-1 divide-y divide-black/5 overflow-y-auto overscroll-contain">
+              {conversations.map((c) => {
+                const isActive = keyOf(c) === activeId;
+                return (
+                  <button
+                    key={keyOf(c)}
+                    onClick={(e) => selectConversation(c, puntoDelTocco(e))}
+                    className={`flex min-h-[64px] w-full flex-col justify-center gap-0.5 px-4 py-3 text-left transition ${
+                      isActive ? "bg-bob-indigo-50" : "hover:bg-black/[0.02]"
+                    }`}
+                    aria-current={isActive ? "true" : undefined}
+                    data-testid={`conv-${c.requestId}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-semibold text-bob-ink">
+                        {c.counterpartName}
+                      </span>
+                      <span className="shrink-0 text-2xs text-bob-ink/65">
+                        {fmtTime(c.lastAt).split(",")[0]}
+                      </span>
+                    </div>
+                    <span className="truncate text-xs text-bob-indigo">
+                      {c.serviceName}
+                      {c.cityName ? ` · ${c.cityName}` : ""}
                     </span>
-                    <span className="shrink-0 text-2xs text-bob-ink/65">
-                      {fmtTime(c.lastAt).split(",")[0]}
-                    </span>
-                  </div>
-                  <span className="truncate text-xs text-bob-indigo">
-                    {c.serviceName}
-                    {c.cityName ? ` · ${c.cityName}` : ""}
-                  </span>
-                  {c.lastMessage && (
-                    <span className="truncate text-xs text-bob-ink/70">
-                      {c.lastMessage}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                    {c.lastMessage && (
+                      <span className="truncate text-xs text-bob-ink/70">
+                        {c.lastMessage}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </aside>
 
-          {/* thread (su mobile visibile solo quando aperto; altezza legata al viewport così l'input resta in vista) */}
+          {/* La conversazione: su mobile solo quando e' aperta. */}
           <section
-            className={`card h-[calc(100dvh-16rem)] max-h-[600px] min-h-[320px] flex-col p-0 md:h-auto md:min-h-[400px] ${
-              mobileThread ? "flex" : "hidden md:flex"
+            className={`min-h-0 min-w-0 flex-1 flex-col md:flex ${
+              mobileThread ? "flex" : "hidden"
             }`}
+            data-testid="chat-conversazione"
           >
             {active ? (
               <>
-                <div className="flex items-center gap-2 border-b border-black/5 px-4 py-3.5 sm:px-5">
+                <div className="flex shrink-0 items-center gap-2 border-b border-black/[0.07] px-2 py-2 sm:px-4">
                   <button
-                    onClick={() => setMobileThread(false)}
-                    className="shrink-0 rounded-lg p-1.5 text-bob-ink/70 hover:bg-black/[0.04] hover:text-bob-indigo md:hidden"
+                    onClick={(e) => {
+                      const tocco = puntoDelTocco(e);
+                      transizioneNellaPagina("chiudi", tocco, () =>
+                        flushSync(() => setMobileThread(false))
+                      );
+                    }}
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-bob-ink/70 hover:bg-black/[0.04] hover:text-bob-indigo md:hidden"
                     aria-label="Torna alle conversazioni"
                     data-testid="button-back-to-list"
                   >
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  <div className="min-w-0">
+                  <div className="min-w-0 pl-1 md:pl-0">
                     <p className="truncate font-semibold text-bob-ink">
                       {active.counterpartName}
                     </p>
@@ -779,18 +872,20 @@ function MessaggiInner() {
                   {myType === "professional" && myProId && (
                     <button
                       onClick={() => setProposeOpen(true)}
-                      className="btn-secondary ml-auto inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs"
+                      className="btn-secondary ml-auto inline-flex min-h-[44px] shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs"
                       data-testid="button-propose-appointment"
                     >
                       <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
-                      Proponi appuntamento
+                      <span className="hidden sm:inline">Proponi appuntamento</span>
+                      <span className="sm:hidden">Proponi</span>
                     </button>
                   )}
                 </div>
 
                 <div
                   ref={threadRef}
-                  className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-5 py-4"
+                  className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain bg-[#fafafb] px-3 py-4 sm:px-6"
+                  data-testid="chat-messaggi"
                 >
                   {loadingMsgs ? (
                     <p className="text-center text-sm text-bob-ink/65">Carico…</p>
@@ -799,83 +894,83 @@ function MessaggiInner() {
                       Nessun messaggio ancora. Scrivi il primo.
                     </p>
                   ) : (
-                    messages.map((m) => {
-                      const mine = m.senderType === myType;
-                      // (033) proposta di appuntamento: sotto la bolla
-                      // compaiono approva / modifica / rifiuta.
-                      const appt =
-                        m.kind === "appointment_proposal" &&
-                        m.appointmentId &&
-                        ultimoMessaggioPerAppuntamento.get(m.appointmentId) === m.id
-                          ? threadAppts[m.appointmentId]
-                          : undefined;
-                      return (
+                  messages.map((m) => {
+                    const mine = m.senderType === myType;
+                    // (033) proposta di appuntamento: sotto la bolla
+                    // compaiono approva / modifica / rifiuta.
+                    const appt =
+                      m.kind === "appointment_proposal" &&
+                      m.appointmentId &&
+                      ultimoMessaggioPerAppuntamento.get(m.appointmentId) === m.id
+                        ? threadAppts[m.appointmentId]
+                        : undefined;
+                    return (
+                      <div
+                        key={m.id}
+                        className={`flex flex-col ${
+                          mine ? "items-end" : "items-start"
+                        }`}
+                      >
+                        {/* Una proposta e' un biglietto, non una frase: la
+                            bolla resta solo se il biglietto non si e'
+                            potuto leggere. TRANNE SULL'ANNULLATO (rilievo
+                            del 5/10): il messaggio che porta quel
+                            biglietto e' l'annullamento stesso, e il suo
+                            testo ha il «Motivo: …» che il biglietto non
+                            dice. Senza la bolla non lo leggeva nessuno. */}
+                        {(!appt || appt.status === "cancelled") && (
                         <div
-                          key={m.id}
-                          className={`flex flex-col ${
-                            mine ? "items-end" : "items-start"
+                          className={`max-w-[80%] lg:max-w-[42rem] rounded-2xl px-4 py-2.5 text-sm ${
+                            mine
+                              ? "rounded-br-sm bg-bob-indigo text-white"
+                              : "rounded-bl-sm bg-bob-indigo-50 text-bob-ink"
                           }`}
                         >
-                          {/* Una proposta e' un biglietto, non una frase: la
-                              bolla resta solo se il biglietto non si e'
-                              potuto leggere. TRANNE SULL'ANNULLATO (rilievo
-                              del 5/10): il messaggio che porta quel
-                              biglietto e' l'annullamento stesso, e il suo
-                              testo ha il «Motivo: …» che il biglietto non
-                              dice. Senza la bolla non lo leggeva nessuno. */}
-                          {(!appt || appt.status === "cancelled") && (
-                          <div
-                            className={`max-w-[80%] lg:max-w-[42rem] rounded-2xl px-4 py-2.5 text-sm ${
-                              mine
-                                ? "rounded-br-sm bg-bob-indigo text-white"
-                                : "rounded-bl-sm bg-bob-indigo-50 text-bob-ink"
+                          <p className="whitespace-pre-line">{m.message}</p>
+                          <p
+                            className={`mt-1 text-2xs ${
+                              mine ? "text-white/60" : "text-bob-ink/65"
                             }`}
                           >
-                            <p className="whitespace-pre-line">{m.message}</p>
-                            <p
-                              className={`mt-1 text-2xs ${
-                                mine ? "text-white/60" : "text-bob-ink/65"
-                              }`}
-                            >
+                            {fmtTime(m.createdAt)}
+                          </p>
+                        </div>
+                        )}
+                        {appt && user && (
+                          <div
+                            className={`flex w-full max-w-sm flex-col ${
+                              mine ? "items-end" : "items-start"
+                            }`}
+                          >
+                            <AppointmentActions
+                              appointment={appt}
+                              viewer={myType}
+                              userId={user.id}
+                              professionalId={
+                                activeP ??
+                                (myType === "professional" ? myProId : null)
+                              }
+                              counterpartName={
+                                active?.counterpartName ?? "il professionista"
+                              }
+                              zona={active?.cityName ?? null}
+                              onChanged={() =>
+                                loadThread(activeR as string, activeP)
+                              }
+                              onProModify={apriModifica}
+                            />
+                            <p className="mt-1 px-1 text-2xs text-bob-ink/65">
                               {fmtTime(m.createdAt)}
                             </p>
                           </div>
-                          )}
-                          {appt && user && (
-                            <div
-                              className={`flex w-full max-w-sm flex-col ${
-                                mine ? "items-end" : "items-start"
-                              }`}
-                            >
-                              <AppointmentActions
-                                appointment={appt}
-                                viewer={myType}
-                                userId={user.id}
-                                professionalId={
-                                  activeP ??
-                                  (myType === "professional" ? myProId : null)
-                                }
-                                counterpartName={
-                                  active?.counterpartName ?? "il professionista"
-                                }
-                                zona={active?.cityName ?? null}
-                                onChanged={() =>
-                                  loadThread(activeR as string, activeP)
-                                }
-                                onProModify={apriModifica}
-                              />
-                              <p className="mt-1 px-1 text-2xs text-bob-ink/65">
-                                {fmtTime(m.createdAt)}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
+                        )}
+                      </div>
+                    );
+                  })
                   )}
                 </div>
 
-                <div className="flex gap-2 border-t border-black/5 px-4 py-3">
+                <div className="flex shrink-0 gap-2 border-t border-black/[0.07] bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4">
                   <input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
@@ -883,13 +978,13 @@ function MessaggiInner() {
                       e.key === "Enter" && !sending && handleSend()
                     }
                     placeholder="Scrivi un messaggio…"
-                    className="input-bob py-2.5"
+                    className="input-bob min-h-[44px] py-2.5"
                     data-testid="input-message"
                   />
                   <button
                     onClick={handleSend}
                     disabled={sending || !draft.trim()}
-                    className="btn-primary py-2.5"
+                    className="btn-primary min-h-[44px] py-2.5"
                     data-testid="button-send-message"
                   >
                     Invia
@@ -897,12 +992,12 @@ function MessaggiInner() {
                 </div>
               </>
             ) : (
-              <div className="flex flex-1 items-center justify-center text-sm text-bob-ink/65">
+              <div className="flex flex-1 items-center justify-center bg-[#fafafb] text-sm text-bob-ink/65">
                 Seleziona una conversazione
               </div>
             )}
           </section>
-        </div>
+        </>
       )}
 
       {proposeOpen && (

@@ -148,14 +148,21 @@ export function AnnullaAppuntamento({
       ? "Chiama per annullare"
       : "Disdici";
 
+  // IL TASTO DEL CLIENTE E' ROSSO (07/10): pieno, non bianco con la scritta
+  // rossa. Accanto a «Cambia orario» deve leggersi da lontano qual e' quello
+  // che toglie l'appuntamento. La variante e' una sola (.btn-danger).
   if (!aperto) {
     return (
       <button
         onClick={() => setAperto(true)}
         className={
-          compatto
-            ? "inline-flex min-h-[40px] items-center text-xs font-medium text-red-600 hover:underline"
-            : "btn-ghost w-full justify-center text-sm text-red-600 hover:bg-red-50"
+          pro
+            ? compatto
+              ? "inline-flex min-h-[40px] items-center text-xs font-medium text-red-600 hover:underline"
+              : "btn-ghost min-h-[44px] w-full justify-center text-sm text-red-600 hover:bg-red-50"
+            : compatto
+              ? "btn-danger min-h-[40px] px-3 py-1.5 text-xs"
+              : "btn-danger min-h-[44px] w-full py-2.5"
         }
         data-testid={`annulla-apri-${appt.id}`}
       >
@@ -253,7 +260,7 @@ export function AnnullaAppuntamento({
           <button
             onClick={conferma}
             disabled={busy || (pro && dentro && !concordato)}
-            className="btn-primary bg-red-600 px-4 py-2 text-sm hover:bg-red-700 disabled:opacity-50"
+            className="btn-danger min-h-[44px] px-4 py-2"
             data-testid="annulla-conferma"
           >
             {busy

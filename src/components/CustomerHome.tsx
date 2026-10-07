@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { LinkChat } from "@/components/LinkChat";
 import { Bell, Calendar, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
@@ -393,12 +394,12 @@ export function CustomerHome() {
             n > 1 ? ` · ${n} messaggi` : ""
           }`,
           node: (
-            <Link
+            <LinkChat
               href={`/messaggi?r=${r.id}&p=${p.id}`}
               className="shrink-0 text-sm font-semibold text-bob-indigo hover:underline"
             >
               Rispondi →
-            </Link>
+            </LinkChat>
           ),
         });
       }
@@ -637,12 +638,12 @@ export function CustomerHome() {
                                   </span>
                                 )}
                               </span>
-                              <Link
+                              <LinkChat
                                 href={`/messaggi?r=${r.id}&p=${p.id}`}
                                 className="inline-flex min-h-[44px] shrink-0 items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
                               >
                                 Apri →
-                              </Link>
+                              </LinkChat>
                             </div>
                           );
                         })}
@@ -656,14 +657,14 @@ export function CustomerHome() {
                       </div>
                     ) : (
                       <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1">
-                        <Link
+                        <LinkChat
                           href={`/messaggi?r=${r.id}${
                             r.pros[0] ? `&p=${r.pros[0].id}` : ""
                           }`}
                           className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
                         >
                           Apri la conversazione →
-                        </Link>
+                        </LinkChat>
                         <button
                           onClick={() => setConfirmClose(r.id)}
                           disabled={closing === r.id}
@@ -758,13 +759,13 @@ export function CustomerHome() {
                         del 5/10 sui link vicini di questa pagina). */}
                     <div className="flex basis-full flex-wrap items-center gap-x-5 pl-[58px] text-xs">
                       {a.request_id && (
-                        <Link
+                        <LinkChat
                           href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
                           className="inline-flex min-h-[40px] items-center font-semibold text-bob-indigo hover:underline"
                           data-testid={`appt-chat-${a.id}`}
                         >
                           Apri la chat →
-                        </Link>
+                        </LinkChat>
                       )}
                       {/* Cambiare orario segue la regola della disdetta
                           (115): fuori dal preavviso si sceglie un orario
@@ -812,12 +813,12 @@ export function CustomerHome() {
                     >
                       {p.name}
                     </Link>
-                    <Link
+                    <LinkChat
                       href={`/messaggi?r=${p.requestId}&p=${p.id}`}
                       className="shrink-0 text-xs font-medium text-bob-indigo hover:underline"
                     >
                       Scrivi →
-                    </Link>
+                    </LinkChat>
                   </li>
                 ))}
               </ul>
@@ -864,14 +865,14 @@ export function CustomerHome() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Link
+                    <LinkChat
                       href={`/messaggi?r=${r.id}${
                         r.pros[0] ? `&p=${r.pros[0].id}` : ""
                       }`}
                       className="text-xs font-medium text-bob-indigo hover:underline"
                     >
                       Conversazione
-                    </Link>
+                    </LinkChat>
                     {r.pros.length > 0 &&
                       recensibile(r) &&
                       (r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`)) ? (
