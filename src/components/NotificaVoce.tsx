@@ -12,6 +12,7 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  CalendarX2,
   CheckCircle2,
   Info,
   type LucideIcon,
@@ -62,6 +63,10 @@ export function NotificaVoce({
 }) {
   const s = STILE[n.livello];
   const Icona = s.icona;
+
+  if (n.disdetta) {
+    return <VoceDisdetta n={n} nuova={nuova} onNavigato={onNavigato} />;
+  }
 
   return (
     <li
@@ -117,6 +122,72 @@ export function NotificaVoce({
             </>
           )}
         </p>
+      </div>
+    </li>
+  );
+}
+
+// LA DISDETTA IN EVIDENZA (07/10, Lucio). Un appuntamento annullato
+// dall'altra parte non puo' essere una riga grigia fra un promemoria e una
+// verifica: e' un buco nella giornata. Bordo e fondo rossi, l'orario che
+// salta barrato, chi ha annullato, il motivo se c'e', e la conversazione a
+// un tocco. Uguale nella tendina e nella pagina: qui non si accorcia niente,
+// sono quattro righe al massimo.
+function VoceDisdetta({
+  n,
+  nuova,
+  onNavigato,
+}: {
+  n: Notifica;
+  nuova: boolean;
+  onNavigato?: () => void;
+}) {
+  const d = n.disdetta!;
+  return (
+    <li
+      className="flex items-start gap-3 border-l-4 border-red-500 bg-red-50/70 px-4 py-3"
+      data-testid="notifica-disdetta"
+    >
+      <span
+        className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-100"
+        aria-hidden="true"
+      >
+        <CalendarX2 className="h-4 w-4 text-red-600" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
+          <span className="min-w-0">{n.titolo}</span>
+          {nuova && (
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-red-600"
+              aria-label="Da vedere"
+            />
+          )}
+        </p>
+        <p className="mt-0.5 text-sm text-bob-ink/80">
+          <span className="sr-only">Orario annullato: </span>
+          <span className="line-through decoration-red-500/70">{d.orario}</span>
+        </p>
+        <p className="mt-0.5 text-xs text-bob-ink/70">
+          Annullato da {d.chi}
+          {d.concordatoTelefono ? ", come concordato al telefono" : ""}
+          {n.quando ? ` · ${quandoLeggibile(n.quando)}` : ""}
+        </p>
+        {d.motivo && (
+          <p className="mt-1 break-words text-sm text-bob-ink/80">
+            Motivo: «{d.motivo}»
+          </p>
+        )}
+        {n.href && (
+          <Link
+            href={n.href}
+            onClick={onNavigato}
+            className="mt-1 inline-flex min-h-[44px] items-center text-sm font-semibold text-red-700 hover:underline"
+            data-testid="notifica-disdetta-chat"
+          >
+            {n.azione ?? "Apri la conversazione"} →
+          </Link>
+        )}
       </div>
     </li>
   );

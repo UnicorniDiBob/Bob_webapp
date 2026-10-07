@@ -100,7 +100,7 @@ export function NotificheCampanella() {
         >
           <div className="flex items-baseline justify-between border-b border-black/5 px-4 py-3">
             <p className="text-sm font-bold text-bob-ink">Notifiche</p>
-            <p className="text-xs text-bob-ink/65">Account e profilo</p>
+            <p className="text-xs text-bob-ink/65">Account e appuntamenti</p>
           </div>
 
           {!caricate ? (
@@ -113,9 +113,9 @@ export function NotificheCampanella() {
                 Non c&apos;è niente da leggere.
               </p>
               <p className="mt-1 text-xs text-bob-ink/65">
-                Qui finiscono le nostre comunicazioni: verifica, risposte
-                dell&apos;assistenza, stato del tuo profilo. I messaggi dei
-                clienti stanno in Messaggi.
+                Qui finiscono le nostre comunicazioni e i fatti dei tuoi
+                appuntamenti: prenotazioni, spostamenti, ritardi, disdette. I
+                messaggi scritti stanno in Messaggi.
               </p>
             </div>
           ) : (
@@ -136,12 +136,12 @@ export function NotificheCampanella() {
             <Link
               href="/notifiche"
               onClick={() => setAperta(false)}
-              className="text-sm font-semibold text-bob-indigo hover:underline"
+              className="inline-flex min-h-[44px] items-center text-sm font-semibold text-bob-indigo hover:underline"
               data-testid="link-tutte-notifiche"
             >
               {notifiche.length > NELLA_TENDINA
-                ? `Vedi tutte (${notifiche.length})`
-                : "Apri le notifiche"}
+                ? `Vedi tutte le notifiche (${notifiche.length})`
+                : "Vedi tutte le notifiche"}
             </Link>
           </div>
         </div>

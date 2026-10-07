@@ -54,14 +54,16 @@ export default function NotifichePage() {
       <div className="colonna-lettura">
         <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <span className="section-eyebrow">Notifiche di servizio</span>
+            <span className="section-eyebrow">Notifiche</span>
             <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold tracking-tight text-bob-ink">
               <Bell className="h-6 w-6 text-bob-ink/65" aria-hidden="true" />
-              Cosa ti abbiamo detto
+              Le tue notifiche
             </h1>
             <p className="mt-1.5 text-sm text-bob-ink/70">
-              Verifica, risposte dell&apos;assistenza, stato del tuo profilo e
-              del tuo account. I messaggi dei clienti stanno in{" "}
+              I tuoi appuntamenti — prenotazioni, spostamenti, ritardi e
+              disdette — e quello che ti diciamo noi: verifica, risposte
+              dell&apos;assistenza, stato del profilo e dell&apos;account. I
+              messaggi scritti stanno in{" "}
               <Link
                 href="/messaggi"
                 className="font-medium text-bob-indigo hover:underline"
@@ -92,9 +94,10 @@ export default function NotifichePage() {
               Non c&apos;è niente da leggere.
             </p>
             <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-bob-ink/70">
-              Quando avremo qualcosa da dirti — una verifica da completare, una
-              risposta dell&apos;assistenza, un problema sul tuo profilo — lo
-              trovi qui, e la campanella nell&apos;intestazione si accende.
+              Quando succede qualcosa a un tuo appuntamento, o abbiamo
+              qualcosa da dirti — una verifica da completare, una risposta
+              dell&apos;assistenza — lo trovi qui, e la campanella
+              nell&apos;intestazione si accende.
             </p>
           </div>
         ) : (

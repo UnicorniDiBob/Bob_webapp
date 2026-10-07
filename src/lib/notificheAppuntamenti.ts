@@ -190,7 +190,7 @@ async function carica(
     const nome = chi(e.professional_id, e.appointments?.customer_name);
     const titolo = e.appointments?.title ? ` · ${e.appointments.title}` : "";
     const motivo = e.motivo ? ` Motivo: «${e.motivo}».` : "";
-    let t: { titolo: string; testo: string } | null = null;
+    let t: { titolo: string; testo: string; disdetta?: Notifica["disdetta"] } | null = null;
     switch (e.tipo) {
       case "prenotato":
         t = {
@@ -210,6 +210,9 @@ async function carica(
           testo: `${quando(e.inizio_prima ?? e.inizio_dopo)}${titolo}. Scrivetevi per trovarne un altro.`,
         };
         break;
+      // LA DISDETTA SI VEDE (07/10): oltre al testo, i pezzi per
+      // disegnarla in evidenza (NotificaVoce) — l'orario che salta, chi, il
+      // motivo. Il testo resta, per chi legge solo quello.
       case "annullato":
         t = {
           titolo:
@@ -219,6 +222,12 @@ async function carica(
           testo: `Era ${quando(e.inizio_prima ?? e.inizio_dopo)}${titolo}.${
             e.concordato_telefono ? " Come concordato al telefono." : ""
           }${motivo}`,
+          disdetta: {
+            orario: `${quando(e.inizio_prima ?? e.inizio_dopo)}${titolo}`,
+            chi: nome,
+            motivo: e.motivo,
+            concordatoTelefono: e.concordato_telefono,
+          },
         };
         break;
       case "ritirato":
@@ -253,9 +262,10 @@ async function carica(
       titolo: t.titolo,
       testo: t.testo,
       href: chat(e.request_id, e.professional_id),
-      azione: "Apri la chat",
+      azione: t.disdetta ? "Apri la conversazione" : "Apri la chat",
       quando: e.created_at,
       mittente: nome,
+      ...(t.disdetta ? { disdetta: t.disdetta } : {}),
     });
   }
   return out;
