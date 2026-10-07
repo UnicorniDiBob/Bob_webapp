@@ -90,6 +90,21 @@ export interface Notifica {
   quando: string | null;
   /** Chi parla: lo staff ha un nome, il sistema non ne ha uno. */
   mittente?: string | null;
+  /**
+   * UNA DISDETTA NON E' UNA RIGA COME LE ALTRE (07/10, Lucio). Un
+   * appuntamento annullato dall'altra parte e' un buco nella giornata di
+   * qualcuno: va in evidenza, con l'orario che salta, chi ha annullato e il
+   * motivo se c'e'. Quando c'e', NotificaVoce la disegna in rosso e
+   * l'elenco la mette in cima finche' e' recente.
+   */
+  disdetta?: {
+    /** «ven 9 ott, 10:00 · Perdita»: l'orario che salta. */
+    orario: string;
+    /** Chi ha annullato: «Marco Rossi», «Il cliente». */
+    chi: string;
+    motivo: string | null;
+    concordatoTelefono: boolean;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -474,9 +489,19 @@ export async function caricaNotifiche(
   return ordina(out);
 }
 
-function ordina(n: Notifica[]): Notifica[] {
+/** Una disdetta degli ultimi sette giorni sta sopra a tutto (07/10). */
+const DISDETTA_IN_CIMA_MS = 7 * 86_400_000;
+
+function peso(n: Notifica): number {
+  if (n.disdetta && n.quando && Date.now() - Date.parse(n.quando) < DISDETTA_IN_CIMA_MS) {
+    return -1;
+  }
+  return ORDINE_LIVELLO[n.livello];
+}
+
+export function ordina(n: Notifica[]): Notifica[] {
   return [...n].sort((a, b) => {
-    const l = ORDINE_LIVELLO[a.livello] - ORDINE_LIVELLO[b.livello];
+    const l = peso(a) - peso(b);
     if (l !== 0) return l;
     return (b.quando ?? "").localeCompare(a.quando ?? "");
   });
