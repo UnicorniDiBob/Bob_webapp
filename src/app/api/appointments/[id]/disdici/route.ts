@@ -20,11 +20,12 @@ import { buildEmail, sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
 
+// «motivo» non c'e' piu': dalla 116 il motivo e' facoltativo anche per il
+// professionista, e il database non lo chiede a nessuno.
 const STATO_PER_MOTIVO: Record<string, number> = {
   non_trovato: 404,
   non_attivo: 409,
   chiama: 409,
-  motivo: 400,
 };
 
 export async function POST(
@@ -42,7 +43,7 @@ export async function POST(
     const body = (await request.json()) as { motivo?: unknown };
     motivo = typeof body.motivo === "string" ? body.motivo.slice(0, 500) : null;
   } catch {
-    // Body vuoto: il motivo del cliente e' facoltativo.
+    // Body vuoto: il motivo e' facoltativo (per il pro dalla 116).
   }
 
   const { data, error } = await supabase.rpc("annulla_appuntamento", {
@@ -69,8 +70,9 @@ export async function POST(
     richiesta_chiusa: boolean;
   };
 
-  // Un pro che passa da qui annullerebbe senza motivo: la funzione glielo
-  // chiede, ma la sua strada e' il calendario, non questa route.
+  // Il pro annulla dal calendario e dal biglietto con la stessa funzione,
+  // chiamata dal browser (lib/messages.ts). Se passa da qui l'annullamento
+  // vale lo stesso; la copia per email qui sotto e' solo per il pro.
   if (esito.ruolo !== "customer") {
     return NextResponse.json({ ok: true, richiestaChiusa: esito.richiesta_chiusa });
   }

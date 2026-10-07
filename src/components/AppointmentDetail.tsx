@@ -17,6 +17,8 @@ import {
 } from "@/lib/calendar";
 import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
 import { AnnullaAppuntamento } from "@/components/AnnullaAppuntamento";
+import { SpostaAppuntamento } from "@/components/SpostaAppuntamento";
+import { SegnalaRitardo } from "@/components/SegnalaRitardo";
 
 /**
  * Pannello di dettaglio di un appuntamento.
@@ -294,6 +296,30 @@ export function AppointmentDetail({
             </button>
           )}
 
+          {/* IL RITARDO E LO SPOSTAMENTO DEL PRO (116). «Sono in ritardo»
+              compare solo oggi, finche' l'appuntamento non e' finito, e lo
+              lascia confermato. «Sposta» segue la regola dell'annullamento:
+              fuori dal preavviso il cliente riconferma, dentro si chiama. */}
+          {appt.request_id && appt.status === "confirmed" && (
+            <SegnalaRitardo
+              appt={appt}
+              nomeCliente={appt.customer_name || "il cliente"}
+              onFatto={onChanged}
+            />
+          )}
+
+          {annullabileConCliente && (
+            <SpostaAppuntamento
+              appt={appt}
+              ruolo="professional"
+              nomeAltro={appt.customer_name || "il cliente"}
+              onSpostato={() => {
+                onChanged();
+                onClose();
+              }}
+            />
+          )}
+
           {annullabileConCliente && (
             <AnnullaAppuntamento
               appt={appt}
@@ -330,7 +356,8 @@ export function AppointmentDetail({
           {appt.request_id && appt.status !== "cancelled" && appt.status !== "completed" && (
             <p className="text-center text-2xs text-bob-ink/65">
               Se lo sposti, {appt.customer_name || "il cliente"} lo legge subito
-              nella vostra chat e lo riconferma.
+              nella vostra chat e lo riconferma. Un ritardo invece glielo dici
+              e basta: l&apos;appuntamento resta confermato.
             </p>
           )}
         </div>

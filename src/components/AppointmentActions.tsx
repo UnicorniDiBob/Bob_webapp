@@ -37,6 +37,8 @@ import { AnnullaAppuntamento } from "@/components/AnnullaAppuntamento";
 import { SpostaAppuntamento } from "@/components/SpostaAppuntamento";
 import { SceltaOrario } from "@/components/SceltaOrario";
 import { statoDisdetta } from "@/lib/disdettaPrenotazione";
+import { SegnalaRitardo } from "@/components/SegnalaRitardo";
+import { ritardoPossibile } from "@/lib/ritardo";
 
 // Solo i campi che ci servono: la chat fa una select ristretta.
 // spostato_da NON e' una colonna: e' l'orario di prima di uno spostamento
@@ -158,10 +160,12 @@ export function AppointmentActions({
   // preavviso «Cambia orario» e «Disdici», dentro «Chiama per spostare» e
   // «Chiama per annullare». Quando la regola dice «no» (concluso, gia'
   // iniziato) il biglietto resta senza la fascia dei tasti. Il pro annulla
-  // e sposta dal calendario (AppointmentDetail), non da qui.
+  // e sposta dal calendario (AppointmentDetail), non da qui; da qui dichiara
+  // un ritardo (116), lo stesso componente del calendario.
   if (a.status === "confirmed" || a.status === "completed") {
     const disdicibile =
       viewer === "customer" && statoDisdetta(a).tipo !== "no";
+    const inRitardo = viewer === "professional" && ritardoPossibile(a);
     return (
       <div className="mt-1.5" data-testid={`appt-status-${a.id}`}>
         <BigliettoAppuntamento
@@ -187,6 +191,12 @@ export function AppointmentActions({
                   onAnnullato={onChanged}
                 />
               </div>
+            ) : inRitardo ? (
+              <SegnalaRitardo
+                appt={a}
+                nomeCliente={counterpartName}
+                onFatto={onChanged}
+              />
             ) : undefined
           }
         />

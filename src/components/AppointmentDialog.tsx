@@ -13,11 +13,14 @@ import {
   type NewAppointment,
 } from "@/lib/messages";
 import {
-  busyFromAppointments,
+  conChiSiSovrappone,
   fuoriDalleFasce,
-  siSovrappone,
   type AvailabilityWindow,
 } from "@/lib/slots";
+import {
+  AvvisoSovrapposizione,
+  useAvvisoSovrapposizione,
+} from "@/components/AvvisoSovrapposizione";
 import type { Appointment } from "@/lib/supabase/types";
 import { notifyEvent } from "@/lib/notify";
 
@@ -102,9 +105,10 @@ export function AppointmentDialog({
   // qualunque orario: addosso a un altro appuntamento, o fuori dalle fasce
   // del pro. Adesso lo dice prima di salvare. Sono avvisi, e un secondo clic
   // («Salva lo stesso») li supera: un sabato concordato a voce e' legittimo,
-  // e una voce privata sopra un'altra e' affare del pro. Il divieto vero —
-  // due appuntamenti con un cliente nello stesso orario — sta nel database
-  // (vincolo della 113), e quello non si supera.
+  // e una voce privata sopra un'altra e' affare del pro. Dalla 116 anche la
+  // sovrapposizione con un cliente e' permessa al pro: l'avviso dice con
+  // chi, e il pro puo' spegnerlo per sempre («non mostrarmelo piu'»). Il
+  // divieto resta nel database solo per il cliente che sceglie un orario.
   const [finestre, setFinestre] = useState<AvailabilityWindow[]>([]);
   const [avvisiVisti, setAvvisiVisti] = useState(false);
   const [confermaElimina, setConfermaElimina] = useState(false);
@@ -144,16 +148,15 @@ export function AppointmentDialog({
     () => status !== "cancelled" && fuoriDalleFasce(inizioScelto, duration, finestre),
     [status, inizioScelto, duration, finestre]
   );
-  const sovrapposto = useMemo(
+  const avvisoSovrapposizione = useAvvisoSovrapposizione(professionalId);
+  const conflitti = useMemo(
     () =>
-      status !== "cancelled" &&
-      siSovrappone(
-        inizioScelto,
-        duration,
-        busyFromAppointments(appointments.filter((a) => a.id !== existing?.id))
-      ),
+      status === "cancelled"
+        ? []
+        : conChiSiSovrappone(inizioScelto, duration, appointments, existing?.id),
     [status, inizioScelto, duration, appointments, existing?.id]
   );
+  const sovrapposto = avvisoSovrapposizione.mostra && conflitti.length > 0;
   // Un avviso visto vale per l'orario per cui e' stato visto.
   useEffect(() => {
     setAvvisiVisti(false);
@@ -256,7 +259,9 @@ export function AppointmentDialog({
       setError(
         "code" in res && res.code === ERRORE_SOVRAPPOSIZIONE
           ? TESTO_SOVRAPPOSIZIONE
-          : res.error.includes("Annulla appuntamento")
+          : "hint" in res && res.hint === "chiama"
+            ? `${res.error}. Dal dettaglio usa «Chiama per spostare».`
+            : res.error.includes("Annulla appuntamento")
             ? "Per annullarlo usa «Annulla appuntamento» nel dettaglio: avvisa il cliente e ti chiede il motivo."
             : "Salvataggio non riuscito. Riprova."
       );
@@ -534,8 +539,10 @@ export function AppointmentDialog({
             >
               {existing.customer_name || "Il cliente"} vede questo appuntamento.
               Se cambi giorno, ora o durata gli arriva in chat e torna da
-              confermare. Per annullarlo usa «Annulla appuntamento» nel
-              dettaglio: ti chiede il motivo e lo avvisa in chat.
+              confermare. Dentro il preavviso l&apos;orario non si cambia da
+              qui: nel dettaglio usa «Chiama per spostare», o «Sono in
+              ritardo» se è oggi. Per annullarlo usa «Annulla appuntamento»
+              nel dettaglio: lo avvisa in chat.
             </p>
           )}
           {/* Luogo: serve al pro per sapere dove andare e per il giro del giorno */}
@@ -607,14 +614,21 @@ export function AppointmentDialog({
               {error}
             </p>
           )}
-          {(sovrapposto || fuoriOrario) && (
+          {sovrapposto && (
+            <div className="mb-2.5">
+              <AvvisoSovrapposizione
+                conflitti={conflitti}
+                onSpegni={avvisoSovrapposizione.spegni}
+                testo={avvisiVisti ? "Se va bene così, salva di nuovo." : undefined}
+              />
+            </div>
+          )}
+          {!sovrapposto && fuoriOrario && (
             <p
-              className={`mb-2.5 text-sm ${sovrapposto ? "text-red-600" : "text-amber-800"}`}
+              className="mb-2.5 text-sm text-amber-800"
               data-testid="text-appt-avviso"
             >
-              {sovrapposto
-                ? "Si sovrappone a un altro tuo appuntamento."
-                : "È fuori dalle fasce orarie che hai dichiarato."}
+              È fuori dalle fasce orarie che hai dichiarato.
               {avvisiVisti && " Se va bene così, salva di nuovo."}
             </p>
           )}

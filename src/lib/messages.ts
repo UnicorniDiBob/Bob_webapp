@@ -343,20 +343,60 @@ export async function createAppointment(
 export async function updateAppointment(
   id: string,
   data: Partial<NewAppointment>
-): Promise<{ error: string | null; code?: string | null }> {
+): Promise<{ error: string | null; code?: string | null; hint?: string | null }> {
   const supabase = createClient();
   const { error } = await supabase.from("appointments").update(data).eq("id", id);
-  return { error: error ? error.message : null, code: error?.code ?? null };
+  return {
+    error: error ? error.message : null,
+    code: error?.code ?? null,
+    // «chiama» (116): spostare dal calendario dentro il preavviso.
+    hint: error?.hint ?? null,
+  };
 }
 
 /**
- * 23P01: il vincolo della 113 (appuntamenti_cliente_senza_sovrapposizioni).
- * Due appuntamenti con un cliente non stanno nello stesso orario, da
- * qualunque parte arrivino: questo e' il modo di riconoscerlo e dirlo.
+ * 23P01, hint «occupato»: l'orario si sovrappone a un altro appuntamento con
+ * un cliente. Dalla 116 lo dice un trigger, e solo quando l'orario lo
+ * sceglie il CLIENTE (prenotazione, controproposta, spostamento): al pro la
+ * sovrapposizione e' permessa, con un avviso. Al pro arriva ancora in un
+ * caso: rifiutare uno spostamento quando l'orario di prima e' stato preso.
  */
 export const ERRORE_SOVRAPPOSIZIONE = "23P01";
 export const TESTO_SOVRAPPOSIZIONE =
   "In quell'orario hai già un altro appuntamento con un cliente: scegline un altro.";
+
+// ----- L'avviso di sovrapposizione, preferenza del pro (116) -----
+//
+// Una colonna su professionals, non localStorage: la scelta «non mostrarmelo
+// piu'» segue il pro su ogni dispositivo. Se non si legge, l'avviso si
+// mostra: meglio un avviso in piu' che una sovrapposizione a sorpresa.
+
+export async function leggiAvvisoSovrapposizione(
+  professionalId: string
+): Promise<boolean> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("professionals")
+    .select("avviso_sovrapposizione")
+    .eq("id", professionalId)
+    .maybeSingle();
+  logQueryError(`leggiAvvisoSovrapposizione(${professionalId})`, error);
+  return (
+    (data as { avviso_sovrapposizione?: boolean } | null)?.avviso_sovrapposizione ?? true
+  );
+}
+
+export async function salvaAvvisoSovrapposizione(
+  professionalId: string,
+  valore: boolean
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("professionals")
+    .update({ avviso_sovrapposizione: valore })
+    .eq("id", professionalId);
+  return { error: error ? error.message : null };
+}
 
 export async function deleteAppointment(
   id: string
@@ -369,13 +409,14 @@ export async function deleteAppointment(
 // ----- Annullare un appuntamento con un cliente (113) -----
 //
 // Una strada sola, per tutte e due le parti: la funzione annulla_appuntamento
-// nel database. Controlla il preavviso con l'ora del server, pretende il
-// motivo dal professionista, scrive il messaggio standard in chat e, su una
-// prenotazione diretta, chiude la richiesta come «disdetta». Un UPDATE dal
-// browser su un appuntamento confermato con un cliente il database lo
-// rifiuta (trigger proteggi_appuntamento_cliente).
+// nel database. Controlla il preavviso con l'ora del server, scrive il
+// messaggio standard in chat (con il motivo, se c'e': dalla 116 e'
+// facoltativo anche per il pro) e, su una prenotazione diretta, chiude la
+// richiesta come «disdetta». Un UPDATE dal browser su un appuntamento
+// confermato con un cliente il database lo rifiuta (trigger
+// proteggi_appuntamento_cliente).
 
-export type MotivoRifiuto = "chiama" | "motivo" | "non_attivo" | "non_trovato" | "errore";
+export type MotivoRifiuto = "chiama" | "non_attivo" | "non_trovato" | "errore";
 
 export type EsitoAnnullamento =
   | { ok: true }
@@ -392,7 +433,7 @@ export async function annullaAppuntamento(
     p_concordato_telefono: opts.concordatoTelefono ?? false,
   });
   if (!error) return { ok: true };
-  const noti: MotivoRifiuto[] = ["chiama", "motivo", "non_attivo", "non_trovato"];
+  const noti: MotivoRifiuto[] = ["chiama", "non_attivo", "non_trovato"];
   const motivo = noti.includes(error.hint as MotivoRifiuto)
     ? (error.hint as MotivoRifiuto)
     : "errore";
@@ -401,6 +442,150 @@ export async function annullaAppuntamento(
     motivo,
     messaggio: motivo === "errore" ? "Annullamento non riuscito. Riprova." : error.message,
   };
+}
+
+// ----- Il pro sposta un appuntamento con un cliente (116) -----
+//
+// La stessa funzione dello spostamento del cliente (115), con la regola
+// dell'annullamento: fuori dal preavviso l'orario nuovo torna al cliente da
+// confermare; dentro, solo dopo la telefonata, e allora resta confermato.
+// Il pro puo' sovrapporsi: l'interfaccia l'ha gia' avvisato.
+
+export type MotivoSpostamento =
+  | "chiama"
+  | "non_attivo"
+  | "non_trovato"
+  | "orario"
+  | "errore";
+
+export type EsitoSpostamento =
+  | { ok: true; restaConfermato: boolean }
+  | { ok: false; motivo: MotivoSpostamento; messaggio: string };
+
+export async function spostaAppuntamentoPro(
+  id: string,
+  inizio: Date,
+  opts: { motivo?: string | null; concordatoTelefono?: boolean } = {}
+): Promise<EsitoSpostamento> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("sposta_appuntamento", {
+    p_id: id,
+    p_inizio: inizio.toISOString(),
+    p_motivo: opts.motivo?.trim() || null,
+    p_concordato_telefono: opts.concordatoTelefono ?? false,
+  });
+  if (!error) {
+    return {
+      ok: true,
+      restaConfermato: Boolean((data as { resta_confermato?: boolean } | null)?.resta_confermato),
+    };
+  }
+  const noti: MotivoSpostamento[] = ["chiama", "non_attivo", "non_trovato", "orario"];
+  const motivo = noti.includes(error.hint as MotivoSpostamento)
+    ? (error.hint as MotivoSpostamento)
+    : "errore";
+  if (motivo === "errore") logQueryError(`spostaAppuntamentoPro(${id})`, error);
+  return {
+    ok: false,
+    motivo,
+    messaggio: motivo === "errore" ? "Spostamento non riuscito. Riprova." : error.message,
+  };
+}
+
+// ----- Il ritardo del pro (116) -----
+//
+// segnala_ritardo() nel database: l'appuntamento slitta di N minuti e resta
+// confermato, il cliente lo legge in chat e in campanella. Con
+// soloAnteprima non scrive niente e dice chi verrebbe toccato dopo: le
+// regole restano in un posto solo, e l'anteprima non puo' dire «puoi»
+// quando la scrittura direbbe «no».
+
+export interface AppuntamentoToccato {
+  id: string;
+  request_id: string | null;
+  customer_name: string | null;
+  title: string | null;
+  starts_at: string;
+  slitta_minuti: number;
+  /** false = voce dell'agenda privata: nessun cliente da avvisare. */
+  avvisabile: boolean;
+}
+
+export type MotivoRitardo = "non_trovato" | "non_attivo" | "non_oggi" | "minuti" | "errore";
+
+export type EsitoRitardo =
+  | {
+      ok: true;
+      inizioPrima: string;
+      inizioDopo: string;
+      toccati: AppuntamentoToccato[];
+      avvisati: number;
+    }
+  | { ok: false; motivo: MotivoRitardo; messaggio: string };
+
+export async function segnalaRitardo(
+  id: string,
+  minuti: number,
+  opts: { motivo?: string | null; avvisaToccati?: boolean; soloAnteprima?: boolean } = {}
+): Promise<EsitoRitardo> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("segnala_ritardo", {
+    p_id: id,
+    p_minuti: minuti,
+    p_motivo: opts.motivo?.trim() || null,
+    p_avvisa_toccati: opts.avvisaToccati ?? false,
+    p_solo_anteprima: opts.soloAnteprima ?? false,
+  });
+  if (!error) {
+    const d = data as {
+      inizio_prima: string;
+      inizio_dopo: string;
+      toccati: AppuntamentoToccato[] | null;
+      avvisati?: number;
+    };
+    return {
+      ok: true,
+      inizioPrima: d.inizio_prima,
+      inizioDopo: d.inizio_dopo,
+      toccati: d.toccati ?? [],
+      avvisati: d.avvisati ?? 0,
+    };
+  }
+  const noti: MotivoRitardo[] = ["non_trovato", "non_attivo", "non_oggi", "minuti"];
+  const motivo = noti.includes(error.hint as MotivoRitardo)
+    ? (error.hint as MotivoRitardo)
+    : "errore";
+  if (motivo === "errore") logQueryError(`segnalaRitardo(${id})`, error);
+  return {
+    ok: false,
+    motivo,
+    messaggio: motivo === "errore" ? "Non sono riuscito a segnalare il ritardo. Riprova." : error.message,
+  };
+}
+
+/**
+ * Gli appuntamenti attivi del pro in una finestra di tempo, per dire «si
+ * sovrappone a...» prima di salvare. La RLS lascia al pro solo i suoi.
+ */
+export async function appuntamentiDelPro(
+  professionalId: string,
+  dal: Date,
+  al: Date
+): Promise<Pick<Appointment, "id" | "starts_at" | "duration_minutes" | "status" | "customer_name" | "title">[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("appointments")
+    .select("id, starts_at, duration_minutes, status, customer_name, title")
+    .eq("professional_id", professionalId)
+    .in("status", ["confirmed", "proposed"])
+    .gte("starts_at", dal.toISOString())
+    .lt("starts_at", al.toISOString())
+    .order("starts_at", { ascending: true });
+  logQueryError(`appuntamentiDelPro(${professionalId})`, error);
+  return (data ?? []) as Pick<
+    Appointment,
+    "id" | "starts_at" | "duration_minutes" | "status" | "customer_name" | "title"
+  >[];
 }
 
 /**
