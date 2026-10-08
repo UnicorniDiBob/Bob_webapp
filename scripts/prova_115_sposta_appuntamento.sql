@@ -99,9 +99,12 @@ do $$ declare a public.appointments%rowtype; g timestamptz; begin
       and message like 'Non posso spostarlo a %: resta confermato l''appuntamento di %') <> 1 then
     raise exception 'P2 FALLITA: il cliente non legge in chat che resta l''orario di prima';
   end if;
-  if not exists (select 1 from public.appointment_events where appointment_id = a.id and tipo = 'spostato'
+  -- Dalla 118 il ritorno all'orario di prima e' un «rifiutato» del pro, non
+  -- uno «spostato»: prima questa prova pretendeva proprio lo «spostato»
+  -- sbagliato che la campanella del cliente leggeva come uno spostamento.
+  if not exists (select 1 from public.appointment_events where appointment_id = a.id and tipo = 'rifiutato'
                  and autore = 'professional' and inizio_dopo = g) then
-    raise exception 'P2 FALLITA: il ritorno all''orario di prima non e'' nello storico';
+    raise exception 'P2 FALLITA: il rifiuto con ritorno all''orario di prima non e'' nello storico';
   end if;
   raise notice 'P2 ok: rifiuto del pro = orario di prima, confermato, scritto in chat e nello storico';
 end $$;
