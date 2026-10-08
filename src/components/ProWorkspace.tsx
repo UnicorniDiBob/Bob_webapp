@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { notifyEvent } from "@/lib/notify";
 import { Wrench, Calendar as CalendarIcon } from "lucide-react";
@@ -10,6 +10,7 @@ import { AppointmentDialog } from "@/components/AppointmentDialog";
 import { AppointmentDetail } from "@/components/AppointmentDetail";
 import { ProCalendar } from "@/components/ProCalendar";
 import { DayItinerary } from "@/components/DayItinerary";
+import { NuovePrenotazioni } from "@/components/NuovePrenotazioni";
 import { ProRequestSummary } from "@/components/ProRequestSummary";
 import { StatoProfiloCard } from "@/components/StatoProfiloCard";
 import { fmtDay, fmtDuration, fmtRange } from "@/lib/calendar";
@@ -58,6 +59,12 @@ export function ProWorkspace({
   // Giornata a fuoco nel calendario: alimenta il giro del giorno.
   const [focusDay, setFocusDay] = useState<Date>(() => new Date());
   const handleFocusDay = useCallback((d: Date) => setFocusDay(d), []);
+  // «Vedi nel calendario» da Nuove prenotazioni (08/10): il giorno dove
+  // portare il calendario (una data nuova a ogni clic) e la prenotazione da
+  // evidenziare, senza aprire il pannello di dettaglio.
+  const [vaiA, setVaiA] = useState<Date | null>(null);
+  const [evidenziato, setEvidenziato] = useState<string | null>(null);
+  const calendarioRef = useRef<HTMLDivElement>(null);
 
   const proId = profile?.id ?? null;
 
@@ -171,6 +178,18 @@ export function ProWorkspace({
           data-tour: la guida del primo accesso illumina questo riquadro vero,
           non un suo disegno. Se sparisce l'attributo, il passo 1 della guida
           resta senza ancora e si degrada a pannello centrale. */}
+      {/* Le prenotazioni dirette arrivate e non ancora aperte (08/10): sopra
+          «Nuove richieste», e FUORI dal suo data-tour, che resta il riquadro
+          delle richieste illuminato dal passo 1 della guida. */}
+      <NuovePrenotazioni
+        appointments={appointments}
+        onVediNelCalendario={(a) => {
+          setVaiA(new Date(a.starts_at));
+          setEvidenziato(a.id);
+          calendarioRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
+
       {proId && (
         <div data-tour="richieste">
           <ProRequestSummary />
@@ -286,7 +305,11 @@ export function ProWorkspace({
             userId={profile.user_id}
           />
 
-          <div className="card p-4 sm:p-5" data-tour="calendario">
+          <div
+            ref={calendarioRef}
+            className="card scroll-mt-20 p-4 sm:p-5"
+            data-tour="calendario"
+          >
             <ProCalendar
               appointments={appointments}
               loading={loading}
@@ -297,7 +320,8 @@ export function ProWorkspace({
               }}
               onSelect={(a) => setDetailId(a.id)}
               onFocusDayChange={handleFocusDay}
-              selectedId={detailId}
+              selectedId={detailId ?? evidenziato}
+              vaiA={vaiA}
             />
 
             <button

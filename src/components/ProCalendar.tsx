@@ -79,6 +79,7 @@ export function ProCalendar({
   selectedId,
   bozza = null,
   onBozzaChange,
+  vaiA = null,
 }: {
   appointments: Appointment[];
   loading: boolean;
@@ -102,6 +103,8 @@ export function ProCalendar({
    * non a ogni pixel: chi ascolta puo' anche fare lavoro vero.
    */
   onBozzaChange?: (start: Date, durationMinutes: number) => void;
+  /** Porta il calendario su quel giorno (08/10, «Vedi nel calendario»): una data nuova a ogni richiesta. */
+  vaiA?: Date | null;
 }) {
   const [view, setView] = useState<CalView>("week");
   const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()));
@@ -268,6 +271,10 @@ export function ProCalendar({
     // guardare un altro giorno ci deve poter restare.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bozzaGiorno, view]);
+
+  useEffect(() => {
+    if (vaiA) setAnchor(startOfDay(vaiA));
+  }, [vaiA]);
 
   // In vista giorno è il giorno mostrato; in vista settimana è oggi se cade
   // nella settimana aperta, altrimenti il lunedì di quella settimana.
