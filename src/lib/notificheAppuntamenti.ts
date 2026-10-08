@@ -204,11 +204,24 @@ async function carica(
           testo: `${quando(e.inizio_dopo)}${titolo}.`,
         };
         break;
+      // IL RIFIUTO DI UNO SPOSTAMENTO (118): il pro ha detto no allo
+      // spostamento chiesto dal cliente e l'appuntamento e' tornato
+      // all'orario di prima. Lo storico lo scrive come 'rifiutato' con due
+      // orari DIVERSI (prima = quello chiesto, dopo = quello che resta); un
+      // rifiuto qualunque li ha uguali.
       case "rifiutato":
-        t = {
-          titolo: `${nome} non ha accettato l'orario`,
-          testo: `${quando(e.inizio_prima ?? e.inizio_dopo)}${titolo}. Scrivetevi per trovarne un altro.`,
-        };
+        t =
+          e.inizio_prima &&
+          e.inizio_dopo &&
+          new Date(e.inizio_prima).getTime() !== new Date(e.inizio_dopo).getTime()
+            ? {
+                titolo: `${nome} non ha potuto spostare l'appuntamento`,
+                testo: `Resta ${quando(e.inizio_dopo)}${titolo}.`,
+              }
+            : {
+                titolo: `${nome} non ha accettato l'orario`,
+                testo: `${quando(e.inizio_prima ?? e.inizio_dopo)}${titolo}. Scrivetevi per trovarne un altro.`,
+              };
         break;
       // LA DISDETTA SI VEDE (07/10): oltre al testo, i pezzi per
       // disegnarla in evidenza (NotificaVoce) — l'orario che salta, chi, il
