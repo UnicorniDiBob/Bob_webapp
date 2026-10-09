@@ -35,6 +35,15 @@ interface Evento {
   appointments: { title: string | null; customer_name: string | null } | null;
 }
 
+/** Un mio rifiuto: serve solo al pro, per riconoscere uno spostamento che non c'e' stato. */
+interface MioRifiuto {
+  appointment_id: string;
+  tipo: string;
+  autore: string;
+  inizio_prima: string | null;
+  created_at: string;
+}
+
 interface Proposta {
   id: string;
   request_id: string;
@@ -120,7 +129,7 @@ async function carica(
   const altro = io === "professional" ? "customer" : "professional";
   const dal = new Date(Date.now() - GIORNI * 86_400_000).toISOString();
 
-  const [eventi, proposte] = await Promise.all([
+  const [eventi, proposte, rifiuti] = await Promise.all([
     supabase
       .from("appointment_events")
       .select(
@@ -141,12 +150,50 @@ async function carica(
       .gt("starts_at", new Date().toISOString())
       .order("starts_at", { ascending: true })
       .limit(10),
+    // Solo per il pro: i SUOI rifiuti, vedi spostamentoRifiutato qui sotto.
+    io === "professional"
+      ? supabase
+          .from("appointment_events")
+          .select("appointment_id, tipo, autore, inizio_prima, created_at")
+          .eq("autore", io)
+          .eq("tipo", "rifiutato")
+          .gte("created_at", dal)
+          .order("created_at", { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (eventi.error) console.error("[notifiche] appointment_events:", eventi.error);
   if (proposte.error) console.error("[notifiche] proposte aperte:", proposte.error);
+  if (rifiuti.error) console.error("[notifiche] rifiuti del pro:", rifiuti.error);
 
   const ev = (eventi.data ?? []) as unknown as Evento[];
   const pr = (proposte.data ?? []) as Proposta[];
+  const miei = ((rifiuti.data ?? []) as MioRifiuto[]).filter(
+    (r) => r.autore === io && r.tipo === "rifiutato" && r.inizio_prima
+  );
+
+  // LO SPOSTAMENTO RIFIUTATO DAL PRO NON E' UNA NOTIZIA (09/10, André).
+  // Finche' aspetta, lo spostamento chiesto dal cliente e' una cosa da fare
+  // e la sua riga 'spostato' resta nascosta (sotto, aperte). Quando il pro
+  // rifiuta, l'appuntamento esce dalle proposte aperte e quella riga tornava
+  // come «… ha spostato l'appuntamento: da A a B» — uno spostamento mai
+  // avvenuto, e un'azione che il pro ha appena fatto lui. Si riconosce da un
+  // suo 'rifiutato' successivo sullo stesso appuntamento il cui inizio_prima
+  // e' l'orario chiesto: lo scrive cosi' il ripristino (118) e anche il
+  // rifiuto semplice, quando l'orario di prima e' gia' passato. Uno
+  // spostamento accettato non ha nessun rifiuto dopo, e resta una notizia.
+  // Solo per il pro: lato cliente niente cambia.
+  const spostamentoRifiutato = (e: Evento): boolean => {
+    if (e.tipo !== "spostato" || !e.inizio_dopo) return false;
+    const chiesto = Date.parse(e.inizio_dopo);
+    const dopo = Date.parse(e.created_at);
+    return miei.some(
+      (r) =>
+        r.appointment_id === e.appointment_id &&
+        Date.parse(r.inizio_prima as string) === chiesto &&
+        Date.parse(r.created_at) >= dopo
+    );
+  };
 
   const nomi =
     io === "customer"
@@ -187,6 +234,7 @@ async function carica(
     ) {
       continue;
     }
+    if (io === "professional" && spostamentoRifiutato(e)) continue;
     const nome = chi(e.professional_id, e.appointments?.customer_name);
     const titolo = e.appointments?.title ? ` · ${e.appointments.title}` : "";
     const motivo = e.motivo ? ` Motivo: «${e.motivo}».` : "";
