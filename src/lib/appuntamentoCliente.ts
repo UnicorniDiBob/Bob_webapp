@@ -1,6 +1,6 @@
-// LA RISPOSTA DEL CLIENTE A UNA PROPOSTA D'ORARIO, IN UN POSTO SOLO (17/10).
+// LA RISPOSTA DEL CLIENTE A UNA PROPOSTA D'ORARIO, IN UN POSTO SOLO (15/10).
 //
-// Conferma e Rifiuta stavano dentro CustomerHome. Dal 17/10 si risponde anche
+// Conferma e Rifiuta stavano dentro CustomerHome. Dal 15/10 si risponde anche
 // dalla pagina della richiesta, e la stessa risposta deve fare le stesse tre
 // cose ovunque: cambiare lo stato, scrivere in chat cosa si e' deciso,
 // avvisare il pro. Se una delle due pagine le facesse in modo diverso, il pro

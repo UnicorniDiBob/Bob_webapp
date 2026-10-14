@@ -1,7 +1,7 @@
 "use client";
 
 // «ALTRO ORARIO»: IL CLIENTE CONTROPROPONE FRA GLI ORARI LIBERI DEL PRO.
-// (17/10: esce da CustomerHome, identico, per usarlo anche nella pagina della
+// (15/10: esce da CustomerHome, identico, per usarlo anche nella pagina della
 // richiesta.) Mostra solo gli slot liberi, mai il calendario del pro.
 
 import { useEffect, useState } from "react";

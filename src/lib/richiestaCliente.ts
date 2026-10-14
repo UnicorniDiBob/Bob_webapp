@@ -1,4 +1,4 @@
-// LA PAGINA DI UNA RICHIESTA, LATO CLIENTE: LE REGOLE SENZA REACT (17/10).
+// LA PAGINA DI UNA RICHIESTA, LATO CLIENTE: LE REGOLE SENZA REACT (15/10).
 //
 // Tre decisioni che la pagina prende per ogni richiesta e che conviene poter
 // provare da sole: quale prezzo di un pro vale per QUESTA richiesta, cosa
@@ -22,7 +22,7 @@ export interface PrezzoRichiesta {
   nota: string | null;
 }
 
-// IL PREZZO DI QUESTO LAVORO, NON DEL MESTIERE (17/10). Un pro dichiara un
+// IL PREZZO DI QUESTO LAVORO, NON DEL MESTIERE (15/10). Un pro dichiara un
 // prezzo per intervento (070). Se la richiesta ha un intervento e il pro lo
 // ha prezzato, vale quella riga: e' la risposta esatta. Altrimenti vale la
 // fascia delle righe dello stesso servizio, letta come la legge la scheda
@@ -69,7 +69,7 @@ export function testoPrezzo(p: PrezzoRichiesta): string {
   return `fino a ${euro(p.max as number)}`;
 }
 
-// «COM'È ANDATA?» MOSTRA UNA COSA SOLA (17/10):
+// «COM'È ANDATA?» MOSTRA UNA COSA SOLA (15/10):
 //   - richiesta aperta con almeno un pro: «Il lavoro è concluso?»;
 //   - chiusa, recensibile, con pro ancora da recensire: il modulo;
 //   - chiusa e tutto recensito: il grazie, con le stelle date;

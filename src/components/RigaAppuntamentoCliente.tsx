@@ -1,6 +1,6 @@
 "use client";
 
-// LA RIGA DI UN APPUNTAMENTO, LATO CLIENTE (17/10: esce da CustomerHome,
+// LA RIGA DI UN APPUNTAMENTO, LATO CLIENTE (15/10: esce da CustomerHome,
 // identica). La usano «Prossimi appuntamenti» in dashboard e la pagina della
 // richiesta. Disegna il contenuto; il contenitore (un <li> nell'elenco, un
 // <div> nella pagina) lo mette chi la usa, con le classi

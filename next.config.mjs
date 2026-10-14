@@ -52,7 +52,7 @@ const nextConfig = {
       // non leggendo il file: il redirect era corretto per tutte le sezioni e
       // sbagliato solo per il percorso che conta di piu'.
       //
-      // TRANNE /dashboard/richieste (17/10). Dal 17/10 la pagina di una
+      // TRANNE /dashboard/richieste (15/10). Dal 15/10 la pagina di una
       // richiesta del cliente vive li', ed e' lavoro, non configurazione: il
       // jolly la mandava su /impostazioni/richieste/<id>, che non esiste.
       // Nessuna sezione si e' mai chiamata «richieste», quindi nessun vecchio

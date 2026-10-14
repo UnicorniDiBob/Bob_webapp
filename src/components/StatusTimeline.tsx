@@ -1,4 +1,4 @@
-// LA BARRA DI STATO DI UNA RICHIESTA (17/10: esce da CustomerHome). La usano
+// LA BARRA DI STATO DI UNA RICHIESTA (15/10: esce da CustomerHome). La usano
 // la dashboard del cliente e la pagina della richiesta, con gli stessi
 // ingressi: lo stato della richiesta, quello del suo appuntamento, quanti pro.
 

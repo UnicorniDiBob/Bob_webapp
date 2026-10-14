@@ -1,6 +1,6 @@
 "use client";
 
-// «COM'È ANDATA?» NELLA PAGINA DELLA RICHIESTA (17/10).
+// «COM'È ANDATA?» NELLA PAGINA DELLA RICHIESTA (15/10).
 //
 // Chiudere il lavoro e recensirlo sono la stessa conversazione, e qui
 // succedono nello stesso posto: «Sì, è concluso» e le stelle compaiono dove

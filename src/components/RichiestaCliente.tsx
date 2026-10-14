@@ -1,12 +1,12 @@
 "use client";
 
-// LA PAGINA DI UNA RICHIESTA, LATO CLIENTE (17/10, PR 4 della dashboard).
+// LA PAGINA DI UNA RICHIESTA, LATO CLIENTE (15/10, PR 4 della dashboard).
 //
 // Ogni richiesta ha la sua storia intera in un posto: cosa si e' chiesto, a
 // che punto e', i professionisti uno accanto all'altro, l'appuntamento, la
 // chiusura e la recensione. Dalla dashboard ci si arrivera' con la PR 5.
 //
-// DI CHI E' (17/10). La richiesta si legge con il suo id E con il cliente
+// DI CHI E' (15/10). La richiesta si legge con il suo id E con il cliente
 // collegato: `.eq("customer_id", user.id)`. La RLS lascerebbe leggere al pro
 // le richieste che gli sono assegnate e allo staff tutte: questo filtro fa si'
 // che la pagina mostri solo le proprie, e che a chiunque altro — un altro

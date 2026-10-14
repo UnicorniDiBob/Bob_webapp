@@ -1,6 +1,6 @@
 "use client";
 
-// «CONFRONTA I PROFESSIONISTI»: UNA SCHEDA PER OGNI PRO DELLA RICHIESTA (17/10).
+// «CONFRONTA I PROFESSIONISTI»: UNA SCHEDA PER OGNI PRO DELLA RICHIESTA (15/10).
 //
 // Scegliere fra chi ha risposto e' la decisione piu' importante del cliente,
 // e fino a ieri era un elenchino «Confronta le risposte» dentro una scheda

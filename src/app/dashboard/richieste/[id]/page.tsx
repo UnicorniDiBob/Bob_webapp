@@ -1,6 +1,6 @@
 "use client";
 
-// /dashboard/richieste/<id>: LA PAGINA DI UNA RICHIESTA DEL CLIENTE (17/10).
+// /dashboard/richieste/<id>: LA PAGINA DI UNA RICHIESTA DEL CLIENTE (15/10).
 //
 // Privata due volte: il middleware (ROTTE_PRIVATE) manda al login chi non ha
 // una sessione prima che la pagina parta, e la query in RichiestaCliente

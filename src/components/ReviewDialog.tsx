@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ModuloRecensione, type ProRecensibile } from "@/components/ModuloRecensione";
 
 // Dialog per lasciare una recensione su un lavoro concluso. Il modulo vive in
-// ModuloRecensione (17/10), lo stesso che la pagina della richiesta mostra in
+// ModuloRecensione (15/10), lo stesso che la pagina della richiesta mostra in
 // linea.
 // La policy RLS lato DB garantisce che solo il cliente della richiesta
 // (con stato "closed") possa recensire un professionista contattato,

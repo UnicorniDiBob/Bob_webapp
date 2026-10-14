@@ -231,7 +231,7 @@ export function CustomerHome({
   }
 
   // Conferma / Rifiuta: la stessa risposta della pagina della richiesta
-  // (lib/appuntamentoCliente.ts, 17/10).
+  // (lib/appuntamentoCliente.ts, 15/10).
   const { rispondi: respondToAppointment, inCorso: respondingAppt } =
     useRispostaAppuntamento(user?.id, load);
 

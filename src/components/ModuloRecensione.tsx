@@ -1,6 +1,6 @@
 "use client";
 
-// IL MODULO DELLA RECENSIONE, DENTRO IL DIALOG O DENTRO LA PAGINA (17/10).
+// IL MODULO DELLA RECENSIONE, DENTRO IL DIALOG O DENTRO LA PAGINA (15/10).
 //
 // Era tutto in ReviewDialog. La pagina della richiesta lo mostra in linea,
 // sotto «Com'è andata?», senza aprire niente: chi ha appena detto «sì, e'

@@ -763,7 +763,7 @@ export function livelloVisibile(
  * Scaduta: via anche la data, se no la scheda direbbe «Iscritto · 12 set»,
  * cioe' mostrerebbe la prova di una verifica che non vale piu'. Il tetto
  * (094) la toglie anche mentre il caso aspetta noi: se l'etichetta e'
- * spenta, la data che la provava non ha piu' niente da provare. (17/10: esce
+ * spenta, la data che la provava non ha piu' niente da provare. (15/10: esce
  * da data.ts, toCard, per servire anche la pagina della richiesta del
  * cliente, che legge col client del browser.)
  */
