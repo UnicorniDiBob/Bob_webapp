@@ -54,6 +54,9 @@ export default function DashboardPage() {
   // Il giro era in corso ed e' andato a sistemare qualcosa: si riprende dalle
   // cose da fare, non dalla spiegazione che ha gia' visto.
   const [riprendiGuida, setRiprendiGuida] = useState(false);
+  // Il sottotitolo del cliente lo calcola CustomerHome dai suoi dati (15/10):
+  // finche' carica resta la frase di sempre.
+  const [riepilogoCliente, setRiepilogoCliente] = useState<string | null>(null);
 
   useEffect(() => {
     const progresso = leggiProgresso();
@@ -174,7 +177,7 @@ export default function DashboardPage() {
           <p className="mt-1.5 text-sm text-bob-ink/70">
             {isPro
               ? "Le richieste che ti riguardano e la tua giornata."
-              : "Il punto della situazione sui tuoi lavori."}
+              : riepilogoCliente ?? "Il punto della situazione sui tuoi lavori."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -272,7 +275,7 @@ export default function DashboardPage() {
           </div>
         )
       ) : (
-        <CustomerHome />
+        <CustomerHome onRiepilogo={setRiepilogoCliente} />
       )}
     </div>
   );
