@@ -61,6 +61,15 @@ export function EtichettaSuIcona({
     setVisibile(false);
   }
 
+  /** Dopo un tocco lungo: l'etichetta resta un attimo, poi tutto si azzera. */
+  function chiudiDopoIlDito() {
+    ferma();
+    chiusura.current = setTimeout(() => {
+      setVisibile(false);
+      tenuto.current = false;
+    }, DOPO_IL_DITO_MS);
+  }
+
   return (
     <span
       className="relative inline-flex select-none [-webkit-touch-callout:none]"
@@ -83,15 +92,15 @@ export function EtichettaSuIcona({
         if (e.pointerType === "mouse") return;
         if (attesa.current) clearTimeout(attesa.current);
         attesa.current = null;
-        if (!tenuto.current) return;
-        chiusura.current = setTimeout(() => {
-          setVisibile(false);
-          tenuto.current = false;
-        }, DOPO_IL_DITO_MS);
+        if (tenuto.current) chiudiDopoIlDito();
       }}
       onPointerCancel={(e) => {
-        // Il dito e' diventato uno scorrimento della pagina.
-        if (e.pointerType !== "mouse" && !tenuto.current) nascondi();
+        if (e.pointerType === "mouse") return;
+        // Il dito e' diventato uno scorrimento della pagina. Se l'etichetta
+        // era gia' fuori (14/10), pointerup non arriva piu': senza questa
+        // chiusura restava appesa, e tenuto restava vero.
+        if (tenuto.current) chiudiDopoIlDito();
+        else nascondi();
       }}
       onClickCapture={(e) => {
         if (!tenuto.current) return;
