@@ -24,7 +24,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Phone } from "lucide-react";
+import { CalendarClock, Phone } from "lucide-react";
 import {
   appuntamentiDelPro,
   contattoControparte,
@@ -38,6 +38,7 @@ import {
 } from "@/lib/disdettaPrenotazione";
 import type { AppuntamentoAnnullabile } from "@/components/AnnullaAppuntamento";
 import { SceltaOrario } from "@/components/SceltaOrario";
+import { EtichettaSuIcona, TASTO_ICONA } from "@/components/EtichettaSuIcona";
 import {
   AvvisoSovrapposizione,
   useAvvisoSovrapposizione,
@@ -59,7 +60,8 @@ export function SpostaAppuntamento({
   /** Come chiamare l'altra parte: «Milano Clean Squad», «Marco Rossi». */
   nomeAltro: string;
   onSpostato: () => void;
-  /** Bottone piccolo, per le righe di un elenco. */
+  /** Per le righe di un elenco: icona di 44px con l'etichetta sopra
+   *  (dashboard cliente, 14/10). Solo il cliente. */
   compatto?: boolean;
   /** Chi sposta. Il pro ha una strada sua (116), con le stesse regole. */
   ruolo?: "customer" | "professional";
@@ -154,26 +156,42 @@ function SpostaCliente({
   }
 
   const etichetta = dentro ? "Chiama per spostare" : "Cambia orario";
+  // Le aree di tocco del pannello: 44px nell'elenco, in chat com'era.
+  const tocco = compatto ? "min-h-[44px]" : "min-h-[40px]";
+
+  function apri() {
+    setErrore(null);
+    if (dentro) setPannello(true);
+    else setScelta(true);
+  }
 
   return (
     <>
-      {!pannello && (
-        <button
-          onClick={() => {
-            setErrore(null);
-            if (dentro) setPannello(true);
-            else setScelta(true);
-          }}
-          className={
-            compatto
-              ? "inline-flex min-h-[40px] items-center text-xs font-medium text-bob-indigo hover:underline"
-              : "btn-ghost w-full justify-center text-sm text-bob-indigo hover:bg-bob-indigo-50"
-          }
-          data-testid={`sposta-apri-${appt.id}`}
-        >
-          {etichetta}
-        </button>
-      )}
+      {!pannello &&
+        (compatto ? (
+          <EtichettaSuIcona etichetta={etichetta}>
+            <button
+              onClick={apri}
+              aria-label={etichetta}
+              className={`${TASTO_ICONA} bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100`}
+              data-testid={`sposta-apri-${appt.id}`}
+            >
+              {dentro ? (
+                <Phone className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <CalendarClock className="h-5 w-5" aria-hidden="true" />
+              )}
+            </button>
+          </EtichettaSuIcona>
+        ) : (
+          <button
+            onClick={apri}
+            className="btn-ghost w-full justify-center text-sm text-bob-indigo hover:bg-bob-indigo-50"
+            data-testid={`sposta-apri-${appt.id}`}
+          >
+            {etichetta}
+          </button>
+        ))}
 
       {pannello && (
         <div
@@ -203,14 +221,14 @@ function SpostaCliente({
           {chat && (
             <Link
               href={chat}
-              className="mt-1 flex min-h-[40px] items-center text-xs font-semibold text-bob-indigo hover:underline"
+              className={`mt-1 flex ${tocco} items-center text-xs font-semibold text-bob-indigo hover:underline`}
             >
               Apri la chat →
             </Link>
           )}
           <button
             onClick={() => setPannello(false)}
-            className="mt-1 inline-flex min-h-[40px] items-center px-2 text-xs font-medium text-bob-ink/65 hover:underline"
+            className={`mt-1 inline-flex ${tocco} items-center px-2 text-xs font-medium text-bob-ink/65 hover:underline`}
           >
             Lascia stare
           </button>

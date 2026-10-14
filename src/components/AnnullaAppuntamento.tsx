@@ -18,13 +18,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Phone } from "lucide-react";
+import { CalendarX, Phone } from "lucide-react";
 import { annullaAppuntamento, contattoControparte } from "@/lib/messages";
 import {
   PREAVVISO_BASE_ORE,
   oreInParole,
   statoDisdetta,
 } from "@/lib/disdettaPrenotazione";
+import { EtichettaSuIcona, TASTO_ICONA } from "@/components/EtichettaSuIcona";
 
 export interface AppuntamentoAnnullabile {
   id: string;
@@ -58,7 +59,8 @@ export function AnnullaAppuntamento({
   /** Come chiamare l'altra parte: «Marco Rossi», «il cliente». */
   nomeAltro: string;
   onAnnullato: () => void;
-  /** Bottone piccolo, per le righe di un elenco. */
+  /** Per le righe di un elenco. Il cliente ha un'icona di 44px con
+   *  l'etichetta sopra (dashboard cliente, 14/10). */
   compatto?: boolean;
 }) {
   const stato = statoDisdetta(appt);
@@ -148,9 +150,36 @@ export function AnnullaAppuntamento({
       ? "Chiama per annullare"
       : "Disdici";
 
-  // IL TASTO DEL CLIENTE E' ROSSO (07/10): pieno, non bianco con la scritta
-  // rossa. Accanto a «Cambia orario» deve leggersi da lontano qual e' quello
-  // che toglie l'appuntamento. La variante e' una sola (.btn-danger).
+  // Le aree di tocco del pannello: 44px nell'elenco del cliente, il resto
+  // (il dettaglio del pro, la chat) com'era.
+  const tocco = compatto && !pro ? "min-h-[44px]" : "min-h-[40px]";
+
+  // IL TASTO DEL CLIENTE E' ROSSO (07/10): accanto a «Cambia orario» deve
+  // leggersi da lontano qual e' quello che toglie l'appuntamento. Nella chat
+  // resta pieno (.btn-danger). Nell'elenco della dashboard (09/10) e' l'icona
+  // rossa SENZA fondo: il bottone pieno era la cosa piu' forte della pagina,
+  // piu' forte dell'azione di tutti i giorni (aprire la chat). Il rosso basta
+  // a dire «toglie»; il pieno resta al tasto di conferma nel pannello, dove
+  // la decisione si prende davvero.
+  if (!aperto && compatto && !pro) {
+    return (
+      <EtichettaSuIcona etichetta={etichetta}>
+        <button
+          onClick={() => setAperto(true)}
+          aria-label={etichetta}
+          className={`${TASTO_ICONA} text-red-600 hover:bg-red-50`}
+          data-testid={`annulla-apri-${appt.id}`}
+        >
+          {dentro ? (
+            <Phone className="h-5 w-5" aria-hidden="true" />
+          ) : (
+            <CalendarX className="h-5 w-5" aria-hidden="true" />
+          )}
+        </button>
+      </EtichettaSuIcona>
+    );
+  }
+
   if (!aperto) {
     return (
       <button
@@ -160,9 +189,7 @@ export function AnnullaAppuntamento({
             ? compatto
               ? "inline-flex min-h-[40px] items-center text-xs font-medium text-red-600 hover:underline"
               : "btn-ghost min-h-[44px] w-full justify-center text-sm text-red-600 hover:bg-red-50"
-            : compatto
-              ? "btn-danger min-h-[40px] px-3 py-1.5 text-xs"
-              : "btn-danger min-h-[44px] w-full py-2.5"
+            : "btn-danger min-h-[44px] w-full py-2.5"
         }
         data-testid={`annulla-apri-${appt.id}`}
       >
@@ -201,7 +228,7 @@ export function AnnullaAppuntamento({
           {chat && (
             <Link
               href={chat}
-              className="mt-1 flex min-h-[40px] items-center text-xs font-semibold text-bob-indigo hover:underline"
+              className={`mt-1 flex ${tocco} items-center text-xs font-semibold text-bob-indigo hover:underline`}
             >
               Apri la chat →
             </Link>
@@ -277,7 +304,7 @@ export function AnnullaAppuntamento({
             setAperto(false);
             setErrore(null);
           }}
-          className="inline-flex min-h-[40px] items-center px-2 text-xs font-medium text-bob-ink/65 hover:underline"
+          className={`inline-flex ${tocco} items-center px-2 text-xs font-medium text-bob-ink/65 hover:underline`}
         >
           Lascia stare
         </button>
