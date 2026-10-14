@@ -5,8 +5,8 @@ import {
   trovaPerRichiesta,
 } from "@/lib/copertura";
 import {
+  dataVerificaVisibile,
   publicVerificationLevel,
-  verificaScaduta,
   verificationLevelWeight,
   type VerificationLevel,
 } from "@/lib/vat";
@@ -386,16 +386,8 @@ function toCard(
       row.verification_under_review ?? false,
       row.verification_badge_max_until
     ),
-    // Scaduta: via anche la data, se no la scheda direbbe «Iscritto · 12 set»,
-    // cioe' mostrerebbe la prova di una verifica che non vale piu'. Il tetto
-    // (094) la toglie anche mentre il caso aspetta noi: se l'etichetta e'
-    // spenta, la data che la provava non ha piu' niente da provare.
-    verifiedAt:
-      verificaScaduta(row.verification_badge_max_until) ||
-      (verificaScaduta(row.verification_badge_until) &&
-        !(row.verification_under_review ?? false))
-        ? null
-        : row.verification_level_at,
+    // Scaduta o oltre il tetto: niente data (la regola sta in vat.ts).
+    verifiedAt: dataVerificaVisibile(row),
     responseTimeLabel: row.response_time_label,
     coverageKeys: cop?.keys ?? [],
     excludedKeys: cop?.excludedKeys ?? [],

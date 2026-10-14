@@ -13,6 +13,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  dataVerificaVisibile,
   FINESTRA_RICONTROLLO_GIORNI,
   SLA_VERIFICA_GIORNI_LAVORATIVI,
   TETTO_CESSAZIONE_GIORNI,
@@ -481,5 +482,36 @@ describe("avvisoSlaAcceso: l'avviso di ritardo al professionista", () => {
     for (const aperto of [OLTRE, DENTRO, "2026-09-22T12:00:00+02:00", "2026-09-22T11:00:00+02:00"]) {
       expect(avvisoSlaAcceso("pending", aperto, ADESSO)).toBe(statoCoda(aperto, ADESSO)?.sforata === true);
     }
+  });
+});
+
+describe("dataVerificaVisibile: la data accanto all'etichetta", () => {
+  const base = {
+    verification_level_at: "2026-09-12T10:00:00Z",
+    verification_badge_until: "2099-01-01T00:00:00Z",
+    verification_badge_max_until: null,
+    verification_under_review: false,
+  };
+
+  it("valida: la data c'e'", () => {
+    expect(dataVerificaVisibile(base)).toBe("2026-09-12T10:00:00Z");
+  });
+
+  it("scaduta: via la data, a meno che il caso sia in esame da noi", () => {
+    const scaduta = { ...base, verification_badge_until: "2020-01-01T00:00:00Z" };
+    expect(dataVerificaVisibile(scaduta)).toBeNull();
+    expect(dataVerificaVisibile({ ...scaduta, verification_under_review: true })).toBe(
+      "2026-09-12T10:00:00Z"
+    );
+  });
+
+  it("oltre il tetto: via la data anche in esame", () => {
+    expect(
+      dataVerificaVisibile({
+        ...base,
+        verification_badge_max_until: "2020-01-01T00:00:00Z",
+        verification_under_review: true,
+      })
+    ).toBeNull();
   });
 });
