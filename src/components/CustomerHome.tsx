@@ -13,6 +13,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { LinkChat } from "@/components/LinkChat";
 import { Bell, Calendar, MessageCircle } from "lucide-react";
+import { EtichettaSuIcona, TASTO_ICONA } from "@/components/EtichettaSuIcona";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ReviewDialog } from "@/components/ReviewDialog";
@@ -69,6 +70,34 @@ function fmtDayParts(d: string) {
     day: date.getDate(),
     time: date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }),
   };
+}
+
+// FINITO VUOL DIRE FINITO (14/10). La query tiene le ultime 24 ore, e le
+// serve: «Da fare ora» e la barra delle richieste le leggono. Ma in
+// «Prossimi appuntamenti» venerdi' 9 compariva ancora «gio 8». Un
+// appuntamento e' finito quando l'inizio piu' la durata (un'ora se manca) e'
+// passato: quello in corso resta, quello di ieri no.
+function nonFinito(a: Appointment, adesso = Date.now()): boolean {
+  const fine =
+    new Date(a.starts_at).getTime() + (a.duration_minutes ?? 60) * 60000;
+  return fine >= adesso;
+}
+
+/** Il giorno di calendario a Roma, «2026-10-09», qualunque sia il fuso del browser. */
+function giornoARoma(d: Date): string {
+  return d.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
+}
+
+// «OGGI» E «DOMANI» AL POSTO DEL GIORNO DELLA SETTIMANA (14/10): «ven 9»
+// obbliga a fare il conto, «oggi 9» no. Giorni di calendario a Roma, non
+// 24 ore: alle 23 «domani alle 8» e' domani.
+function giornoVicino(startsAt: string, adesso = new Date()): "oggi" | "domani" | null {
+  const giorno = giornoARoma(new Date(startsAt));
+  const oggi = giornoARoma(adesso);
+  if (giorno === oggi) return "oggi";
+  const [y, m, d] = oggi.split("-").map(Number);
+  const domani = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+  return giorno === domani ? "domani" : null;
 }
 
 // Timeline di stato: mostra al cliente a che punto è il lavoro.
@@ -373,6 +402,7 @@ export function CustomerHome() {
   // Una prenotazione disdetta non si recensisce: non e' un lavoro fatto, e la
   // policy delle recensioni la rifiuta comunque (113).
   const recensibile = (r: CustomerRequest) => r.closed_reason !== "disdetto";
+  const prossimi = appointments.filter((a) => nonFinito(a));
   const apptByRequest = new Map<string | null, StatoAppuntamento>();
   for (const a of appointments) {
     if (a.status === "confirmed") apptByRequest.set(a.request_id, "confermato");
@@ -687,17 +717,21 @@ export function CustomerHome() {
             <Calendar className="h-4 w-4" aria-hidden="true" />
             Prossimi appuntamenti
           </h2>
-          {appointments.length === 0 ? (
+          {prossimi.length === 0 ? (
             <p className="mt-4 text-sm text-bob-ink/65">
               Nessun appuntamento in programma. Quando prenoti un servizio o un
               professionista te ne propone uno, lo trovi qui.
             </p>
           ) : (
             <ul className="mt-3 flex flex-col gap-3">
-              {appointments.map((a) => {
+              {prossimi.map((a) => {
                 const { dow, day, time } = fmtDayParts(a.starts_at);
+                const vicino = giornoVicino(a.starts_at);
                 const req = requestById(a.request_id);
                 const proposed = a.status === "proposed";
+                // Il riquadro pieno dice «e' vicino ed e' deciso». Una
+                // proposta resta ambra anche oggi: e' ancora da decidere.
+                const pieno = vicino !== null && !proposed;
                 return (
                   <li key={a.id} className="flex flex-wrap items-center gap-3" data-testid={`appt-${a.id}`}>
                     {/* LA DATA E' CLICCABILE (05/09): apre «lo metto nel tuo
@@ -709,19 +743,19 @@ export function CustomerHome() {
                     >
                       <span
                         className={`block min-w-[46px] rounded-xl px-2 py-1.5 text-center ${
-                          proposed ? "bg-amber-50" : "bg-bob-indigo-50"
+                          proposed ? "bg-amber-50" : pieno ? "bg-bob-indigo" : "bg-bob-indigo-50"
                         }`}
                       >
                         <span
                           className={`block text-2xs font-medium ${
-                            proposed ? "text-amber-700" : "text-bob-indigo"
+                            proposed ? "text-amber-700" : pieno ? "text-white" : "text-bob-indigo"
                           }`}
                         >
-                          {dow}
+                          {vicino ?? dow}
                         </span>
                         <span
                           className={`block text-base font-bold leading-tight ${
-                            proposed ? "text-amber-800" : "text-bob-indigo"
+                            proposed ? "text-amber-800" : pieno ? "text-white" : "text-bob-indigo"
                           }`}
                         >
                           {day}
@@ -734,38 +768,42 @@ export function CustomerHome() {
                       </p>
                       <p className="truncate text-xs text-bob-ink/70">
                         {time} · {proName(a.professional_id)}
-                        {proposed ? " · da confermare" : ""}
                       </p>
-                    </div>
-                    {proposed &&
-                      (a.proposed_by === "customer" ? (
-                        <span className="shrink-0 text-2xs text-bob-ink/65">
-                          In attesa ⏳
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => respondToAppointment(a, true)}
-                          disabled={respondingAppt === a.id}
-                          className="shrink-0 text-xs font-semibold text-emerald-700 hover:underline"
+                      {/* UNA DOMANDA, UN POSTO (14/10). Qui c'era un secondo
+                          «Conferma», uguale a quello di «Da fare ora»: due
+                          bottoni per la stessa risposta. Le risposte
+                          (Conferma / Altro orario / Rifiuta) stanno solo
+                          lassu'; qui resta lo stato. */}
+                      {proposed && (
+                        <span
+                          className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-medium text-amber-800"
+                          data-testid={`appt-stato-${a.id}`}
                         >
-                          Conferma
-                        </button>
-                      ))}
+                          {a.proposed_by === "customer"
+                            ? `in attesa di ${proName(a.professional_id)}`
+                            : "da confermare"}
+                        </span>
+                      )}
+                    </div>
                     {/* DALLA PRENOTAZIONE ALLA SUA CHAT (05/10), e l'annullamento
                         con le regole del preavviso (113): fuori si disdice da
                         qui, dentro si chiama il professionista. */}
-                    {/* Area di tocco di 40px: a 390px un link alto quanto la
-                        riga di testo (18px) non si prende col dito (rilievo
-                        del 5/10 sui link vicini di questa pagina). */}
-                    <div className="flex basis-full flex-wrap items-center gap-x-5 pl-[58px] text-xs">
+                    {/* TRE ICONE DI 44px SU UNA RIGA (14/10). Con le scritte, a
+                        390px andavano su due righe ed erano alte 40px. Il nome
+                        di ogni tasto e' il suo aria-label; chi guarda lo legge
+                        tenendo il dito o il mouse sopra (EtichettaSuIcona). */}
+                    <div className="flex basis-full items-center gap-2 pl-[58px]">
                       {a.request_id && (
-                        <LinkChat
-                          href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
-                          className="inline-flex min-h-[40px] items-center font-semibold text-bob-indigo hover:underline"
-                          data-testid={`appt-chat-${a.id}`}
-                        >
-                          Apri la chat →
-                        </LinkChat>
+                        <EtichettaSuIcona etichetta="Apri la chat">
+                          <LinkChat
+                            href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
+                            aria-label="Apri la chat"
+                            className={`${TASTO_ICONA} bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100`}
+                            data-testid={`appt-chat-${a.id}`}
+                          >
+                            <MessageCircle className="h-5 w-5" aria-hidden="true" />
+                          </LinkChat>
+                        </EtichettaSuIcona>
                       )}
                       {/* Cambiare orario segue la regola della disdetta
                           (115): fuori dal preavviso si sceglie un orario
