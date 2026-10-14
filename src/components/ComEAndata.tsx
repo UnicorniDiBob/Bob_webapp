@@ -17,12 +17,15 @@ export function ComEAndata({
   richiesta,
   pros,
   recensioni,
+  haAppuntamento,
   onCambiato,
 }: {
   richiesta: { id: string; status: string; closed_reason: string | null };
   pros: { id: string; nome: string }[];
   /** Le stelle che il cliente ha gia' dato, per pro. */
   recensioni: Map<string, number>;
+  /** C'e' o c'e' stato un appuntamento non annullato. */
+  haAppuntamento: boolean;
   /** Dopo la chiusura o una recensione: ricarica i dati della pagina. */
   onCambiato: () => Promise<void>;
 }) {
@@ -34,6 +37,7 @@ export function ComEAndata({
     closed_reason: richiesta.closed_reason,
     proIds: pros.map((p) => p.id),
     recensiti: new Set(recensioni.keys()),
+    haAppuntamento,
   });
   if (!cosa) return null;
 

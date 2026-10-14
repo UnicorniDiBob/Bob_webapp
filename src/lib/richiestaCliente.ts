@@ -70,21 +70,70 @@ export function testoPrezzo(p: PrezzoRichiesta): string {
 }
 
 // «COM'È ANDATA?» MOSTRA UNA COSA SOLA (15/10):
-//   - richiesta aperta con almeno un pro: «Il lavoro è concluso?»;
+//   - richiesta aperta con almeno un pro, e un lavoro che puo' essere
+//     successo: «Il lavoro è concluso?» (vedi TROPPO PRESTO qui sotto);
 //   - chiusa, recensibile, con pro ancora da recensire: il modulo;
 //   - chiusa e tutto recensito: il grazie, con le stelle date;
 //   - disdetta (113) o senza pro: niente, non c'e' un lavoro da giudicare.
 export type ComEAndata = "chiudi" | "recensisci" | "grazie" | null;
 
+//
+// TROPPO PRESTO (15/10, verifica dal vivo). «Il lavoro è concluso?» compariva
+// anche su «Imbianchino DEMO-MULTI», dove due pro erano stati contattati e
+// nessuno aveva ancora risposto: non c'e' un lavoro che possa essere finito.
+// Su una richiesta aperta la domanda ha senso solo se un pro e' in contatto
+// («matched») o se c'e' stato un appuntamento vero (haAppuntamento).
 export function cosaMostraComEAndata(r: {
   status: string;
   closed_reason: string | null;
   proIds: string[];
   recensiti: Set<string>;
+  /** C'e' o c'e' stato un appuntamento non annullato (vedi appuntamentoVero). */
+  haAppuntamento: boolean;
 }): ComEAndata {
   if (!recensibile(r) || r.proIds.length === 0) return null;
-  if (r.status !== "closed") return "chiudi";
+  if (r.status !== "closed") {
+    return r.status === "matched" || r.haAppuntamento ? "chiudi" : null;
+  }
   return r.proIds.some((id) => !r.recensiti.has(id)) ? "recensisci" : "grazie";
+}
+
+export interface AppuntamentoStorico {
+  professional_id: string;
+  status: string;
+  price: number | string | null;
+  created_at: string | null;
+}
+
+/**
+ * Un appuntamento che c'e' o c'e' stato davvero: proposto, confermato o
+ * fatto. Non conta l'annullato, e nemmeno il rifiutato («declined»): e' una
+ * proposta a cui il cliente ha detto di no, l'appuntamento non e' mai nato.
+ */
+export function appuntamentoVero(a: { status: string }): boolean {
+  return a.status === "proposed" || a.status === "confirmed" || a.status === "completed";
+}
+
+// IL PREZZO DELLA PRENOTAZIONE BATTE QUELLO DEL PROFILO (15/10, verifica dal
+// vivo). Una prenotazione diretta nasce con il suo prezzo sull'appuntamento
+// (appointments.price, lo stesso che il biglietto in chat mostra come
+// «40 €»). La scheda diceva invece «Prezzo da concordare», perche' leggeva il
+// listino del pro, dove quell'intervento non ha prezzo. Il prezzo di cui si
+// e' parlato davvero vale piu' del listino: se un appuntamento di quel pro
+// per questa richiesta ne porta uno, si mostra quello, anche se poi e' stato
+// disdetto (e' comunque il prezzo a cui si era prenotato). Il piu' recente.
+export function prezzoPrenotato(appuntamenti: AppuntamentoStorico[], proId: string): number | null {
+  const conPrezzo = appuntamenti
+    .filter((a) => a.professional_id === proId && a.price !== null && a.price !== "")
+    .sort((x, y) => (y.created_at ?? "").localeCompare(x.created_at ?? ""));
+  if (conPrezzo.length === 0) return null;
+  const n = Number(conPrezzo[0].price);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** «Prenotato a 40 €». */
+export function testoPrenotato(prezzo: number): string {
+  return `Prenotato a ${euro(prezzo)}`;
 }
 
 export interface MessaggioChat {

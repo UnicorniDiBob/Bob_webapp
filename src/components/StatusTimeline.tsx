@@ -2,60 +2,50 @@
 // la dashboard del cliente e la pagina della richiesta, con gli stessi
 // ingressi: lo stato della richiesta, quello del suo appuntamento, quanti pro.
 
+import {
+  passiRichiesta,
+  type StatoAppuntamento,
+  type StatoPasso,
+} from "@/lib/passiRichiesta";
+
 // Timeline di stato: mostra al cliente a che punto è il lavoro.
 // L'APPUNTAMENTO CONTA ANCHE QUANDO E' DA CONFERMARE (113, 05/10). Prima la
 // barra guardava solo i «confirmed»: quando il pro spostava un orario gia'
 // accettato, il database lo riportava a «proposed» (107) e la barra tornava
 // a «In contatto» proprio mentre al cliente toccava rispondere. Adesso resta
 // su «Appuntamento» e dice «da confermare».
-export type StatoAppuntamento = "confermato" | "da-confermare" | null;
+// I passi li decide passiRichiesta (lib/passiRichiesta.ts, 15/10).
+export type { StatoAppuntamento };
+
+const STILE: Record<StatoPasso, string> = {
+  fatto: "text-emerald-700",
+  adesso: "rounded-full bg-bob-indigo-50 px-2 py-0.5 font-semibold text-bob-indigo",
+  "da-fare": "text-bob-ink/35",
+  neutro: "rounded-full bg-black/[0.05] px-2 py-0.5 font-semibold text-bob-ink/70",
+};
 
 export function StatusTimeline({
   status,
   appuntamento,
   quoteCount,
+  closedReason = null,
 }: {
   status: string;
   appuntamento: StatoAppuntamento;
   quoteCount: number;
+  /** «disdetto» = prenotazione annullata: l'ultimo passo dice «Disdetta». */
+  closedReason?: string | null;
 }) {
-  const isQuote = status === "quote_request";
-  const passoAppuntamento =
-    appuntamento === "da-confermare" ? "Appuntamento da confermare" : "Appuntamento";
-  const steps = [
-    "Inviata",
-    ...(isQuote ? [quoteCount > 1 ? `${quoteCount} pro contattati` : "Preventivo chiesto"] : []),
-    "In contatto",
-    passoAppuntamento,
-    "Conclusa",
-  ];
-  const currentIdx =
-    status === "closed"
-      ? steps.length - 1
-      : appuntamento
-      ? steps.indexOf(passoAppuntamento)
-      : status === "matched"
-      ? steps.indexOf("In contatto")
-      : isQuote
-      ? 1
-      : 0;
+  const passi = passiRichiesta({ status, closedReason, appuntamento, quoteCount });
 
   return (
     <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-2xs">
-      {steps.map((s, i) => (
-        <span key={s} className="flex items-center gap-1.5">
+      {passi.map((p, i) => (
+        <span key={p.etichetta} className="flex items-center gap-1.5">
           {i > 0 && <span className="text-bob-ink/20">—</span>}
-          <span
-            className={
-              i < currentIdx
-                ? "text-emerald-700"
-                : i === currentIdx
-                ? "rounded-full bg-bob-indigo-50 px-2 py-0.5 font-semibold text-bob-indigo"
-                : "text-bob-ink/35"
-            }
-          >
-            {i < currentIdx ? "✓ " : ""}
-            {s}
+          <span className={STILE[p.stato]}>
+            {p.stato === "fatto" ? "✓ " : ""}
+            {p.etichetta}
           </span>
         </span>
       ))}

@@ -16,6 +16,7 @@ import { LinkChat } from "@/components/LinkChat";
 import { Stars, VerificationLevelBadge } from "@/components/ui";
 import type { VerificationLevel } from "@/lib/vat";
 import {
+  testoPrenotato,
   testoPrezzo,
   type PrezzoRichiesta,
   type RiassuntoChat,
@@ -31,6 +32,9 @@ export interface ProConfronto {
   media: number | null;
   nRecensioni: number;
   prezzo: PrezzoRichiesta | null;
+  /** Il prezzo a cui questa richiesta e' stata prenotata con lui (15/10). */
+  prenotatoA: number | null;
+  /** response_time_label: e' gia' una frase intera, «Risponde in 48h». */
   risponde: string | null;
 }
 
@@ -99,9 +103,14 @@ export function ConfrontoPro({
               )}
             </div>
 
-            {/* 3. Prezzo per il servizio di QUESTA richiesta */}
+            {/* 3. Prezzo per il servizio di QUESTA richiesta: quello della
+                prenotazione, se c'e', altrimenti il listino (15/10). */}
             <div className="text-sm">
-              {p.prezzo ? (
+              {p.prenotatoA !== null ? (
+                <span className="font-semibold text-bob-ink" data-testid={`confronto-prenotato-${p.id}`}>
+                  {testoPrenotato(p.prenotatoA)}
+                </span>
+              ) : p.prezzo ? (
                 <>
                   <span className="font-semibold text-bob-ink">{testoPrezzo(p.prezzo)}</span>
                   {p.prezzo.nota && (
@@ -113,10 +122,11 @@ export function ConfrontoPro({
               )}
             </div>
 
-            {/* 4. Tempo di risposta (vuoto se il pro non l'ha) */}
-            <div className="text-xs text-bob-ink/70">
-              {p.risponde ? `Risponde di solito ${p.risponde}` : null}
-            </div>
+            {/* 4. Tempo di risposta (vuoto se il pro non l'ha). L'etichetta e'
+                gia' una frase, «Risponde in 48h»: si scrive com'e', come
+                sulla scheda pubblica. Il 15/10 dal vivo si leggeva
+                «Risponde di solito Risponde in 48h». */}
+            <div className="text-xs text-bob-ink/70">{p.risponde}</div>
 
             {/* 5. L'ultimo messaggio della vostra chat */}
             <div className="flex min-w-0 items-start gap-2 text-xs">
