@@ -2,8 +2,9 @@
 
 // Dashboard cliente v2 — organizzata per "cosa richiede attenzione",
 // non per data di creazione delle richieste:
-//   1. Da fare ora    → risposte non lette, proposte di appuntamento,
-//                       lavori da chiudere, recensioni mancanti
+//   1. Da fare ora    → proposte di appuntamento, risposte non lette,
+//                       lavori da chiudere, recensioni mancanti — in
+//                       quest'ordine (lib/daFareCliente.ts, 15/10)
 //   2. Lavori in corso → richieste aperte con timeline di stato e badge non letti
 //   3. Prossimi appuntamenti → proposte da confermare + confermati (migration 021)
 //   4. I tuoi professionisti → ricontatto in un tap
@@ -22,6 +23,15 @@ import { notifyEvent } from "@/lib/notify";
 import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
 import { AnnullaAppuntamento } from "@/components/AnnullaAppuntamento";
 import { SpostaAppuntamento } from "@/components/SpostaAppuntamento";
+import {
+  divisiDaFare,
+  giornoVicino,
+  nonFinito,
+  recensibile,
+  riepilogoCliente,
+  vociDaFare,
+  type VoceDaFare,
+} from "@/lib/daFareCliente";
 
 interface CustomerRequest {
   id: string;
@@ -70,34 +80,6 @@ function fmtDayParts(d: string) {
     day: date.getDate(),
     time: date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }),
   };
-}
-
-// FINITO VUOL DIRE FINITO (14/10). La query tiene le ultime 24 ore, e le
-// serve: «Da fare ora» e la barra delle richieste le leggono. Ma in
-// «Prossimi appuntamenti» venerdi' 9 compariva ancora «gio 8». Un
-// appuntamento e' finito quando l'inizio piu' la durata (un'ora se manca) e'
-// passato: quello in corso resta, quello di ieri no.
-function nonFinito(a: Appointment, adesso = Date.now()): boolean {
-  const fine =
-    new Date(a.starts_at).getTime() + (a.duration_minutes ?? 60) * 60000;
-  return fine >= adesso;
-}
-
-/** Il giorno di calendario a Roma, «2026-10-09», qualunque sia il fuso del browser. */
-function giornoARoma(d: Date): string {
-  return d.toLocaleDateString("en-CA", { timeZone: "Europe/Rome" });
-}
-
-// «OGGI» E «DOMANI» AL POSTO DEL GIORNO DELLA SETTIMANA (14/10): «ven 9»
-// obbliga a fare il conto, «oggi 9» no. Giorni di calendario a Roma, non
-// 24 ore: alle 23 «domani alle 8» e' domani.
-function giornoVicino(startsAt: string, adesso = new Date()): "oggi" | "domani" | null {
-  const giorno = giornoARoma(new Date(startsAt));
-  const oggi = giornoARoma(adesso);
-  if (giorno === oggi) return "oggi";
-  const [y, m, d] = oggi.split("-").map(Number);
-  const domani = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
-  return giorno === domani ? "domani" : null;
 }
 
 // Timeline di stato: mostra al cliente a che punto è il lavoro.
@@ -161,7 +143,16 @@ function StatusTimeline({
   );
 }
 
-export function CustomerHome() {
+/** La classe di una riga di «Da fare ora» che e' tutta un tasto: 44px, fuoco visibile. */
+const RIGA_TASTO =
+  "flex min-h-[44px] w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-xl bg-white px-3.5 py-2.5 text-left shadow-sm transition hover:bg-bob-indigo-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40";
+
+export function CustomerHome({
+  onRiepilogo,
+}: {
+  /** Il sottotitolo sotto «Ciao <nome>»: lo scrive la pagina (15/10). */
+  onRiepilogo?: (testo: string) => void;
+} = {}) {
   const supabase = createClient();
   const { user } = useAuth();
 
@@ -179,6 +170,7 @@ export function CustomerHome() {
   const [closing, setClosing] = useState<string | null>(null);
   const [respondingAppt, setRespondingAppt] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [tuttiDaFare, setTuttiDaFare] = useState(false);
   // Contro-proposta: slot liberi del pro (mai il suo calendario completo).
   const [slotPickerFor, setSlotPickerFor] = useState<Appointment | null>(null);
   const [slots, setSlots] = useState<string[]>([]);
@@ -400,8 +392,8 @@ export function CustomerHome() {
   const openRequests = requests.filter((r) => OPEN_STATUSES.includes(r.status));
   const closedRequests = requests.filter((r) => r.status === "closed");
   // Una prenotazione disdetta non si recensisce: non e' un lavoro fatto, e la
-  // policy delle recensioni la rifiuta comunque (113).
-  const recensibile = (r: CustomerRequest) => r.closed_reason !== "disdetto";
+  // policy delle recensioni la rifiuta comunque (113). La regola sta in
+  // lib/daFareCliente.ts, la stessa per «Da fare ora» e per lo storico.
   const prossimi = appointments.filter((a) => nonFinito(a));
   const apptByRequest = new Map<string | null, StatoAppuntamento>();
   for (const a of appointments) {
@@ -411,119 +403,145 @@ export function CustomerHome() {
   }
 
   // ---- Da fare ora ----
-  type Todo = { key: string; text: string; sub: string; node: React.ReactNode };
-  const todos: Todo[] = [];
-  for (const r of openRequests) {
-    for (const p of r.pros) {
-      const n = unreadByPair.get(`${r.id}:${p.id}`) ?? 0;
-      if (n > 0) {
-        todos.push({
-          key: `unread-${r.id}-${p.id}`,
-          text: `${p.name} ti ha risposto`,
-          sub: `${r.service?.name ?? "Richiesta"}${
-            n > 1 ? ` · ${n} messaggi` : ""
-          }`,
-          node: (
-            <LinkChat
-              href={`/messaggi?r=${r.id}&p=${p.id}`}
-              className="shrink-0 text-sm font-semibold text-bob-indigo hover:underline"
-            >
-              Rispondi →
-            </LinkChat>
-          ),
-        });
+  // Cosa c'e' e in che ordine lo decide lib/daFareCliente.ts (15/10): qui
+  // c'e' solo come si disegna ogni riga.
+  const daFare = vociDaFare({
+    appuntamenti: appointments,
+    aperte: openRequests,
+    chiuse: closedRequests,
+    nonLettiPerCoppia: unreadByPair,
+    nonLettiPerRichiesta: unreadByReq,
+    recensite: reviewed,
+  });
+  const { visibili, nascoste } = divisiDaFare(daFare);
+  const righeDaFare = tuttiDaFare ? daFare : visibili;
+  const riepilogo = riepilogoCliente(daFare.length, appointments);
+
+  useEffect(() => {
+    if (!loadingData) onRiepilogo?.(riepilogo);
+  }, [loadingData, riepilogo, onRiepilogo]);
+
+  function testoRiga(testo: string, sotto: string) {
+    return (
+      <span className="min-w-0 text-sm">
+        <span className="font-semibold text-bob-ink">{testo}</span>
+        <span className="text-bob-ink/70"> · {sotto}</span>
+      </span>
+    );
+  }
+
+  function rigaDaFare(v: VoceDaFare<Appointment, CustomerRequest>) {
+    switch (v.tipo) {
+      case "proposta": {
+        const a = v.appuntamento;
+        const { dow, day, time } = fmtDayParts(a.starts_at);
+        // Tre risposte, tre tasti: qui la riga non puo' essere un tasto
+        // solo. Ognuno ha la sua area di 44px.
+        return (
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-xl bg-white px-3.5 py-1.5 shadow-sm">
+            {testoRiga(
+              `${proName(a.professional_id)} propone un appuntamento`,
+              `${dow} ${day} alle ${time}${a.title ? ` · ${a.title}` : ""}`
+            )}
+            <span className="-mx-2 flex shrink-0 flex-wrap">
+              <button
+                onClick={() => respondToAppointment(a, true)}
+                disabled={respondingAppt === a.id}
+                className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-sm font-semibold text-emerald-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                data-testid={`appt-confirm-${a.id}`}
+              >
+                Conferma
+              </button>
+              <button
+                onClick={() => openSlotPicker(a)}
+                disabled={respondingAppt === a.id}
+                className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-sm font-medium text-bob-indigo hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                data-testid={`appt-counter-${a.id}`}
+              >
+                Altro orario
+              </button>
+              <button
+                onClick={() => respondToAppointment(a, false)}
+                disabled={respondingAppt === a.id}
+                className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-sm font-medium text-bob-ink/65 hover:text-red-600 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                data-testid={`appt-decline-${a.id}`}
+              >
+                Rifiuta
+              </button>
+            </span>
+          </div>
+        );
       }
-    }
-  }
-  for (const a of appointments.filter((x) => x.status === "proposed")) {
-    const { dow, day, time } = fmtDayParts(a.starts_at);
-    if (a.proposed_by === "customer") {
-      todos.push({
-        key: `appt-${a.id}`,
-        text: "Hai proposto un nuovo orario",
-        sub: `${dow} ${day} alle ${time} · in attesa di ${proName(a.professional_id)}`,
-        node: (
-          <span className="shrink-0 text-sm text-bob-ink/65">In attesa ⏳</span>
-        ),
-      });
-      continue;
-    }
-    todos.push({
-      key: `appt-${a.id}`,
-      text: `${proName(a.professional_id)} propone un appuntamento`,
-      sub: `${dow} ${day} alle ${time}${a.title ? ` · ${a.title}` : ""}`,
-      node: (
-        <span className="flex shrink-0 flex-wrap gap-x-2.5 gap-y-1">
-          <button
-            onClick={() => respondToAppointment(a, true)}
-            disabled={respondingAppt === a.id}
-            className="text-sm font-semibold text-emerald-700 hover:underline"
-            data-testid={`appt-confirm-${a.id}`}
+      // Le righe con un'azione sola sono tutte un tasto (15/10): a 390px
+      // «Rispondi →» era alto 22px, e il dito prende la riga, non la scritta.
+      case "risposta": {
+        const r = v.richiesta;
+        return (
+          <LinkChat
+            href={`/messaggi?r=${r.id}&p=${v.pro.id}`}
+            className={RIGA_TASTO}
+            data-testid={`todo-${v.chiave}`}
           >
-            Conferma
-          </button>
+            {testoRiga(
+              `${v.pro.name} ti ha risposto`,
+              `${r.service?.name ?? "Richiesta"}${
+                v.messaggi > 1 ? ` · ${v.messaggi} messaggi` : ""
+              }`
+            )}
+            <span className="shrink-0 text-sm font-semibold text-bob-indigo">
+              Rispondi →
+            </span>
+          </LinkChat>
+        );
+      }
+      case "chiusura": {
+        const r = v.richiesta;
+        return (
           <button
-            onClick={() => openSlotPicker(a)}
-            disabled={respondingAppt === a.id}
-            className="text-sm font-medium text-bob-indigo hover:underline"
-            data-testid={`appt-counter-${a.id}`}
-          >
-            Altro orario
-          </button>
-          <button
-            onClick={() => respondToAppointment(a, false)}
-            disabled={respondingAppt === a.id}
-            className="text-sm font-medium text-bob-ink/65 hover:text-red-600 hover:underline"
-            data-testid={`appt-decline-${a.id}`}
-          >
-            Rifiuta
-          </button>
-        </span>
-      ),
-    });
-  }
-  for (const r of openRequests) {
-    const n = unreadByReq.get(r.id) ?? 0;
-    const ageDays = r.created_at
-      ? (Date.now() - new Date(r.created_at).getTime()) / 86400000
-      : 0;
-    if (n === 0 && r.status === "matched" && ageDays > 10) {
-      todos.push({
-        key: `close-${r.id}`,
-        text: "È andato tutto bene?",
-        sub: `${r.service?.name ?? "Richiesta"} · in corso dal ${fmtDate(r.created_at)}`,
-        node: (
-          <button
+            type="button"
             onClick={() => setConfirmClose(r.id)}
-            className="shrink-0 text-sm font-semibold text-bob-indigo hover:underline"
+            className={RIGA_TASTO}
+            data-testid={`todo-${v.chiave}`}
           >
-            Chiudi e recensisci →
+            {testoRiga(
+              "È andato tutto bene?",
+              `${r.service?.name ?? "Richiesta"} · in corso dal ${fmtDate(r.created_at)}`
+            )}
+            <span className="shrink-0 text-sm font-semibold text-bob-indigo">
+              Chiudi e recensisci →
+            </span>
           </button>
-        ),
-      });
-    }
-  }
-  for (const r of closedRequests) {
-    if (
-      recensibile(r) &&
-      r.pros.length > 0 &&
-      r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`))
-    ) {
-      todos.push({
-        key: `review-${r.id}`,
-        text: `Com'è andata con ${r.pros[0]?.name}?`,
-        // La data distingue due lavori con lo stesso pro e lo stesso
-        // servizio: senza, erano righe identiche (rilievo del 3/10).
-        sub: `${r.service?.name ?? "Lavoro"} del ${fmtDate(r.created_at)} · la tua recensione aiuta gli altri`,
-        node: (
+        );
+      }
+      case "recensioni": {
+        const [r] = v.richieste;
+        const conChi =
+          r.pros.find((p) => !reviewed.has(`${r.id}:${p.id}`))?.name ??
+          r.pros[0]?.name;
+        return (
           <button
+            type="button"
             onClick={() => setReviewFor(r)}
-            className="shrink-0 text-sm font-semibold text-bob-indigo hover:underline"
+            className={RIGA_TASTO}
+            data-testid="todo-recensioni"
           >
-            ★ Recensisci →
+            {v.richieste.length === 1
+              ? testoRiga(
+                  `Com'è andata con ${conChi}?`,
+                  // La data distingue due lavori con lo stesso pro e lo stesso
+                  // servizio: senza, erano righe identiche (rilievo del 3/10).
+                  `${r.service?.name ?? "Lavoro"} del ${fmtDate(r.created_at)} · la tua recensione aiuta gli altri`
+                )
+              : testoRiga(
+                  `Hai ${v.richieste.length} lavori da recensire`,
+                  `il più recente: ${r.service?.name ?? "lavoro"} con ${conChi} del ${fmtDate(r.created_at)}`
+                )}
+            <span className="shrink-0 text-sm font-semibold text-bob-indigo">
+              ★ Recensisci →
+            </span>
           </button>
-        ),
-      });
+        );
+      }
     }
   }
 
@@ -568,7 +586,7 @@ export function CustomerHome() {
   return (
     <div className="flex flex-col gap-5">
       {/* ---- 1. Da fare ora ---- */}
-      {todos.length > 0 && (
+      {daFare.length > 0 && (
         <section
           className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4"
           data-testid="todo-strip"
@@ -578,18 +596,26 @@ export function CustomerHome() {
             Da fare ora
           </p>
           <ul className="mt-2.5 flex flex-col gap-2">
-            {todos.slice(0, 4).map((t) => (
-              <li
-                key={t.key}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3.5 py-2.5 shadow-sm"
-              >
-                <span className="min-w-0 text-sm">
-                  <span className="font-semibold text-bob-ink">{t.text}</span>
-                  <span className="text-bob-ink/70"> · {t.sub}</span>
-                </span>
-                {t.node}
-              </li>
+            {righeDaFare.map((v) => (
+              <li key={v.chiave}>{rigaDaFare(v)}</li>
             ))}
+            {nascoste.length > 0 && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setTuttiDaFare((t) => !t)}
+                  aria-expanded={tuttiDaFare}
+                  className="flex min-h-[44px] w-full items-center justify-center rounded-xl text-sm font-semibold text-amber-800 transition hover:bg-amber-100/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                  data-testid="todo-altri"
+                >
+                  {tuttiDaFare
+                    ? "Mostra meno"
+                    : nascoste.length === 1
+                      ? "+1 altro"
+                      : `+${nascoste.length} altri`}
+                </button>
+              </li>
+            )}
           </ul>
         </section>
       )}
