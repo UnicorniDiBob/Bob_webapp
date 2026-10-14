@@ -16,18 +16,23 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { LinkChat } from "@/components/LinkChat";
 import { Bell, Calendar, MessageCircle } from "lucide-react";
-import { EtichettaSuIcona, TASTO_ICONA } from "@/components/EtichettaSuIcona";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ReviewDialog } from "@/components/ReviewDialog";
-import { sendMessage } from "@/lib/messages";
-import { notifyEvent } from "@/lib/notify";
-import { AggiungiAlCalendario } from "@/components/AggiungiAlCalendario";
-import { AnnullaAppuntamento } from "@/components/AnnullaAppuntamento";
-import { SpostaAppuntamento } from "@/components/SpostaAppuntamento";
+import { StatusTimeline, type StatoAppuntamento } from "@/components/StatusTimeline";
+import { AltroOrario } from "@/components/AltroOrario";
+import {
+  RIGA_APPUNTAMENTO_CLIENTE,
+  RigaAppuntamentoCliente,
+} from "@/components/RigaAppuntamentoCliente";
+import {
+  COLONNE_APPUNTAMENTO_CLIENTE,
+  fmtDayParts,
+  useRispostaAppuntamento,
+  type AppuntamentoCliente,
+} from "@/lib/appuntamentoCliente";
 import {
   divisiDaFare,
-  giornoVicino,
   nonFinito,
   recensibile,
   riepilogoCliente,
@@ -47,18 +52,7 @@ interface CustomerRequest {
   pros: { id: string; name: string }[];
 }
 
-interface Appointment {
-  id: string;
-  request_id: string | null;
-  professional_id: string;
-  title: string | null;
-  starts_at: string;
-  duration_minutes: number;
-  status: string;
-  proposed_by: "professional" | "customer";
-  source: "pro" | "direct" | null;
-  cancellation_window_hours: number | null;
-}
+type Appointment = AppuntamentoCliente;
 
 const OPEN_STATUSES = ["sent", "quote_request", "matched"];
 
@@ -73,76 +67,6 @@ function fmtDate(d: string | null) {
   } catch {
     return "";
   }
-}
-
-function fmtDayParts(d: string) {
-  const date = new Date(d);
-  return {
-    dow: date.toLocaleDateString("it-IT", { weekday: "short" }).replace(".", ""),
-    day: date.getDate(),
-    time: date.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }),
-  };
-}
-
-// Timeline di stato: mostra al cliente a che punto è il lavoro.
-// L'APPUNTAMENTO CONTA ANCHE QUANDO E' DA CONFERMARE (113, 05/10). Prima la
-// barra guardava solo i «confirmed»: quando il pro spostava un orario gia'
-// accettato, il database lo riportava a «proposed» (107) e la barra tornava
-// a «In contatto» proprio mentre al cliente toccava rispondere. Adesso resta
-// su «Appuntamento» e dice «da confermare».
-type StatoAppuntamento = "confermato" | "da-confermare" | null;
-
-function StatusTimeline({
-  status,
-  appuntamento,
-  quoteCount,
-}: {
-  status: string;
-  appuntamento: StatoAppuntamento;
-  quoteCount: number;
-}) {
-  const isQuote = status === "quote_request";
-  const passoAppuntamento =
-    appuntamento === "da-confermare" ? "Appuntamento da confermare" : "Appuntamento";
-  const steps = [
-    "Inviata",
-    ...(isQuote ? [quoteCount > 1 ? `${quoteCount} pro contattati` : "Preventivo chiesto"] : []),
-    "In contatto",
-    passoAppuntamento,
-    "Conclusa",
-  ];
-  const currentIdx =
-    status === "closed"
-      ? steps.length - 1
-      : appuntamento
-      ? steps.indexOf(passoAppuntamento)
-      : status === "matched"
-      ? steps.indexOf("In contatto")
-      : isQuote
-      ? 1
-      : 0;
-
-  return (
-    <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-2xs">
-      {steps.map((s, i) => (
-        <span key={s} className="flex items-center gap-1.5">
-          {i > 0 && <span className="text-bob-ink/20">—</span>}
-          <span
-            className={
-              i < currentIdx
-                ? "text-emerald-700"
-                : i === currentIdx
-                ? "rounded-full bg-bob-indigo-50 px-2 py-0.5 font-semibold text-bob-indigo"
-                : "text-bob-ink/35"
-            }
-          >
-            {i < currentIdx ? "✓ " : ""}
-            {s}
-          </span>
-        </span>
-      ))}
-    </div>
-  );
 }
 
 /** Sotto lg gli appuntamenti si fermano a due, poi «Vedi tutti (N)» (16/10). */
@@ -173,18 +97,11 @@ export function CustomerHome({
   const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
   const [confirmClose, setConfirmClose] = useState<string | null>(null);
   const [closing, setClosing] = useState<string | null>(null);
-  const [respondingAppt, setRespondingAppt] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [tuttiDaFare, setTuttiDaFare] = useState(false);
   const [tuttiAppuntamenti, setTuttiAppuntamenti] = useState(false);
   // Contro-proposta: slot liberi del pro (mai il suo calendario completo).
   const [slotPickerFor, setSlotPickerFor] = useState<Appointment | null>(null);
-  const [slots, setSlots] = useState<string[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  /** false = il pro non ha ancora confermato i suoi orari (05/09). */
-  const [orariConfermati, setOrariConfermati] = useState(true);
-  const [slotSaving, setSlotSaving] = useState(false);
-  const [slotErr, setSlotErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -272,7 +189,7 @@ export function CustomerHome({
       // Appuntamenti futuri (proposti o confermati) sulle mie richieste.
       const { data: appts } = await supabase
         .from("appointments")
-        .select("id, request_id, professional_id, title, starts_at, duration_minutes, status, proposed_by, source, cancellation_window_hours")
+        .select(COLONNE_APPUNTAMENTO_CLIENTE)
         .in("request_id", ids)
         .in("status", ["proposed", "confirmed"])
         .gte("starts_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
@@ -313,77 +230,13 @@ export function CustomerHome({
     }
   }
 
-  async function respondToAppointment(a: Appointment, ok: boolean) {
-    if (!user) return;
-    setRespondingAppt(a.id);
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status: ok ? "confirmed" : "declined" })
-      .eq("id", a.id);
-    if (!error && a.request_id) {
-      const { dow, day, time } = fmtDayParts(a.starts_at);
-      await sendMessage(
-        a.request_id,
-        a.professional_id,
-        user.id,
-        "customer",
-        ok
-          ? `Ho confermato l'appuntamento di ${dow} ${day} alle ${time}.`
-          : `Non posso ${dow} ${day} alle ${time}: proponi un altro orario?`
-      );
-      notifyEvent(ok ? "appointment_confirmed" : "appointment_declined", {
-        requestId: a.request_id,
-        professionalId: a.professional_id,
-      });
-      await load();
-    }
-    setRespondingAppt(null);
-  }
+  // Conferma / Rifiuta: la stessa risposta della pagina della richiesta
+  // (lib/appuntamentoCliente.ts, 15/10).
+  const { rispondi: respondToAppointment, inCorso: respondingAppt } =
+    useRispostaAppuntamento(user?.id, load);
 
-  async function openSlotPicker(a: Appointment) {
+  function openSlotPicker(a: Appointment) {
     setSlotPickerFor(a);
-    setSlots([]);
-    setSlotErr(null);
-    setOrariConfermati(true);
-    setSlotsLoading(true);
-    try {
-      const res = await fetch(
-        `/api/pro/slots?professionalId=${a.professional_id}&duration=${a.duration_minutes}`
-      );
-      const d = await res.json();
-      setSlots((d.slots as string[]) ?? []);
-      setOrariConfermati(d.orariConfermati !== false);
-    } catch {
-      setSlots([]);
-    }
-    setSlotsLoading(false);
-  }
-
-  async function counterPropose(slotIso: string) {
-    if (!slotPickerFor || slotSaving) return;
-    setSlotSaving(true);
-    setSlotErr(null);
-    try {
-      const res = await fetch("/api/appointments/counter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appointmentId: slotPickerFor.id,
-          startsAt: slotIso,
-        }),
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        setSlotErr(d.error ?? "Qualcosa è andato storto. Riprova.");
-        setSlotSaving(false);
-        return;
-      }
-      setSlotPickerFor(null);
-      await load();
-    } catch {
-      setSlotErr("Qualcosa è andato storto. Riprova.");
-    }
-    setSlotSaving(false);
   }
 
   const proName = (professionalId: string) => {
@@ -719,113 +572,22 @@ export function CustomerHome({
               </p>
             ) : (
               <ul className="mt-3 flex flex-col gap-3">
-                {prossimi.map((a, i) => {
-                  const { dow, day, time } = fmtDayParts(a.starts_at);
-                  const vicino = giornoVicino(a.starts_at);
-                  const req = requestById(a.request_id);
-                  const proposed = a.status === "proposed";
-                  // Il riquadro pieno dice «e' vicino ed e' deciso». Una
-                  // proposta resta ambra anche oggi: e' ancora da decidere.
-                  const pieno = vicino !== null && !proposed;
-                  return (
-                    <li
-                      key={a.id}
-                      className={`${
-                        i >= APPUNTAMENTI_SUL_TELEFONO && !tuttiAppuntamenti ? "hidden lg:flex" : "flex"
-                      } flex-wrap items-center gap-3`}
-                      data-testid={`appt-${a.id}`}
-                    >
-                      {/* LA DATA E' CLICCABILE (05/09): apre «lo metto nel tuo
-                          calendario?». Prima era testo da ricopiare a mano. */}
-                      <AggiungiAlCalendario
-                        appuntamento={a}
-                        titoloVisibile={a.title || requestById(a.request_id)?.service?.name || undefined}
-                        className="no-underline"
-                      >
-                        <span
-                          className={`block min-w-[46px] rounded-xl px-2 py-1.5 text-center ${
-                            proposed ? "bg-amber-50" : pieno ? "bg-bob-indigo" : "bg-bob-indigo-50"
-                          }`}
-                        >
-                          <span
-                            className={`block text-2xs font-medium ${
-                              proposed ? "text-amber-700" : pieno ? "text-white" : "text-bob-indigo"
-                            }`}
-                          >
-                            {vicino ?? dow}
-                          </span>
-                          <span
-                            className={`block text-base font-bold leading-tight ${
-                              proposed ? "text-amber-800" : pieno ? "text-white" : "text-bob-indigo"
-                            }`}
-                          >
-                            {day}
-                          </span>
-                        </span>
-                      </AggiungiAlCalendario>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-bob-ink">
-                          {a.title || req?.service?.name || "Appuntamento"}
-                        </p>
-                        <p className="truncate text-xs text-bob-ink/70">
-                          {time} · {proName(a.professional_id)}
-                        </p>
-                        {/* UNA DOMANDA, UN POSTO (14/10). Qui c'era un secondo
-                            «Conferma», uguale a quello di «Da fare ora»: due
-                            bottoni per la stessa risposta. Le risposte
-                            (Conferma / Altro orario / Rifiuta) stanno solo
-                            lassu'; qui resta lo stato. */}
-                        {proposed && (
-                          <span
-                            className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-medium text-amber-800"
-                            data-testid={`appt-stato-${a.id}`}
-                          >
-                            {a.proposed_by === "customer"
-                              ? `in attesa di ${proName(a.professional_id)}`
-                              : "da confermare"}
-                          </span>
-                        )}
-                      </div>
-                      {/* DALLA PRENOTAZIONE ALLA SUA CHAT (05/10), e l'annullamento
-                          con le regole del preavviso (113): fuori si disdice da
-                          qui, dentro si chiama il professionista. */}
-                      {/* TRE ICONE DI 44px SU UNA RIGA (14/10). Con le scritte, a
-                          390px andavano su due righe ed erano alte 40px. Il nome
-                          di ogni tasto e' il suo aria-label; chi guarda lo legge
-                          tenendo il dito o il mouse sopra (EtichettaSuIcona). */}
-                      <div className="flex basis-full items-center gap-2 pl-[58px]">
-                        {a.request_id && (
-                          <EtichettaSuIcona etichetta="Apri la chat">
-                            <LinkChat
-                              href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
-                              aria-label="Apri la chat"
-                              className={`${TASTO_ICONA} bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100`}
-                              data-testid={`appt-chat-${a.id}`}
-                            >
-                              <MessageCircle className="h-5 w-5" aria-hidden="true" />
-                            </LinkChat>
-                          </EtichettaSuIcona>
-                        )}
-                        {/* Cambiare orario segue la regola della disdetta
-                            (115): fuori dal preavviso si sceglie un orario
-                            libero, dentro si chiama. */}
-                        <SpostaAppuntamento
-                          appt={a}
-                          nomeAltro={proName(a.professional_id)}
-                          onSpostato={load}
-                          compatto
-                        />
-                        <AnnullaAppuntamento
-                          appt={a}
-                          ruolo="customer"
-                          nomeAltro={proName(a.professional_id)}
-                          onAnnullato={load}
-                          compatto
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
+                {prossimi.map((a, i) => (
+                  <li
+                    key={a.id}
+                    className={`${
+                      i >= APPUNTAMENTI_SUL_TELEFONO && !tuttiAppuntamenti ? "hidden lg:flex" : "flex"
+                    } ${RIGA_APPUNTAMENTO_CLIENTE}`}
+                    data-testid={`appt-${a.id}`}
+                  >
+                    <RigaAppuntamentoCliente
+                      a={a}
+                      titolo={requestById(a.request_id)?.service?.name}
+                      nomePro={proName(a.professional_id)}
+                      onCambiato={load}
+                    />
+                  </li>
+                ))}
               </ul>
             )}
             {/* «VEDI TUTTI» SOLO SUL TELEFONO (16/10): li' gli appuntamenti
@@ -1060,95 +822,12 @@ export function CustomerHome({
 
       {/* ---- dialogs ---- */}
       {slotPickerFor && (
-        <div
-          className="fixed inset-0 z-50 flex h-[100dvh] items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setSlotPickerFor(null)}
-        >
-          <div
-            className="card max-h-[80dvh] w-full max-w-md overflow-y-auto overscroll-contain p-6"
-            onClick={(e) => e.stopPropagation()}
-            data-testid="dialog-slot-picker"
-          >
-            <h3 className="text-lg font-bold text-bob-ink">
-              Proponi un altro orario
-            </h3>
-            <p className="mt-1 text-sm text-bob-ink/70">
-              Questi sono gli orari liberi di{" "}
-              {proName(slotPickerFor.professional_id)} nei prossimi giorni:
-              scegline uno e glielo propongo io.
-            </p>
-            {slotsLoading ? (
-              <p className="mt-5 text-sm text-bob-ink/65">
-                Controllo le disponibilità…
-              </p>
-            ) : !orariConfermati ? (
-              /* Vedi /api/pro/slots: «nessuno slot» e «orari mai dichiarati»
-                 sono due cose diverse e al cliente vanno dette diverse. */
-              <p
-                className="mt-5 text-sm text-bob-ink/70"
-                data-testid="slot-orari-mancanti"
-              >
-                {proName(slotPickerFor.professional_id)} non ha ancora indicato
-                i suoi orari, quindi non posso mostrarti quando è libero:
-                scrivi in chat e proponi tu quando ti andrebbe bene.
-              </p>
-            ) : slots.length === 0 ? (
-              <p className="mt-5 text-sm text-bob-ink/70">
-                Non ci sono slot liberi nei prossimi 7 giorni: scrivigli in
-                chat e trovate un orario insieme.
-              </p>
-            ) : (
-              (() => {
-                const byDay = new Map<string, string[]>();
-                for (const s of slots) {
-                  const d = new Date(s);
-                  const key = d.toLocaleDateString("it-IT", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "short",
-                  });
-                  byDay.set(key, [...(byDay.get(key) ?? []), s]);
-                }
-                return (
-                  <div className="mt-4 flex flex-col gap-3">
-                    {Array.from(byDay.entries()).map(([day, daySlots]) => (
-                      <div key={day}>
-                        <p className="text-xs font-semibold capitalize text-bob-ink/70">
-                          {day}
-                        </p>
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          {daySlots.map((s) => (
-                            <button
-                              key={s}
-                              onClick={() => counterPropose(s)}
-                              disabled={slotSaving}
-                              className="chip hover:bg-bob-indigo-100 disabled:opacity-50"
-                              data-testid={`slot-${s}`}
-                            >
-                              {new Date(s).toLocaleTimeString("it-IT", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()
-            )}
-            {slotErr && <p className="mt-3 text-xs text-red-600">{slotErr}</p>}
-            <button
-              onClick={() => setSlotPickerFor(null)}
-              className="btn-secondary mt-5 w-full py-2.5"
-            >
-              Annulla
-            </button>
-          </div>
-        </div>
+        <AltroOrario
+          appuntamento={slotPickerFor}
+          nomePro={proName(slotPickerFor.professional_id)}
+          onChiudi={() => setSlotPickerFor(null)}
+          onProposto={load}
+        />
       )}
 
       {confirmClose && (

@@ -51,9 +51,16 @@ const nextConfig = {
       // lavoro diventava irraggiungibile. Trovato con la prova sulle rotte,
       // non leggendo il file: il redirect era corretto per tutte le sezioni e
       // sbagliato solo per il percorso che conta di piu'.
+      //
+      // TRANNE /dashboard/richieste (15/10). Dal 15/10 la pagina di una
+      // richiesta del cliente vive li', ed e' lavoro, non configurazione: il
+      // jolly la mandava su /impostazioni/richieste/<id>, che non esiste.
+      // Nessuna sezione si e' mai chiamata «richieste», quindi nessun vecchio
+      // link perde la sua destinazione. Il primo segmento si esclude con un
+      // lookahead (richieste seguito da / o dalla fine), il resto passa com'era.
       {
-        source: "/dashboard/:sezione+",
-        destination: "/impostazioni/:sezione+",
+        source: "/dashboard/:sezione((?!richieste(?:/|$))[^/]+)/:resto*",
+        destination: "/impostazioni/:sezione/:resto*",
         permanent: false,
       },
       // /impostazioni da sola E' una pagina dal 30/09 (la griglia delle
