@@ -1,12 +1,14 @@
 "use client";
 
 // Dashboard cliente v2 — organizzata per "cosa richiede attenzione",
-// non per data di creazione delle richieste:
+// non per data di creazione delle richieste. Sul telefono, in quest'ordine
+// (16/10; sul desktop vedi «DUE COLONNE» piu' sotto):
 //   1. Da fare ora    → proposte di appuntamento, risposte non lette,
 //                       lavori da chiudere, recensioni mancanti — in
 //                       quest'ordine (lib/daFareCliente.ts, 15/10)
-//   2. Lavori in corso → richieste aperte con timeline di stato e badge non letti
-//   3. Prossimi appuntamenti → proposte da confermare + confermati (migration 021)
+//   2. Prossimi appuntamenti → proposte da confermare + confermati (migration 021)
+//   3. Lavori in corso → richieste aperte con timeline di stato e badge non letti
+//                       (o, se non c'e' niente di niente, «Parla con Bob»)
 //   4. I tuoi professionisti → ricontatto in un tap
 //   5. Storico        → richieste concluse, ripiegate
 
@@ -143,6 +145,9 @@ function StatusTimeline({
   );
 }
 
+/** Sotto lg gli appuntamenti si fermano a due, poi «Vedi tutti (N)» (16/10). */
+const APPUNTAMENTI_SUL_TELEFONO = 2;
+
 /** La classe di una riga di «Da fare ora» che e' tutta un tasto: 44px, fuoco visibile. */
 const RIGA_TASTO =
   "flex min-h-[44px] w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-xl bg-white px-3.5 py-2.5 text-left shadow-sm transition hover:bg-bob-indigo-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40";
@@ -171,6 +176,7 @@ export function CustomerHome({
   const [respondingAppt, setRespondingAppt] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [tuttiDaFare, setTuttiDaFare] = useState(false);
+  const [tuttiAppuntamenti, setTuttiAppuntamenti] = useState(false);
   // Contro-proposta: slot liberi del pro (mai il suo calendario completo).
   const [slotPickerFor, setSlotPickerFor] = useState<Appointment | null>(null);
   const [slots, setSlots] = useState<string[]>([]);
@@ -555,6 +561,53 @@ export function CustomerHome({
     }
   }
 
+  // ---- Disposizione (16/10) ----
+  const haDaFare = daFare.length > 0;
+  // Niente da fare e niente in corso: al posto dei lavori, «Parla con Bob».
+  // (Chi non ha mai fatto una richiesta ha la sua pagina vuota, piu' sotto.)
+  const aManiVuote = !haDaFare && openRequests.length === 0;
+
+  // «I TUOI PROFESSIONISTI» E' UNA SCHEDA SUA (16/10). Stava dentro quella
+  // degli appuntamenti, e sembrava un pezzo degli appuntamenti. Righe da
+  // 44px: il nome (22px) e «Scrivi →» (18px) non si prendevano col dito.
+  // `dove` e' la classe che la accende solo sul telefono o solo sul desktop
+  // (vedi «DUE COLONNE» qui sotto).
+  function cardProfessionisti(dove: string) {
+    return (
+      <section className={`card p-5 ${dove}`}>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
+          I tuoi professionisti
+        </h2>
+        <ul className="mt-2 flex flex-col">
+          {trustedPros.slice(0, 5).map((p) => (
+            <li key={p.id} className="flex min-h-[44px] items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bob-indigo-50 text-2xs font-bold text-bob-indigo">
+                {p.name
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((w) => w[0])
+                  .join("")
+                  .toUpperCase()}
+              </span>
+              <Link
+                href={`/professionisti/${p.id}`}
+                className="flex min-h-[44px] min-w-0 flex-1 items-center rounded-lg text-sm font-medium text-bob-ink hover:text-bob-indigo focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+              >
+                <span className="truncate">{p.name}</span>
+              </Link>
+              <LinkChat
+                href={`/messaggi?r=${p.requestId}&p=${p.id}`}
+                className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-2 text-sm font-medium text-bob-indigo hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+              >
+                Scrivi →
+              </LinkChat>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
   if (loadingData) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -584,378 +637,426 @@ export function CustomerHome({
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* ---- 1. Da fare ora ---- */}
-      {daFare.length > 0 && (
-        <section
-          className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4"
-          data-testid="todo-strip"
-        >
-          <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
-            <Bell className="h-3.5 w-3.5" aria-hidden="true" />
-            Da fare ora
-          </p>
-          <ul className="mt-2.5 flex flex-col gap-2">
-            {righeDaFare.map((v) => (
-              <li key={v.chiave}>{rigaDaFare(v)}</li>
-            ))}
-            {nascoste.length > 0 && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setTuttiDaFare((t) => !t)}
-                  aria-expanded={tuttiDaFare}
-                  className="flex min-h-[44px] w-full items-center justify-center rounded-xl text-sm font-semibold text-amber-800 transition hover:bg-amber-100/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
-                  data-testid="todo-altri"
-                >
-                  {tuttiDaFare
-                    ? "Mostra meno"
-                    : nascoste.length === 1
-                      ? "+1 altro"
-                      : `+${nascoste.length} altri`}
-                </button>
-              </li>
-            )}
-          </ul>
-        </section>
-      )}
+    <div>
+      {/* DUE COLONNE COME IL PRO (16/10). Sul desktop la colonna principale
+          (Da fare ora, Lavori in corso) e una laterale di 320px
+          (appuntamenti, professionisti), le stesse proporzioni di
+          ProWorkspace: le due aree personali sono sorelle, e chi passa
+          dall'una all'altra ritrova le cose allo stesso posto.
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
-        {/* ---- 2. Lavori in corso ---- */}
-        <section className="card p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
-            Lavori in corso
-          </h2>
-          {openRequests.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-dashed border-bob-indigo/25 bg-bob-indigo-50/40 p-4 text-center">
-              <p className="text-sm text-bob-ink/70">
-                Nessun lavoro in corso.{" "}
-                <Link href="/#bob" className="font-medium text-bob-indigo hover:underline">
-                  Parla con Bob
-                </Link>{" "}
-                per iniziarne uno.
-              </p>
-            </div>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-3">
-              {openRequests.map((r) => {
-                const n = unreadByReq.get(r.id) ?? 0;
-                return (
-                  <li
-                    key={r.id}
-                    className="rounded-xl border border-black/5 p-3.5"
-                    data-testid={`request-${r.id}`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-bob-ink">
-                          {r.service?.name ?? "Richiesta"}
-                          {r.city?.name ? (
-                            <span className="font-normal text-bob-ink/65">
-                              {" "}
-                              · {r.city.name}
-                            </span>
-                          ) : null}
-                        </p>
-                        {r.problem_description && (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-bob-ink/70">
-                            {r.problem_description}
-                          </p>
-                        )}
-                      </div>
-                      {n > 0 && (
-                        <span className="shrink-0 rounded-full bg-bob-indigo px-2 py-0.5 text-2xs font-bold text-white">
-                          {n > 9 ? "9+" : n} nuov{n === 1 ? "o" : "i"}
-                        </span>
-                      )}
-                    </div>
-                    <StatusTimeline
-                      status={r.status}
-                      appuntamento={apptByRequest.get(r.id) ?? null}
-                      quoteCount={r.pros.length}
-                    />
-                    {r.pros.length > 1 ? (
-                      <div className="mt-2.5 flex flex-col gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1.5">
-                        <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
-                          Confronta le risposte
-                        </p>
-                        {r.pros.map((p) => {
-                          const un = unreadByPair.get(`${r.id}:${p.id}`) ?? 0;
-                          return (
-                            <div
-                              key={p.id}
-                              className="flex items-center justify-between gap-2"
-                            >
-                              <span className="min-w-0 truncate text-xs font-medium text-bob-ink">
-                                {p.name}
-                                {un > 0 && (
-                                  <span className="ml-2 rounded-full bg-bob-indigo px-1.5 py-0.5 text-2xs font-bold text-white">
-                                    {un}
-                                  </span>
-                                )}
-                              </span>
-                              <LinkChat
-                                href={`/messaggi?r=${r.id}&p=${p.id}`}
-                                className="inline-flex min-h-[44px] shrink-0 items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
-                              >
-                                Apri →
-                              </LinkChat>
-                            </div>
-                          );
-                        })}
-                        <button
-                          onClick={() => setConfirmClose(r.id)}
-                          disabled={closing === r.id}
-                          className="mt-1 inline-flex min-h-[44px] items-center self-start text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline sm:min-h-0"
-                        >
-                          {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1">
-                        <LinkChat
-                          href={`/messaggi?r=${r.id}${
-                            r.pros[0] ? `&p=${r.pros[0].id}` : ""
-                          }`}
-                          className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
-                        >
-                          Apri la conversazione →
-                        </LinkChat>
-                        <button
-                          onClick={() => setConfirmClose(r.id)}
-                          disabled={closing === r.id}
-                          className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline sm:min-h-0"
-                        >
-                          {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+          L'APPUNTAMENTO VIENE SECONDO SUL TELEFONO (16/10). Il 14/10 a
+          390px «Prossimi appuntamenti» cominciava a 2455px, dopo 1600px di
+          lavori in corso: per il cliente e' la seconda cosa da sapere,
+          dopo cio' che aspetta una sua risposta.
 
-        {/* ---- 3. Prossimi appuntamenti ---- */}
-        <section className="card p-5">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
-            <Calendar className="h-4 w-4" aria-hidden="true" />
-            Prossimi appuntamenti
-          </h2>
-          {prossimi.length === 0 ? (
-            <p className="mt-4 text-sm text-bob-ink/65">
-              Nessun appuntamento in programma. Quando prenoti un servizio o un
-              professionista te ne propone uno, lo trovi qui.
+          COME SI TENGONO INSIEME I DUE ORDINI. L'ordine del DOM e' quello del
+          telefono, perche' e' quello che leggono il lettore di schermo e il
+          Tab. Una griglia sola non basta: le righe sono condivise, e la
+          colonna piu' corta in alto lascerebbe un buco sotto di se'. Cosi'
+          la colonna laterale e' un blocco solo che occupa due righe
+          («auto» e «1fr»: chi attraversa una riga flessibile allarga solo
+          quella, e la prima resta alta quanto «Da fare ora»). Il prezzo e'
+          che «I tuoi professionisti» si scrive due volte: dentro la colonna
+          laterale (solo desktop) e dopo i lavori (solo telefono). La copia
+          spenta e' display:none: fuori dall'albero di accessibilita' e dal
+          Tab. «display: contents» con due colonne avrebbe messo i
+          professionisti prima dei lavori nel DOM del telefono. */}
+      <div
+        className={`grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_320px] ${
+          haDaFare ? "lg:grid-rows-[auto_1fr]" : ""
+        }`}
+      >
+        {/* ---- 1. Da fare ora ---- */}
+        {daFare.length > 0 && (
+          <section
+            className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 lg:col-start-1 lg:row-start-1"
+            data-testid="todo-strip"
+          >
+            <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
+              <Bell className="h-3.5 w-3.5" aria-hidden="true" />
+              Da fare ora
             </p>
-          ) : (
-            <ul className="mt-3 flex flex-col gap-3">
-              {prossimi.map((a) => {
-                const { dow, day, time } = fmtDayParts(a.starts_at);
-                const vicino = giornoVicino(a.starts_at);
-                const req = requestById(a.request_id);
-                const proposed = a.status === "proposed";
-                // Il riquadro pieno dice «e' vicino ed e' deciso». Una
-                // proposta resta ambra anche oggi: e' ancora da decidere.
-                const pieno = vicino !== null && !proposed;
-                return (
-                  <li key={a.id} className="flex flex-wrap items-center gap-3" data-testid={`appt-${a.id}`}>
-                    {/* LA DATA E' CLICCABILE (05/09): apre «lo metto nel tuo
-                        calendario?». Prima era testo da ricopiare a mano. */}
-                    <AggiungiAlCalendario
-                      appuntamento={a}
-                      titoloVisibile={a.title || requestById(a.request_id)?.service?.name || undefined}
-                      className="no-underline"
+            <ul className="mt-2.5 flex flex-col gap-2">
+              {righeDaFare.map((v) => (
+                <li key={v.chiave}>{rigaDaFare(v)}</li>
+              ))}
+              {nascoste.length > 0 && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setTuttiDaFare((t) => !t)}
+                    aria-expanded={tuttiDaFare}
+                    className="flex min-h-[44px] w-full items-center justify-center rounded-xl text-sm font-semibold text-amber-800 transition hover:bg-amber-100/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                    data-testid="todo-altri"
+                  >
+                    {tuttiDaFare
+                      ? "Mostra meno"
+                      : nascoste.length === 1
+                        ? "+1 altro"
+                        : `+${nascoste.length} altri`}
+                  </button>
+                </li>
+              )}
+            </ul>
+          </section>
+        )}
+
+        <div
+          className={`flex flex-col gap-5 self-start lg:col-start-2 lg:row-start-1 ${
+            haDaFare ? "lg:row-span-2" : ""
+          }`}
+        >
+          {/* ---- 2. Prossimi appuntamenti ---- */}
+          <section className="card p-5">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
+              <Calendar className="h-4 w-4" aria-hidden="true" />
+              Prossimi appuntamenti
+            </h2>
+            {prossimi.length === 0 ? (
+              <p className="mt-4 text-sm text-bob-ink/65">
+                Nessun appuntamento in programma. Quando prenoti un servizio o un
+                professionista te ne propone uno, lo trovi qui.
+              </p>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-3">
+                {prossimi.map((a, i) => {
+                  const { dow, day, time } = fmtDayParts(a.starts_at);
+                  const vicino = giornoVicino(a.starts_at);
+                  const req = requestById(a.request_id);
+                  const proposed = a.status === "proposed";
+                  // Il riquadro pieno dice «e' vicino ed e' deciso». Una
+                  // proposta resta ambra anche oggi: e' ancora da decidere.
+                  const pieno = vicino !== null && !proposed;
+                  return (
+                    <li
+                      key={a.id}
+                      className={`${
+                        i >= APPUNTAMENTI_SUL_TELEFONO && !tuttiAppuntamenti ? "hidden lg:flex" : "flex"
+                      } flex-wrap items-center gap-3`}
+                      data-testid={`appt-${a.id}`}
                     >
-                      <span
-                        className={`block min-w-[46px] rounded-xl px-2 py-1.5 text-center ${
-                          proposed ? "bg-amber-50" : pieno ? "bg-bob-indigo" : "bg-bob-indigo-50"
-                        }`}
+                      {/* LA DATA E' CLICCABILE (05/09): apre «lo metto nel tuo
+                          calendario?». Prima era testo da ricopiare a mano. */}
+                      <AggiungiAlCalendario
+                        appuntamento={a}
+                        titoloVisibile={a.title || requestById(a.request_id)?.service?.name || undefined}
+                        className="no-underline"
                       >
                         <span
-                          className={`block text-2xs font-medium ${
-                            proposed ? "text-amber-700" : pieno ? "text-white" : "text-bob-indigo"
+                          className={`block min-w-[46px] rounded-xl px-2 py-1.5 text-center ${
+                            proposed ? "bg-amber-50" : pieno ? "bg-bob-indigo" : "bg-bob-indigo-50"
                           }`}
                         >
-                          {vicino ?? dow}
-                        </span>
-                        <span
-                          className={`block text-base font-bold leading-tight ${
-                            proposed ? "text-amber-800" : pieno ? "text-white" : "text-bob-indigo"
-                          }`}
-                        >
-                          {day}
-                        </span>
-                      </span>
-                    </AggiungiAlCalendario>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-bob-ink">
-                        {a.title || req?.service?.name || "Appuntamento"}
-                      </p>
-                      <p className="truncate text-xs text-bob-ink/70">
-                        {time} · {proName(a.professional_id)}
-                      </p>
-                      {/* UNA DOMANDA, UN POSTO (14/10). Qui c'era un secondo
-                          «Conferma», uguale a quello di «Da fare ora»: due
-                          bottoni per la stessa risposta. Le risposte
-                          (Conferma / Altro orario / Rifiuta) stanno solo
-                          lassu'; qui resta lo stato. */}
-                      {proposed && (
-                        <span
-                          className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-medium text-amber-800"
-                          data-testid={`appt-stato-${a.id}`}
-                        >
-                          {a.proposed_by === "customer"
-                            ? `in attesa di ${proName(a.professional_id)}`
-                            : "da confermare"}
-                        </span>
-                      )}
-                    </div>
-                    {/* DALLA PRENOTAZIONE ALLA SUA CHAT (05/10), e l'annullamento
-                        con le regole del preavviso (113): fuori si disdice da
-                        qui, dentro si chiama il professionista. */}
-                    {/* TRE ICONE DI 44px SU UNA RIGA (14/10). Con le scritte, a
-                        390px andavano su due righe ed erano alte 40px. Il nome
-                        di ogni tasto e' il suo aria-label; chi guarda lo legge
-                        tenendo il dito o il mouse sopra (EtichettaSuIcona). */}
-                    <div className="flex basis-full items-center gap-2 pl-[58px]">
-                      {a.request_id && (
-                        <EtichettaSuIcona etichetta="Apri la chat">
-                          <LinkChat
-                            href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
-                            aria-label="Apri la chat"
-                            className={`${TASTO_ICONA} bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100`}
-                            data-testid={`appt-chat-${a.id}`}
+                          <span
+                            className={`block text-2xs font-medium ${
+                              proposed ? "text-amber-700" : pieno ? "text-white" : "text-bob-indigo"
+                            }`}
                           >
-                            <MessageCircle className="h-5 w-5" aria-hidden="true" />
-                          </LinkChat>
-                        </EtichettaSuIcona>
-                      )}
-                      {/* Cambiare orario segue la regola della disdetta
-                          (115): fuori dal preavviso si sceglie un orario
-                          libero, dentro si chiama. */}
-                      <SpostaAppuntamento
-                        appt={a}
-                        nomeAltro={proName(a.professional_id)}
-                        onSpostato={load}
-                        compatto
-                      />
-                      <AnnullaAppuntamento
-                        appt={a}
-                        ruolo="customer"
-                        nomeAltro={proName(a.professional_id)}
-                        onAnnullato={load}
-                        compatto
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                            {vicino ?? dow}
+                          </span>
+                          <span
+                            className={`block text-base font-bold leading-tight ${
+                              proposed ? "text-amber-800" : pieno ? "text-white" : "text-bob-indigo"
+                            }`}
+                          >
+                            {day}
+                          </span>
+                        </span>
+                      </AggiungiAlCalendario>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-bob-ink">
+                          {a.title || req?.service?.name || "Appuntamento"}
+                        </p>
+                        <p className="truncate text-xs text-bob-ink/70">
+                          {time} · {proName(a.professional_id)}
+                        </p>
+                        {/* UNA DOMANDA, UN POSTO (14/10). Qui c'era un secondo
+                            «Conferma», uguale a quello di «Da fare ora»: due
+                            bottoni per la stessa risposta. Le risposte
+                            (Conferma / Altro orario / Rifiuta) stanno solo
+                            lassu'; qui resta lo stato. */}
+                        {proposed && (
+                          <span
+                            className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-medium text-amber-800"
+                            data-testid={`appt-stato-${a.id}`}
+                          >
+                            {a.proposed_by === "customer"
+                              ? `in attesa di ${proName(a.professional_id)}`
+                              : "da confermare"}
+                          </span>
+                        )}
+                      </div>
+                      {/* DALLA PRENOTAZIONE ALLA SUA CHAT (05/10), e l'annullamento
+                          con le regole del preavviso (113): fuori si disdice da
+                          qui, dentro si chiama il professionista. */}
+                      {/* TRE ICONE DI 44px SU UNA RIGA (14/10). Con le scritte, a
+                          390px andavano su due righe ed erano alte 40px. Il nome
+                          di ogni tasto e' il suo aria-label; chi guarda lo legge
+                          tenendo il dito o il mouse sopra (EtichettaSuIcona). */}
+                      <div className="flex basis-full items-center gap-2 pl-[58px]">
+                        {a.request_id && (
+                          <EtichettaSuIcona etichetta="Apri la chat">
+                            <LinkChat
+                              href={`/messaggi?r=${a.request_id}&p=${a.professional_id}`}
+                              aria-label="Apri la chat"
+                              className={`${TASTO_ICONA} bg-bob-indigo-50 text-bob-indigo hover:bg-bob-indigo-100`}
+                              data-testid={`appt-chat-${a.id}`}
+                            >
+                              <MessageCircle className="h-5 w-5" aria-hidden="true" />
+                            </LinkChat>
+                          </EtichettaSuIcona>
+                        )}
+                        {/* Cambiare orario segue la regola della disdetta
+                            (115): fuori dal preavviso si sceglie un orario
+                            libero, dentro si chiama. */}
+                        <SpostaAppuntamento
+                          appt={a}
+                          nomeAltro={proName(a.professional_id)}
+                          onSpostato={load}
+                          compatto
+                        />
+                        <AnnullaAppuntamento
+                          appt={a}
+                          ruolo="customer"
+                          nomeAltro={proName(a.professional_id)}
+                          onAnnullato={load}
+                          compatto
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {/* «VEDI TUTTI» SOLO SUL TELEFONO (16/10): li' gli appuntamenti
+                stanno sopra i lavori in corso, e sei righe con le loro icone
+                li spingerebbero di nuovo giu'. Sul desktop stanno di lato e
+                si vedono tutti. */}
+            {prossimi.length > APPUNTAMENTI_SUL_TELEFONO && (
+              <button
+                type="button"
+                onClick={() => setTuttiAppuntamenti((t) => !t)}
+                aria-expanded={tuttiAppuntamenti}
+                className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-xl text-sm font-semibold text-bob-indigo transition hover:bg-bob-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40 lg:hidden"
+                data-testid="appt-vedi-tutti"
+              >
+                {tuttiAppuntamenti ? "Mostra meno" : `Vedi tutti (${prossimi.length})`}
+              </button>
+            )}
+          </section>
+          {trustedPros.length > 0 && cardProfessionisti("hidden lg:block")}
+        </div>
 
-          {/* ---- 4. I tuoi professionisti ---- */}
-          {trustedPros.length > 0 && (
-            <>
-              <h2 className="mt-6 text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
-                I tuoi professionisti
+        {/* ---- 3. Lavori in corso ---- */}
+        {/* IL NUOVO LAVORO SI COMINCIA DA QUI, MA SOLO A MANI VUOTE (16/10).
+            Quando niente aspetta il cliente e niente e' in corso, la pagina
+            era un elenco di cose passate senza una porta per la prossima
+            (c'era solo il bottone nell'header). Se invece c'e' qualcosa da
+            fare o un lavoro aperto, l'invito ruberebbe la scena a quello. */}
+        {aManiVuote ? (
+          <section
+            className={`card self-start p-5 lg:col-start-1 ${haDaFare ? "lg:row-start-2" : "lg:row-start-1"}`}
+            data-testid="parla-con-bob"
+          >
+            <h2 className="text-lg font-bold text-bob-ink">Hai un nuovo problema in casa?</h2>
+            <p className="mt-1 text-sm text-bob-ink/70">
+              Racconta a Bob cosa ti serve: ti mette in contatto con i
+              professionisti giusti.
+            </p>
+            <Link href="/#bob" className="btn-primary mt-4 min-h-[44px] px-5 py-2.5">
+              Parla con Bob
+            </Link>
+          </section>
+        ) : (
+          <section className={`card self-start p-5 lg:col-start-1 ${haDaFare ? "lg:row-start-2" : "lg:row-start-1"}`}>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
+              Lavori in corso
+            </h2>
+            {openRequests.length === 0 ? (
+              <div className="mt-4 rounded-xl border border-dashed border-bob-indigo/25 bg-bob-indigo-50/40 p-4 text-center">
+                <p className="text-sm text-bob-ink/70">
+                  Nessun lavoro in corso.{" "}
+                  <Link href="/#bob" className="font-medium text-bob-indigo hover:underline">
+                    Parla con Bob
+                  </Link>{" "}
+                  per iniziarne uno.
+                </p>
+              </div>
+            ) : (
+              <ul className="mt-3 flex flex-col gap-3">
+                {openRequests.map((r) => {
+                  const n = unreadByReq.get(r.id) ?? 0;
+                  return (
+                    <li
+                      key={r.id}
+                      className="rounded-xl border border-black/5 p-3.5"
+                      data-testid={`request-${r.id}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-bob-ink">
+                            {r.service?.name ?? "Richiesta"}
+                            {r.city?.name ? (
+                              <span className="font-normal text-bob-ink/65">
+                                {" "}
+                                · {r.city.name}
+                              </span>
+                            ) : null}
+                          </p>
+                          {r.problem_description && (
+                            <p className="mt-0.5 line-clamp-1 text-xs text-bob-ink/70">
+                              {r.problem_description}
+                            </p>
+                          )}
+                        </div>
+                        {n > 0 && (
+                          <span className="shrink-0 rounded-full bg-bob-indigo px-2 py-0.5 text-2xs font-bold text-white">
+                            {n > 9 ? "9+" : n} nuov{n === 1 ? "o" : "i"}
+                          </span>
+                        )}
+                      </div>
+                      <StatusTimeline
+                        status={r.status}
+                        appuntamento={apptByRequest.get(r.id) ?? null}
+                        quoteCount={r.pros.length}
+                      />
+                      {r.pros.length > 1 ? (
+                        <div className="mt-2.5 flex flex-col gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1.5">
+                          <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
+                            Confronta le risposte
+                          </p>
+                          {r.pros.map((p) => {
+                            const un = unreadByPair.get(`${r.id}:${p.id}`) ?? 0;
+                            return (
+                              <div
+                                key={p.id}
+                                className="flex items-center justify-between gap-2"
+                              >
+                                <span className="min-w-0 truncate text-xs font-medium text-bob-ink">
+                                  {p.name}
+                                  {un > 0 && (
+                                    <span className="ml-2 rounded-full bg-bob-indigo px-1.5 py-0.5 text-2xs font-bold text-white">
+                                      {un}
+                                    </span>
+                                  )}
+                                </span>
+                                <LinkChat
+                                  href={`/messaggi?r=${r.id}&p=${p.id}`}
+                                  className="inline-flex min-h-[44px] shrink-0 items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
+                                >
+                                  Apri →
+                                </LinkChat>
+                              </div>
+                            );
+                          })}
+                          <button
+                            onClick={() => setConfirmClose(r.id)}
+                            disabled={closing === r.id}
+                            className="mt-1 inline-flex min-h-[44px] items-center self-start text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline sm:min-h-0"
+                          >
+                            {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1">
+                          <LinkChat
+                            href={`/messaggi?r=${r.id}${
+                              r.pros[0] ? `&p=${r.pros[0].id}` : ""
+                            }`}
+                            className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
+                          >
+                            Apri la conversazione →
+                          </LinkChat>
+                          <button
+                            onClick={() => setConfirmClose(r.id)}
+                            disabled={closing === r.id}
+                            className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline sm:min-h-0"
+                          >
+                            {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        )}
+
+        {/* ---- 4. I tuoi professionisti (telefono: dopo i lavori) ---- */}
+        {trustedPros.length > 0 && cardProfessionisti("lg:hidden")}
+
+        {/* ---- 5. Storico ---- */}
+        {closedRequests.length > 0 && (
+          <section
+            className={`card p-5 lg:col-span-2 ${haDaFare ? "lg:row-start-3" : "lg:row-start-2"}`}
+          >
+            <button
+              onClick={() => setShowHistory((s) => !s)}
+              aria-expanded={showHistory}
+              className="flex min-h-[44px] w-full items-center justify-between rounded-lg text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+              data-testid="toggle-history"
+            >
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
+                Storico · {closedRequests.length} richiest
+                {closedRequests.length === 1 ? "a" : "e"} chius
+                {closedRequests.length === 1 ? "a" : "e"}
               </h2>
-              <ul className="mt-3 flex flex-col gap-2">
-                {trustedPros.slice(0, 5).map((p) => (
-                  <li key={p.id} className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bob-indigo-50 text-2xs font-bold text-bob-indigo">
-                      {p.name
-                        .split(" ")
-                        .slice(0, 2)
-                        .map((w) => w[0])
-                        .join("")
-                        .toUpperCase()}
-                    </span>
-                    <Link
-                      href={`/professionisti/${p.id}`}
-                      className="min-w-0 flex-1 truncate text-sm font-medium text-bob-ink hover:text-bob-indigo"
-                    >
-                      {p.name}
-                    </Link>
-                    <LinkChat
-                      href={`/messaggi?r=${p.requestId}&p=${p.id}`}
-                      className="shrink-0 text-xs font-medium text-bob-indigo hover:underline"
-                    >
-                      Scrivi →
-                    </LinkChat>
+              <span className="text-bob-ink/65">{showHistory ? "▲" : "▼"}</span>
+            </button>
+            {showHistory && (
+              <ul className="mt-3 flex flex-col divide-y divide-black/5">
+                {closedRequests.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex flex-wrap items-center justify-between gap-2 py-2.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-bob-ink">
+                        {r.service?.name ?? "Richiesta"}
+                        {r.pros[0] ? (
+                          <span className="font-normal text-bob-ink/65">
+                            {" "}
+                            · {r.pros[0].name}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-bob-ink/65">
+                        {fmtDate(r.created_at)}
+                        {r.closed_reason === "disdetto" && " · Disdetta"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <LinkChat
+                        href={`/messaggi?r=${r.id}${
+                          r.pros[0] ? `&p=${r.pros[0].id}` : ""
+                        }`}
+                        className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-indigo hover:underline"
+                      >
+                        Conversazione
+                      </LinkChat>
+                      {r.pros.length > 0 &&
+                        recensibile(r) &&
+                        (r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`)) ? (
+                          <button
+                            onClick={() => setReviewFor(r)}
+                            className="inline-flex min-h-[44px] items-center text-xs font-semibold text-bob-indigo hover:underline"
+                          >
+                            ★ Recensisci
+                          </button>
+                        ) : (
+                          <span className="text-xs text-emerald-700">✓ Recensito</span>
+                        ))}
+                    </div>
                   </li>
                 ))}
               </ul>
-            </>
-          )}
-        </section>
-      </div>
+            )}
+          </section>
+        )}
 
-      {/* ---- 5. Storico ---- */}
-      {closedRequests.length > 0 && (
-        <section className="card p-5">
-          <button
-            onClick={() => setShowHistory((s) => !s)}
-            className="flex w-full items-center justify-between text-left"
-            data-testid="toggle-history"
-          >
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
-              Storico · {closedRequests.length} richiest
-              {closedRequests.length === 1 ? "a" : "e"} chius
-              {closedRequests.length === 1 ? "a" : "e"}
-            </h2>
-            <span className="text-bob-ink/65">{showHistory ? "▲" : "▼"}</span>
-          </button>
-          {showHistory && (
-            <ul className="mt-3 flex flex-col divide-y divide-black/5">
-              {closedRequests.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex flex-wrap items-center justify-between gap-2 py-2.5"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-bob-ink">
-                      {r.service?.name ?? "Richiesta"}
-                      {r.pros[0] ? (
-                        <span className="font-normal text-bob-ink/65">
-                          {" "}
-                          · {r.pros[0].name}
-                        </span>
-                      ) : null}
-                    </p>
-                    <p className="text-xs text-bob-ink/65">
-                      {fmtDate(r.created_at)}
-                      {r.closed_reason === "disdetto" && " · Disdetta"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <LinkChat
-                      href={`/messaggi?r=${r.id}${
-                        r.pros[0] ? `&p=${r.pros[0].id}` : ""
-                      }`}
-                      className="text-xs font-medium text-bob-indigo hover:underline"
-                    >
-                      Conversazione
-                    </LinkChat>
-                    {r.pros.length > 0 &&
-                      recensibile(r) &&
-                      (r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`)) ? (
-                        <button
-                          onClick={() => setReviewFor(r)}
-                          className="text-xs font-semibold text-bob-indigo hover:underline"
-                        >
-                          ★ Recensisci
-                        </button>
-                      ) : (
-                        <span className="text-xs text-emerald-700">✓ Recensito</span>
-                      ))}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+      </div>
 
       {/* ---- dialogs ---- */}
       {slotPickerFor && (
