@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, House, Settings, UserCog } from "lucide-react";
+import { Bell, House, LogIn, Settings, UserCog } from "lucide-react";
 import { Logo } from "./Logo";
 import { useAuth } from "./AuthProvider";
 import { AccountTendina } from "./AccountTendina";
@@ -26,11 +26,62 @@ const NAV = [
   { href: "/supporto", label: "Aiuto" },
 ];
 
+/**
+ * Una voce del menu del telefono (15/10): a tutta larghezza, almeno 48px.
+ * Icona e scritta stanno insieme in un gruppo che tiene la sua larghezza
+ * naturale (flex-auto); l'eventuale contatore o etichetta sta in fondo alla
+ * riga e, se non c'e' posto, scende sotto invece di stringere la scritta. Con
+ * un testo enorme la scritta va a capo accanto alla sua icona, mai schiacciata.
+ */
+function RigaMenu({
+  href,
+  icona,
+  etichetta,
+  coda,
+  attiva,
+  onClick,
+  colore = attiva ? "text-bob-ink" : "text-bob-ink/80",
+  peso = "font-medium",
+  testId,
+}: {
+  href: string;
+  icona?: React.ReactNode;
+  etichetta: string;
+  coda?: React.ReactNode;
+  attiva: boolean;
+  onClick: () => void;
+  colore?: string;
+  peso?: string;
+  testId?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      aria-current={attiva ? "page" : undefined}
+      className={`flex min-h-[48px] w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-lg px-3 py-2 text-sm transition hover:bg-bob-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40 ${peso} ${colore} ${
+        attiva ? "bg-bob-indigo-50/70" : ""
+      }`}
+      data-testid={testId}
+    >
+      <span className="flex min-w-0 flex-auto items-center gap-3">
+        {icona}
+        <span className="min-w-0">{etichetta}</span>
+      </span>
+      {coda && <span className="ml-auto shrink-0">{coda}</span>}
+    </Link>
+  );
+}
+
 export function Header() {
   const pathname = usePathname();
+  /** La pagina corrente: l'indirizzo stesso o una sua sotto-pagina. */
+  const corrente = (href: string) =>
+    pathname === href || Boolean(pathname?.startsWith(`${href}/`));
   const { user, role, verificationLevel, loading } = useAuth();
   const { daContare } = useNotifiche();
   const [open, setOpen] = useState(false);
+  const chiudi = () => setOpen(false);
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 bg-white/85 backdrop-blur-md">
@@ -171,96 +222,117 @@ export function Header() {
 
       {open && (
         <div className="border-t border-black/5 bg-white md:hidden">
-          <div className="container-bob flex flex-col gap-1 py-3">
+          {/* IL MENU DEL TELEFONO E' UN ELENCO (15/10). Le voci dell'account
+              stavano su una riga sola in flex-wrap, con due bottoni flex-1
+              che prendevano la larghezza avanzata dagli altri: sul telefono
+              di André, con il testo di sistema grande, «Parla con Bob» e «La
+              tua area» andavano a capo su TRE righe dentro i bottoni. Ogni
+              combinazione di nome, contatore e dimensione del testo poteva
+              rifarlo. Adesso ogni voce ha la sua riga a tutta larghezza: sulla
+              stessa riga stanno solo l'icona, la scritta e il suo contatore, e
+              «Parla con Bob» chiude l'elenco, da solo. */}
+          <nav className="container-bob flex flex-col gap-1 py-3" aria-label="Menu">
             {NAV.map((item) => (
-              <Link
+              <RigaMenu
                 key={item.href}
                 href={item.href}
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-bob-ink/80 hover:bg-bob-indigo-50"
-              >
-                {item.label}
-              </Link>
+                etichetta={item.label}
+                attiva={corrente(item.href)}
+                onClick={chiudi}
+              />
             ))}
             {(role === "admin" || role === "cs") && (
-              <Link
+              <RigaMenu
                 href="/admin"
-                onClick={() => setOpen(false)}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-bob-indigo hover:bg-bob-indigo-50"
+                icona={<Settings className="h-5 w-5 shrink-0" aria-hidden="true" />}
+                etichetta="Admin"
+                attiva={corrente("/admin")}
+                onClick={chiudi}
+                colore="text-bob-indigo"
+                peso="font-semibold"
+              />
+            )}
+
+            <hr className="my-2 border-black/5" />
+
+            {user ? (
+              <>
+                {role !== "admin" && role !== "cs" && (
+                  <RigaMenu
+                    href="/dashboard"
+                    icona={<House className="h-5 w-5 shrink-0" aria-hidden="true" />}
+                    etichetta="La tua area"
+                    attiva={corrente("/dashboard")}
+                    onClick={chiudi}
+                    testId="link-dashboard-mobile"
+                    coda={
+                      // Il professionista verificato se lo vede scritto anche
+                      // qui, in fondo alla riga e non attaccato al nome.
+                      role === "professional" &&
+                      verificationLevel &&
+                      verificationLevel !== "none" ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-700">
+                          <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                          {VERIFICATION_LABEL[verificationLevel]}
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                )}
+                {/* Su mobile l'icona da sola sarebbe un bersaglio ambiguo in
+                    mezzo al menu: qui la voce e' scritta. */}
+                {role !== "admin" && role !== "cs" && (
+                  <RigaMenu
+                    href="/notifiche"
+                    icona={<Bell className="h-5 w-5 shrink-0" aria-hidden="true" />}
+                    etichetta="Notifiche"
+                    attiva={corrente("/notifiche")}
+                    onClick={chiudi}
+                    testId="link-notifiche-mobile"
+                    coda={
+                      daContare > 0 ? (
+                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-bob-indigo px-1.5 text-2xs font-bold leading-none text-white">
+                          {daContare > 9 ? "9+" : daContare}
+                          <span className="sr-only"> da leggere</span>
+                        </span>
+                      ) : undefined
+                    }
+                  />
+                )}
+                {/* Su telefono il cerchio dell'account non c'e' (sta nel
+                    blocco `hidden md:flex` qui sopra): cambiare account e
+                    uscire si fa da Impostazioni → Accesso e sicurezza, ed e'
+                    questa la voce che ci porta. */}
+                <RigaMenu
+                  href="/impostazioni"
+                  icona={<UserCog className="h-5 w-5 shrink-0" aria-hidden="true" />}
+                  etichetta="Impostazioni"
+                  attiva={corrente("/impostazioni")}
+                  onClick={chiudi}
+                  testId="link-impostazioni-mobile"
+                />
+              </>
+            ) : (
+              <RigaMenu
+                href="/login"
+                icona={<LogIn className="h-5 w-5 shrink-0" aria-hidden="true" />}
+                etichetta="Accedi"
+                attiva={corrente("/login")}
+                onClick={chiudi}
+              />
+            )}
+
+            {(!user || (role !== "professional" && role !== "admin" && role !== "cs")) && (
+              <Link
+                href="/#bob"
+                onClick={chiudi}
+                className="btn-primary mt-3 min-h-[48px] w-full"
+                data-testid="link-talk-to-bob-mobile"
               >
-                <Settings className="h-4 w-4" aria-hidden="true" />
-                Admin
+                Parla con Bob
               </Link>
             )}
-            {/* flex-wrap: con la campanella le voci sono cinque e su un
-                telefono stretto si schiacciavano l'una sull'altra. */}
-            <div className="mt-2 flex flex-wrap gap-2">
-              {user ? (
-                <>
-                  {role !== "professional" && role !== "admin" && role !== "cs" && (
-                    <Link href="/#bob" onClick={() => setOpen(false)} className="btn-primary flex-1 py-2" data-testid="link-talk-to-bob-mobile">
-                      Parla con Bob
-                    </Link>
-                  )}
-                  {role !== "admin" && role !== "cs" && (
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setOpen(false)}
-                      className="btn-secondary inline-flex flex-1 items-center justify-center gap-1.5 py-2"
-                      data-testid="link-dashboard-mobile"
-                    >
-                      <House className="h-4 w-4" aria-hidden="true" />
-                      La tua area
-                      {role === "professional" &&
-                        verificationLevel &&
-                        verificationLevel !== "none" &&
-                        ` · ${VERIFICATION_LABEL[verificationLevel]}`}
-                    </Link>
-                  )}
-                  {/* Su mobile l'icona da sola sarebbe un bersaglio ambiguo in
-                      mezzo al menu: qui la voce e' scritta. */}
-                  {role !== "admin" && role !== "cs" && (
-                    <Link
-                      href="/notifiche"
-                      onClick={() => setOpen(false)}
-                      className="btn-ghost inline-flex items-center gap-1.5"
-                      data-testid="link-notifiche-mobile"
-                    >
-                      <Bell className="h-4 w-4" aria-hidden="true" />
-                      Notifiche
-                      {daContare > 0 && (
-                        <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-bob-indigo px-1 text-2xs font-bold leading-none text-white">
-                          {daContare > 9 ? "9+" : daContare}
-                        </span>
-                      )}
-                    </Link>
-                  )}
-                  {/* Su telefono il cerchio dell'account non c'e' (sta nel
-                      blocco `hidden md:flex` qui sopra): cambiare account e
-                      uscire si fa da Impostazioni → Accesso e sicurezza, ed e'
-                      questa la voce che ci porta. */}
-                  <Link
-                    href="/impostazioni"
-                    onClick={() => setOpen(false)}
-                    className="btn-ghost inline-flex items-center gap-1.5"
-                    data-testid="link-impostazioni-mobile"
-                  >
-                    <UserCog className="h-4 w-4" aria-hidden="true" />
-                    Impostazioni
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link href="/login" onClick={() => setOpen(false)} className="btn-ghost flex-1 py-2">
-                    Accedi
-                  </Link>
-                  <Link href="/#bob" onClick={() => setOpen(false)} className="btn-primary flex-1 py-2">
-                    Parla con Bob
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
+          </nav>
         </div>
       )}
     </header>
