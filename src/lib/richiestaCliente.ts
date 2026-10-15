@@ -104,6 +104,8 @@ export function cosaMostraComEAndata(r: {
 export interface AppuntamentoStorico {
   professional_id: string;
   status: string;
+  /** Per appuntamentoVero: una proposta scaduta non conta (15/10). */
+  starts_at: string;
   price: number | string | null;
   created_at: string | null;
 }

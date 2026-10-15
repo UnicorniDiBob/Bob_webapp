@@ -185,7 +185,7 @@ export function RichiestaCliente({ id }: { id: string }) {
       // si era prenotato.
       supabase
         .from("appointments")
-        .select("professional_id, status, price, created_at")
+        .select("professional_id, status, starts_at, price, created_at")
         .eq("request_id", id),
     ]);
     if (pros.error || messaggi.error || appts.error || mie.error || storico.error) {
@@ -269,7 +269,8 @@ export function RichiestaCliente({ id }: { id: string }) {
             x.score,
           ])
         ),
-        haAppuntamento: storicoAppts.some(appuntamentoVero),
+        // Avvolta: .some() passerebbe l'indice come `adesso`.
+        haAppuntamento: storicoAppts.some((a) => appuntamentoVero(a)),
       },
     });
   }, [id, user]);

@@ -300,6 +300,32 @@ describe("«E' andato tutto bene?» resta per i lavori presi in chat", () => {
     ).toEqual(["lavoro-fatto"]);
   });
 
+  it("una proposta scaduta, del pro o del cliente, non conta: torna la riga di sempre", () => {
+    // Martedi' 6 ottobre: passato, mai confermato.
+    for (const proposed_by of ["professional", "customer"] as const) {
+      const scaduta = appuntamento("s", {
+        request_id: "ferma",
+        proposed_by,
+        starts_at: "2026-10-06T08:00:00.000Z",
+      });
+      expect(tipi([scaduta])).toEqual(["chiusura"]);
+    }
+  });
+
+  it("una proposta per il futuro, del pro o del cliente: niente «chiusura»", () => {
+    for (const proposed_by of ["professional", "customer"] as const) {
+      const futura = appuntamento("f", { request_id: "ferma", proposed_by });
+      expect(tipi([futura]).filter((t) => t === "chiusura")).toEqual([]);
+    }
+  });
+
+  it("confermato o fatto nel passato: «lavoro-fatto», non «chiusura», come prima", () => {
+    for (const status of ["confirmed", "completed"]) {
+      const passato = appuntamento("c", { request_id: "ferma", status, starts_at: "2026-10-06T08:00:00.000Z" });
+      expect(tipi([passato])).toEqual(["lavoro-fatto"]);
+    }
+  });
+
   it("un appuntamento annullato o rifiutato non conta: torna la riga di sempre", () => {
     for (const status of ["cancelled", "declined"]) {
       expect(tipi([appuntamento("x", { request_id: "ferma", status })])).toEqual(["chiusura"]);

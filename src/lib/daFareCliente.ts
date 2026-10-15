@@ -81,14 +81,24 @@ export function recensibile(r: { closed_reason: string | null }): boolean {
 }
 
 /**
- * Un appuntamento che c'e' o c'e' stato davvero: proposto, confermato o
- * fatto. Non conta l'annullato, e nemmeno il rifiutato («declined»): e' una
- * proposta a cui il cliente ha detto di no, l'appuntamento non e' mai nato.
- * (15/10: sta qui da quando serve anche a «Da fare ora»; lib/richiestaCliente
- * la riesporta.)
+ * Un appuntamento che c'e' o c'e' stato davvero: confermato o fatto, oppure
+ * proposto con l'orario ancora nel futuro. Non conta l'annullato, e nemmeno
+ * il rifiutato («declined»): e' una proposta a cui il cliente ha detto di no,
+ * l'appuntamento non e' mai nato. (15/10: sta qui da quando serve anche a
+ * «Da fare ora»; lib/richiestaCliente la riesporta.)
+ *
+ * LA PROPOSTA SCADUTA NON E' UN APPUNTAMENTO (15/10, PR 6). Una proposta,
+ * del pro o del cliente, il cui orario e' passato senza conferma non e' mai
+ * diventata niente, come in propostaDaRispondere. Contata come vera, una
+ * richiesta con solo quella non aveva ne' «lavoro-fatto» (niente di
+ * confermato) ne' «chiusura» (un appuntamento «c'era»): spariva.
  */
-export function appuntamentoVero(a: { status: string }): boolean {
-  return a.status === "proposed" || a.status === "confirmed" || a.status === "completed";
+export function appuntamentoVero(
+  a: { status: string; starts_at: string },
+  adesso: number = Date.now()
+): boolean {
+  if (a.status === "confirmed" || a.status === "completed") return true;
+  return a.status === "proposed" && new Date(a.starts_at).getTime() > adesso;
 }
 
 /**
@@ -201,12 +211,13 @@ export function vociDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFa
     const giorni = r.created_at
       ? (adesso - new Date(r.created_at).getTime()) / 86400000
       : 0;
-    // Solo i lavori presi in chat: con un appuntamento vero (proposto,
-    // confermato o fatto; l'annullato e il rifiutato no) la domanda la fa
+    // Solo i lavori presi in chat: con un appuntamento vero (confermato,
+    // fatto o proposto per il futuro; l'annullato, il rifiutato e la
+    // proposta scaduta no) la domanda la fa
     // «lavoro-fatto», al momento giusto. Cosi' una richiesta non ha mai le
     // due righe insieme.
     const conAppuntamento = dati.appuntamentiAperte.some(
-      (a) => a.request_id === r.id && appuntamentoVero(a)
+      (a) => a.request_id === r.id && appuntamentoVero(a, adesso)
     );
     if (n === 0 && r.status === "matched" && giorni > 10 && !conAppuntamento) {
       voci.push({ tipo: "chiusura", chiave: `close-${r.id}`, richiesta: r });
