@@ -48,6 +48,13 @@
 // Restano derivati, come tutto il resto: dallo storico appointment_events e
 // dalle proposte aperte. Nessuna tabella di notifiche.
 //
+// LA TERZA: LA RICHIESTA CHIUSA E RIAPERTA, PER IL PRO (15/10, PR 8). Quando
+// il cliente sceglie un altro professionista la conversazione di questo pro
+// si archivia; quando la riapre, torna. Sono fatti del suo lavoro, non
+// messaggi fra persone: una voce quieta per ognuno, derivata dalle note di
+// Bob che la stessa transazione scrive in chat (lib/notificheChiusure.ts).
+// Non dice mai chi e' stato scelto.
+//
 // LO STATO «LETTO» STA NEL BROWSER, non sul server: e' una preferenza
 // d'interfaccia, dura quanto il dispositivo e non deve finire in nessun
 // registro dei trattamenti (stessa logica di lib/guidaProgresso.ts). Prezzo
@@ -58,6 +65,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { leggiAvvisiInCorso } from "@/lib/avvisi";
 import { caricaNotificheAppuntamenti } from "@/lib/notificheAppuntamenti";
+import { caricaNotificheChiusure } from "@/lib/notificheChiusure";
 import { chiaveUtente } from "@/lib/sessioni/chiavi";
 import {
   MOTIVO_RICONTROLLO_TESTO,
@@ -284,6 +292,9 @@ export async function caricaNotifiche(
         deactivated_at: string | null;
       } | null);
   if (!rigaPro) return ordina(out);
+
+  // 2bis. La richiesta chiusa o riaperta dal cliente (PR 8, 15/10).
+  out.push(...(await caricaNotificheChiusure(supabase, rigaPro.id)));
 
   const [servizi, verifica] = await Promise.all([
     supabase

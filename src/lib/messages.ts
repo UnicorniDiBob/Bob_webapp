@@ -2,6 +2,7 @@
 // Usano il client browser di Supabase (RLS attive: ognuno vede solo ciò che gli spetta).
 
 import { createClient } from "@/lib/supabase/client";
+import { archiviateInFondo } from "@/lib/scelta";
 import type {
   Appointment,
   ChatMessage,
@@ -173,7 +174,9 @@ export async function getConversations(
   });
 
   out.sort((a, b) => (b.lastAt ?? "").localeCompare(a.lastAt ?? ""));
-  return out;
+  // (PR 8, 15/10) Per il pro le conversazioni archiviate vanno sotto tutte
+  // quelle aperte; il cliente resta com'era (il suo filtro e' la PR 9).
+  return role === "professional" ? archiviateInFondo(out) : out;
 }
 
 // IDs delle richieste che appartengono all'utente (in base al ruolo).
@@ -212,12 +215,25 @@ export async function getUnreadCount(
     // (022) il pro conta solo i messaggi del proprio thread.
     const proId = await getMyProfessionalId(userId);
     if (!proId) return 0;
-    const { count } = await supabase
+    // (PR 8, 15/10) Solo i messaggi del cliente, e non quelli delle
+    // conversazioni archiviate: una richiesta che il cliente ha chiuso non
+    // aspetta piu' una risposta del pro. Le note di Bob («Il cliente ha
+    // chiuso…») non sono messaggi da leggere: la notizia arriva dalla
+    // campanella (lib/notificheChiusure.ts).
+    const { data: archiviate } = await supabase
+      .from("request_professionals")
+      .select("request_id")
+      .eq("professional_id", proId)
+      .not("archived_at", "is", null);
+    let q = supabase
       .from("request_messages")
       .select("id", { count: "exact", head: true })
       .eq("professional_id", proId)
-      .neq("sender_type", myType)
+      .eq("sender_type", "customer")
       .is("read_at", null);
+    const fuori = (archiviate ?? []).map((r) => r.request_id as string);
+    if (fuori.length) q = q.not("request_id", "in", `(${fuori.join(",")})`);
+    const { count } = await q;
     return count ?? 0;
   }
   const requestIds = await myRequestIds(userId, role);
@@ -241,14 +257,15 @@ export async function markConversationRead(
 ): Promise<void> {
   const supabase = createClient();
   // (120) Il cliente segna letti solo i messaggi dei pro: con «diversi da
-  // me» avrebbe segnato letta anche la nota di Bob al pro, e il pro non
-  // l'avrebbe vista arrivare. Il pro segna letti quelli del cliente e di Bob.
+  // me» avrebbe segnato letta anche la nota di Bob al pro. (PR 8, 15/10) E il
+  // pro solo quelli del cliente: le note di Bob non sono non letti per
+  // nessuno dei due, la notizia sta nella campanella.
   let q = supabase
     .from("request_messages")
     .update({ read_at: new Date().toISOString() })
     .eq("request_id", requestId)
     .is("read_at", null);
-  q = myType === "customer" ? q.eq("sender_type", "professional") : q.neq("sender_type", myType);
+  q = q.eq("sender_type", myType === "customer" ? "professional" : "customer");
   if (professionalId) q = q.eq("professional_id", professionalId);
   await q;
 }

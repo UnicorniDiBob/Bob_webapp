@@ -2,6 +2,14 @@
 // GET: restituisce le richieste assegnate al pro non ancora lette/risposte,
 //      con riassunto AI (Claude) e bozza di risposta.
 // Richiede autenticazione come professionista.
+//
+// LA RICHIESTA CHIUSA SPARISCE (15/10, PR 8). Quando il cliente sceglie un
+// altro professionista, la conversazione di questo pro si archivia
+// (request_professionals.archived_at, migrazione 120). Prima restava qui,
+// con la sua «Bozza risposta» pronta per un lavoro che non c'era piu', e
+// un «Vai ai messaggi» verso una chat dove non si puo' scrivere. Esce subito
+// e torna se il cliente la riapre. Il filtro sta nella query e non dopo:
+// il limite di 10 deve contare solo le richieste aperte.
 
 import { NextResponse } from "next/server";
 import { stripAddresses } from "@/lib/redact";
@@ -111,6 +119,7 @@ export async function GET() {
     .select("request_id")
     .eq("professional_id", proRow.id)
     .in("status", ["suggested", "contacted", "quote_requested"])
+    .is("archived_at", null)
     .order("created_at", { ascending: false })
     .limit(10);
 

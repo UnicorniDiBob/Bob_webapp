@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  archiviateInFondo,
   chiaveCoppia,
   ordineConfronto,
   senzaArchiviati,
@@ -121,5 +122,23 @@ describe("chi conta nella dashboard", () => {
 
   it("senza archiviati, tutto come prima", () => {
     expect(senzaArchiviati(righe, new Set())).toHaveLength(3);
+  });
+});
+
+describe("le conversazioni del pro: le archiviate in fondo", () => {
+  it("dopo tutte le aperte, e l'ordine dentro ogni gruppo resta", () => {
+    const conv = [
+      { id: "a", archiviata: false },
+      { id: "b", archiviata: true },
+      { id: "c", archiviata: false },
+      { id: "d", archiviata: true },
+      { id: "e" },
+    ];
+    expect(archiviateInFondo(conv).map((c) => c.id)).toEqual(["a", "c", "e", "b", "d"]);
+  });
+
+  it("senza archiviate, niente cambia", () => {
+    const conv = [{ id: "a" }, { id: "b", archiviata: false }];
+    expect(archiviateInFondo(conv)).toEqual(conv);
   });
 });
