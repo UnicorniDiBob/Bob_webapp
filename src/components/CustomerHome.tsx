@@ -2,13 +2,14 @@
 
 // Dashboard cliente v2 — organizzata per "cosa richiede attenzione",
 // non per data di creazione delle richieste. Sul telefono, in quest'ordine
-// (16/10; sul desktop vedi «DUE COLONNE» piu' sotto):
+// (15/10; sul desktop vedi «DUE COLONNE» piu' sotto):
 //   1. Da fare ora    → proposte di appuntamento, risposte non lette,
 //                       lavori da chiudere, recensioni mancanti — in
 //                       quest'ordine (lib/daFareCliente.ts, 15/10)
 //   2. Prossimi appuntamenti → proposte da confermare + confermati (migration 021)
-//   3. Lavori in corso → richieste aperte con timeline di stato e badge non letti
-//                       (o, se non c'e' niente di niente, «Parla con Bob»)
+//   3. Lavori in corso → un box per richiesta aperta, che apre la sua pagina
+//                       (15/10, BoxLavoro; o, se non c'e' niente di niente,
+//                       «Parla con Bob»)
 //   4. I tuoi professionisti → ricontatto in un tap
 //   5. Storico        → richieste concluse, ripiegate
 
@@ -19,7 +20,9 @@ import { Bell, Calendar, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ReviewDialog } from "@/components/ReviewDialog";
-import { StatusTimeline, type StatoAppuntamento } from "@/components/StatusTimeline";
+import { BoxLavoro } from "@/components/BoxLavoro";
+import { passiRichiesta, type StatoAppuntamento } from "@/lib/passiRichiesta";
+import { rigaStatoLavoro } from "@/lib/boxLavoro";
 import { AltroOrario } from "@/components/AltroOrario";
 import {
   RIGA_APPUNTAMENTO_CLIENTE,
@@ -32,9 +35,9 @@ import {
   type AppuntamentoCliente,
 } from "@/lib/appuntamentoCliente";
 import {
+  daRecensire,
   divisiDaFare,
   nonFinito,
-  recensibile,
   riepilogoCliente,
   vociDaFare,
   type VoceDaFare,
@@ -69,7 +72,7 @@ function fmtDate(d: string | null) {
   }
 }
 
-/** Sotto lg gli appuntamenti si fermano a due, poi «Vedi tutti (N)» (16/10). */
+/** Sotto lg gli appuntamenti si fermano a due, poi «Vedi tutti (N)» (15/10). */
 const APPUNTAMENTI_SUL_TELEFONO = 2;
 
 /** La classe di una riga di «Da fare ora» che e' tutta un tasto: 44px, fuoco visibile. */
@@ -96,7 +99,6 @@ export function CustomerHome({
   const [loadingData, setLoadingData] = useState(true);
   const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
   const [confirmClose, setConfirmClose] = useState<string | null>(null);
-  const [closing, setClosing] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [tuttiDaFare, setTuttiDaFare] = useState(false);
   const [tuttiAppuntamenti, setTuttiAppuntamenti] = useState(false);
@@ -414,13 +416,13 @@ export function CustomerHome({
     }
   }
 
-  // ---- Disposizione (16/10) ----
+  // ---- Disposizione (15/10) ----
   const haDaFare = daFare.length > 0;
   // Niente da fare e niente in corso: al posto dei lavori, «Parla con Bob».
   // (Chi non ha mai fatto una richiesta ha la sua pagina vuota, piu' sotto.)
   const aManiVuote = !haDaFare && openRequests.length === 0;
 
-  // «I TUOI PROFESSIONISTI» E' UNA SCHEDA SUA (16/10). Stava dentro quella
+  // «I TUOI PROFESSIONISTI» E' UNA SCHEDA SUA (15/10). Stava dentro quella
   // degli appuntamenti, e sembrava un pezzo degli appuntamenti. Righe da
   // 44px: il nome (22px) e «Scrivi →» (18px) non si prendevano col dito.
   // `dove` e' la classe che la accende solo sul telefono o solo sul desktop
@@ -491,13 +493,13 @@ export function CustomerHome({
 
   return (
     <div>
-      {/* DUE COLONNE COME IL PRO (16/10). Sul desktop la colonna principale
+      {/* DUE COLONNE COME IL PRO (15/10). Sul desktop la colonna principale
           (Da fare ora, Lavori in corso) e una laterale di 320px
           (appuntamenti, professionisti), le stesse proporzioni di
           ProWorkspace: le due aree personali sono sorelle, e chi passa
           dall'una all'altra ritrova le cose allo stesso posto.
 
-          L'APPUNTAMENTO VIENE SECONDO SUL TELEFONO (16/10). Il 14/10 a
+          L'APPUNTAMENTO VIENE SECONDO SUL TELEFONO (15/10). Il 14/10 a
           390px «Prossimi appuntamenti» cominciava a 2455px, dopo 1600px di
           lavori in corso: per il cliente e' la seconda cosa da sapere,
           dopo cio' che aspetta una sua risposta.
@@ -590,7 +592,7 @@ export function CustomerHome({
                 ))}
               </ul>
             )}
-            {/* «VEDI TUTTI» SOLO SUL TELEFONO (16/10): li' gli appuntamenti
+            {/* «VEDI TUTTI» SOLO SUL TELEFONO (15/10): li' gli appuntamenti
                 stanno sopra i lavori in corso, e sei righe con le loro icone
                 li spingerebbero di nuovo giu'. Sul desktop stanno di lato e
                 si vedono tutti. */}
@@ -610,7 +612,7 @@ export function CustomerHome({
         </div>
 
         {/* ---- 3. Lavori in corso ---- */}
-        {/* IL NUOVO LAVORO SI COMINCIA DA QUI, MA SOLO A MANI VUOTE (16/10).
+        {/* IL NUOVO LAVORO SI COMINCIA DA QUI, MA SOLO A MANI VUOTE (15/10).
             Quando niente aspetta il cliente e niente e' in corso, la pagina
             era un elenco di cose passate senza una porta per la prossima
             (c'era solo il bottone nell'header). Se invece c'e' qualcosa da
@@ -645,99 +647,40 @@ export function CustomerHome({
                 </p>
               </div>
             ) : (
-              <ul className="mt-3 flex flex-col gap-3">
+              /* UN BOX PER LAVORO, E OGNI BOX E' UN LINK SOLO (15/10). Qui
+                 c'erano la barra di stato intera, «Confronta le risposte» con
+                 un «Apri →» per pro e «Segna come concluso»: a 390px la
+                 sezione era alta 1377px con cinque richieste. Le decisioni
+                 (confrontare, scegliere, chiudere) stanno nella pagina della
+                 richiesta; qui resta «a che punto e', e c'e' qualcosa di
+                 nuovo?». «SEGNA COME CONCLUSO» NON STA PIU' QUI: si chiude da
+                 «Com'e' andata?» nella pagina della richiesta, dove c'e' anche
+                 la recensione — chiudere senza vedere con chi e com'e' andata
+                 era il modo piu' facile di chiudere il lavoro sbagliato. Sul
+                 desktop due box per riga, alti uguali; uno solo prende tutta
+                 la larghezza. */
+              <ul
+                className={`mt-3 grid grid-cols-1 gap-3 ${
+                  openRequests.length > 1 ? "lg:grid-cols-2" : ""
+                }`}
+              >
                 {openRequests.map((r) => {
-                  const n = unreadByReq.get(r.id) ?? 0;
+                  const suoi = appointments.filter((a) => a.request_id === r.id);
                   return (
-                    <li
-                      key={r.id}
-                      className="rounded-xl border border-black/5 p-3.5"
-                      data-testid={`request-${r.id}`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-bob-ink">
-                            {r.service?.name ?? "Richiesta"}
-                            {r.city?.name ? (
-                              <span className="font-normal text-bob-ink/65">
-                                {" "}
-                                · {r.city.name}
-                              </span>
-                            ) : null}
-                          </p>
-                          {r.problem_description && (
-                            <p className="mt-0.5 line-clamp-1 text-xs text-bob-ink/70">
-                              {r.problem_description}
-                            </p>
-                          )}
-                        </div>
-                        {n > 0 && (
-                          <span className="shrink-0 rounded-full bg-bob-indigo px-2 py-0.5 text-2xs font-bold text-white">
-                            {n > 9 ? "9+" : n} nuov{n === 1 ? "o" : "i"}
-                          </span>
-                        )}
-                      </div>
-                      <StatusTimeline
-                        status={r.status}
-                        appuntamento={apptByRequest.get(r.id) ?? null}
-                        quoteCount={r.pros.length}
+                    <li key={r.id}>
+                      <BoxLavoro
+                        id={r.id}
+                        servizio={r.service?.name ?? "Richiesta"}
+                        citta={r.city?.name ?? null}
+                        nonLetti={unreadByReq.get(r.id) ?? 0}
+                        stato={rigaStatoLavoro({ appuntamenti: suoi, pros: r.pros })}
+                        passi={passiRichiesta({
+                          status: r.status,
+                          closedReason: r.closed_reason,
+                          appuntamento: apptByRequest.get(r.id) ?? null,
+                          quoteCount: r.pros.length,
+                        })}
                       />
-                      {r.pros.length > 1 ? (
-                        <div className="mt-2.5 flex flex-col gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1.5">
-                          <p className="text-2xs font-semibold uppercase tracking-wide text-bob-ink/65">
-                            Confronta le risposte
-                          </p>
-                          {r.pros.map((p) => {
-                            const un = unreadByPair.get(`${r.id}:${p.id}`) ?? 0;
-                            return (
-                              <div
-                                key={p.id}
-                                className="flex items-center justify-between gap-2"
-                              >
-                                <span className="min-w-0 truncate text-xs font-medium text-bob-ink">
-                                  {p.name}
-                                  {un > 0 && (
-                                    <span className="ml-2 rounded-full bg-bob-indigo px-1.5 py-0.5 text-2xs font-bold text-white">
-                                      {un}
-                                    </span>
-                                  )}
-                                </span>
-                                <LinkChat
-                                  href={`/messaggi?r=${r.id}&p=${p.id}`}
-                                  className="inline-flex min-h-[44px] shrink-0 items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
-                                >
-                                  Apri →
-                                </LinkChat>
-                              </div>
-                            );
-                          })}
-                          <button
-                            onClick={() => setConfirmClose(r.id)}
-                            disabled={closing === r.id}
-                            className="mt-1 inline-flex min-h-[44px] items-center self-start text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline sm:min-h-0"
-                          >
-                            {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 border-t border-black/5 pt-2.5 sm:gap-y-1">
-                          <LinkChat
-                            href={`/messaggi?r=${r.id}${
-                              r.pros[0] ? `&p=${r.pros[0].id}` : ""
-                            }`}
-                            className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-indigo hover:underline sm:min-h-0"
-                          >
-                            Apri la conversazione →
-                          </LinkChat>
-                          <button
-                            onClick={() => setConfirmClose(r.id)}
-                            disabled={closing === r.id}
-                            className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-ink/65 hover:text-bob-indigo hover:underline sm:min-h-0"
-                          >
-                            {closing === r.id ? "Salvo…" : "Segna come concluso ✓"}
-                          </button>
-                        </div>
-                      )}
                     </li>
                   );
                 })}
@@ -768,49 +711,41 @@ export function CustomerHome({
               <span className="text-bob-ink/65">{showHistory ? "▲" : "▼"}</span>
             </button>
             {showHistory && (
-              <ul className="mt-3 flex flex-col divide-y divide-black/5">
+              /* OGNI RIGA DELLO STORICO APRE LA SUA RICHIESTA (15/10). C'erano
+                 «Conversazione» e «★ Recensisci»: la conversazione e la
+                 recensione («Com'e' andata?») stanno nella pagina della
+                 richiesta, e la riga intera e' un bersaglio solo. «★ Da
+                 recensire» e' solo un'etichetta, con la regola di «Da fare
+                 ora» (daRecensire). */
+              <ul className="mt-2 flex flex-col divide-y divide-black/5">
                 {closedRequests.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex flex-wrap items-center justify-between gap-2 py-2.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-bob-ink">
-                        {r.service?.name ?? "Richiesta"}
-                        {r.pros[0] ? (
-                          <span className="font-normal text-bob-ink/65">
-                            {" "}
-                            · {r.pros[0].name}
+                  <li key={r.id}>
+                    <Link
+                      href={`/dashboard/richieste/${r.id}`}
+                      className="-mx-2 flex min-h-[44px] items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition hover:bg-bob-indigo-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                      data-testid={`storico-${r.id}`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-bob-ink">
+                          {r.service?.name ?? "Richiesta"}
+                          {r.pros[0] ? (
+                            <span className="font-normal text-bob-ink/65"> · {r.pros[0].name}</span>
+                          ) : null}
+                        </span>
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-bob-ink/65">
+                          <span>
+                            {fmtDate(r.created_at)}
+                            {r.closed_reason === "disdetto" && " · Disdetta"}
                           </span>
-                        ) : null}
-                      </p>
-                      <p className="text-xs text-bob-ink/65">
-                        {fmtDate(r.created_at)}
-                        {r.closed_reason === "disdetto" && " · Disdetta"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <LinkChat
-                        href={`/messaggi?r=${r.id}${
-                          r.pros[0] ? `&p=${r.pros[0].id}` : ""
-                        }`}
-                        className="inline-flex min-h-[44px] items-center text-xs font-medium text-bob-indigo hover:underline"
-                      >
-                        Conversazione
-                      </LinkChat>
-                      {r.pros.length > 0 &&
-                        recensibile(r) &&
-                        (r.pros.some((p) => !reviewed.has(`${r.id}:${p.id}`)) ? (
-                          <button
-                            onClick={() => setReviewFor(r)}
-                            className="inline-flex min-h-[44px] items-center text-xs font-semibold text-bob-indigo hover:underline"
-                          >
-                            ★ Recensisci
-                          </button>
-                        ) : (
-                          <span className="text-xs text-emerald-700">✓ Recensito</span>
-                        ))}
-                    </div>
+                          {daRecensire(r, reviewed) && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-semibold text-amber-800">
+                              ★ Da recensire
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold text-bob-indigo">Apri →</span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -859,9 +794,7 @@ export function CustomerHome({
                 onClick={async () => {
                   const id = confirmClose;
                   setConfirmClose(null);
-                  setClosing(id);
                   await markClosed(id);
-                  setClosing(null);
                 }}
                 className="btn-primary flex-1 py-2.5"
                 data-testid="button-close-confirm"

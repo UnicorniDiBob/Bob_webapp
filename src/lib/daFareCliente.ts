@@ -56,6 +56,17 @@ export function recensibile(r: { closed_reason: string | null }): boolean {
   return r.closed_reason !== "disdetto";
 }
 
+/**
+ * Una richiesta chiusa con almeno un pro ancora da recensire: la stessa
+ * regola per «Da fare ora» e per il «★ Da recensire» dello storico (15/10).
+ */
+export function daRecensire(
+  r: { id: string; closed_reason: string | null; pros: { id: string }[] },
+  recensite: Set<string>
+): boolean {
+  return recensibile(r) && r.pros.some((p) => !recensite.has(`${r.id}:${p.id}`));
+}
+
 // LA PROPOSTA DEL CLIENTE NON E' UNA COSA DA FARE (15/10). C'era la riga
 // «Hai proposto un nuovo orario · In attesa ⏳»: non chiede niente al
 // cliente, e lo stato sta gia' sulla riga dell'appuntamento («in attesa di
@@ -124,15 +135,11 @@ export function vociDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFa
   // LE RECENSIONI SONO UNA RIGA SOLA (15/10). Sono tutte la stessa azione e
   // nessuna scade: tre righe «Com'è andata con…» occupavano tre posti su
   // quattro. Una riga, il conto, e il tasto apre la piu' recente.
-  const daRecensire = dati.chiuse
-    .filter(
-      (r) =>
-        recensibile(r) &&
-        r.pros.some((p) => !dati.recensite.has(`${r.id}:${p.id}`))
-    )
+  const mancanti = dati.chiuse
+    .filter((r) => daRecensire(r, dati.recensite))
     .sort((x, y) => tempo(y.created_at) - tempo(x.created_at));
-  if (daRecensire.length > 0) {
-    voci.push({ tipo: "recensioni", chiave: "recensioni", richieste: daRecensire });
+  if (mancanti.length > 0) {
+    voci.push({ tipo: "recensioni", chiave: "recensioni", richieste: mancanti });
   }
 
   // Gia' in ordine per costruzione; l'ordinamento stabile lo garantisce anche

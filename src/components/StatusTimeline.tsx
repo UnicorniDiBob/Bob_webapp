@@ -1,6 +1,7 @@
-// LA BARRA DI STATO DI UNA RICHIESTA (15/10: esce da CustomerHome). La usano
-// la dashboard del cliente e la pagina della richiesta, con gli stessi
-// ingressi: lo stato della richiesta, quello del suo appuntamento, quanti pro.
+// LA BARRA DI STATO DI UNA RICHIESTA (15/10: esce da CustomerHome). La usa
+// la pagina della richiesta; dal 15/10 la dashboard del cliente mostra solo i
+// puntini (BoxLavoro), dagli stessi passi e con gli stessi ingressi: lo
+// stato della richiesta, quello del suo appuntamento, quanti pro.
 
 import {
   passiRichiesta,
