@@ -6,7 +6,8 @@
 // succedono nello stesso posto: «Sì, è concluso» e le stelle compaiono dove
 // c'era la domanda, senza una finestra sopra la pagina. Cosa si vede lo
 // decide cosaMostraComEAndata (lib/richiestaCliente.ts). L'ancora
-// #com-e-andata serve alla dashboard (PR 6) per portare qui dritti.
+// #com-e-andata la usano le righe «Com'è andato il lavoro…?» ed «È andato
+// tutto bene?» di «Da fare ora» (PR 6, 15/10).
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -62,8 +63,15 @@ export function ComEAndata({
   const daRecensire = pros.filter((p) => !recensioni.has(p.id));
 
   return (
-    <section id="com-e-andata" className="card scroll-mt-20 p-5" data-testid="com-e-andata">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70">
+    // scroll-mt-24 (15/10): l'intestazione e' alta 81px a 390px, e con
+    // scroll-mt-20 il bordo della scheda finiva sotto di un pixel.
+    <section id="com-e-andata" className="card scroll-mt-24 p-5" data-testid="com-e-andata">
+      {/* tabIndex -1: chi arriva da «Da fare ora» atterra qui col fuoco
+          (RichiestaCliente, 15/10). */}
+      <h2
+        tabIndex={-1}
+        className="text-sm font-semibold uppercase tracking-wide text-bob-ink/70 focus:outline-none"
+      >
         Com&apos;è andata?
       </h2>
 

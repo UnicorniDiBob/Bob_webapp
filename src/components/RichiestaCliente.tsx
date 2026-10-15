@@ -18,7 +18,7 @@
 // pubblica su professionals, professional_services e ratings sono le stesse,
 // nessuna e' stata allargata.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
@@ -185,7 +185,7 @@ export function RichiestaCliente({ id }: { id: string }) {
       // si era prenotato.
       supabase
         .from("appointments")
-        .select("professional_id, status, price, created_at")
+        .select("professional_id, status, starts_at, price, created_at")
         .eq("request_id", id),
     ]);
     if (pros.error || messaggi.error || appts.error || mie.error || storico.error) {
@@ -269,7 +269,8 @@ export function RichiestaCliente({ id }: { id: string }) {
             x.score,
           ])
         ),
-        haAppuntamento: storicoAppts.some(appuntamentoVero),
+        // Avvolta: .some() passerebbe l'indice come `adesso`.
+        haAppuntamento: storicoAppts.some((a) => appuntamentoVero(a)),
       },
     });
   }, [id, user]);
@@ -279,6 +280,32 @@ export function RichiestaCliente({ id }: { id: string }) {
   }, [carica]);
 
   const { rispondi, inCorso } = useRispostaAppuntamento(user?.id, carica);
+
+  // ARRIVARE A «COM'È ANDATA?» DALLA DASHBOARD (15/10, PR 6). Le righe di
+  // «Da fare ora» portano a #com-e-andata, ma la pagina carica i dati nel
+  // browser: il salto all'ancora del browser avviene quando la sezione non
+  // c'e' ancora, e VaiAllAncora (nel layout) riprova solo fino a 800ms. Quando
+  // la sezione c'e', ci si scorre una volta sola e il fuoco va sul titolo,
+  // cosi' anche il lettore di schermo comincia da li'. Una volta: dopo «Sì, è
+  // concluso» la pagina ricarica, e non deve saltare di nuovo.
+  // SENZA ANIMAZIONE, SEMPRE. Misurato il 15/10 a 390px: uno scorrimento
+  // «smooth» qui e i tentativi «instant» di VaiAllAncora si contendevano la
+  // pagina, e la sezione finiva sotto l'intestazione (28px, 53px, 60px a
+  // seconda del giro). Instant come VaiAllAncora, per le sue stesse ragioni
+  // (in una scheda dietro lo smooth non parte); e cosi' chi chiede meno
+  // movimento non ne ha. «auto» non basta: globals.css mette scroll-behavior
+  // smooth su html.
+  const saltato = useRef(false);
+  const pronta = stato.tipo === "pronta";
+  useEffect(() => {
+    if (!pronta || saltato.current) return;
+    saltato.current = true;
+    if (window.location.hash !== "#com-e-andata") return;
+    const sezione = document.getElementById("com-e-andata");
+    if (!sezione) return;
+    sezione.scrollIntoView({ behavior: "instant", block: "start" });
+    sezione.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+  }, [pronta]);
 
   const indietro = (
     <Link

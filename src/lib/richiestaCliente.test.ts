@@ -149,15 +149,23 @@ describe("id e codice", () => {
 });
 
 describe("l'appuntamento che conta e il prezzo prenotato", () => {
-  it("annullato e rifiutato non sono appuntamenti veri", () => {
-    expect(["proposed", "confirmed", "completed"].every((status) => appuntamentoVero({ status }))).toBe(true);
-    expect(appuntamentoVero({ status: "cancelled" })).toBe(false);
-    expect(appuntamentoVero({ status: "declined" })).toBe(false);
+  it("annullato, rifiutato e proposta scaduta non sono appuntamenti veri", () => {
+    const adesso = new Date("2026-10-15T10:00:00Z").getTime();
+    const futuro = "2026-10-20T08:00:00Z";
+    const passato = "2026-10-10T08:00:00Z";
+    for (const status of ["confirmed", "completed"]) {
+      expect(appuntamentoVero({ status, starts_at: futuro }, adesso)).toBe(true);
+      expect(appuntamentoVero({ status, starts_at: passato }, adesso)).toBe(true);
+    }
+    expect(appuntamentoVero({ status: "proposed", starts_at: futuro }, adesso)).toBe(true);
+    expect(appuntamentoVero({ status: "proposed", starts_at: passato }, adesso)).toBe(false);
+    expect(appuntamentoVero({ status: "cancelled", starts_at: futuro }, adesso)).toBe(false);
+    expect(appuntamentoVero({ status: "declined", starts_at: futuro }, adesso)).toBe(false);
   });
 
   it("la prenotazione diretta disdetta tiene il suo prezzo (22818d7e)", () => {
     const appts = [
-      { professional_id: "p", status: "cancelled", price: "40", created_at: "2026-10-13T10:00:00Z" },
+      { professional_id: "p", status: "cancelled", starts_at: "2026-10-20T08:00:00Z", price: "40", created_at: "2026-10-13T10:00:00Z" },
     ];
     expect(prezzoPrenotato(appts, "p")).toBe(40);
     expect(testoPrenotato(40)).toBe("Prenotato a 40 €");
@@ -165,10 +173,10 @@ describe("l'appuntamento che conta e il prezzo prenotato", () => {
 
   it("vale il piu' recente, e solo quello di quel pro", () => {
     const appts = [
-      { professional_id: "p", status: "cancelled", price: 40, created_at: "2026-10-01T10:00:00Z" },
-      { professional_id: "p", status: "confirmed", price: 55, created_at: "2026-10-10T10:00:00Z" },
-      { professional_id: "q", status: "confirmed", price: 90, created_at: "2026-10-12T10:00:00Z" },
-      { professional_id: "p", status: "confirmed", price: null, created_at: "2026-10-14T10:00:00Z" },
+      { professional_id: "p", status: "cancelled", starts_at: "2026-10-20T08:00:00Z", price: 40, created_at: "2026-10-01T10:00:00Z" },
+      { professional_id: "p", status: "confirmed", starts_at: "2026-10-20T08:00:00Z", price: 55, created_at: "2026-10-10T10:00:00Z" },
+      { professional_id: "q", status: "confirmed", starts_at: "2026-10-20T08:00:00Z", price: 90, created_at: "2026-10-12T10:00:00Z" },
+      { professional_id: "p", status: "confirmed", starts_at: "2026-10-20T08:00:00Z", price: null, created_at: "2026-10-14T10:00:00Z" },
     ];
     expect(prezzoPrenotato(appts, "p")).toBe(55);
     expect(prezzoPrenotato(appts, "q")).toBe(90);
