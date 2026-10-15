@@ -43,9 +43,6 @@ import type {
   ConversationSummary,
 } from "@/lib/supabase/types";
 import { ProCalendar } from "@/components/ProCalendar";
-// TEMPORANEI (15/10): la diagnosi della tastiera dell'iPhone.
-import { DiagnosiTastiera } from "@/components/DiagnosiTastiera";
-import { segnaTastiera } from "@/lib/diagnosiTastiera";
 import {
   altezzaCampo,
   altezzaCornice,
@@ -116,7 +113,6 @@ export default function MessaggiPage() {
 function MessaggiInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const diagnosiTastiera = params.get("diagnosi") === "tastiera";
   const { user, role, loading } = useAuth();
   const { refresh: refreshUnread } = useUnread();
 
@@ -818,15 +814,13 @@ function MessaggiInner() {
   const cornice = useRef<HTMLDivElement>(null);
   const [alto, setAlto] = useState(81);
   // La stessa misura serve anche alla tastiera dell'iPhone, dopo la
-  // chiusura (15/10): restituisce il valore, per il registro della diagnosi.
-  const misuraAlto = useRef<() => number | null>(() => null);
+  // chiusura (15/10).
+  const misuraAlto = useRef<() => void>(() => {});
   useLayoutEffect(() => {
-    function misura(): number | null {
+    function misura() {
       const el = cornice.current;
-      if (!el) return null;
-      const a = Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY));
-      setAlto(a);
-      return a;
+      if (!el) return;
+      setAlto(Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY)));
     }
     misuraAlto.current = misura;
     misura();
@@ -851,11 +845,12 @@ function MessaggiInner() {
   // incollato al fondo da solo: la cornice che cambia misura e' proprio
   // quello che il ResizeObserver qui sopra guarda.
   //
-  // I CONTI SI FANNO NEL DOCUMENTO (15/10, misurato sull'iPhone con
-  // ?diagnosi=tastiera). La prima versione usava visualViewport.offsetTop, e
-  // sul telefono di André offsetTop (291) non concorda con scrollY e pageTop
-  // (391): la cornice veniva 554px invece di 654, e i 100px mancanti erano la
-  // fascia vuota fra il campo e la barra ˄ ˅ ✓. Adesso l'inizio della cornice
+  // I CONTI SI FANNO NEL DOCUMENTO (misurato sull'iPhone di André il 15/10,
+  // con il pannello temporaneo della #166, poi tolto). La prima versione
+  // usava visualViewport.offsetTop, e sul telefono di André offsetTop (291)
+  // non concorda con scrollY e pageTop (391): la cornice veniva 554px
+  // invece di 654, e i 100px mancanti erano la fascia vuota fra il campo e
+  // la barra ˄ ˅ ✓. Adesso l'inizio della cornice
   // si misura dal vivo (rect.top + scrollY) e il fondo visibile e' pageTop +
   // height (lib/tastieraChat.ts). Poi, al fotogramma dopo, si controlla dove
   // e' finito davvero il fondo della cornice e si corregge UNA volta la
@@ -870,7 +865,8 @@ function MessaggiInner() {
   // la cornice torna a 100dvh, poi per due fotogrammi di fila: finestra in
   // cima se e' rimasta giu', e di nuovo la misura dell'intestazione. Lo
   // stesso controllo parte dopo il focusout (+350ms), su pageshow e sulla
-  // rotazione. Ogni passo finisce nel registro della diagnosi.
+  // rotazione. Confermato sull'iPhone di André il 15/10: tastiera aperta,
+  // cornice 654px e correzione 0px; dopo Invia, intestazioni al loro posto.
   // SOLO iOS: da Chrome 108 anche Android stringe solo la parte visibile, e
   // la stessa regola cambierebbe un comportamento che li' funziona.
   const [altoTastiera, setAltoTastiera] = useState<number | null>(null);
@@ -884,13 +880,9 @@ function MessaggiInner() {
     let correggendo = false;
     let aperta = false;
 
-    function apri(evento: string) {
+    function apri() {
       const el = cornice.current;
-      if (!el) return;
-      if (correggendo) {
-        segnaTastiera(evento, "ignorato (dopo la correzione)");
-        return;
-      }
+      if (!el || correggendo) return;
       const inizio = el.getBoundingClientRect().top + window.scrollY;
       const h = Math.max(
         0,
@@ -906,13 +898,11 @@ function MessaggiInner() {
           altezzaVisibile: v.height,
           fondoCornice: r.bottom + window.scrollY,
         });
-        let finale = h;
         if (delta !== 0) {
           scarto += delta;
-          finale = Math.max(0, Math.round(r.height + delta));
+          const finale = Math.max(0, Math.round(r.height + delta));
           flushSync(() => setAltoTastiera(finale));
         }
-        segnaTastiera(evento, `tastiera aperta → cornice ${finale}px (correzione ${delta}px)`);
         // Gli eventi che questa correzione provoca arrivano nei prossimi
         // fotogrammi: fino ad allora non si ricalcola.
         requestAnimationFrame(() =>
@@ -923,55 +913,47 @@ function MessaggiInner() {
       });
     }
 
-    function ripristina(evento: string, passo: number) {
-      const y = Math.round(window.scrollY);
-      if (y > 0) window.scrollTo(0, 0);
-      const a = misuraAlto.current();
-      segnaTastiera(
-        evento,
-        `ripristino ${passo}: scrollY ${y}${y > 0 ? " → 0" : ""}, vv.top ${Math.round(v.offsetTop)}, alto ${a ?? "—"}`
-      );
+    function ripristina() {
+      if (window.scrollY > 0) window.scrollTo(0, 0);
+      misuraAlto.current();
     }
 
-    function chiudi(evento: string) {
-      const eraAperta = aperta;
+    function chiudi() {
       aperta = false;
       scarto = 0;
       correggendo = false;
       flushSync(() => setAltoTastiera(null));
-      segnaTastiera(evento, eraAperta ? "chiusa → cornice 100dvh" : "chiusa (controllo)");
       requestAnimationFrame(() => {
-        ripristina(evento, 1);
-        requestAnimationFrame(() => ripristina(evento, 2));
+        ripristina();
+        requestAnimationFrame(ripristina);
       });
     }
 
-    // `evento` serve solo alla diagnosi temporanea (?diagnosi=tastiera):
-    // segnaTastiera non fa niente se il pannello non c'e'.
-    function aggiorna(evento: string) {
+    // Lo scroll della parte visibile chiude solo una tastiera che era
+    // aperta: senza, ogni scroll riporterebbe la finestra in cima.
+    function aggiorna(dalloScroll = false) {
       const pieno = document.documentElement.clientHeight;
-      if (pieno - v.height > TASTIERA_MINIMA) apri(evento);
-      else if (aperta || evento !== "vv scroll") chiudi(evento);
+      if (pieno - v.height > TASTIERA_MINIMA) apri();
+      else if (aperta || !dalloScroll) chiudi();
     }
-    const suResize = () => aggiorna("vv resize");
-    const suScroll = () => aggiorna("vv scroll");
-    const suPageshow = () => aggiorna("pageshow");
+    const suResize = () => aggiorna();
+    const suScroll = () => aggiorna(true);
+    const suPageshow = () => aggiorna();
     // Il campo perde il fuoco prima che la tastiera finisca di chiudersi, e
     // la rotazione cambia le misure dopo l'evento: si ricontrolla dopo.
     let attesa: ReturnType<typeof setTimeout> | undefined;
-    function piuTardi(evento: string) {
-      segnaTastiera(evento, "ricontrollo fra 350ms");
+    function piuTardi() {
       clearTimeout(attesa);
-      attesa = setTimeout(() => aggiorna(`${evento} +350ms`), 350);
+      attesa = setTimeout(() => aggiorna(), 350);
     }
-    const fuoriFuoco = () => piuTardi("focusout");
-    const rotazione = () => piuTardi("orientationchange");
+    const fuoriFuoco = piuTardi;
+    const rotazione = piuTardi;
     v.addEventListener("resize", suResize);
     v.addEventListener("scroll", suScroll);
     document.addEventListener("focusout", fuoriFuoco);
     window.addEventListener("pageshow", suPageshow);
     window.addEventListener("orientationchange", rotazione);
-    aggiorna("avvio");
+    aggiorna();
     return () => {
       clearTimeout(attesa);
       v.removeEventListener("resize", suResize);
@@ -1080,8 +1062,6 @@ function MessaggiInner() {
       }}
       data-testid="chat-cornice"
     >
-      {/* DIAGNOSI TEMPORANEA (15/10): solo con ?diagnosi=tastiera. */}
-      {diagnosiTastiera && <DiagnosiTastiera alto={alto} eIOS={suIOS()} />}
       {loadingConvs ? (
         <div className="m-4 flex-1 animate-pulse rounded-2xl bg-black/[0.03]" />
       ) : conversations.length === 0 ? (
