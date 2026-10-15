@@ -108,6 +108,20 @@ export function statoRifiuto(motivo: string): number {
 }
 
 /**
+ * LE CONVERSAZIONI DEL PRO: LE ARCHIVIATE IN FONDO (15/10, PR 8). Una
+ * richiesta che il cliente ha chiuso non aspetta piu' niente da lui: resta
+ * da rileggere, ma sotto tutte quelle aperte. Dentro ogni gruppo l'ordine
+ * resta quello di prima (il piu' recente in alto). Solo per il pro: il
+ * cliente ha il suo filtro «Archiviate» (PR 9).
+ */
+export function archiviateInFondo<T extends { archiviata?: boolean }>(conversazioni: T[]): T[] {
+  return [
+    ...conversazioni.filter((c) => !c.archiviata),
+    ...conversazioni.filter((c) => c.archiviata),
+  ];
+}
+
+/**
  * CHI CONTA NELLA DASHBOARD (15/10). Un pro archiviato su una richiesta non
  * conta piu' da nessuna parte: ne' fra le risposte da confrontare, ne' nei
  * non letti, ne' fra le proposte da rispondere. `archiviati` e' l'insieme

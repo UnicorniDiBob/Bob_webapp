@@ -1119,8 +1119,21 @@ function MessaggiInner() {
                     data-testid={`conv-${c.requestId}`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-semibold text-bob-ink">
-                        {c.counterpartName}
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-semibold text-bob-ink">
+                          {c.counterpartName}
+                        </span>
+                        {/* (PR 8, 15/10) Per il pro: il cliente ha chiuso questa
+                            richiesta. Un'etichetta, non un tasto; la
+                            conversazione sta in fondo all'elenco. */}
+                        {myType === "professional" && c.archiviata && (
+                          <span
+                            className="shrink-0 rounded-full bg-black/[0.06] px-1.5 py-px text-2xs font-medium text-bob-ink/65"
+                            data-testid={`conv-chiusa-${c.requestId}`}
+                          >
+                            Chiusa
+                          </span>
+                        )}
                       </span>
                       <span className="shrink-0 text-2xs text-bob-ink/65">
                         {fmtTime(c.lastAt).split(",")[0]}
