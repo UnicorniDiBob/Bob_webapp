@@ -57,10 +57,23 @@ set search_path = ''
 as $$
 begin
   if new.sender_type = 'professional' then
-    update public.requests
-       set status = 'matched'
-     where id = new.request_id
-       and status in ('sent', 'quote_request');
+    -- IL MESSAGGIO CONTA PIU' DEI PUNTINI (15/10). Questo trigger e' AFTER
+    -- INSERT: se l'update qui sotto sollevasse un errore (un trigger su
+    -- requests che un giorno lo rifiuta, come proteggi_chiusura_richiesta
+    -- con una disdetta rimasta aperta), l'errore annullerebbe anche
+    -- l'insert del messaggio, e il pro vedrebbe la sua risposta sparire.
+    -- Il blocco lo isola: se fallisce, la richiesta resta dov'era, il
+    -- messaggio resta, e nei log del database resta un WARNING con il
+    -- perche'.
+    begin
+      update public.requests
+         set status = 'matched'
+       where id = new.request_id
+         and status in ('sent', 'quote_request');
+    exception when others then
+      raise warning 'richiesta_in_contatto_su_risposta_pro: richiesta % non spostata (%): %',
+        new.request_id, sqlstate, sqlerrm;
+    end;
   end if;
   return new;
 end;
