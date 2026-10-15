@@ -47,6 +47,12 @@ import { ProCalendar } from "@/components/ProCalendar";
 import { DiagnosiTastiera } from "@/components/DiagnosiTastiera";
 import { segnaTastiera } from "@/lib/diagnosiTastiera";
 import {
+  altezzaCampo,
+  altezzaCornice,
+  correzioneCornice,
+  cosaFaIlTasto,
+} from "@/lib/tastieraChat";
+import {
   AvvisoSovrapposizione,
   useAvvisoSovrapposizione,
 } from "@/components/AvvisoSovrapposizione";
@@ -139,6 +145,20 @@ function MessaggiInner() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const threadRef = useRef<HTMLDivElement>(null);
+  const campoRef = useRef<HTMLTextAreaElement>(null);
+  // Il campo prende l'altezza del suo testo a ogni cambio (15/10): prima
+  // «auto» per lasciarlo accorciare, poi quanto chiede, fino al massimo.
+  // Niente `field-sizing`: Safari non lo conosce ancora ovunque.
+  useLayoutEffect(() => {
+    const el = campoRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const { altezza, scorre } = altezzaCampo(el.scrollHeight, el.offsetHeight - el.clientHeight);
+    el.style.height = `${altezza}px`;
+    el.style.overflowY = scorre ? "auto" : "hidden";
+    // Il testo, e il campo che compare (conversazione aperta, pannello del
+    // telefono che passa dall'elenco al filo).
+  }, [draft, activeId, mobileThread, loadingConvs]);
 
   // Proposta di appuntamento (solo pro): crea una riga 'proposed' in
   // appointments (migration 021) che il cliente conferma dalla dashboard.
@@ -797,12 +817,18 @@ function MessaggiInner() {
   // sotto quello di una cancellazione dell'account.
   const cornice = useRef<HTMLDivElement>(null);
   const [alto, setAlto] = useState(81);
+  // La stessa misura serve anche alla tastiera dell'iPhone, dopo la
+  // chiusura (15/10): restituisce il valore, per il registro della diagnosi.
+  const misuraAlto = useRef<() => number | null>(() => null);
   useLayoutEffect(() => {
-    function misura() {
+    function misura(): number | null {
       const el = cornice.current;
-      if (!el) return;
-      setAlto(Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY)));
+      if (!el) return null;
+      const a = Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY));
+      setAlto(a);
+      return a;
     }
+    misuraAlto.current = misura;
     misura();
     window.addEventListener("resize", misura);
     const ro = new ResizeObserver(misura);
@@ -819,56 +845,140 @@ function MessaggiInner() {
   // accorcia per la tastiera: per tenere il campo sopra la tastiera Safari
   // fa scorrere la FINESTRA. Alla chiusura non sempre la riporta su: dopo
   // «Ok» e Invia l'intestazione di Bob restava fuori in alto, la cornice
-  // finiva a meta' schermo e sotto c'era mezzo schermo vuoto. Adesso, finche'
-  // la tastiera e' aperta, la cornice e' alta quanto la parte visibile
-  // (visualViewport: altezza e spostamento), cosi' il campo sta appena sopra
-  // la tastiera e Safari non ha niente da far scorrere; quando si chiude, la
-  // cornice torna a 100dvh e la finestra torna in cima se era rimasta giu'.
-  // Il filo resta incollato al fondo da solo: la cornice che cambia misura
-  // e' proprio quello che il ResizeObserver qui sopra guarda.
+  // finiva a meta' schermo e sotto c'era mezzo schermo vuoto. Finche' la
+  // tastiera e' aperta, la cornice e' alta quanto la parte visibile; quando
+  // si chiude torna a 100dvh e la finestra torna in cima. Il filo resta
+  // incollato al fondo da solo: la cornice che cambia misura e' proprio
+  // quello che il ResizeObserver qui sopra guarda.
+  //
+  // I CONTI SI FANNO NEL DOCUMENTO (15/10, misurato sull'iPhone con
+  // ?diagnosi=tastiera). La prima versione usava visualViewport.offsetTop, e
+  // sul telefono di André offsetTop (291) non concorda con scrollY e pageTop
+  // (391): la cornice veniva 554px invece di 654, e i 100px mancanti erano la
+  // fascia vuota fra il campo e la barra ˄ ˅ ✓. Adesso l'inizio della cornice
+  // si misura dal vivo (rect.top + scrollY) e il fondo visibile e' pageTop +
+  // height (lib/tastieraChat.ts). Poi, al fotogramma dopo, si controlla dove
+  // e' finito davvero il fondo della cornice e si corregge UNA volta la
+  // differenza, se Safari ha riportato un altro valore incoerente; gli eventi
+  // che quella correzione provoca non correggono a loro volta.
+  // La pillola dell'indirizzo di Safari e la barra ˄ ˅ ✓ sopra la tastiera
+  // sono fuori dalla parte visibile e sono di Safari: la pagina puo' solo
+  // appoggiarcisi sopra.
+  //
+  // LA CHIUSURA IN DUE FOTOGRAMMI (15/10). Visto una volta dopo Invia:
+  // intestazioni sovrapposte e cornice finita a meta' schermo. Alla chiusura
+  // la cornice torna a 100dvh, poi per due fotogrammi di fila: finestra in
+  // cima se e' rimasta giu', e di nuovo la misura dell'intestazione. Lo
+  // stesso controllo parte dopo il focusout (+350ms), su pageshow e sulla
+  // rotazione. Ogni passo finisce nel registro della diagnosi.
   // SOLO iOS: da Chrome 108 anche Android stringe solo la parte visibile, e
   // la stessa regola cambierebbe un comportamento che li' funziona.
   const [altoTastiera, setAltoTastiera] = useState<number | null>(null);
-  const altoRef = useRef(alto);
-  altoRef.current = alto;
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv || !suIOS()) return;
     const v = vv;
+    // Quanto e' servito correggere in questo episodio di tastiera: si tiene,
+    // e si somma ai conti successivi finche' la tastiera resta aperta.
+    let scarto = 0;
+    let correggendo = false;
+    let aperta = false;
+
+    function apri(evento: string) {
+      const el = cornice.current;
+      if (!el) return;
+      if (correggendo) {
+        segnaTastiera(evento, "ignorato (dopo la correzione)");
+        return;
+      }
+      const inizio = el.getBoundingClientRect().top + window.scrollY;
+      const h = Math.max(
+        0,
+        altezzaCornice({ pageTop: v.pageTop, altezzaVisibile: v.height, inizioCornice: inizio }) + scarto
+      );
+      aperta = true;
+      flushSync(() => setAltoTastiera(h));
+      correggendo = true;
+      requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect();
+        const delta = correzioneCornice({
+          pageTop: v.pageTop,
+          altezzaVisibile: v.height,
+          fondoCornice: r.bottom + window.scrollY,
+        });
+        let finale = h;
+        if (delta !== 0) {
+          scarto += delta;
+          finale = Math.max(0, Math.round(r.height + delta));
+          flushSync(() => setAltoTastiera(finale));
+        }
+        segnaTastiera(evento, `tastiera aperta → cornice ${finale}px (correzione ${delta}px)`);
+        // Gli eventi che questa correzione provoca arrivano nei prossimi
+        // fotogrammi: fino ad allora non si ricalcola.
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            correggendo = false;
+          })
+        );
+      });
+    }
+
+    function ripristina(evento: string, passo: number) {
+      const y = Math.round(window.scrollY);
+      if (y > 0) window.scrollTo(0, 0);
+      const a = misuraAlto.current();
+      segnaTastiera(
+        evento,
+        `ripristino ${passo}: scrollY ${y}${y > 0 ? " → 0" : ""}, vv.top ${Math.round(v.offsetTop)}, alto ${a ?? "—"}`
+      );
+    }
+
+    function chiudi(evento: string) {
+      const eraAperta = aperta;
+      aperta = false;
+      scarto = 0;
+      correggendo = false;
+      flushSync(() => setAltoTastiera(null));
+      segnaTastiera(evento, eraAperta ? "chiusa → cornice 100dvh" : "chiusa (controllo)");
+      requestAnimationFrame(() => {
+        ripristina(evento, 1);
+        requestAnimationFrame(() => ripristina(evento, 2));
+      });
+    }
+
     // `evento` serve solo alla diagnosi temporanea (?diagnosi=tastiera):
     // segnaTastiera non fa niente se il pannello non c'e'.
     function aggiorna(evento: string) {
       const pieno = document.documentElement.clientHeight;
-      if (pieno - v.height > TASTIERA_MINIMA) {
-        const h = Math.max(0, Math.round(v.offsetTop + v.height - altoRef.current));
-        segnaTastiera(evento, `tastiera aperta → cornice ${h}px`);
-        setAltoTastiera(h);
-      } else {
-        const y = Math.round(window.scrollY);
-        segnaTastiera(evento, `chiusa → ripristino${y > 0 ? ` (scrollY ${y} → scrollTo 0)` : " (gia' in cima)"}`);
-        setAltoTastiera(null);
-        if (window.scrollY > 0) window.scrollTo(0, 0);
-      }
+      if (pieno - v.height > TASTIERA_MINIMA) apri(evento);
+      else if (aperta || evento !== "vv scroll") chiudi(evento);
     }
     const suResize = () => aggiorna("vv resize");
     const suScroll = () => aggiorna("vv scroll");
-    // Il campo perde il fuoco prima che la tastiera finisca di chiudersi:
-    // si ricontrolla quando l'animazione e' finita.
+    const suPageshow = () => aggiorna("pageshow");
+    // Il campo perde il fuoco prima che la tastiera finisca di chiudersi, e
+    // la rotazione cambia le misure dopo l'evento: si ricontrolla dopo.
     let attesa: ReturnType<typeof setTimeout> | undefined;
-    function fuoriFuoco() {
-      segnaTastiera("focusout", "ricontrollo fra 350ms");
+    function piuTardi(evento: string) {
+      segnaTastiera(evento, "ricontrollo fra 350ms");
       clearTimeout(attesa);
-      attesa = setTimeout(() => aggiorna("focusout +350ms"), 350);
+      attesa = setTimeout(() => aggiorna(`${evento} +350ms`), 350);
     }
+    const fuoriFuoco = () => piuTardi("focusout");
+    const rotazione = () => piuTardi("orientationchange");
     v.addEventListener("resize", suResize);
     v.addEventListener("scroll", suScroll);
     document.addEventListener("focusout", fuoriFuoco);
+    window.addEventListener("pageshow", suPageshow);
+    window.addEventListener("orientationchange", rotazione);
     aggiorna("avvio");
     return () => {
       clearTimeout(attesa);
       v.removeEventListener("resize", suResize);
       v.removeEventListener("scroll", suScroll);
       document.removeEventListener("focusout", fuoriFuoco);
+      window.removeEventListener("pageshow", suPageshow);
+      window.removeEventListener("orientationchange", rotazione);
     };
   }, []);
 
@@ -1201,21 +1311,36 @@ function MessaggiInner() {
                 )}
                 </div>
 
-                <div className="flex shrink-0 gap-2 border-t border-black/[0.07] bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4">
-                  <input
+                {/* IL CAMPO CRESCE (15/10), come su WhatsApp: va a capo invece
+                    di scorrere di lato, cresce fino a cinque righe e poi
+                    scorre dentro; dopo l'invio torna a una riga. Il filo
+                    sopra si accorcia, e il ResizeObserver lo tiene in fondo
+                    se ci stava. Invio: vedi cosaFaIlTasto. */}
+                <div className="flex shrink-0 items-end gap-2 border-t border-black/[0.07] bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4">
+                  <textarea
+                    ref={campoRef}
+                    rows={1}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && !sending && handleSend()
-                    }
+                    onKeyDown={(e) => {
+                      const azione = cosaFaIlTasto({
+                        tasto: e.key,
+                        maiuscolo: e.shiftKey,
+                        componendo: e.nativeEvent.isComposing || e.keyCode === 229,
+                        tattile: window.matchMedia("(pointer: coarse)").matches,
+                      });
+                      if (azione !== "invia") return;
+                      e.preventDefault();
+                      if (!sending) handleSend();
+                    }}
                     placeholder="Scrivi un messaggio…"
-                    className="input-bob min-h-[44px] py-2.5"
+                    className="input-bob block min-h-[44px] resize-none overflow-y-hidden py-2.5 leading-6"
                     data-testid="input-message"
                   />
                   <button
                     onClick={handleSend}
                     disabled={sending || !draft.trim()}
-                    className="btn-primary min-h-[44px] py-2.5"
+                    className="btn-primary min-h-[44px] shrink-0 py-2.5"
                     data-testid="button-send-message"
                   >
                     Invia
