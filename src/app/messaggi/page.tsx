@@ -71,6 +71,9 @@ function fmtTime(d: string | null) {
   }
 }
 
+/** Entro quanto dal fondo si e' ancora «in fondo» (15/10). */
+const SOGLIA_FONDO = 80;
+
 export default function MessaggiPage() {
   // Chi ha toccato «Apri la chat» altrove aspetta che la pagina ci sia per
   // far partire il cerchio (lib/aperturaChat.ts): montata, non caricata.
@@ -642,14 +645,114 @@ function MessaggiInner() {
   // mostra, il salto all'ultimo messaggio e' immediato e avviene prima che
   // la pagina si disegni: niente scorrimento visibile dall'alto. I messaggi
   // che arrivano dopo scorrono dolcemente, come prima.
-  const threadInFondo = useRef<string | null>(null);
+  //
+  // UN SALTO SOLO NON BASTAVA (15/10, misurato in Chrome a 390px). Il salto
+  // partiva quando cambiavano i messaggi, il caricamento o la conversazione,
+  // ma in quel momento il filo spesso non c'era o non aveva misure: (a) dal
+  // link diretto i messaggi arrivano prima dell'elenco, e finche' l'elenco non
+  // c'e' il filo non e' montato — poi compare gia' pieno e nessuno lo fa
+  // scendere (zero salti registrati, anche a 1440px: dipende dai tempi); (b)
+  // sul telefono la prima conversazione si carica mentre si vede l'elenco,
+  // in un pannello display:none, e il salto avviene con altezza 0 — toccarla
+  // cambia solo il pannello, e il salto non si ripete; (c) cambiando
+  // conversazione il salto «immediato» lo consumavano i messaggi vecchi, e il
+  // vero arrivo scorreva dall'alto. Adesso il filo resta INCOLLATO AL FONDO
+  // come in un messenger: un ResizeObserver sul filo e sul suo contenuto lo
+  // riporta giu' a ogni cambio di misura (il filo che compare, il pannello
+  // che si apre, i biglietti, la tastiera), finche' chi legge non sale da
+  // se'. Torna incollato quando riscende in fondo. Il primo salto di ogni
+  // conversazione, a messaggi caricati, e' immediato; gli altri dolci.
+  const contenutoRef = useRef<HTMLDivElement>(null);
+  const inFondo = useRef({
+    conv: null as string | null,
+    incollato: true,
+    prima: true,
+    st: 0,
+    sh: 0,
+    ch: 0,
+    nMessaggi: 0,
+  });
+  const [nuoviSotto, setNuoviSotto] = useState(false);
+  const filoMontato =
+    !loading && !loadingConvs && conversations.some((c) => keyOf(c) === activeId);
+  const filoPronto = useRef(false);
+  filoPronto.current = filoMontato && !loadingMsgs;
+
+  // Ogni conversazione si apre incollata, col primo salto immediato. (Prima
+  // dell'osservatore qui sotto: gli effetti di layout girano in ordine.)
+  useLayoutEffect(() => {
+    const s = inFondo.current;
+    if (s.conv === activeId) return;
+    // Sul posto, non un oggetto nuovo: l'osservatore tiene questo.
+    Object.assign(s, { conv: activeId, incollato: true, prima: true, nMessaggi: 0 });
+    setNuoviSotto(false);
+  }, [activeId]);
+
   useLayoutEffect(() => {
     const el = threadRef.current;
-    if (!el || loadingMsgs) return;
-    const prima = threadInFondo.current !== activeId;
-    threadInFondo.current = activeId;
-    el.scrollTo({ top: el.scrollHeight, behavior: prima ? "auto" : "smooth" });
-  }, [messages, loadingMsgs, activeId]);
+    const contenuto = contenutoRef.current;
+    if (!el || !contenuto) return;
+    const s = inFondo.current;
+    const incolla = (cambiaIlFilo: boolean) => {
+      // Nascosto (display:none) o non ancora disposto: non c'e' niente da
+      // scorrere, e il primo salto resta da fare.
+      if (!s.incollato || el.clientHeight === 0) return;
+      const subito = s.prima || cambiaIlFilo;
+      el.scrollTo({ top: el.scrollHeight, behavior: subito ? "auto" : "smooth" });
+      if (filoPronto.current) s.prima = false;
+    };
+    const ro = new ResizeObserver((voci) => {
+      // Il filo che cambia misura (compare, si apre, arriva la tastiera) va
+      // giu' subito; il contenuto che cresce (un messaggio) scorre dolce.
+      incolla(voci.some((v) => v.target === el));
+    });
+    ro.observe(el);
+    ro.observe(contenuto);
+    const onScroll = () => {
+      const distanza = el.scrollHeight - el.clientHeight - el.scrollTop;
+      if (distanza <= SOGLIA_FONDO) {
+        s.incollato = true;
+        setNuoviSotto(false);
+      } else if (el.scrollTop < s.st && el.scrollHeight >= s.sh && el.clientHeight >= s.ch) {
+        // E' salito lui. Non conta lo scatto all'indietro quando il
+        // contenuto si accorcia o il filo si stringe: li' sale il browser.
+        s.incollato = false;
+      }
+      s.st = el.scrollTop;
+      s.sh = el.scrollHeight;
+      s.ch = el.clientHeight;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", onScroll);
+    };
+  }, [filoMontato]);
+
+  // Un messaggio nuovo mentre si legge piu' su: non si tira giu' nessuno,
+  // compare «Nuovi messaggi ↓».
+  useEffect(() => {
+    const s = inFondo.current;
+    const ultimo = messages[messages.length - 1];
+    if (
+      !loadingMsgs &&
+      s.nMessaggi > 0 &&
+      messages.length > s.nMessaggi &&
+      !s.incollato &&
+      ultimo?.senderType !== myType
+    ) {
+      setNuoviSotto(true);
+    }
+    if (!loadingMsgs) s.nMessaggi = messages.length;
+  }, [messages, loadingMsgs, myType]);
+
+  function vaiInFondo() {
+    const el = threadRef.current;
+    if (!el) return;
+    inFondo.current.incollato = true;
+    setNuoviSotto(false);
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }
 
   // L'ALTEZZA UTILE (07/10): dal fondo dell'intestazione di Bob (che resta,
   // e' l'unico posto della campanella) al fondo dello schermo. Si misura,
@@ -707,6 +810,9 @@ function MessaggiInner() {
       kind: "text",
       appointmentId: null,
     };
+    // Chi scrive vuole vedere il suo messaggio: si torna in fondo.
+    inFondo.current.incollato = true;
+    setNuoviSotto(false);
     setMessages((m) => [...m, optimistic]);
 
     const { error } = await sendMessage(
@@ -882,11 +988,15 @@ function MessaggiInner() {
                   )}
                 </div>
 
+                <div className="relative flex min-h-0 flex-1 flex-col">
                 <div
                   ref={threadRef}
-                  className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain bg-[#fafafb] px-3 py-4 sm:px-6"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#fafafb] px-3 py-4 sm:px-6"
                   data-testid="chat-messaggi"
                 >
+                  {/* Il contenuto in un involucro suo: e' lui che il
+                      ResizeObserver guarda crescere (15/10). */}
+                  <div ref={contenutoRef} className="flex flex-col gap-2.5">
                   {loadingMsgs ? (
                     <p className="text-center text-sm text-bob-ink/65">Carico…</p>
                   ) : messages.length === 0 ? (
@@ -968,6 +1078,18 @@ function MessaggiInner() {
                     );
                   })
                   )}
+                  </div>
+                </div>
+                {nuoviSotto && (
+                  <button
+                    type="button"
+                    onClick={vaiInFondo}
+                    className="absolute bottom-3 left-1/2 inline-flex min-h-[44px] -translate-x-1/2 items-center rounded-full bg-bob-indigo px-4 text-sm font-semibold text-white shadow-lg"
+                    data-testid="chat-nuovi-messaggi"
+                  >
+                    Nuovi messaggi ↓
+                  </button>
+                )}
                 </div>
 
                 <div className="flex shrink-0 gap-2 border-t border-black/[0.07] bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4">
