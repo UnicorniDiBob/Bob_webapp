@@ -25,6 +25,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { StatusTimeline, type StatoAppuntamento } from "@/components/StatusTimeline";
 import { ConfrontoPro, type ProConfronto } from "@/components/ConfrontoPro";
 import { ComEAndata } from "@/components/ComEAndata";
+import { FinestraConferma } from "@/components/FinestraConferma";
+import { LinkChat } from "@/components/LinkChat";
 import { AltroOrario } from "@/components/AltroOrario";
 import {
   RIGA_APPUNTAMENTO_CLIENTE,
@@ -36,6 +38,7 @@ import {
   type AppuntamentoCliente,
 } from "@/lib/appuntamentoCliente";
 import { nonFinito, propostaDaRispondere } from "@/lib/daFareCliente";
+import { ordineConfronto, sceglibili } from "@/lib/scelta";
 import {
   appuntamentoVero,
   codiceBreve,
@@ -69,6 +72,14 @@ interface Dati {
   recensioni: Map<string, number>;
   /** C'e' o c'e' stato un appuntamento non annullato (per «Com'è andata?»). */
   haAppuntamento: boolean;
+  /** Il pro scelto (120). */
+  scelto: string | null;
+  /** Le conversazioni archiviate: pro → quando (120). */
+  archiviati: Map<string, string>;
+  /** I pro che hanno scritto almeno un messaggio. */
+  rispondenti: Set<string>;
+  /** Tutti gli appuntamenti della richiesta, solo pro e stato: per «Scegli». */
+  storico: { professional_id: string; status: string }[];
 }
 
 type Stato =
@@ -117,6 +128,15 @@ export function RichiestaCliente({ id }: { id: string }) {
   const [stato, setStato] = useState<Stato>({ tipo: "carica" });
   const [descrizioneAperta, setDescrizioneAperta] = useState(false);
   const [altroOrarioPer, setAltroOrarioPer] = useState<AppuntamentoCliente | null>(null);
+  // SCEGLI E RIAPRI (15/10, PR 7). Una finestra sola, per l'una o l'altra
+  // domanda; la riga di conferma resta sotto le schede dopo il ricarico.
+  const [domanda, setDomanda] = useState<{ tipo: "scegli" | "riapri"; pro: { id: string; nome: string } } | null>(
+    null
+  );
+  const [inviando, setInviando] = useState(false);
+  const [erroreDomanda, setErroreDomanda] = useState<string | null>(null);
+  const [fatto, setFatto] = useState<string | null>(null);
+  const [archiviAperti, setArchiviAperti] = useState(false);
 
   const carica = useCallback(async () => {
     if (!user) return;
@@ -129,7 +149,7 @@ export function RichiestaCliente({ id }: { id: string }) {
     const { data: r, error: errR } = await supabase
       .from("requests")
       .select(
-        "id, status, closed_reason, problem_description, created_at, service_id, subservice_id, services ( name ), cities ( name ), request_professionals ( professional_id )"
+        "id, status, closed_reason, problem_description, created_at, service_id, subservice_id, chosen_professional_id, services ( name ), cities ( name ), request_professionals ( professional_id, archived_at )"
       )
       .eq("id", id)
       .eq("customer_id", user.id)
@@ -152,9 +172,10 @@ export function RichiestaCliente({ id }: { id: string }) {
       created_at: string | null;
       service_id: string | null;
       subservice_id: string | null;
+      chosen_professional_id: string | null;
       services: { name: string } | null;
       cities: { name: string } | null;
-      request_professionals: { professional_id: string }[] | null;
+      request_professionals: { professional_id: string; archived_at: string | null }[] | null;
     };
     const proIds = (riga.request_professionals ?? []).map((x) => x.professional_id);
 
@@ -271,6 +292,18 @@ export function RichiestaCliente({ id }: { id: string }) {
         ),
         // Avvolta: .some() passerebbe l'indice come `adesso`.
         haAppuntamento: storicoAppts.some((a) => appuntamentoVero(a)),
+        scelto: riga.chosen_professional_id,
+        archiviati: new Map(
+          (riga.request_professionals ?? [])
+            .filter((x) => x.archived_at)
+            .map((x) => [x.professional_id, x.archived_at as string])
+        ),
+        rispondenti: new Set(
+          ((messaggi.data ?? []) as MessaggioChat[])
+            .filter((m) => m.sender_type === "professional" && m.professional_id)
+            .map((m) => m.professional_id as string)
+        ),
+        storico: storicoAppts.map((a) => ({ professional_id: a.professional_id, status: a.status })),
       },
     });
   }, [id, user]);
@@ -280,6 +313,35 @@ export function RichiestaCliente({ id }: { id: string }) {
   }, [carica]);
 
   const { rispondi, inCorso } = useRispostaAppuntamento(user?.id, carica);
+
+  async function rispondiDomanda() {
+    if (!domanda) return;
+    setInviando(true);
+    setErroreDomanda(null);
+    try {
+      const res = await fetch(`/api/richieste/${id}/${domanda.tipo}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ professionalId: domanda.pro.id }),
+      });
+      const corpo = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setErroreDomanda(corpo.error ?? "Non è andata. Riprova fra poco.");
+        return;
+      }
+      setFatto(
+        domanda.tipo === "scegli"
+          ? `Hai scelto ${domanda.pro.nome}. Le altre conversazioni sono archiviate.`
+          : `Hai riaperto la conversazione con ${domanda.pro.nome}.`
+      );
+      setDomanda(null);
+      await carica();
+    } catch {
+      setErroreDomanda("Non è andata. Riprova fra poco.");
+    } finally {
+      setInviando(false);
+    }
+  }
 
   // ARRIVARE A «COM'È ANDATA?» DALLA DASHBOARD (15/10, PR 6). Le righe di
   // «Da fare ora» portano a #com-e-andata, ma la pagina carica i dati nel
@@ -369,7 +431,8 @@ export function RichiestaCliente({ id }: { id: string }) {
     );
   }
 
-  const { richiesta, pros, chat, appuntamenti, recensioni, haAppuntamento } = stato.dati;
+  const { richiesta, pros, chat, appuntamenti, recensioni, haAppuntamento, scelto, archiviati, rispondenti, storico } =
+    stato.dati;
   const chiusa = richiesta.status === "closed";
   const descrizione = richiesta.problem_description?.trim() ?? "";
   // Una riga sola, poi «Leggi tutto»: la storia e' qui sotto, la descrizione
@@ -383,6 +446,18 @@ export function RichiestaCliente({ id }: { id: string }) {
       : null;
   const prossimo = appuntamenti.find((a) => nonFinito(a)) ?? null;
   const nomePro = (pid: string) => pros.find((p) => p.id === pid)?.nome ?? "Professionista";
+  // Il confronto: lo scelto per primo, gli archiviati fuori (lib/scelta.ts).
+  const archiviatiSet = new Set(archiviati.keys());
+  const inConfronto = ordineConfronto(pros, scelto, archiviatiSet);
+  const conScegli = sceglibili({
+    chiusa,
+    collegati: pros.map((p) => p.id),
+    rispondenti,
+    archiviati: archiviatiSet,
+    scelto,
+    appuntamenti: storico,
+  });
+  const archiviate = pros.filter((p) => archiviati.has(p.id));
 
   return (
     <div className="flex flex-col gap-5">
@@ -446,7 +521,87 @@ export function RichiestaCliente({ id }: { id: string }) {
           </p>
         ) : (
           <div className="mt-3">
-            <ConfrontoPro requestId={richiesta.id} pros={pros} chat={chat} chiusa={chiusa} />
+            <ConfrontoPro
+              requestId={richiesta.id}
+              pros={inConfronto}
+              chat={chat}
+              chiusa={chiusa}
+              scelto={scelto}
+              sceglibili={conScegli}
+              onScegli={(p) => {
+                setErroreDomanda(null);
+                setDomanda({ tipo: "scegli", pro: { id: p.id, nome: p.nome } });
+              }}
+            />
+          </div>
+        )}
+        {fatto && (
+          <p
+            className="mt-1 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
+            role="status"
+            data-testid="scelta-fatta"
+          >
+            {fatto}
+          </p>
+        )}
+
+        {/* CONVERSAZIONI ARCHIVIATE (15/10, PR 7). Sotto le schede, chiuse
+            all'inizio: sono il passato del confronto, non la scelta di oggi.
+            Da qui si rileggono («Apri», in sola lettura per il pro) e si
+            riaprono («Riapri»: il pro torna a poter scrivere e lo sa da un
+            messaggio di Bob). */}
+        {archiviate.length > 0 && (
+          <div className="card mt-3 p-2" data-testid="archiviate">
+            <button
+              type="button"
+              onClick={() => setArchiviAperti((v) => !v)}
+              aria-expanded={archiviAperti}
+              className="flex min-h-[44px] w-full items-center justify-between rounded-lg px-3 text-left text-sm font-semibold text-bob-ink/80 hover:bg-black/[0.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+              data-testid="archiviate-apri"
+            >
+              Conversazioni archiviate ({archiviate.length})
+              <span className="text-bob-ink/65" aria-hidden="true">
+                {archiviAperti ? "▲" : "▼"}
+              </span>
+            </button>
+            {archiviAperti && (
+              <ul className="flex flex-col divide-y divide-black/5 px-3">
+                {archiviate.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2"
+                    data-testid={`archiviata-${p.id}`}
+                  >
+                    <span className="min-w-0 text-sm">
+                      <span className="font-medium text-bob-ink">{p.nome}</span>
+                      <span className="text-bob-ink/65">
+                        {" "}
+                        · archiviata il {fmtData(archiviati.get(p.id) ?? null)}
+                      </span>
+                    </span>
+                    <span className="flex shrink-0 gap-1">
+                      <LinkChat
+                        href={`/messaggi?r=${richiesta.id}&p=${p.id}`}
+                        className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-sm font-medium text-bob-indigo hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                      >
+                        Apri
+                      </LinkChat>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setErroreDomanda(null);
+                          setDomanda({ tipo: "riapri", pro: { id: p.id, nome: p.nome } });
+                        }}
+                        className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-sm font-semibold text-bob-indigo hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                        data-testid={`riapri-${p.id}`}
+                      >
+                        Riapri
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </section>
@@ -497,9 +652,10 @@ export function RichiestaCliente({ id }: { id: string }) {
       )}
 
       {/* ---- 5. Com'è andata? ---- */}
+      {/* Si recensisce chi ha lavorato: gli archiviati no (15/10, PR 7). */}
       <ComEAndata
         richiesta={richiesta}
-        pros={pros.map((p) => ({ id: p.id, nome: p.nome }))}
+        pros={pros.filter((p) => !archiviati.has(p.id)).map((p) => ({ id: p.id, nome: p.nome }))}
         recensioni={recensioni}
         haAppuntamento={haAppuntamento}
         onCambiato={carica}
@@ -523,6 +679,40 @@ export function RichiestaCliente({ id }: { id: string }) {
           Hai bisogno di aiuto? Scrivi all&apos;assistenza
         </Link>
       </section>
+
+      {domanda && (
+        <FinestraConferma
+          titolo={
+            domanda.tipo === "scegli"
+              ? `Scegli ${domanda.pro.nome}?`
+              : `Riaprire la conversazione con ${domanda.pro.nome}?`
+          }
+          conferma={domanda.tipo === "scegli" ? "Scegli" : "Riapri"}
+          inCorso={inviando}
+          errore={erroreDomanda}
+          onConferma={() => void rispondiDomanda()}
+          onAnnulla={() => setDomanda(null)}
+          testid={`finestra-${domanda.tipo}`}
+        >
+          {domanda.tipo === "scegli" ? (
+            (() => {
+              // Quanti verranno archiviati: gli altri ancora attivi.
+              const n = pros.filter((p) => p.id !== domanda.pro.id && !archiviati.has(p.id)).length;
+              return n === 0 ? (
+                <>Le altre conversazioni sono già archiviate.</>
+              ) : (
+                <>
+                  {n === 1 ? "L'altra conversazione verrà archiviata" : `Le altre ${n} conversazioni verranno archiviate`}{" "}
+                  e {n === 1 ? "il professionista riceverà" : "i professionisti riceveranno"}: «Il cliente ha
+                  chiuso questa richiesta.»
+                </>
+              );
+            })()
+          ) : (
+            <>Riceverà: «Il cliente ha riaperto la conversazione.»</>
+          )}
+        </FinestraConferma>
+      )}
 
       {altroOrarioPer && (
         <AltroOrario

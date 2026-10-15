@@ -43,6 +43,7 @@ import type {
   ConversationSummary,
 } from "@/lib/supabase/types";
 import { ProCalendar } from "@/components/ProCalendar";
+import { BOB_CHIUSA, BOB_RIAPERTA } from "@/lib/scelta";
 import {
   altezzaCampo,
   altezzaCornice,
@@ -667,6 +668,15 @@ function MessaggiInner() {
                     ...c,
                     lastMessage: row.message ?? c.lastMessage,
                     lastAt: row.created_at ?? c.lastAt,
+                    // (120) La nota di Bob arriva quando il cliente archivia
+                    // o riapre: il campo del pro si chiude o si riapre
+                    // subito, senza ricaricare la pagina.
+                    archiviata:
+                      row.sender_type === "bob" && row.message === BOB_CHIUSA
+                        ? true
+                        : row.sender_type === "bob" && row.message === BOB_RIAPERTA
+                          ? false
+                          : c.archiviata,
                   }
                 : c
             )
@@ -1168,7 +1178,7 @@ function MessaggiInner() {
                       {active.cityName ? ` · ${active.cityName}` : ""}
                     </p>
                   </div>
-                  {myType === "professional" && myProId && (
+                  {myType === "professional" && myProId && !active.archiviata && (
                     <button
                       onClick={() => setProposeOpen(true)}
                       className="btn-secondary ml-auto inline-flex min-h-[44px] shrink-0 items-center gap-1.5 px-3 py-1.5 text-xs"
@@ -1198,6 +1208,21 @@ function MessaggiInner() {
                     </p>
                   ) : (
                   messages.map((m) => {
+                    // (120) Le note di Bob non sono di nessuna delle due
+                    // parti: una riga al centro, piccola e grigia, con
+                    // l'ora. Niente bolla.
+                    if (m.senderType === "bob") {
+                      return (
+                        <p
+                          key={m.id}
+                          className="mx-auto max-w-[90%] py-1 text-center text-xs text-bob-ink/65"
+                          data-testid="messaggio-bob"
+                        >
+                          {m.message}
+                          <span className="ml-1.5 text-2xs text-bob-ink/50">{fmtTime(m.createdAt)}</span>
+                        </p>
+                      );
+                    }
                     const mine = m.senderType === myType;
                     // (033) proposta di appuntamento: sotto la bolla
                     // compaiono approva / modifica / rifiuta.
@@ -1296,6 +1321,36 @@ function MessaggiInner() {
                     scorre dentro; dopo l'invio torna a una riga. Il filo
                     sopra si accorcia, e il ResizeObserver lo tiene in fondo
                     se ci stava. Invio: vedi cosaFaIlTasto. */}
+                {/* (120) Il pro di una conversazione archiviata legge e non
+                    scrive: al posto del campo, una riga che dice perche'. La
+                    policy del database lo ferma comunque; qui non gli si fa
+                    scrivere un messaggio che non partirebbe. L'esperienza
+                    piena di «non scelto» sulla dashboard del pro e' la PR 8. */}
+                {/* Il cliente la apre da «Conversazioni archiviate» per
+                    rileggerla: anche per lui e' in sola lettura, e per
+                    scrivere di nuovo la riapre dalla pagina della richiesta,
+                    cosi' il pro lo sa (nota di Bob). */}
+                {active.archiviata ? (
+                <p
+                  className="shrink-0 border-t border-black/[0.07] bg-white px-4 py-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] text-center text-sm text-bob-ink/65"
+                  data-testid="chat-archiviata"
+                >
+                  {myType === "professional" ? (
+                    "Il cliente ha chiuso questa richiesta. Non puoi più scrivere qui."
+                  ) : (
+                    <>
+                      Conversazione archiviata.{" "}
+                      <Link
+                        href={`/dashboard/richieste/${active.requestId}`}
+                        className="inline-flex min-h-[44px] items-center font-medium text-bob-indigo hover:underline"
+                      >
+                        Riaprila dalla richiesta
+                      </Link>{" "}
+                      per scrivere di nuovo.
+                    </>
+                  )}
+                </p>
+                ) : (
                 <div className="flex shrink-0 items-end gap-2 border-t border-black/[0.07] bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4">
                   <textarea
                     ref={campoRef}
@@ -1326,6 +1381,7 @@ function MessaggiInner() {
                     Invia
                   </button>
                 </div>
+                )}
               </>
             ) : (
               <div className="flex flex-1 items-center justify-center bg-[#fafafb] text-sm text-bob-ink/65">

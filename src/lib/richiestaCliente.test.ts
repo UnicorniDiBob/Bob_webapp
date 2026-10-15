@@ -134,6 +134,15 @@ describe("il riassunto di ogni chat", () => {
     expect(m.get("b")?.nonLetti).toBe(1);
     expect(m.size).toBe(2);
   });
+
+  it("i messaggi di Bob (120) non sono l'ultimo messaggio ne' un non letto", () => {
+    const m = riassuntoChat([
+      { professional_id: "a", sender_type: "professional", message: "ciao", created_at: "2026-10-01T10:00:00Z", read_at: null },
+      { professional_id: "a", sender_type: "bob", message: "Il cliente ha riaperto la conversazione.", created_at: "2026-10-05T10:00:00Z", read_at: null },
+    ]);
+    expect(m.get("a")?.ultimo?.message).toBe("ciao");
+    expect(m.get("a")?.nonLetti).toBe(1);
+  });
 });
 
 describe("id e codice", () => {

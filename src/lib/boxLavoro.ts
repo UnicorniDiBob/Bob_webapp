@@ -9,6 +9,9 @@
 //      succede davvero, piu' importante di quante risposte ci sono;
 //   3. il cliente ha proposto un orario — tocca al pro, ma e' lo stesso
 //      l'ultima novita' del lavoro;
+//   «Hai scelto <Pro>» (15/10, PR 7, migrazione 120): dopo la scelta, e se
+//      le regole 1-3 non dicono gia' qualcosa, la frase e' questa. I pro
+//      archiviati non arrivano qui: CustomerHome li toglie da `pros`;
 //   4. altrimenti conta i pro che hanno RISPOSTO davvero (almeno un
 //      messaggio con sender_type 'professional'), non quelli collegati
 //      (decisione di André, 15/10, con la migrazione 119):
@@ -55,6 +58,8 @@ export function rigaStatoLavoro(
     pros: { id: string; name: string }[];
     /** I pro che hanno scritto almeno un messaggio su QUESTA richiesta. */
     rispondenti: Set<string>;
+    /** Il pro scelto (120). I pro archiviati non sono in `pros`. */
+    scelto?: string | null;
   },
   adesso: Date = new Date()
 ): string {
@@ -83,6 +88,14 @@ export function rigaStatoLavoro(
     )
   );
   if (mia) return `In attesa che ${nome(mia.professional_id)} confermi l'orario`;
+
+  // HAI SCELTO (15/10, PR 7). Dopo la scelta il confronto e' finito: la
+  // frase non conta piu' le risposte, dice con chi si va avanti. Le regole
+  // 1-3 (proposta, appuntamento, proposta del cliente) vincono lo stesso.
+  if (dati.scelto) {
+    const p = dati.pros.find((x) => x.id === dati.scelto);
+    if (p) return `Hai scelto ${p.name}`;
+  }
 
   const n = dati.pros.length;
   const risposto = dati.pros.filter((p) => dati.rispondenti.has(p.id));

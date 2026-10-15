@@ -48,6 +48,8 @@ export async function getConversations(
     requestId: string;
     professionalId: string;
     proUserId: string | null;
+    /** (120) */
+    archiviata: boolean;
   }
   let pairs: Pair[] = [];
 
@@ -56,13 +58,14 @@ export async function getConversations(
     if (!myProId) return [];
     const { data, error } = await supabase
       .from("request_professionals")
-      .select("request_id")
+      .select("request_id, archived_at")
       .eq("professional_id", myProId);
     logQueryError(`getConversations/request_professionals(${myProId})`, error);
     pairs = (data ?? []).map((r) => ({
       requestId: r.request_id as string,
       professionalId: myProId,
       proUserId: null,
+      archiviata: Boolean(r.archived_at),
     }));
   } else {
     const { data: reqs, error: reqsError } = await supabase
@@ -74,7 +77,7 @@ export async function getConversations(
     if (ids.length === 0) return [];
     const { data: links, error: linksError } = await supabase
       .from("request_professionals")
-      .select("request_id, professional_id, professionals ( user_id )")
+      .select("request_id, professional_id, archived_at, professionals ( user_id )")
       .in("request_id", ids);
     logQueryError("getConversations/request_professionals(ids)", linksError);
     pairs = (links ?? []).map((l) => {
@@ -84,6 +87,7 @@ export async function getConversations(
         requestId: rec.request_id as string,
         professionalId: rec.professional_id as string,
         proUserId: pro?.user_id ?? null,
+        archiviata: Boolean(rec.archived_at),
       };
     });
   }
@@ -127,13 +131,16 @@ export async function getConversations(
   // Ultimo messaggio per thread (chiave richiesta:pro).
   const { data: msgs, error: msgsError } = await supabase
     .from("request_messages")
-    .select("request_id, professional_id, message, created_at")
+    .select("request_id, professional_id, sender_type, message, created_at")
     .in("request_id", requestIds)
     .order("created_at", { ascending: false });
   logQueryError("getConversations/request_messages", msgsError);
 
   const lastByThread = new Map<string, { message: string; at: string }>();
   for (const m of msgs ?? []) {
+    // (120) Le note di Bob sono per il pro («Il cliente ha chiuso questa
+    // richiesta.»): nell'anteprima del cliente non vanno.
+    if (role !== "professional" && m.sender_type === "bob") continue;
     const key = `${m.request_id}:${m.professional_id ?? ""}`;
     if (!lastByThread.has(key)) {
       lastByThread.set(key, {
@@ -161,6 +168,7 @@ export async function getConversations(
       lastMessage: last?.message ?? null,
       lastAt: last?.at ?? ((rec.created_at as string) || null),
       status: (rec.status as string) ?? "sent",
+      archiviata: p.archiviata,
     };
   });
 
@@ -214,11 +222,13 @@ export async function getUnreadCount(
   }
   const requestIds = await myRequestIds(userId, role);
   if (requestIds.length === 0) return 0;
+  // (120) Il cliente conta solo i messaggi dei pro: le note di Bob («Il
+  // cliente ha chiuso questa richiesta.») sono per il pro, non per lui.
   const { count } = await supabase
     .from("request_messages")
     .select("id", { count: "exact", head: true })
     .in("request_id", requestIds)
-    .neq("sender_type", myType)
+    .eq("sender_type", "professional")
     .is("read_at", null);
   return count ?? 0;
 }
@@ -230,12 +240,15 @@ export async function markConversationRead(
   myType: "customer" | "professional"
 ): Promise<void> {
   const supabase = createClient();
+  // (120) Il cliente segna letti solo i messaggi dei pro: con «diversi da
+  // me» avrebbe segnato letta anche la nota di Bob al pro, e il pro non
+  // l'avrebbe vista arrivare. Il pro segna letti quelli del cliente e di Bob.
   let q = supabase
     .from("request_messages")
     .update({ read_at: new Date().toISOString() })
     .eq("request_id", requestId)
-    .neq("sender_type", myType)
     .is("read_at", null);
+  q = myType === "customer" ? q.eq("sender_type", "professional") : q.neq("sender_type", myType);
   if (professionalId) q = q.eq("professional_id", professionalId);
   await q;
 }
@@ -255,7 +268,7 @@ export async function getMessages(
   logQueryError(`getMessages(${requestId})`, error);
   return (data ?? []).map((m) => ({
     id: m.id as string,
-    senderType: m.sender_type as "customer" | "professional",
+    senderType: m.sender_type as ChatMessage["senderType"],
     message: m.message as string,
     createdAt: (m.created_at as string) ?? null,
     kind: (m.kind as ChatMessageKind) ?? "text",

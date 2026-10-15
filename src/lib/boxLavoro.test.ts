@@ -177,6 +177,62 @@ describe("la riga di stato del box: chi ha risposto davvero", () => {
   });
 });
 
+// PR 7 (15/10): la scelta, e i pro archiviati che non contano piu'.
+describe("la riga di stato del box: scelto e archiviati", () => {
+  const vuoto = { appuntamenti: [] as AppuntamentoBox[] };
+
+  it("con un pro scelto e niente appuntamenti: «Hai scelto <Pro>»", () => {
+    expect(
+      rigaStatoLavoro(
+        { ...vuoto, status: "matched", pros: [mcs, rossi], rispondenti: new Set(["p1", "p2"]), scelto: "p2" },
+        adesso
+      )
+    ).toBe("Hai scelto Idraulica Rossi");
+  });
+
+  it("la proposta del pro scelto vince sulla scelta (regola 1)", () => {
+    expect(
+      rigaStatoLavoro(
+        { status: "matched", appuntamenti: [appt({})], pros: [mcs], rispondenti: new Set(["p1"]), scelto: "p1" },
+        adesso
+      )
+    ).toBe("Milano Clean Squad propone mar 13 alle 09:00");
+  });
+
+  it("l'appuntamento confermato vince sulla scelta (regola 2)", () => {
+    expect(
+      rigaStatoLavoro(
+        {
+          status: "matched",
+          appuntamenti: [appt({ status: "confirmed" })],
+          pros: [mcs],
+          rispondenti: new Set(["p1"]),
+          scelto: "p1",
+        },
+        adesso
+      )
+    ).toBe("Appuntamento mar 13 alle 09:00 con Milano Clean Squad");
+  });
+
+  it("un archiviato non conta fra le risposte: due hanno scritto, uno e' fuori da `pros`", () => {
+    expect(
+      rigaStatoLavoro(
+        { ...vuoto, status: "matched", pros: [mcs], rispondenti: new Set(["p1", "p2"]) },
+        adesso
+      )
+    ).toBe("In contatto con Milano Clean Squad");
+  });
+
+  it("uno scelto che non e' piu' fra i pro (archiviato dopo) non da' «Hai scelto»", () => {
+    expect(
+      rigaStatoLavoro(
+        { ...vuoto, status: "matched", pros: [mcs], rispondenti: new Set(["p1"]), scelto: "p2" },
+        adesso
+      )
+    ).toBe("In contatto con Milano Clean Squad");
+  });
+});
+
 describe("la riga di stato del box: la priorita'", () => {
   it("la proposta del pro batte l'appuntamento confermato", () => {
     const confermato = appt({ id: "a0", status: "confirmed", starts_at: "2026-10-10T08:00:00.000Z" });
