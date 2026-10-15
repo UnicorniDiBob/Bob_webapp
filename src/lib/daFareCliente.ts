@@ -20,8 +20,9 @@
 // resto.
 //
 // IL LAVORO FATTO SI CHIEDE QUANDO SI SA (15/10, PR 6). Fino al 14/10 l'unico
-// promemoria per chiudere era (d): «matched» da 10 giorni. Ma «matched» vuol
-// dire solo che il cliente ha scritto in chat (PR 5), e dieci giorni non
+// promemoria per chiudere era (d): «matched» da 10 giorni. Ma «matched» voleva
+// dire solo che il cliente aveva scritto in chat (PR 5; dalla migrazione 119
+// lo mette la prima risposta di un pro), e dieci giorni non
 // dicono se il lavoro c'e' stato. Quando un appuntamento confermato finisce,
 // invece, lo sappiamo: e' il momento di chiedere, finche' il ricordo e'
 // fresco. Viene prima di (d) perche' e' una certezza e (d) una stima, e dopo

@@ -284,14 +284,12 @@ export async function sendMessage(
     kind: opts?.kind ?? "text",
     appointment_id: opts?.appointmentId ?? null,
   });
-  // Aggiorna lo stato della richiesta a "matched" (in contatto) se ancora aperta.
-  if (!error) {
-    await supabase
-      .from("requests")
-      .update({ status: "matched" })
-      .eq("id", requestId)
-      .in("status", ["sent", "quote_request"]);
-  }
+  // IN CONTATTO LO DECIDE IL DATABASE (15/10, migrazione 119). Qui c'era
+  // un update di requests a «matched» dopo ogni messaggio: la RLS lo lascia
+  // fare solo al cliente, quindi «matched» voleva dire «il cliente ha
+  // scritto», e la risposta del pro non spostava niente. Adesso lo fa il
+  // trigger richiesta_in_contatto_su_risposta_pro, al primo messaggio di un
+  // pro; il messaggio del cliente non sposta piu' la richiesta.
   return { error: error ? error.message : null };
 }
 

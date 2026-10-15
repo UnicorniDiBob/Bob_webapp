@@ -102,6 +102,10 @@ export function CustomerHome({
   // «lavoro-fatto» e la vecchia «chiusura» (15/10, PR 6). Quelli qui sopra
   // sono solo i prossimi, per «Prossimi appuntamenti».
   const [appuntamentiAperte, setAppuntamentiAperte] = useState<AppuntamentoDaFare[]>([]);
+  // Chi ha risposto davvero, per richiesta aperta: gli id dei pro che hanno
+  // scritto almeno un messaggio (15/10, con la migrazione 119). I non letti
+  // qui sopra non bastano: un pro gia' letto ha risposto lo stesso.
+  const [rispondenti, setRispondenti] = useState<Map<string, Set<string>>>(new Map());
   const [loadingData, setLoadingData] = useState(true);
   const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -213,8 +217,24 @@ export function CustomerHome({
           .select("id, request_id, professional_id, status, starts_at, duration_minutes, proposed_by")
           .in("request_id", aperteIds);
         setAppuntamentiAperte((storia as AppuntamentoDaFare[]) ?? []);
+
+        // Solo gli id, mai il testo dei messaggi: serve sapere chi ha
+        // scritto, non cosa.
+        const { data: scritti } = await supabase
+          .from("request_messages")
+          .select("request_id, professional_id")
+          .in("request_id", aperteIds)
+          .eq("sender_type", "professional");
+        const chi = new Map<string, Set<string>>();
+        for (const m of (scritti ?? []) as { request_id: string; professional_id: string | null }[]) {
+          if (!m.professional_id) continue;
+          if (!chi.has(m.request_id)) chi.set(m.request_id, new Set());
+          chi.get(m.request_id)!.add(m.professional_id);
+        }
+        setRispondenti(chi);
       } else {
         setAppuntamentiAperte([]);
+        setRispondenti(new Map());
       }
 
       const { data: myRatings } = await supabase
@@ -232,6 +252,7 @@ export function CustomerHome({
       setUnreadByReq(new Map());
       setAppointments([]);
       setAppuntamentiAperte([]);
+      setRispondenti(new Map());
     }
     setLoadingData(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -704,7 +725,12 @@ export function CustomerHome({
                         servizio={r.service?.name ?? "Richiesta"}
                         citta={r.city?.name ?? null}
                         nonLetti={unreadByReq.get(r.id) ?? 0}
-                        stato={rigaStatoLavoro({ status: r.status, appuntamenti: suoi, pros: r.pros })}
+                        stato={rigaStatoLavoro({
+                          status: r.status,
+                          appuntamenti: suoi,
+                          pros: r.pros,
+                          rispondenti: rispondenti.get(r.id) ?? new Set(),
+                        })}
                         passi={passiRichiesta({
                           status: r.status,
                           closedReason: r.closed_reason,

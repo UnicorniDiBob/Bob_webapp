@@ -9,16 +9,22 @@
 //      succede davvero, piu' importante di quante risposte ci sono;
 //   3. il cliente ha proposto un orario — tocca al pro, ma e' lo stesso
 //      l'ultima novita' del lavoro;
-//   4. altrimenti segue lo stato della richiesta, come i puntini
-//      (passiRichiesta): la frase non deve dire «In contatto» mentre la
-//      barra e' ancora a «Inviata». Nessun pro: «In attesa di risposte».
-//      «matched»: «In contatto con <Pro>» / «N risposte da confrontare»;
-//      «quote_request»: «Preventivo chiesto a <Pro>» / «… a N pro»; ogni
-//      altro stato aperto: «Inviata a <Pro>» / «Inviata a N pro».
-//      (Decisione di André, 15/10.) ATTENZIONE: «matched» lo scrive
-//      sendMessage quando il CLIENTE manda un messaggio in chat (la RLS di
-//      requests non lascia aggiornare al pro), o la prenotazione diretta:
-//      non vuol dire che un pro abbia risposto.
+//   4. altrimenti conta i pro che hanno RISPOSTO davvero (almeno un
+//      messaggio con sender_type 'professional'), non quelli collegati
+//      (decisione di André, 15/10, con la migrazione 119):
+//        due o piu' → «N risposte da confrontare»;
+//        uno, ed e' l'unico collegato → «In contatto con <Pro>»;
+//        uno di piu' collegati → «Ha risposto <Pro>, in attesa di N»;
+//        nessuno → segue lo stato, come i puntini (passiRichiesta):
+//          'quote_request' → «Preventivo chiesto a <Pro>» / «… a N pro»;
+//          'matched' (righe di prima della 119, quando ci arrivava anche il
+//          messaggio del cliente) → «In contatto con <Pro>» / «Preventivo
+//          chiesto a N pro»;
+//          gli altri → «Inviata a <Pro>» / «Inviata a N pro»;
+//          nessun pro → «In attesa di risposte».
+//      Prima contava i pro collegati e si fidava di «matched», che fino
+//      alla 119 voleva dire «il cliente ha scritto»: «2 risposte da
+//      confrontare» poteva comparire senza nessuna risposta.
 // Una proposta il cui orario e' passato non conta: non si conferma piu'
 // (vedi propostaDaRispondere).
 
@@ -47,6 +53,8 @@ export function rigaStatoLavoro(
     /** Gli appuntamenti di QUESTA richiesta. */
     appuntamenti: AppuntamentoBox[];
     pros: { id: string; name: string }[];
+    /** I pro che hanno scritto almeno un messaggio su QUESTA richiesta. */
+    rispondenti: Set<string>;
   },
   adesso: Date = new Date()
 ): string {
@@ -77,10 +85,18 @@ export function rigaStatoLavoro(
   if (mia) return `In attesa che ${nome(mia.professional_id)} confermi l'orario`;
 
   const n = dati.pros.length;
+  const risposto = dati.pros.filter((p) => dati.rispondenti.has(p.id));
+  if (risposto.length >= 2) return `${risposto.length} risposte da confrontare`;
+  if (risposto.length === 1) {
+    return n === 1
+      ? `In contatto con ${risposto[0].name}`
+      : `Ha risposto ${risposto[0].name}, in attesa di ${n - 1}`;
+  }
+
   if (n === 0) return "In attesa di risposte";
   const uno = n === 1 ? dati.pros[0].name : null;
   if (dati.status === "matched") {
-    return uno ? `In contatto con ${uno}` : `${n} risposte da confrontare`;
+    return uno ? `In contatto con ${uno}` : `Preventivo chiesto a ${n} pro`;
   }
   if (dati.status === "quote_request") {
     return `Preventivo chiesto a ${uno ?? `${n} pro`}`;

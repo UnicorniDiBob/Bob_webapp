@@ -6,6 +6,7 @@ import { passiRichiesta } from "./passiRichiesta";
 const adesso = new Date("2026-10-09T10:00:00.000Z");
 
 const mcs = { id: "p1", name: "Milano Clean Squad" };
+const nessuno = new Set<string>();
 const rossi = { id: "p2", name: "Idraulica Rossi" };
 
 function appt(extra: Partial<AppuntamentoBox>): AppuntamentoBox {
@@ -24,7 +25,7 @@ function appt(extra: Partial<AppuntamentoBox>): AppuntamentoBox {
 
 describe("la riga di stato del box: un caso per regola", () => {
   it("1. il pro propone un orario", () => {
-    expect(rigaStatoLavoro({ status: "matched", appuntamenti: [appt({})], pros: [mcs] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [appt({})], pros: [mcs] }, adesso)).toBe(
       "Milano Clean Squad propone mar 13 alle 09:00"
     );
   });
@@ -32,26 +33,26 @@ describe("la riga di stato del box: un caso per regola", () => {
   it("2. appuntamento confermato, con oggi e domani", () => {
     // Sabato 10 ottobre, 10:00 a Roma.
     const domani = appt({ status: "confirmed", starts_at: "2026-10-10T08:00:00.000Z" });
-    expect(rigaStatoLavoro({ status: "matched", appuntamenti: [domani], pros: [mcs] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [domani], pros: [mcs] }, adesso)).toBe(
       "Appuntamento domani alle 10:00 con Milano Clean Squad"
     );
     // Cominciato da mezz'ora, dura un'ora: non e' finito.
     const inCorso = appt({ status: "confirmed", starts_at: "2026-10-09T09:30:00.000Z" });
-    expect(rigaStatoLavoro({ status: "matched", appuntamenti: [inCorso], pros: [mcs] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [inCorso], pros: [mcs] }, adesso)).toBe(
       "Appuntamento oggi alle 11:30 con Milano Clean Squad"
     );
   });
 
   it("3. il cliente ha proposto: aspetta il pro", () => {
     const mia = appt({ proposed_by: "customer", professional_id: "p2" });
-    expect(rigaStatoLavoro({ status: "matched", appuntamenti: [mia], pros: [mcs, rossi] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [mia], pros: [mcs, rossi] }, adesso)).toBe(
       "In attesa che Idraulica Rossi confermi l'orario"
     );
   });
 
   it("nessun pro: «In attesa di risposte», qualunque sia lo stato", () => {
     for (const status of ["sent", "quote_request", "matched"]) {
-      expect(rigaStatoLavoro({ status, appuntamenti: [], pros: [] }, adesso)).toBe(
+      expect(rigaStatoLavoro({ status, rispondenti: nessuno, appuntamenti: [], pros: [] }, adesso)).toBe(
         "In attesa di risposte"
       );
     }
@@ -64,51 +65,115 @@ describe("la riga di stato del box: senza appuntamenti segue lo stato", () => {
   const vuoto = { appuntamenti: [] as AppuntamentoBox[] };
 
   it("matched, un pro: «In contatto con»", () => {
-    expect(rigaStatoLavoro({ ...vuoto, status: "matched", pros: [mcs] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ ...vuoto, rispondenti: nessuno, status: "matched", pros: [mcs] }, adesso)).toBe(
       "In contatto con Milano Clean Squad"
     );
   });
 
-  it("matched, due pro: «2 risposte da confrontare»", () => {
-    expect(rigaStatoLavoro({ ...vuoto, status: "matched", pros: [mcs, rossi] }, adesso)).toBe(
-      "2 risposte da confrontare"
+  it("matched da prima della 119, due pro e nessuno ha risposto: «Preventivo chiesto a 2 pro»", () => {
+    expect(rigaStatoLavoro({ ...vuoto, rispondenti: nessuno, status: "matched", pros: [mcs, rossi] }, adesso)).toBe(
+      "Preventivo chiesto a 2 pro"
     );
   });
 
   it("richiesta di preventivo con un pro: «Preventivo chiesto a»", () => {
     expect(
-      rigaStatoLavoro({ ...vuoto, status: "quote_request", pros: [{ id: "p3", name: "IdroMilano Express" }] }, adesso)
+      rigaStatoLavoro({ ...vuoto, rispondenti: nessuno, status: "quote_request", pros: [{ id: "p3", name: "IdroMilano Express" }] }, adesso)
     ).toBe("Preventivo chiesto a IdroMilano Express");
   });
 
   it("richiesta di preventivo con due pro: «Preventivo chiesto a 2 pro»", () => {
-    expect(rigaStatoLavoro({ ...vuoto, status: "quote_request", pros: [mcs, rossi] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ ...vuoto, rispondenti: nessuno, status: "quote_request", pros: [mcs, rossi] }, adesso)).toBe(
       "Preventivo chiesto a 2 pro"
     );
   });
 
   it("l'Elettricista con un pro, non ancora matched: «Inviata a LuceChiara Impianti»", () => {
     expect(
-      rigaStatoLavoro({ ...vuoto, status: "sent", pros: [{ id: "p4", name: "LuceChiara Impianti" }] }, adesso)
+      rigaStatoLavoro({ ...vuoto, rispondenti: nessuno, status: "sent", pros: [{ id: "p4", name: "LuceChiara Impianti" }] }, adesso)
     ).toBe("Inviata a LuceChiara Impianti");
   });
 
   it("inviata a due pro: «Inviata a 2 pro»", () => {
-    expect(rigaStatoLavoro({ ...vuoto, status: "sent", pros: [mcs, rossi] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ ...vuoto, rispondenti: nessuno, status: "sent", pros: [mcs, rossi] }, adesso)).toBe(
       "Inviata a 2 pro"
     );
   });
 
   it("le regole 1-3 vincono comunque sullo stato", () => {
     expect(
-      rigaStatoLavoro({ status: "sent", appuntamenti: [appt({})], pros: [mcs] }, adesso)
+      rigaStatoLavoro({ status: "sent", rispondenti: nessuno, appuntamenti: [appt({})], pros: [mcs] }, adesso)
     ).toBe("Milano Clean Squad propone mar 13 alle 09:00");
     expect(
       rigaStatoLavoro(
-        { status: "quote_request", appuntamenti: [appt({ status: "confirmed" })], pros: [mcs, rossi] },
+        { status: "quote_request", rispondenti: nessuno, appuntamenti: [appt({ status: "confirmed" })], pros: [mcs, rossi] },
         adesso
       )
     ).toBe("Appuntamento mar 13 alle 09:00 con Milano Clean Squad");
+  });
+});
+
+// Dalla 119 (15/10) contano i pro che hanno scritto davvero, non quelli
+// collegati alla richiesta.
+describe("la riga di stato del box: chi ha risposto davvero", () => {
+  const verdi = { id: "p3", name: "Verdi Impianti" };
+  const vuoto = { appuntamenti: [] as AppuntamentoBox[] };
+
+  it("due risposte su due: «2 risposte da confrontare»", () => {
+    expect(
+      rigaStatoLavoro({ ...vuoto, status: "matched", pros: [mcs, rossi], rispondenti: new Set(["p1", "p2"]) }, adesso)
+    ).toBe("2 risposte da confrontare");
+  });
+
+  it("N conta chi ha risposto, non chi e' collegato: 2 su 3", () => {
+    expect(
+      rigaStatoLavoro(
+        { ...vuoto, status: "matched", pros: [mcs, rossi, verdi], rispondenti: new Set(["p1", "p3"]) },
+        adesso
+      )
+    ).toBe("2 risposte da confrontare");
+  });
+
+  it("uno, ed e' l'unico collegato: «In contatto con»", () => {
+    expect(
+      rigaStatoLavoro({ ...vuoto, status: "matched", pros: [mcs], rispondenti: new Set(["p1"]) }, adesso)
+    ).toBe("In contatto con Milano Clean Squad");
+  });
+
+  it("1 su 2: «Ha risposto <Pro>, in attesa di 1»", () => {
+    expect(
+      rigaStatoLavoro({ ...vuoto, status: "matched", pros: [mcs, rossi], rispondenti: new Set(["p2"]) }, adesso)
+    ).toBe("Ha risposto Idraulica Rossi, in attesa di 1");
+  });
+
+  it("1 su 3: «… in attesa di 2»", () => {
+    expect(
+      rigaStatoLavoro(
+        { ...vuoto, status: "matched", pros: [mcs, rossi, verdi], rispondenti: new Set(["p1"]) },
+        adesso
+      )
+    ).toBe("Ha risposto Milano Clean Squad, in attesa di 2");
+  });
+
+  it("le risposte valgono anche se lo stato e' rimasto indietro", () => {
+    expect(
+      rigaStatoLavoro({ ...vuoto, status: "quote_request", pros: [mcs], rispondenti: new Set(["p1"]) }, adesso)
+    ).toBe("In contatto con Milano Clean Squad");
+  });
+
+  it("un messaggio di un pro non collegato non conta", () => {
+    expect(
+      rigaStatoLavoro({ ...vuoto, status: "quote_request", pros: [mcs], rispondenti: new Set(["x"]) }, adesso)
+    ).toBe("Preventivo chiesto a Milano Clean Squad");
+  });
+
+  it("le regole 1-3 vincono anche sulle risposte", () => {
+    expect(
+      rigaStatoLavoro(
+        { status: "matched", appuntamenti: [appt({})], pros: [mcs, rossi], rispondenti: new Set(["p1", "p2"]) },
+        adesso
+      )
+    ).toBe("Milano Clean Squad propone mar 13 alle 09:00");
   });
 });
 
@@ -116,7 +181,7 @@ describe("la riga di stato del box: la priorita'", () => {
   it("la proposta del pro batte l'appuntamento confermato", () => {
     const confermato = appt({ id: "a0", status: "confirmed", starts_at: "2026-10-10T08:00:00.000Z" });
     expect(
-      rigaStatoLavoro({ status: "matched", appuntamenti: [confermato, appt({})], pros: [mcs] }, adesso)
+      rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [confermato, appt({})], pros: [mcs] }, adesso)
     ).toBe("Milano Clean Squad propone mar 13 alle 09:00");
   });
 
@@ -124,13 +189,13 @@ describe("la riga di stato del box: la priorita'", () => {
     const confermato = appt({ status: "confirmed", professional_id: "p2" });
     const mia = appt({ id: "a2", proposed_by: "customer", starts_at: "2026-10-10T08:00:00.000Z" });
     expect(
-      rigaStatoLavoro({ status: "matched", appuntamenti: [mia, confermato], pros: [mcs, rossi] }, adesso)
+      rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [mia, confermato], pros: [mcs, rossi] }, adesso)
     ).toBe("Appuntamento mar 13 alle 09:00 con Idraulica Rossi");
   });
 
   it("la proposta del cliente batte «2 risposte»", () => {
     const mia = appt({ proposed_by: "customer" });
-    expect(rigaStatoLavoro({ status: "matched", appuntamenti: [mia], pros: [mcs, rossi] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [mia], pros: [mcs, rossi] }, adesso)).toBe(
       "In attesa che Milano Clean Squad confermi l'orario"
     );
   });
@@ -139,13 +204,16 @@ describe("la riga di stato del box: la priorita'", () => {
     const passata = appt({ starts_at: "2026-10-09T08:00:00.000Z" });
     const miaPassata = appt({ id: "a2", proposed_by: "customer", starts_at: "2026-10-09T08:00:00.000Z" });
     expect(
-      rigaStatoLavoro({ status: "matched", appuntamenti: [passata, miaPassata], pros: [mcs, rossi] }, adesso)
+      rigaStatoLavoro(
+        { status: "matched", rispondenti: new Set(["p1", "p2"]), appuntamenti: [passata, miaPassata], pros: [mcs, rossi] },
+        adesso
+      )
     ).toBe("2 risposte da confrontare");
   });
 
   it("un appuntamento confermato gia' finito non conta", () => {
     const ieri = appt({ status: "confirmed", starts_at: "2026-10-08T08:00:00.000Z" });
-    expect(rigaStatoLavoro({ status: "matched", appuntamenti: [ieri], pros: [mcs] }, adesso)).toBe(
+    expect(rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [ieri], pros: [mcs] }, adesso)).toBe(
       "In contatto con Milano Clean Squad"
     );
   });
@@ -154,13 +222,13 @@ describe("la riga di stato del box: la priorita'", () => {
     const lontana = appt({ id: "a1", starts_at: "2026-10-20T07:00:00.000Z" });
     const vicina = appt({ id: "a2", starts_at: "2026-10-10T15:00:00.000Z" });
     expect(
-      rigaStatoLavoro({ status: "matched", appuntamenti: [lontana, vicina], pros: [mcs] }, adesso)
+      rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [lontana, vicina], pros: [mcs] }, adesso)
     ).toBe("Milano Clean Squad propone domani alle 17:00");
   });
 
   it("un pro che non e' fra quelli della richiesta resta «Professionista»", () => {
     expect(
-      rigaStatoLavoro({ status: "matched", appuntamenti: [appt({ professional_id: "x" })], pros: [mcs] }, adesso)
+      rigaStatoLavoro({ status: "matched", rispondenti: nessuno, appuntamenti: [appt({ professional_id: "x" })], pros: [mcs] }, adesso)
     ).toBe("Professionista propone mar 13 alle 09:00");
   });
 });
