@@ -130,9 +130,10 @@ export function RichiestaCliente({ id }: { id: string }) {
   const [altroOrarioPer, setAltroOrarioPer] = useState<AppuntamentoCliente | null>(null);
   // SCEGLI E RIAPRI (15/10, PR 7). Una finestra sola, per l'una o l'altra
   // domanda; la riga di conferma resta sotto le schede dopo il ricarico.
-  const [domanda, setDomanda] = useState<{ tipo: "scegli" | "riapri"; pro: { id: string; nome: string } } | null>(
-    null
-  );
+  const [domanda, setDomanda] = useState<{
+    tipo: "scegli" | "riapri" | "archivia";
+    pro: { id: string; nome: string };
+  } | null>(null);
   const [inviando, setInviando] = useState(false);
   const [erroreDomanda, setErroreDomanda] = useState<string | null>(null);
   const [fatto, setFatto] = useState<string | null>(null);
@@ -324,7 +325,7 @@ export function RichiestaCliente({ id }: { id: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ professionalId: domanda.pro.id }),
       });
-      const corpo = (await res.json().catch(() => ({}))) as { error?: string };
+      const corpo = (await res.json().catch(() => ({}))) as { error?: string; sceltaAnnullata?: boolean };
       if (!res.ok) {
         setErroreDomanda(corpo.error ?? "Non è andata. Riprova fra poco.");
         return;
@@ -332,7 +333,11 @@ export function RichiestaCliente({ id }: { id: string }) {
       setFatto(
         domanda.tipo === "scegli"
           ? `Hai scelto ${domanda.pro.nome}. Le altre conversazioni sono archiviate.`
-          : `Hai riaperto la conversazione con ${domanda.pro.nome}.`
+          : domanda.tipo === "archivia"
+            ? `Hai archiviato la conversazione con ${domanda.pro.nome}.${
+                corpo.sceltaAnnullata ? " La scelta è annullata: puoi sceglierne un altro." : ""
+              }`
+            : `Hai riaperto la conversazione con ${domanda.pro.nome}.`
       );
       setDomanda(null);
       await carica();
@@ -532,6 +537,11 @@ export function RichiestaCliente({ id }: { id: string }) {
                 setErroreDomanda(null);
                 setDomanda({ tipo: "scegli", pro: { id: p.id, nome: p.nome } });
               }}
+              archiviabili={chiusa ? new Set() : new Set(inConfronto.map((p) => p.id))}
+              onArchivia={(p) => {
+                setErroreDomanda(null);
+                setDomanda({ tipo: "archivia", pro: { id: p.id, nome: p.nome } });
+              }}
             />
           </div>
         )}
@@ -685,9 +695,11 @@ export function RichiestaCliente({ id }: { id: string }) {
           titolo={
             domanda.tipo === "scegli"
               ? `Scegli ${domanda.pro.nome}?`
-              : `Riaprire la conversazione con ${domanda.pro.nome}?`
+              : domanda.tipo === "archivia"
+                ? `Archiviare la conversazione con ${domanda.pro.nome}?`
+                : `Riaprire la conversazione con ${domanda.pro.nome}?`
           }
-          conferma={domanda.tipo === "scegli" ? "Scegli" : "Riapri"}
+          conferma={domanda.tipo === "scegli" ? "Scegli" : domanda.tipo === "archivia" ? "Archivia" : "Riapri"}
           inCorso={inviando}
           errore={erroreDomanda}
           onConferma={() => void rispondiDomanda()}
@@ -708,6 +720,8 @@ export function RichiestaCliente({ id }: { id: string }) {
                 </>
               );
             })()
+          ) : domanda.tipo === "archivia" ? (
+            <>Riceverà: «Il cliente ha chiuso questa richiesta.» Potrai riaprirla quando vuoi.</>
           ) : (
             <>Riceverà: «Il cliente ha riaperto la conversazione.»</>
           )}
