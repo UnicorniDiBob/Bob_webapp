@@ -29,7 +29,10 @@ export type MotivoRifiuto =
   | "non_ha_risposto"
   | "appuntamento_altro"
   | "scelta_bloccata"
-  | "non_archiviata";
+  | "non_archiviata"
+  // archivia_conversazione() (121, PR 9)
+  | "gia_archiviata"
+  | "appuntamento_confermato";
 
 /** La scelta non si cambia piu': col pro scelto c'e' un appuntamento confermato o fatto. */
 export function sceltaBloccata(
@@ -97,6 +100,10 @@ export function testoRifiuto(motivo: MotivoRifiuto | string, nomePro?: string | 
       return `Hai già un appuntamento confermato con ${pro}: la scelta non si cambia più.`;
     case "non_archiviata":
       return "Questa conversazione non è archiviata.";
+    case "gia_archiviata":
+      return "Questa conversazione è già archiviata.";
+    case "appuntamento_confermato":
+      return `C'è un appuntamento confermato con ${nomePro || "questo professionista"}: disdicilo prima di archiviare la conversazione.`;
     default:
       return "Non è andata. Riprova fra poco.";
   }

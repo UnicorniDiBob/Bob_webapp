@@ -60,6 +60,8 @@ export function ConfrontoPro({
   scelto = null,
   sceglibili = new Set<string>(),
   onScegli,
+  archiviabili = new Set<string>(),
+  onArchivia,
 }: {
   requestId: string;
   pros: ProConfronto[];
@@ -71,6 +73,9 @@ export function ConfrontoPro({
   /** Le schede con «Scegli» (sceglibili, lib/scelta.ts). */
   sceglibili?: Set<string>;
   onScegli?: (p: ProConfronto) => void;
+  /** Le schede con «Archivia» (PR 9, 121): tutte, se la richiesta e' aperta. */
+  archiviabili?: Set<string>;
+  onArchivia?: (p: ProConfronto) => void;
 }) {
   const colonne =
     pros.length >= 3
@@ -200,6 +205,20 @@ export function ConfrontoPro({
               >
                 Apri la chat
               </LinkChat>
+              {/* «ARCHIVIA» (15/10, PR 9): il cliente chiude una conversazione
+                  senza scegliere nessuno. E' un tasto quieto, testo e basta,
+                  sotto i due che contano: non deve fare concorrenza a
+                  «Scegli» ne' ad «Apri la chat». */}
+              {archiviabili.has(p.id) && onArchivia && (
+                <button
+                  type="button"
+                  onClick={() => onArchivia(p)}
+                  className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg text-sm font-medium text-bob-ink/65 hover:text-bob-ink hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+                  data-testid={`confronto-archivia-${p.id}`}
+                >
+                  Archivia
+                </button>
+              )}
             </div>
           </article>
         );

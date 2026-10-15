@@ -13,7 +13,8 @@
 //                      confermato e' finito (o il pro l'ha segnato fatto)
 //                      e la richiesta e' ancora aperta (15/10, PR 6);
 //   (d) chiusura     — «E' andato tutto bene?» sulle richieste senza nessun
-//                      appuntamento, in contatto da piu' di 10 giorni;
+//                      appuntamento, ferme da piu' di 10 giorni (dall'ultimo
+//                      messaggio, non dalla creazione: PR 9, 15/10);
 //   (e) recensioni   — UNA riga per tutte le recensioni mancanti.
 // (a) e (b) si vedono sempre, anche oltre le quattro righe: chi aspetta una
 // risposta non deve finire sotto «+N altri». (c), (d) ed (e) riempiono il
@@ -141,6 +142,31 @@ export function propostaDaRispondere(
   );
 }
 
+/**
+ * L'ultimo messaggio vero di ogni richiesta (PR 9, 15/10): del cliente o di
+ * un pro, mai una nota di Bob, e solo nelle conversazioni non archiviate
+ * (`archiviate` = chiavi «richiesta:pro»). E' l'orologio di «E' andato tutto
+ * bene?».
+ */
+export function ultimoMessaggioPerRichiesta(
+  righe: {
+    request_id: string;
+    professional_id: string | null;
+    sender_type: string;
+    created_at: string;
+  }[],
+  archiviate: Set<string>
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const m of righe) {
+    if (m.sender_type !== "customer" && m.sender_type !== "professional") continue;
+    if (archiviate.has(`${m.request_id}:${m.professional_id ?? ""}`)) continue;
+    const prima = out.get(m.request_id);
+    if (!prima || m.created_at > prima) out.set(m.request_id, m.created_at);
+  }
+  return out;
+}
+
 /** Le cose da fare, gia' nell'ordine fisso; stabile dentro ogni gruppo. */
 export function vociDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFare>(
   dati: {
@@ -159,6 +185,12 @@ export function vociDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFa
     nonLettiPerRichiesta: Map<string, number>;
     /** Recensioni gia' lasciate, «richiesta:pro». */
     recensite: Set<string>;
+    /**
+     * L'ultimo messaggio di ogni richiesta (ISO), del cliente o di un pro,
+     * nelle sole conversazioni NON archiviate; le note di Bob non contano.
+     * Una richiesta che qui non c'e' non ha conversazioni vive.
+     */
+    ultimoMessaggio: Map<string, string>;
   },
   adesso: number = Date.now()
 ): VoceDaFare<A, R>[] {
@@ -207,11 +239,18 @@ export function vociDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFa
     }
   }
 
+  // DIECI GIORNI DI SILENZIO, NON DIECI GIORNI DI VITA (15/10, PR 9). Il
+  // conto partiva da requests.created_at: «Imbianchino», creata il 17/07 e in
+  // contatto solo dal 15/10, chiedeva «È andato tutto bene?» il giorno
+  // stesso, in mezzo a una conversazione viva. Adesso si conta dall'ultimo
+  // messaggio vero (cliente o pro) nelle conversazioni non archiviate: le
+  // note di Bob non spostano l'orologio, e una richiesta con tutte le
+  // conversazioni archiviate non lo chiede mai.
   for (const r of dati.aperte) {
     const n = dati.nonLettiPerRichiesta.get(r.id) ?? 0;
-    const giorni = r.created_at
-      ? (adesso - new Date(r.created_at).getTime()) / 86400000
-      : 0;
+    const ultimo = dati.ultimoMessaggio.get(r.id);
+    if (!ultimo) continue;
+    const giorni = (adesso - new Date(ultimo).getTime()) / 86400000;
     // Solo i lavori presi in chat: con un appuntamento vero (confermato,
     // fatto o proposto per il futuro; l'annullato, il rifiutato e la
     // proposta scaduta no) la domanda la fa

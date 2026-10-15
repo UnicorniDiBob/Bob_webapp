@@ -41,6 +41,7 @@ import {
   nonFinito,
   quandoBreve,
   riepilogoCliente,
+  ultimoMessaggioPerRichiesta,
   vociDaFare,
   type AppuntamentoDaFare,
   type VoceDaFare,
@@ -113,6 +114,9 @@ export function CustomerHome({
   // scritto almeno un messaggio (15/10, con la migrazione 119). I non letti
   // qui sopra non bastano: un pro gia' letto ha risposto lo stesso.
   const [rispondenti, setRispondenti] = useState<Map<string, Set<string>>>(new Map());
+  // L'orologio di «È andato tutto bene?» (PR 9, 15/10): l'ultimo messaggio
+  // vero per richiesta, nelle conversazioni non archiviate.
+  const [ultimoMessaggio, setUltimoMessaggio] = useState<Map<string, string>>(new Map());
   const [loadingData, setLoadingData] = useState(true);
   const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -240,17 +244,24 @@ export function CustomerHome({
 
         // Solo gli id, mai il testo dei messaggi: serve sapere chi ha
         // scritto, non cosa.
+        // (PR 9, 15/10) La stessa lettura serve anche all'orologio di «È
+        // andato tutto bene?»: messaggi del cliente e dei pro, con l'ora.
+        // Sempre solo id e date, mai il testo.
         const { data: scritti } = await supabase
           .from("request_messages")
-          .select("request_id, professional_id")
+          .select("request_id, professional_id, sender_type, created_at")
           .in("request_id", aperteIds)
-          .eq("sender_type", "professional");
+          .in("sender_type", ["customer", "professional"]);
+        const righe = (scritti ?? []) as {
+          request_id: string;
+          professional_id: string | null;
+          sender_type: string;
+          created_at: string;
+        }[];
+        setUltimoMessaggio(ultimoMessaggioPerRichiesta(righe, archiviati));
         const chi = new Map<string, Set<string>>();
-        for (const m of senzaArchiviati(
-          (scritti ?? []) as { request_id: string; professional_id: string | null }[],
-          archiviati
-        )) {
-          if (!m.professional_id) continue;
+        for (const m of senzaArchiviati(righe, archiviati)) {
+          if (m.sender_type !== "professional" || !m.professional_id) continue;
           if (!chi.has(m.request_id)) chi.set(m.request_id, new Set());
           chi.get(m.request_id)!.add(m.professional_id);
         }
@@ -258,6 +269,7 @@ export function CustomerHome({
       } else {
         setAppuntamentiAperte([]);
         setRispondenti(new Map());
+        setUltimoMessaggio(new Map());
       }
 
       const { data: myRatings } = await supabase
@@ -276,6 +288,7 @@ export function CustomerHome({
       setAppointments([]);
       setAppuntamentiAperte([]);
       setRispondenti(new Map());
+      setUltimoMessaggio(new Map());
     }
     setLoadingData(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -327,6 +340,7 @@ export function CustomerHome({
     nonLettiPerCoppia: unreadByPair,
     nonLettiPerRichiesta: unreadByReq,
     recensite: reviewed,
+    ultimoMessaggio,
   });
   const { visibili, nascoste } = divisiDaFare(daFare);
   const righeDaFare = tuttiDaFare ? daFare : visibili;

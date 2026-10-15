@@ -93,6 +93,14 @@ describe("i rifiuti della route", () => {
     );
   });
 
+  it("archiviare a mano: il nome del pro con l'appuntamento confermato (121)", () => {
+    expect(testoRifiuto("appuntamento_confermato", "Mano Amica Milano")).toBe(
+      "C'è un appuntamento confermato con Mano Amica Milano: disdicilo prima di archiviare la conversazione."
+    );
+    expect(testoRifiuto("gia_archiviata")).toBe("Questa conversazione è già archiviata.");
+    expect(statoRifiuto("appuntamento_confermato")).toBe(409);
+  });
+
   it("404 per quello che non c'e', 409 per il resto", () => {
     expect(statoRifiuto("non_trovata")).toBe(404);
     expect(statoRifiuto("non_collegato")).toBe(404);

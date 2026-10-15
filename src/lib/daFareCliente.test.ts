@@ -9,6 +9,7 @@ import {
   propostaDaRispondere,
   quandoBreve,
   riepilogoCliente,
+  ultimoMessaggioPerRichiesta,
   vociDaFare,
   type AppuntamentoDaFare,
   type RichiestaDaFare,
@@ -58,6 +59,8 @@ const vuoto = {
   nonLettiPerCoppia: new Map<string, number>(),
   nonLettiPerRichiesta: new Map<string, number>(),
   recensite: new Set<string>(),
+  // «ferma»: l'ultimo messaggio vero e' del 20/09, quasi venti giorni fa.
+  ultimoMessaggio: new Map<string, string>([["ferma", "2026-09-20T10:00:00.000Z"]]),
 };
 
 describe("da fare ora del cliente", () => {
@@ -391,5 +394,99 @@ describe("il sottotitolo del cliente", () => {
     expect(riepilogoCliente(0, [delCliente, finito, delPro], adesso)).toBe(
       "Prossimo appuntamento lun 12 alle 09:00"
     );
+  });
+});
+
+// PR 9 (15/10): i dieci giorni si contano dall'ultimo messaggio vero, nelle
+// conversazioni non archiviate. CustomerHome passa la mappa gia' filtrata
+// (niente note di Bob, niente archiviate): qui si prova la regola.
+describe("«E' andato tutto bene?»: dieci giorni di silenzio", () => {
+  const chiusure = (r: RichiestaDaFare, ultimo?: string) =>
+    vociDaFare(
+      { ...vuoto, aperte: [r], ultimoMessaggio: new Map(ultimo ? [[r.id, ultimo]] : []) },
+      ora
+    ).filter((v) => v.tipo === "chiusura");
+
+  it("una chat viva non la fa mai comparire", () => {
+    expect(chiusure(richiesta("viva", { created_at: "2026-07-17T10:00:00.000Z" }), "2026-10-08T10:00:00.000Z")).toHaveLength(0);
+  });
+
+  it("dieci giorni di silenzio si'", () => {
+    expect(chiusure(richiesta("quieta"), "2026-09-28T10:00:00.000Z")).toHaveLength(1);
+  });
+
+  it("al limite: 9 giorni no, 11 si'", () => {
+    expect(chiusure(richiesta("nove"), "2026-09-30T10:00:00.000Z")).toHaveLength(0);
+    expect(chiusure(richiesta("undici"), "2026-09-28T09:00:00.000Z")).toHaveLength(1);
+  });
+
+  it("senza messaggi nelle conversazioni vive (tutte archiviate): mai", () => {
+    expect(chiusure(richiesta("archiviate", { created_at: "2026-07-01T10:00:00.000Z" }))).toHaveLength(0);
+  });
+
+  it("come Imbianchino: richiesta vecchia, messaggi recenti → niente", () => {
+    expect(
+      chiusure(richiesta("imbianchino", { created_at: "2026-07-17T10:00:00.000Z" }), "2026-10-09T08:00:00.000Z")
+    ).toHaveLength(0);
+  });
+
+  it("restano le altre condizioni: solo matched, senza non letti", () => {
+    expect(chiusure(richiesta("inviata", { status: "sent" }), "2026-09-20T10:00:00.000Z")).toHaveLength(0);
+    expect(
+      vociDaFare(
+        {
+          ...vuoto,
+          aperte: [richiesta("letta")],
+          ultimoMessaggio: new Map([["letta", "2026-09-20T10:00:00.000Z"]]),
+          nonLettiPerRichiesta: new Map([["letta", 1]]),
+        },
+        ora
+      ).filter((v) => v.tipo === "chiusura")
+    ).toHaveLength(0);
+  });
+});
+
+describe("l'orologio: l'ultimo messaggio vero di ogni richiesta", () => {
+  const m = (request_id: string, professional_id: string, sender_type: string, created_at: string) => ({
+    request_id,
+    professional_id,
+    sender_type,
+    created_at,
+  });
+
+  it("il piu' recente fra cliente e pro", () => {
+    const u = ultimoMessaggioPerRichiesta(
+      [
+        m("r", "a", "customer", "2026-10-01T10:00:00.000Z"),
+        m("r", "a", "professional", "2026-10-03T10:00:00.000Z"),
+        m("r", "b", "customer", "2026-10-02T10:00:00.000Z"),
+      ],
+      new Set()
+    );
+    expect(u.get("r")).toBe("2026-10-03T10:00:00.000Z");
+  });
+
+  it("le note di Bob non spostano l'orologio", () => {
+    const u = ultimoMessaggioPerRichiesta(
+      [m("r", "a", "professional", "2026-09-20T10:00:00.000Z"), m("r", "a", "bob", "2026-10-08T10:00:00.000Z")],
+      new Set()
+    );
+    expect(u.get("r")).toBe("2026-09-20T10:00:00.000Z");
+  });
+
+  it("le conversazioni archiviate non contano", () => {
+    const u = ultimoMessaggioPerRichiesta(
+      [m("r", "a", "professional", "2026-09-20T10:00:00.000Z"), m("r", "b", "professional", "2026-10-08T10:00:00.000Z")],
+      new Set(["r:b"])
+    );
+    expect(u.get("r")).toBe("2026-09-20T10:00:00.000Z");
+  });
+
+  it("tutte archiviate: la richiesta non c'e', quindi niente promemoria", () => {
+    const u = ultimoMessaggioPerRichiesta([m("r", "a", "professional", "2026-09-20T10:00:00.000Z")], new Set(["r:a"]));
+    expect(u.has("r")).toBe(false);
+    expect(
+      vociDaFare({ ...vuoto, aperte: [richiesta("r")], ultimoMessaggio: u }, ora).filter((v) => v.tipo === "chiusura")
+    ).toHaveLength(0);
   });
 });

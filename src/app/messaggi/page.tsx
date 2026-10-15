@@ -43,6 +43,7 @@ import type {
   ConversationSummary,
 } from "@/lib/supabase/types";
 import { ProCalendar } from "@/components/ProCalendar";
+import { FinestraConferma } from "@/components/FinestraConferma";
 import { BOB_CHIUSA, BOB_RIAPERTA } from "@/lib/scelta";
 import {
   altezzaCampo,
@@ -201,6 +202,25 @@ function MessaggiInner() {
   const myType: "customer" | "professional" =
     role === "professional" ? "professional" : "customer";
 
+  // «ATTIVE» E «ARCHIVIATE» (15/10, PR 9). Il cliente vedeva le conversazioni
+  // archiviate in mezzo a quelle vive. Adesso stanno in una scheda loro, in
+  // sola lettura, con «Riapri»; la scheda scelta resta nell'indirizzo
+  // (?vista=archiviate), cosi' un link o un ricarico la ritrovano. Solo per
+  // il cliente: il pro ha le archiviate in fondo con «Chiusa» (PR 8).
+  const conSchede = myType === "customer";
+  const [vista, setVista] = useState<"attive" | "archiviate">(
+    params.get("vista") === "archiviate" ? "archiviate" : "attive"
+  );
+  // Entrando da un link a una conversazione archiviata («Apri» nella pagina
+  // della richiesta) la scheda giusta e' «Archiviate», anche senza ?vista.
+  const vistaDecisa = useRef(params.get("vista") != null);
+  const [domandaChat, setDomandaChat] = useState<{
+    tipo: "archivia" | "riapri";
+    conv: ConversationSummary;
+  } | null>(null);
+  const [inviandoChat, setInviandoChat] = useState(false);
+  const [erroreChat, setErroreChat] = useState<string | null>(null);
+
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
@@ -237,6 +257,24 @@ function MessaggiInner() {
       active = false;
     };
   }, [user, role]);
+
+  // La scheda di partenza, una volta caricato l'elenco (PR 9, 15/10): con un
+  // link a una conversazione archiviata si apre «Archiviate»; senza link si
+  // resta su «Attive», e se la prima conversazione e' archiviata si apre la
+  // prima attiva.
+  useEffect(() => {
+    if (vistaDecisa.current || !conSchede || loadingConvs) return;
+    vistaDecisa.current = true;
+    const a = conversations.find((c) => keyOf(c) === activeId);
+    if (!a?.archiviata) return;
+    if (params.get("r")) {
+      setVista("archiviate");
+    } else {
+      const prima = conversations.find((c) => !c.archiviata);
+      setActiveId(prima ? keyOf(prima) : null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations, activeId, loadingConvs, conSchede]);
 
   useEffect(() => {
     if (!user || role !== "professional") return;
@@ -621,12 +659,60 @@ function MessaggiInner() {
       setActiveId(keyOf(c));
       setMobileThread(true);
     }
-    router.replace(
-      `/messaggi?r=${c.requestId}${
-        c.professionalId ? `&p=${c.professionalId}` : ""
-      }`,
-      { scroll: false }
-    );
+    router.replace(indirizzo(c, vista), { scroll: false });
+  }
+
+  /** L'indirizzo di una conversazione, con la scheda (PR 9). */
+  function indirizzo(c: ConversationSummary | null, v: "attive" | "archiviate") {
+    const qs = new URLSearchParams();
+    if (c) {
+      qs.set("r", c.requestId);
+      if (c.professionalId) qs.set("p", c.professionalId);
+    }
+    if (conSchede && v === "archiviate") qs.set("vista", "archiviate");
+    const q = qs.toString();
+    return q ? `/messaggi?${q}` : "/messaggi";
+  }
+
+  function cambiaVista(v: "attive" | "archiviate") {
+    vistaDecisa.current = true;
+    setVista(v);
+    const nella = conversations.filter((c) => (v === "archiviate") === Boolean(c.archiviata));
+    const corrente = nella.find((c) => keyOf(c) === activeId) ?? nella[0] ?? null;
+    setActiveId(corrente ? keyOf(corrente) : null);
+    setMobileThread(false);
+    router.replace(indirizzo(corrente, v), { scroll: false });
+  }
+
+  async function rispondiDomandaChat() {
+    if (!domandaChat || !user) return;
+    const { tipo, conv } = domandaChat;
+    setInviandoChat(true);
+    setErroreChat(null);
+    try {
+      const res = await fetch(`/api/richieste/${conv.requestId}/${tipo}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ professionalId: conv.professionalId }),
+      });
+      const corpo = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setErroreChat(corpo.error ?? "Non è andata. Riprova fra poco.");
+        return;
+      }
+      setDomandaChat(null);
+      // La conversazione segue la sua scheda, e la nota di Bob compare.
+      const v = tipo === "archivia" ? "archiviate" : "attive";
+      vistaDecisa.current = true;
+      setVista(v);
+      setConversations(await getConversations(user.id, role));
+      router.replace(indirizzo(conv, v), { scroll: false });
+      loadThread(conv.requestId, conv.professionalId, { silenzioso: true });
+    } catch {
+      setErroreChat("Non è andata. Riprova fra poco.");
+    } finally {
+      setInviandoChat(false);
+    }
   }
 
   // Realtime: la risposta della controparte compare nel thread aperto
@@ -1052,6 +1138,10 @@ function MessaggiInner() {
   }
 
   const active = conversations.find((c) => keyOf(c) === activeId) ?? null;
+  const nArchiviate = conversations.filter((c) => c.archiviata).length;
+  const nellaVista = conSchede
+    ? conversations.filter((c) => (vista === "archiviate") === Boolean(c.archiviata))
+    : conversations;
 
   // A TUTTO SCHERMO (07/10, Lucio). Prima /messaggi era una finestra alta
   // 600px dentro la pagina, con l'intestazione «Le tue conversazioni» sopra
@@ -1105,8 +1195,51 @@ function MessaggiInner() {
                 Messaggi
               </h1>
             </div>
-            <div className="min-h-0 flex-1 divide-y divide-black/5 overflow-y-auto overscroll-contain">
-              {conversations.map((c) => {
+            {conSchede && (
+              <div
+                role="tablist"
+                aria-label="Conversazioni"
+                className="flex shrink-0 gap-1 border-b border-black/[0.07] px-3 py-1.5"
+                onKeyDown={(e) => {
+                  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+                  e.preventDefault();
+                  const v = vista === "attive" ? "archiviate" : "attive";
+                  cambiaVista(v);
+                  document.getElementById(`scheda-${v}`)?.focus();
+                }}
+              >
+                {(["attive", "archiviate"] as const).map((v) => (
+                  <button
+                    key={v}
+                    id={`scheda-${v}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={vista === v}
+                    tabIndex={vista === v ? 0 : -1}
+                    onClick={() => cambiaVista(v)}
+                    className={`inline-flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40 ${
+                      vista === v ? "bg-bob-indigo-50 text-bob-indigo" : "text-bob-ink/65 hover:bg-black/[0.03]"
+                    }`}
+                    data-testid={`scheda-${v}`}
+                  >
+                    {v === "attive" ? "Attive" : `Archiviate (${nArchiviate})`}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div
+              className="min-h-0 flex-1 divide-y divide-black/5 overflow-y-auto overscroll-contain"
+              role={conSchede ? "tabpanel" : undefined}
+              aria-labelledby={conSchede ? `scheda-${vista}` : undefined}
+            >
+              {conSchede && nellaVista.length === 0 && (
+                <p className="px-4 py-6 text-sm text-bob-ink/65" data-testid="vista-vuota">
+                  {vista === "archiviate"
+                    ? "Nessuna conversazione archiviata."
+                    : "Nessuna conversazione attiva. Le archiviate sono nell'altra scheda."}
+                </p>
+              )}
+              {nellaVista.map((c) => {
                 const isActive = keyOf(c) === activeId;
                 return (
                   <button
@@ -1200,6 +1333,25 @@ function MessaggiInner() {
                       <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                       <span className="hidden sm:inline">Proponi appuntamento</span>
                       <span className="sm:hidden">Proponi</span>
+                    </button>
+                  )}
+                  {/* (PR 9, 15/10) Il cliente archivia o riapre da qui, con la
+                      stessa domanda della pagina della richiesta. */}
+                  {conSchede && (active.archiviata || active.status !== "closed") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setErroreChat(null);
+                        setDomandaChat({ tipo: active.archiviata ? "riapri" : "archivia", conv: active });
+                      }}
+                      className={`ml-auto inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40 ${
+                        active.archiviata
+                          ? "font-semibold text-bob-indigo hover:bg-bob-indigo-50"
+                          : "font-medium text-bob-ink/65 hover:bg-black/[0.03] hover:text-bob-ink"
+                      }`}
+                      data-testid={active.archiviata ? "chat-riapri" : "chat-archivia"}
+                    >
+                      {active.archiviata ? "Riapri" : "Archivia"}
                     </button>
                   )}
                 </div>
@@ -1351,16 +1503,7 @@ function MessaggiInner() {
                   {myType === "professional" ? (
                     "Il cliente ha chiuso questa richiesta. Non puoi più scrivere qui."
                   ) : (
-                    <>
-                      Conversazione archiviata.{" "}
-                      <Link
-                        href={`/dashboard/richieste/${active.requestId}`}
-                        className="inline-flex min-h-[44px] items-center font-medium text-bob-indigo hover:underline"
-                      >
-                        Riaprila dalla richiesta
-                      </Link>{" "}
-                      per scrivere di nuovo.
-                    </>
+                    <>Conversazione archiviata: per scrivere di nuovo, riaprila con «Riapri» qui sopra.</>
                   )}
                 </p>
                 ) : (
@@ -1403,6 +1546,24 @@ function MessaggiInner() {
             )}
           </section>
         </>
+      )}
+
+      {domandaChat && (
+        <FinestraConferma
+          titolo={`${domandaChat.tipo === "archivia" ? "Archiviare" : "Riaprire"} la conversazione con ${domandaChat.conv.counterpartName}?`}
+          conferma={domandaChat.tipo === "archivia" ? "Archivia" : "Riapri"}
+          inCorso={inviandoChat}
+          errore={erroreChat}
+          onConferma={() => void rispondiDomandaChat()}
+          onAnnulla={() => setDomandaChat(null)}
+          testid={`finestra-chat-${domandaChat.tipo}`}
+        >
+          {domandaChat.tipo === "archivia" ? (
+            <>Riceverà: «Il cliente ha chiuso questa richiesta.» Potrai riaprirla quando vuoi.</>
+          ) : (
+            <>Riceverà: «Il cliente ha riaperto la conversazione.»</>
+          )}
+        </FinestraConferma>
       )}
 
       {proposeOpen && (
