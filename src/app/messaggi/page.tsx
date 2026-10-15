@@ -476,7 +476,7 @@ function MessaggiInner() {
       professionalId: myProId,
       preview: riassunto,
     });
-    await loadThread(activeR, activeP);
+    await loadThread(activeR, activeP, { silenzioso: true });
     setApptSaving(false);
     setProposeOpen(false);
     setReplacingApptId(null);
@@ -486,11 +486,25 @@ function MessaggiInner() {
     setApptNote("");
   }
 
+  // L'AGGIORNAMENTO E' SILENZIOSO (15/10, provato con due sessioni vere).
+  // Aprire una conversazione mostra «Carico…»; RIAGGIORNARE quella gia'
+  // aperta (un messaggio in arrivo, dopo un invio, dopo un'azione su un
+  // biglietto) no. Prima passava tutto da qui con setLoadingMsgs(true): il
+  // filo si svuotava per un attimo, il browser riportava lo scorrimento a 0,
+  // e il filo risultava «in fondo» — cosi' chi stava leggendo piu' su veniva
+  // tirato giu' e la pillola «Nuovi messaggi ↓» non compariva mai; e chi
+  // inviava vedeva lampeggiare «Carico…». In silenzio si legge tutto, poi
+  // messaggi e biglietti cambiano insieme, in un aggiornamento solo.
+  // `ultimoCarico` scarta una risposta arrivata dopo una piu' recente.
+  const ultimoCarico = useRef(0);
   const loadThread = useCallback(
-    async (rid: string, pid: string | null) => {
-      setLoadingMsgs(true);
+    async (rid: string, pid: string | null, opts?: { silenzioso?: boolean }) => {
+      const silenzioso = opts?.silenzioso === true;
+      const questo = ++ultimoCarico.current;
+      if (!silenzioso) setLoadingMsgs(true);
       const m = await getMessages(rid, pid);
-      setMessages(m);
+      if (questo !== ultimoCarico.current) return;
+      if (!silenzioso) setMessages(m);
       // Carica gli appuntamenti collegati alle proposte presenti nel thread.
       const ids = Array.from(
         new Set(
@@ -541,10 +555,15 @@ function MessaggiInner() {
             }
           }
         }
+        if (questo !== ultimoCarico.current) return;
+        if (silenzioso) setMessages(m);
         setThreadAppts(map);
       } else {
+        if (silenzioso) setMessages(m);
         setThreadAppts({});
       }
+      // Anche in silenzio: se questo aggiornamento ha scavalcato la prima
+      // lettura della stessa conversazione, e' lui a chiudere «Carico…».
       setLoadingMsgs(false);
     },
     []
@@ -606,7 +625,7 @@ function MessaggiInner() {
           // (022) reagisce solo ai messaggi del thread aperto.
           if (activeP && row.professional_id && row.professional_id !== activeP)
             return;
-          loadThread(activeR, activeP);
+          loadThread(activeR, activeP, { silenzioso: true });
           markConversationRead(activeR, activeP, myType).then(() =>
             refreshUnread()
           );
@@ -710,7 +729,10 @@ function MessaggiInner() {
     ro.observe(contenuto);
     const onScroll = () => {
       const distanza = el.scrollHeight - el.clientHeight - el.scrollTop;
-      if (distanza <= SOGLIA_FONDO) {
+      // In fondo si torna scendendo, non perche' il contenuto si e'
+      // accorciato e il browser ha riportato giu' lo scorrimento (15/10: un
+      // biglietto che si richiude, un aggiornamento): quello non incolla.
+      if (distanza <= SOGLIA_FONDO && el.scrollHeight >= s.sh) {
         s.incollato = true;
         setNuoviSotto(false);
       } else if (el.scrollTop < s.st && el.scrollHeight >= s.sh && el.clientHeight >= s.ch) {
@@ -833,7 +855,7 @@ function MessaggiInner() {
           activeP ?? (myType === "professional" ? myProId : null),
         preview: text,
       });
-      await loadThread(activeR, activeP);
+      await loadThread(activeR, activeP, { silenzioso: true });
       // aggiorna anteprima nella lista
       setConversations((cs) =>
         cs.map((c) =>
@@ -1065,7 +1087,9 @@ function MessaggiInner() {
                               }
                               zona={active?.cityName ?? null}
                               onChanged={() =>
-                                loadThread(activeR as string, activeP)
+                                loadThread(activeR as string, activeP, {
+                                  silenzioso: true,
+                                })
                               }
                               onProModify={apriModifica}
                             />
