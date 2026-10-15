@@ -74,6 +74,17 @@ function fmtTime(d: string | null) {
 /** Entro quanto dal fondo si e' ancora «in fondo» (15/10). */
 const SOGLIA_FONDO = 80;
 
+/** Quanto deve mancare alla parte visibile perche' sia la tastiera (15/10). */
+const TASTIERA_MINIMA = 120;
+
+/** iPhone e iPad (che da iPadOS 13 si presenta come un Mac col touch). */
+function suIOS(): boolean {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 export default function MessaggiPage() {
   // Chi ha toccato «Apri la chat» altrove aspetta che la pagina ci sia per
   // far partire il cerchio (lib/aperturaChat.ts): montata, non caricata.
@@ -799,6 +810,55 @@ function MessaggiInner() {
     };
   }, [loading]);
 
+  // LA TASTIERA DELL'IPHONE (15/10, iPhone di André, Safari). La cornice e'
+  // alta esattamente 100dvh meno l'intestazione, e su iOS il dvh NON si
+  // accorcia per la tastiera: per tenere il campo sopra la tastiera Safari
+  // fa scorrere la FINESTRA. Alla chiusura non sempre la riporta su: dopo
+  // «Ok» e Invia l'intestazione di Bob restava fuori in alto, la cornice
+  // finiva a meta' schermo e sotto c'era mezzo schermo vuoto. Adesso, finche'
+  // la tastiera e' aperta, la cornice e' alta quanto la parte visibile
+  // (visualViewport: altezza e spostamento), cosi' il campo sta appena sopra
+  // la tastiera e Safari non ha niente da far scorrere; quando si chiude, la
+  // cornice torna a 100dvh e la finestra torna in cima se era rimasta giu'.
+  // Il filo resta incollato al fondo da solo: la cornice che cambia misura
+  // e' proprio quello che il ResizeObserver qui sopra guarda.
+  // SOLO iOS: da Chrome 108 anche Android stringe solo la parte visibile, e
+  // la stessa regola cambierebbe un comportamento che li' funziona.
+  const [altoTastiera, setAltoTastiera] = useState<number | null>(null);
+  const altoRef = useRef(alto);
+  altoRef.current = alto;
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv || !suIOS()) return;
+    const v = vv;
+    function aggiorna() {
+      const pieno = document.documentElement.clientHeight;
+      if (pieno - v.height > TASTIERA_MINIMA) {
+        setAltoTastiera(Math.max(0, Math.round(v.offsetTop + v.height - altoRef.current)));
+      } else {
+        setAltoTastiera(null);
+        if (window.scrollY > 0) window.scrollTo(0, 0);
+      }
+    }
+    // Il campo perde il fuoco prima che la tastiera finisca di chiudersi:
+    // si ricontrolla quando l'animazione e' finita.
+    let attesa: ReturnType<typeof setTimeout> | undefined;
+    function fuoriFuoco() {
+      clearTimeout(attesa);
+      attesa = setTimeout(aggiorna, 350);
+    }
+    v.addEventListener("resize", aggiorna);
+    v.addEventListener("scroll", aggiorna);
+    document.addEventListener("focusout", fuoriFuoco);
+    aggiorna();
+    return () => {
+      clearTimeout(attesa);
+      v.removeEventListener("resize", aggiorna);
+      v.removeEventListener("scroll", aggiorna);
+      document.removeEventListener("focusout", fuoriFuoco);
+    };
+  }, []);
+
   // Il ripiego dell'apertura animata, dove non ci sono le transizioni di
   // vista: la cornice appena montata cresce dal punto del tocco. Le
   // coordinate del tocco sono dello schermo; la cornice comincia sotto
@@ -891,7 +951,10 @@ function MessaggiInner() {
     <div
       ref={cornice}
       className={`flex w-full overflow-hidden bg-white ${ripiego ? "chat-apertura" : ""}`}
-      style={{ height: `calc(100dvh - ${alto}px)` }}
+      style={{
+        height:
+          altoTastiera !== null ? `${altoTastiera}px` : `calc(100dvh - ${alto}px)`,
+      }}
       data-testid="chat-cornice"
     >
       {loadingConvs ? (
@@ -1104,11 +1167,15 @@ function MessaggiInner() {
                   )}
                   </div>
                 </div>
+                {/* GIALLA (15/10, prova dal vivo sull'iPhone di André):
+                    indaco su bianco si perdeva sopra le bolle indaco. E' il
+                    giallo di Bob, quello del puntino del marchio; il testo
+                    bob-ink sul giallo sta a 9,6:1 (AA chiede 4,5). */}
                 {nuoviSotto && (
                   <button
                     type="button"
                     onClick={vaiInFondo}
-                    className="absolute bottom-3 left-1/2 inline-flex min-h-[44px] -translate-x-1/2 items-center rounded-full bg-bob-indigo px-4 text-sm font-semibold text-white shadow-lg"
+                    className="absolute bottom-3 left-1/2 inline-flex min-h-[44px] -translate-x-1/2 items-center rounded-full bg-bob-yellow px-4 text-sm font-semibold text-bob-ink shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo focus-visible:ring-offset-2"
                     data-testid="chat-nuovi-messaggi"
                   >
                     Nuovi messaggi ↓
