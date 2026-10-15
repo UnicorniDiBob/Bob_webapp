@@ -53,8 +53,19 @@
 --   private.proteggi_spostamento_pro   md5 d3b08e7f65a400ac7e9ed7a894359b64 (116)
 --   private.analisi_da_appuntamento    md5 8a13127159d3f70c73115d7de548332f (110/113)
 -- Ognuna cambia nei punti segnati con (120).
--- POLICY RISCRITTE DA pg_policies DEL 15/10, con UNA condizione in piu'
--- ciascuna, segnata con (120).
+-- POLICY RISCRITTE DA pg_policies DEL 15/10, con le condizioni nuove
+-- segnate con (120): l'archiviazione, e due buchi che questa PR rende piu'
+-- importanti (revisione del 15/10):
+--   - il mittente di un messaggio non si finge. Il cliente poteva inserire
+--     sender_type 'professional' (che con la 119 porta la richiesta a
+--     «matched») o 'bob' (un falso «Il cliente ha riaperto…»); il pro poteva
+--     inserire 'customer' o 'bob'. I messaggi 'bob' li scrivono solo le
+--     funzioni chiamate dal service role (scegli/riapri, qui sotto);
+--   - un pro crea appuntamenti solo sulle richieste che gli sono assegnate
+--     (o nella sua agenda privata, request_id nullo). Letto il 15/10 in
+--     produzione: 0 appuntamenti su 50 violano la regola nuova (34 hanno una
+--     richiesta, tutti di un pro collegato). La prenotazione diretta e la
+--     controproposta del cliente scrivono col service role: non cambiano.
 --
 -- Idempotente: add column if not exists, create or replace, drop-then-create
 -- di trigger e policy.
@@ -157,7 +168,31 @@ create trigger proteggi_archiviazione
   for each row execute function public.proteggi_archiviazione();
 
 -- ---------------------------------------------------------------------------
--- 4. Il pro archiviato non scrive (policy viva + una condizione)
+-- 4a. Il cliente scrive solo come se stesso (policy viva + due condizioni)
+-- ---------------------------------------------------------------------------
+-- Controllato nel codice il 15/10: RequestDialog, QuoteDialog, sendMessage
+-- (con il ruolo dell'utente) e sposta_appuntamento() scrivono gia'
+-- sender_type 'customer' e sender_id = l'utente; le funzioni DEFINER
+-- (annulla_appuntamento, avvisa_*) e le route col service role non passano
+-- dalla RLS.
+drop policy if exists "User inserts own request_messages" on public.request_messages;
+create policy "User inserts own request_messages"
+  on public.request_messages
+  for insert
+  to public
+  with check (
+    (request_id in (
+      select requests.id
+        from public.requests
+       where (requests.customer_id = ( select auth.uid() as uid))))
+    -- (120) il mittente e' il cliente, e il cliente e' chi scrive.
+    and sender_type = 'customer'
+    and sender_id = ( select auth.uid() as uid)
+  );
+
+-- ---------------------------------------------------------------------------
+-- 4. Il pro archiviato non scrive, e scrive solo come pro (policy viva + due
+--    condizioni)
 -- ---------------------------------------------------------------------------
 drop policy if exists "Pro inserts assigned messages" on public.request_messages;
 create policy "Pro inserts assigned messages"
@@ -177,15 +212,16 @@ create policy "Pro inserts assigned messages"
        where rp.request_id = request_messages.request_id
          and rp.professional_id = request_messages.professional_id
          and rp.archived_at is null)
+    -- (120) e il mittente e' il pro: niente 'customer' ne' 'bob'.
+    and sender_type = 'professional'
   );
 
 -- ---------------------------------------------------------------------------
 -- 5. Il pro archiviato non propone orari (policy viva + una condizione)
 -- ---------------------------------------------------------------------------
--- NOT EXISTS su una riga archiviata, e non EXISTS su una riga attiva: la
--- policy viva non chiede che il pro sia collegato alla richiesta (le voci
--- dell'agenda privata hanno request_id nullo), e questa migrazione non
--- cambia altro che l'archiviazione.
+-- Due condizioni (120): solo su una richiesta assegnata a lui (o nessuna:
+-- l'agenda privata ha request_id nullo), e non dove la sua conversazione e'
+-- archiviata.
 drop policy if exists "Pro inserts own appointments" on public.appointments;
 create policy "Pro inserts own appointments"
   on public.appointments
@@ -196,6 +232,12 @@ create policy "Pro inserts own appointments"
       select professionals.id
         from public.professionals
        where (professionals.user_id = ( select auth.uid() as uid))))
+    -- (120) solo sulle richieste che gli sono assegnate, o nell'agenda privata.
+    and (request_id is null
+         or request_id in (
+           select request_professionals.request_id
+             from public.request_professionals
+            where request_professionals.professional_id in (select private.my_professional_ids())))
     -- (120) non su una richiesta dove la sua conversazione e' archiviata.
     and not exists (
       select 1 from public.request_professionals rp
