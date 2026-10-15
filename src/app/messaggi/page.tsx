@@ -43,6 +43,9 @@ import type {
   ConversationSummary,
 } from "@/lib/supabase/types";
 import { ProCalendar } from "@/components/ProCalendar";
+// TEMPORANEI (15/10): la diagnosi della tastiera dell'iPhone.
+import { DiagnosiTastiera } from "@/components/DiagnosiTastiera";
+import { segnaTastiera } from "@/lib/diagnosiTastiera";
 import {
   AvvisoSovrapposizione,
   useAvvisoSovrapposizione,
@@ -107,6 +110,7 @@ export default function MessaggiPage() {
 function MessaggiInner() {
   const router = useRouter();
   const params = useSearchParams();
+  const diagnosiTastiera = params.get("diagnosi") === "tastiera";
   const { user, role, loading } = useAuth();
   const { refresh: refreshUnread } = useUnread();
 
@@ -831,30 +835,39 @@ function MessaggiInner() {
     const vv = window.visualViewport;
     if (!vv || !suIOS()) return;
     const v = vv;
-    function aggiorna() {
+    // `evento` serve solo alla diagnosi temporanea (?diagnosi=tastiera):
+    // segnaTastiera non fa niente se il pannello non c'e'.
+    function aggiorna(evento: string) {
       const pieno = document.documentElement.clientHeight;
       if (pieno - v.height > TASTIERA_MINIMA) {
-        setAltoTastiera(Math.max(0, Math.round(v.offsetTop + v.height - altoRef.current)));
+        const h = Math.max(0, Math.round(v.offsetTop + v.height - altoRef.current));
+        segnaTastiera(evento, `tastiera aperta → cornice ${h}px`);
+        setAltoTastiera(h);
       } else {
+        const y = Math.round(window.scrollY);
+        segnaTastiera(evento, `chiusa → ripristino${y > 0 ? ` (scrollY ${y} → scrollTo 0)` : " (gia' in cima)"}`);
         setAltoTastiera(null);
         if (window.scrollY > 0) window.scrollTo(0, 0);
       }
     }
+    const suResize = () => aggiorna("vv resize");
+    const suScroll = () => aggiorna("vv scroll");
     // Il campo perde il fuoco prima che la tastiera finisca di chiudersi:
     // si ricontrolla quando l'animazione e' finita.
     let attesa: ReturnType<typeof setTimeout> | undefined;
     function fuoriFuoco() {
+      segnaTastiera("focusout", "ricontrollo fra 350ms");
       clearTimeout(attesa);
-      attesa = setTimeout(aggiorna, 350);
+      attesa = setTimeout(() => aggiorna("focusout +350ms"), 350);
     }
-    v.addEventListener("resize", aggiorna);
-    v.addEventListener("scroll", aggiorna);
+    v.addEventListener("resize", suResize);
+    v.addEventListener("scroll", suScroll);
     document.addEventListener("focusout", fuoriFuoco);
-    aggiorna();
+    aggiorna("avvio");
     return () => {
       clearTimeout(attesa);
-      v.removeEventListener("resize", aggiorna);
-      v.removeEventListener("scroll", aggiorna);
+      v.removeEventListener("resize", suResize);
+      v.removeEventListener("scroll", suScroll);
       document.removeEventListener("focusout", fuoriFuoco);
     };
   }, []);
@@ -957,6 +970,8 @@ function MessaggiInner() {
       }}
       data-testid="chat-cornice"
     >
+      {/* DIAGNOSI TEMPORANEA (15/10): solo con ?diagnosi=tastiera. */}
+      {diagnosiTastiera && <DiagnosiTastiera alto={alto} eIOS={suIOS()} />}
       {loadingConvs ? (
         <div className="m-4 flex-1 animate-pulse rounded-2xl bg-black/[0.03]" />
       ) : conversations.length === 0 ? (
@@ -1035,7 +1050,10 @@ function MessaggiInner() {
           >
             {active ? (
               <>
-                <div className="flex shrink-0 items-center gap-2 border-b border-black/[0.07] px-2 py-2 sm:px-4">
+                <div
+                  className="flex shrink-0 items-center gap-2 border-b border-black/[0.07] px-2 py-2 sm:px-4"
+                  data-testid="chat-intestazione"
+                >
                   <button
                     onClick={(e) => {
                       const tocco = puntoDelTocco(e);
