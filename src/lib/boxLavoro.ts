@@ -9,7 +9,16 @@
 //      succede davvero, piu' importante di quante risposte ci sono;
 //   3. il cliente ha proposto un orario — tocca al pro, ma e' lo stesso
 //      l'ultima novita' del lavoro;
-//   4-6. altrimenti quanti pro ci sono: da confrontare, uno, nessuno.
+//   4. altrimenti segue lo stato della richiesta, come i puntini
+//      (passiRichiesta): la frase non deve dire «In contatto» mentre la
+//      barra e' ancora a «Inviata». Nessun pro: «In attesa di risposte».
+//      «matched»: «In contatto con <Pro>» / «N risposte da confrontare»;
+//      «quote_request»: «Preventivo chiesto a <Pro>» / «… a N pro»; ogni
+//      altro stato aperto: «Inviata a <Pro>» / «Inviata a N pro».
+//      (Decisione di André, 15/10.) ATTENZIONE: «matched» lo scrive
+//      sendMessage quando il CLIENTE manda un messaggio in chat (la RLS di
+//      requests non lascia aggiornare al pro), o la prenotazione diretta:
+//      non vuol dire che un pro abbia risposto.
 // Una proposta il cui orario e' passato non conta: non si conferma piu'
 // (vedi propostaDaRispondere).
 
@@ -34,6 +43,8 @@ function primo<A extends { starts_at: string }>(as: A[]): A | undefined {
 /** La frase di stato del box: la prima regola che vale vince. */
 export function rigaStatoLavoro(
   dati: {
+    /** Lo stato della richiesta: sent, quote_request, matched. */
+    status: string;
     /** Gli appuntamenti di QUESTA richiesta. */
     appuntamenti: AppuntamentoBox[];
     pros: { id: string; name: string }[];
@@ -66,9 +77,16 @@ export function rigaStatoLavoro(
   );
   if (mia) return `In attesa che ${nome(mia.professional_id)} confermi l'orario`;
 
-  if (dati.pros.length >= 2) return `${dati.pros.length} risposte da confrontare`;
-  if (dati.pros.length === 1) return `In contatto con ${dati.pros[0].name}`;
-  return "In attesa di risposte";
+  const n = dati.pros.length;
+  if (n === 0) return "In attesa di risposte";
+  const uno = n === 1 ? dati.pros[0].name : null;
+  if (dati.status === "matched") {
+    return uno ? `In contatto con ${uno}` : `${n} risposte da confrontare`;
+  }
+  if (dati.status === "quote_request") {
+    return `Preventivo chiesto a ${uno ?? `${n} pro`}`;
+  }
+  return `Inviata a ${uno ?? `${n} pro`}`;
 }
 
 /**

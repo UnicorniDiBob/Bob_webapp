@@ -673,7 +673,7 @@ export function CustomerHome({
                         servizio={r.service?.name ?? "Richiesta"}
                         citta={r.city?.name ?? null}
                         nonLetti={unreadByReq.get(r.id) ?? 0}
-                        stato={rigaStatoLavoro({ appuntamenti: suoi, pros: r.pros })}
+                        stato={rigaStatoLavoro({ status: r.status, appuntamenti: suoi, pros: r.pros })}
                         passi={passiRichiesta({
                           status: r.status,
                           closedReason: r.closed_reason,
