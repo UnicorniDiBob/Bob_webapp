@@ -37,10 +37,13 @@ import {
 } from "@/lib/appuntamentoCliente";
 import { nonFinito, propostaDaRispondere } from "@/lib/daFareCliente";
 import {
+  appuntamentoVero,
   codiceBreve,
   prezzoPerRichiesta,
+  prezzoPrenotato,
   riassuntoChat,
   sembraUnId,
+  type AppuntamentoStorico,
   type MessaggioChat,
   type RiassuntoChat,
   type RigaPrezzo,
@@ -64,6 +67,8 @@ interface Dati {
   appuntamenti: AppuntamentoCliente[];
   /** Le stelle che il cliente ha dato in questa richiesta, per pro. */
   recensioni: Map<string, number>;
+  /** C'e' o c'e' stato un appuntamento non annullato (per «Com'è andata?»). */
+  haAppuntamento: boolean;
 }
 
 type Stato =
@@ -153,7 +158,7 @@ export function RichiestaCliente({ id }: { id: string }) {
     };
     const proIds = (riga.request_professionals ?? []).map((x) => x.professional_id);
 
-    const [pros, messaggi, appts, mie] = await Promise.all([
+    const [pros, messaggi, appts, mie, storico] = await Promise.all([
       proIds.length
         ? supabase.from("professionals").select(SELECT_PRO).in("id", proIds)
         : Promise.resolve({ data: [], error: null }),
@@ -175,13 +180,21 @@ export function RichiestaCliente({ id }: { id: string }) {
         .select("professional_id, score")
         .eq("request_id", id)
         .eq("customer_id", user.id),
+      // Tutti gli appuntamenti della richiesta, annullati compresi e senza
+      // finestra (15/10): dicono se c'e' stato un lavoro vero e a che prezzo
+      // si era prenotato.
+      supabase
+        .from("appointments")
+        .select("professional_id, status, price, created_at")
+        .eq("request_id", id),
     ]);
-    if (pros.error || messaggi.error || appts.error || mie.error) {
+    if (pros.error || messaggi.error || appts.error || mie.error || storico.error) {
       setStato({ tipo: "errore" });
       return;
     }
 
     const righePro = (pros.data ?? []) as unknown as RigaPro[];
+    const storicoAppts = (storico.data ?? []) as AppuntamentoStorico[];
     const userIds = righePro.map((p) => p.user_id);
     const nomi = new Map<string, string>();
     if (userIds.length) {
@@ -225,6 +238,7 @@ export function RichiestaCliente({ id }: { id: string }) {
           verificatoIl: dataVerificaVisibile(p),
           media,
           nRecensioni: voti.length,
+          prenotatoA: prezzoPrenotato(storicoAppts, p.id),
           prezzo: prezzoPerRichiesta(
             p.professional_services ?? [],
             riga.service_id,
@@ -255,6 +269,7 @@ export function RichiestaCliente({ id }: { id: string }) {
             x.score,
           ])
         ),
+        haAppuntamento: storicoAppts.some(appuntamentoVero),
       },
     });
   }, [id, user]);
@@ -327,7 +342,7 @@ export function RichiestaCliente({ id }: { id: string }) {
     );
   }
 
-  const { richiesta, pros, chat, appuntamenti, recensioni } = stato.dati;
+  const { richiesta, pros, chat, appuntamenti, recensioni, haAppuntamento } = stato.dati;
   const chiusa = richiesta.status === "closed";
   const descrizione = richiesta.problem_description?.trim() ?? "";
   // Una riga sola, poi «Leggi tutto»: la storia e' qui sotto, la descrizione
@@ -387,6 +402,7 @@ export function RichiestaCliente({ id }: { id: string }) {
         <h2 className={TITOLO_SEZIONE}>A che punto sei</h2>
         <StatusTimeline
           status={richiesta.status}
+          closedReason={richiesta.closed_reason}
           appuntamento={statoAppuntamento}
           quoteCount={pros.length}
         />
@@ -458,6 +474,7 @@ export function RichiestaCliente({ id }: { id: string }) {
         richiesta={richiesta}
         pros={pros.map((p) => ({ id: p.id, nome: p.nome }))}
         recensioni={recensioni}
+        haAppuntamento={haAppuntamento}
         onCambiato={carica}
       />
 

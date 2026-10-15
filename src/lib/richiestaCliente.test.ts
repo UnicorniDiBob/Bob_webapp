@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  appuntamentoVero,
   codiceBreve,
   cosaMostraComEAndata,
   prezzoPerRichiesta,
   riassuntoChat,
   sembraUnId,
+  prezzoPrenotato,
+  testoPrenotato,
   testoPrezzo,
   type RigaPrezzo,
 } from "./richiestaCliente";
@@ -73,10 +76,29 @@ describe("il prezzo per questa richiesta", () => {
 });
 
 describe("cosa mostra «Com'è andata?»", () => {
-  const base = { status: "matched", closed_reason: null, proIds: ["a", "b"], recensiti: new Set<string>() };
+  const base = {
+    status: "matched",
+    closed_reason: null,
+    proIds: ["a", "b"],
+    recensiti: new Set<string>(),
+    haAppuntamento: false,
+  };
 
-  it("richiesta aperta: si chiede se e' concluso", () => {
+  it("richiesta aperta con un pro in contatto: si chiede se e' concluso", () => {
     expect(cosaMostraComEAndata(base)).toBe("chiudi");
+  });
+
+  it("aperta, nessuno in contatto e nessun appuntamento: niente (DEMO-MULTI)", () => {
+    expect(cosaMostraComEAndata({ ...base, status: "quote_request" })).toBeNull();
+    expect(cosaMostraComEAndata({ ...base, status: "sent" })).toBeNull();
+  });
+
+  it("aperta ma con un appuntamento vero: si chiede, anche senza «matched»", () => {
+    expect(cosaMostraComEAndata({ ...base, status: "sent", haAppuntamento: true })).toBe("chiudi");
+  });
+
+  it("le regole delle chiuse non dipendono dall'appuntamento", () => {
+    expect(cosaMostraComEAndata({ ...base, status: "closed" })).toBe("recensisci");
   });
 
   it("chiusa con pro da recensire: il modulo", () => {
@@ -125,3 +147,32 @@ describe("id e codice", () => {
     expect(codiceBreve("6a1f0c2e-1b2c-4d5e-8f90-123456789abc")).toBe("6A1F0C2E");
   });
 });
+
+describe("l'appuntamento che conta e il prezzo prenotato", () => {
+  it("annullato e rifiutato non sono appuntamenti veri", () => {
+    expect(["proposed", "confirmed", "completed"].every((status) => appuntamentoVero({ status }))).toBe(true);
+    expect(appuntamentoVero({ status: "cancelled" })).toBe(false);
+    expect(appuntamentoVero({ status: "declined" })).toBe(false);
+  });
+
+  it("la prenotazione diretta disdetta tiene il suo prezzo (22818d7e)", () => {
+    const appts = [
+      { professional_id: "p", status: "cancelled", price: "40", created_at: "2026-10-13T10:00:00Z" },
+    ];
+    expect(prezzoPrenotato(appts, "p")).toBe(40);
+    expect(testoPrenotato(40)).toBe("Prenotato a 40 €");
+  });
+
+  it("vale il piu' recente, e solo quello di quel pro", () => {
+    const appts = [
+      { professional_id: "p", status: "cancelled", price: 40, created_at: "2026-10-01T10:00:00Z" },
+      { professional_id: "p", status: "confirmed", price: 55, created_at: "2026-10-10T10:00:00Z" },
+      { professional_id: "q", status: "confirmed", price: 90, created_at: "2026-10-12T10:00:00Z" },
+      { professional_id: "p", status: "confirmed", price: null, created_at: "2026-10-14T10:00:00Z" },
+    ];
+    expect(prezzoPrenotato(appts, "p")).toBe(55);
+    expect(prezzoPrenotato(appts, "q")).toBe(90);
+    expect(prezzoPrenotato(appts, "nessuno")).toBeNull();
+  });
+});
+
