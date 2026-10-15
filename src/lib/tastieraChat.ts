@@ -8,8 +8,8 @@
  * L'altezza della cornice con la tastiera di iOS aperta: dal suo inizio
  * fino al fondo della parte visibile, TUTTO in coordinate del documento.
  *
- * Misurato sull'iPhone di André (15/10, ?diagnosi=tastiera), tastiera
- * aperta: visualViewport.height 344, offsetTop 291, pageTop 391, scrollY 391;
+ * Misurato sull'iPhone di André il 15/10 (con il pannello temporaneo della
+ * #166, poi tolto), tastiera aperta: visualViewport.height 344, offsetTop 291, pageTop 391, scrollY 391;
  * la cornice comincia a y 81 del documento (rect.top −310 + scrollY 391). La
  * parte visibile finisce a pageTop + height = 735, quindi la cornice va alta
  * 654. La formula della #165 (offsetTop + height − alto = 554) usava
