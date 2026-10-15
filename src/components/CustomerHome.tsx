@@ -23,6 +23,7 @@ import { ReviewDialog } from "@/components/ReviewDialog";
 import { BoxLavoro } from "@/components/BoxLavoro";
 import { passiRichiesta, type StatoAppuntamento } from "@/lib/passiRichiesta";
 import { rigaStatoLavoro } from "@/lib/boxLavoro";
+import { chiaveCoppia, senzaArchiviati } from "@/lib/scelta";
 import { AltroOrario } from "@/components/AltroOrario";
 import {
   RIGA_APPUNTAMENTO_CLIENTE,
@@ -54,7 +55,13 @@ interface CustomerRequest {
   created_at: string | null;
   service: { name: string } | null;
   city: { name: string } | null;
+  /**
+   * I pro della richiesta che CONTANO: gli archiviati (120) sono fuori, cosi'
+   * non entrano ne' nelle risposte, ne' nei non letti, ne' nelle recensioni.
+   */
   pros: { id: string; name: string }[];
+  /** Il pro scelto (120), se non e' stato archiviato dopo. */
+  scelto: string | null;
 }
 
 type Appointment = AppuntamentoCliente;
@@ -119,7 +126,7 @@ export function CustomerHome({
     const { data } = await supabase
       .from("requests")
       .select(
-        "id, status, closed_reason, problem_description, created_at, services ( name ), cities ( name ), request_professionals ( professional_id, professionals ( id, user_id ) )"
+        "id, status, closed_reason, problem_description, created_at, chosen_professional_id, services ( name ), cities ( name ), request_professionals ( professional_id, archived_at, professionals ( id, user_id ) )"
       )
       .eq("customer_id", user.id)
       // «draft» = mai partita. Ci finiscono le richieste declassate quando la
@@ -150,8 +157,20 @@ export function CustomerHome({
       }
     }
 
+    // SCEGLI E ARCHIVIA (15/10, PR 7). Le coppie «richiesta:pro» archiviate:
+    // quei pro escono da tutto quello che la dashboard conta.
+    const archiviati = new Set<string>();
+    for (const r of rows) {
+      for (const rp of (r.request_professionals ?? []) as Record<string, unknown>[]) {
+        if (rp.archived_at) archiviati.add(chiaveCoppia(r.id as string, rp.professional_id as string));
+      }
+    }
+
     const reqs: CustomerRequest[] = rows.map((r) => {
-      const rps = (r.request_professionals ?? []) as Record<string, unknown>[];
+      const rps = ((r.request_professionals ?? []) as Record<string, unknown>[]).filter(
+        (rp) => !rp.archived_at
+      );
+      const scelto = (r.chosen_professional_id as string | null) ?? null;
       const pros = rps
         .map((rp) => {
           const prof = rp.professionals as { id: string; user_id: string | null } | null;
@@ -171,6 +190,7 @@ export function CustomerHome({
         service: r.services as { name: string } | null,
         city: r.cities as { name: string } | null,
         pros,
+        scelto: scelto && pros.some((p) => p.id === scelto) ? scelto : null,
       };
     });
     setRequests(reqs);
@@ -186,10 +206,10 @@ export function CustomerHome({
         .is("read_at", null);
       const m = new Map<string, number>();
       const mp = new Map<string, number>();
-      for (const u of (unreadRows ?? []) as {
-        request_id: string;
-        professional_id: string | null;
-      }[]) {
+      for (const u of senzaArchiviati(
+        (unreadRows ?? []) as { request_id: string; professional_id: string | null }[],
+        archiviati
+      )) {
         m.set(u.request_id, (m.get(u.request_id) ?? 0) + 1);
         const k = `${u.request_id}:${u.professional_id ?? ""}`;
         mp.set(k, (mp.get(k) ?? 0) + 1);
@@ -206,7 +226,7 @@ export function CustomerHome({
         .gte("starts_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
         .order("starts_at", { ascending: true })
         .limit(6);
-      setAppointments((appts as Appointment[]) ?? []);
+      setAppointments(senzaArchiviati((appts as Appointment[]) ?? [], archiviati));
 
       // Gli appuntamenti delle richieste aperte, senza limiti di data: un
       // lavoro finito la settimana scorsa e' ancora da chiudere (15/10).
@@ -216,7 +236,7 @@ export function CustomerHome({
           .from("appointments")
           .select("id, request_id, professional_id, status, starts_at, duration_minutes, proposed_by")
           .in("request_id", aperteIds);
-        setAppuntamentiAperte((storia as AppuntamentoDaFare[]) ?? []);
+        setAppuntamentiAperte(senzaArchiviati((storia as AppuntamentoDaFare[]) ?? [], archiviati));
 
         // Solo gli id, mai il testo dei messaggi: serve sapere chi ha
         // scritto, non cosa.
@@ -226,7 +246,10 @@ export function CustomerHome({
           .in("request_id", aperteIds)
           .eq("sender_type", "professional");
         const chi = new Map<string, Set<string>>();
-        for (const m of (scritti ?? []) as { request_id: string; professional_id: string | null }[]) {
+        for (const m of senzaArchiviati(
+          (scritti ?? []) as { request_id: string; professional_id: string | null }[],
+          archiviati
+        )) {
           if (!m.professional_id) continue;
           if (!chi.has(m.request_id)) chi.set(m.request_id, new Set());
           chi.get(m.request_id)!.add(m.professional_id);
@@ -730,6 +753,7 @@ export function CustomerHome({
                           appuntamenti: suoi,
                           pros: r.pros,
                           rispondenti: rispondenti.get(r.id) ?? new Set(),
+                          scelto: r.scelto,
                         })}
                         passi={passiRichiesta({
                           status: r.status,

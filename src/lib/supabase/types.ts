@@ -408,6 +408,8 @@ export interface ConversationSummary {
   lastMessage: string | null;
   lastAt: string | null;
   status: string;
+  /** (120) la conversazione di questo pro su questa richiesta e' archiviata. */
+  archiviata?: boolean;
 }
 
 // (033) un messaggio può essere una proposta di appuntamento collegata a una
@@ -416,7 +418,8 @@ export type ChatMessageKind = "text" | "appointment_proposal";
 
 export interface ChatMessage {
   id: string;
-  senderType: "customer" | "professional";
+  /** (120) «bob»: una nota di sistema, «Il cliente ha chiuso questa richiesta.» */
+  senderType: "customer" | "professional" | "bob";
   message: string;
   createdAt: string | null;
   kind: ChatMessageKind;

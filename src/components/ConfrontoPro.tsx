@@ -10,6 +10,13 @@
 // se a un pro manca una riga, al suo posto resta il vuoto e il prezzo
 // dell'uno sta accanto al prezzo dell'altro. Una riga mancante e' anche
 // un'informazione.
+//
+// SCEGLIERE (15/10, PR 7). Nella riga delle azioni c'e' «Scegli» sulle schede
+// che lo permettono (lib/scelta.ts: chi ha risposto, mai con un pro solo,
+// finche' la scelta non e' bloccata da un appuntamento confermato). Il pro
+// scelto ha la sua etichetta «Scelto», non un tasto, e la sua scheda viene
+// per prima; quelle archiviate escono dal confronto (le mette in fila
+// RichiestaCliente).
 
 import Link from "next/link";
 import { LinkChat } from "@/components/LinkChat";
@@ -50,12 +57,20 @@ export function ConfrontoPro({
   pros,
   chat,
   chiusa,
+  scelto = null,
+  sceglibili = new Set<string>(),
+  onScegli,
 }: {
   requestId: string;
   pros: ProConfronto[];
   chat: Map<string, RiassuntoChat>;
   /** Richiesta conclusa: le chat restano, i non letti non chiedono piu' niente. */
   chiusa: boolean;
+  /** Il pro scelto (120): etichetta «Scelto» al posto del tasto. */
+  scelto?: string | null;
+  /** Le schede con «Scegli» (sceglibili, lib/scelta.ts). */
+  sceglibili?: Set<string>;
+  onScegli?: (p: ProConfronto) => void;
 }) {
   const colonne =
     pros.length >= 3
@@ -75,8 +90,16 @@ export function ConfrontoPro({
             className={`card mb-2 grid grid-rows-subgrid gap-y-2 p-5 ${RIGHE}`}
             data-testid={`confronto-${p.id}`}
           >
-            {/* 1. Nome e verifica */}
+            {/* 1. Nome e verifica (e «Scelto», 15/10) */}
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {scelto === p.id && (
+                <span
+                  className="rounded-full bg-bob-indigo px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wide text-white"
+                  data-testid={`confronto-scelto-${p.id}`}
+                >
+                  Scelto
+                </span>
+              )}
               {p.attivo ? (
                 <Link
                   href={`/professionisti/${p.id}`}
@@ -157,9 +180,19 @@ export function ConfrontoPro({
 
             {/* 6. Azioni */}
             <div className="flex flex-wrap items-end gap-2 self-end">
-              {/* QUI ARRIVERA' «SCEGLI» (PR 7): il cliente sceglie il pro da
-                  questa scheda, accanto alla chat. Non c'e' ancora di
-                  proposito: va con la sua logica, non come bottone finto. */}
+              {/* «SCEGLI» (15/10, PR 7): accanto alla chat, sotto la stessa
+                  riga per tutte le schede. Chiede prima di fare: apre la
+                  finestra di conferma di RichiestaCliente. */}
+              {sceglibili.has(p.id) && onScegli && (
+                <button
+                  type="button"
+                  onClick={() => onScegli(p)}
+                  className="btn-secondary min-h-[44px] w-full px-4 py-2.5"
+                  data-testid={`confronto-scegli-${p.id}`}
+                >
+                  Scegli
+                </button>
+              )}
               <LinkChat
                 href={`/messaggi?r=${requestId}&p=${p.id}`}
                 className="btn-primary min-h-[44px] w-full px-4 py-2.5"

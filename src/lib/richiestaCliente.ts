@@ -146,11 +146,15 @@ export interface RiassuntoChat {
   nonLetti: number;
 }
 
-/** Per ogni pro: l'ultimo messaggio della chat e quanti non letti. */
+/**
+ * Per ogni pro: l'ultimo messaggio della chat e quanti non letti. I
+ * messaggi di Bob («Il cliente ha chiuso/riaperto…», 120) non contano: sono
+ * note per il pro, non la vostra conversazione (15/10).
+ */
 export function riassuntoChat(messaggi: MessaggioChat[]): Map<string, RiassuntoChat> {
   const out = new Map<string, RiassuntoChat>();
   for (const m of messaggi) {
-    if (!m.professional_id) continue;
+    if (!m.professional_id || m.sender_type === "bob") continue;
     const r = out.get(m.professional_id) ?? { ultimo: null, nonLetti: 0 };
     if (!r.ultimo || new Date(m.created_at) > new Date(r.ultimo.created_at)) r.ultimo = m;
     if (m.sender_type === "professional" && m.read_at === null) r.nonLetti += 1;
