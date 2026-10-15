@@ -5,6 +5,9 @@
 // mostra «Com'è andata?», e qual e' l'ultimo messaggio di ogni chat.
 
 import { recensibile } from "@/lib/daFareCliente";
+// appuntamentoVero sta in daFareCliente dal 15/10 (serve anche a «Da fare
+// ora»): resta esportata anche da qui per chi la importava da qui.
+export { appuntamentoVero } from "@/lib/daFareCliente";
 
 export interface RigaPrezzo {
   service_id: string | null;
@@ -103,15 +106,6 @@ export interface AppuntamentoStorico {
   status: string;
   price: number | string | null;
   created_at: string | null;
-}
-
-/**
- * Un appuntamento che c'e' o c'e' stato davvero: proposto, confermato o
- * fatto. Non conta l'annullato, e nemmeno il rifiutato («declined»): e' una
- * proposta a cui il cliente ha detto di no, l'appuntamento non e' mai nato.
- */
-export function appuntamentoVero(a: { status: string }): boolean {
-  return a.status === "proposed" || a.status === "confirmed" || a.status === "completed";
 }
 
 // IL PREZZO DELLA PRENOTAZIONE BATTE QUELLO DEL PROFILO (15/10, verifica dal

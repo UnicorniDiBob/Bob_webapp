@@ -6,24 +6,40 @@
 // stesso pro potevano spingere fuori la proposta d'orario di un altro pro,
 // cioe' l'unica cosa con una scadenza. Qui l'ordine e' fisso e dice
 // l'urgenza:
-//   (a) proposta   — un pro propone un orario (anche spostandone uno gia'
-//                    confermato) e l'orario e' ancora nel futuro;
-//   (b) risposta   — un pro ha scritto e il cliente non ha letto;
-//   (c) chiusura   — «E' andato tutto bene?» sulle richieste ferme da 10 giorni;
-//   (d) recensioni — UNA riga per tutte le recensioni mancanti.
+//   (a) proposta     — un pro propone un orario (anche spostandone uno gia'
+//                      confermato) e l'orario e' ancora nel futuro;
+//   (b) risposta     — un pro ha scritto e il cliente non ha letto;
+//   (c) lavoro-fatto — «Com'è andato il lavoro con <Pro>?»: un appuntamento
+//                      confermato e' finito (o il pro l'ha segnato fatto)
+//                      e la richiesta e' ancora aperta (15/10, PR 6);
+//   (d) chiusura     — «E' andato tutto bene?» sulle richieste senza nessun
+//                      appuntamento, in contatto da piu' di 10 giorni;
+//   (e) recensioni   — UNA riga per tutte le recensioni mancanti.
 // (a) e (b) si vedono sempre, anche oltre le quattro righe: chi aspetta una
-// risposta non deve finire sotto «+N altri». (c) e (d) riempiono il resto.
+// risposta non deve finire sotto «+N altri». (c), (d) ed (e) riempiono il
+// resto.
+//
+// IL LAVORO FATTO SI CHIEDE QUANDO SI SA (15/10, PR 6). Fino al 14/10 l'unico
+// promemoria per chiudere era (d): «matched» da 10 giorni. Ma «matched» vuol
+// dire solo che il cliente ha scritto in chat (PR 5), e dieci giorni non
+// dicono se il lavoro c'e' stato. Quando un appuntamento confermato finisce,
+// invece, lo sappiamo: e' il momento di chiedere, finche' il ricordo e'
+// fresco. Viene prima di (d) perche' e' una certezza e (d) una stima, e dopo
+// (a) e (b) perche' non scade. (d) resta solo per i lavori presi in chat,
+// senza appuntamenti: una richiesta non ha mai le due righe insieme.
 //
 // Niente React qui: e' logica pura, e i test la provano senza la pagina.
 
 /** Le righe che si vedono senza aprire «+N altri», se non ci sono urgenze in piu'. */
 export const RIGHE_VISIBILI = 4;
 
-const PRIORITA = ["proposta", "risposta", "chiusura", "recensioni"] as const;
+const PRIORITA = ["proposta", "risposta", "lavoro-fatto", "chiusura", "recensioni"] as const;
 export type TipoDaFare = (typeof PRIORITA)[number];
 
 export interface AppuntamentoDaFare {
   id: string;
+  request_id: string | null;
+  professional_id: string;
   status: string;
   proposed_by: "professional" | "customer";
   starts_at: string;
@@ -47,6 +63,14 @@ export type VoceDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFare> 
       pro: { id: string; name: string };
       messaggi: number;
     }
+  | {
+      tipo: "lavoro-fatto";
+      chiave: string;
+      richiesta: R;
+      /** Il pro dell'ultimo appuntamento finito, e quando era. */
+      pro: { id: string; name: string };
+      inizio: string;
+    }
   | { tipo: "chiusura"; chiave: string; richiesta: R }
   /** Le richieste da recensire, la piu' recente per prima. */
   | { tipo: "recensioni"; chiave: string; richieste: R[] };
@@ -54,6 +78,29 @@ export type VoceDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFare> 
 /** Una prenotazione disdetta non si recensisce: non e' un lavoro fatto (113). */
 export function recensibile(r: { closed_reason: string | null }): boolean {
   return r.closed_reason !== "disdetto";
+}
+
+/**
+ * Un appuntamento che c'e' o c'e' stato davvero: proposto, confermato o
+ * fatto. Non conta l'annullato, e nemmeno il rifiutato («declined»): e' una
+ * proposta a cui il cliente ha detto di no, l'appuntamento non e' mai nato.
+ * (15/10: sta qui da quando serve anche a «Da fare ora»; lib/richiestaCliente
+ * la riesporta.)
+ */
+export function appuntamentoVero(a: { status: string }): boolean {
+  return a.status === "proposed" || a.status === "confirmed" || a.status === "completed";
+}
+
+/**
+ * Un appuntamento il cui lavoro e' gia' avvenuto: confermato e finito
+ * (inizio + durata passati, come nonFinito), oppure segnato «completed» dal
+ * pro (AppointmentDetail), che vale anche prima della fine prevista.
+ */
+export function lavoroAvvenuto(
+  a: { status: string; starts_at: string; duration_minutes?: number | null },
+  adesso: number = Date.now()
+): boolean {
+  return a.status === "completed" || (a.status === "confirmed" && !nonFinito(a, adesso));
 }
 
 /**
@@ -87,6 +134,11 @@ export function propostaDaRispondere(
 export function vociDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFare>(
   dati: {
     appuntamenti: A[];
+    /**
+     * TUTTI gli appuntamenti delle richieste aperte, di ogni stato e di ogni
+     * data: servono a «lavoro-fatto» e a sapere chi non ne ha nessuno.
+     */
+    appuntamentiAperte: AppuntamentoDaFare[];
     /** Richieste aperte (sent, quote_request, matched). */
     aperte: R[];
     chiuse: R[];
@@ -123,11 +175,40 @@ export function vociDaFare<A extends AppuntamentoDaFare, R extends RichiestaDaFa
   }
 
   for (const r of dati.aperte) {
+    const suoi = dati.appuntamentiAperte.filter((a) => a.request_id === r.id);
+    // Un confermato ancora da venire (il pro torna per una seconda visita):
+    // il lavoro non e' finito.
+    if (suoi.some((a) => a.status === "confirmed" && nonFinito(a, adesso))) continue;
+    const ultimo = suoi
+      .filter((a) => lavoroAvvenuto(a, adesso))
+      .sort((x, y) => tempo(y.starts_at) - tempo(x.starts_at))[0];
+    if (ultimo) {
+      voci.push({
+        tipo: "lavoro-fatto",
+        chiave: `fatto-${r.id}`,
+        richiesta: r,
+        pro: r.pros.find((p) => p.id === ultimo.professional_id) ?? {
+          id: ultimo.professional_id,
+          name: "Professionista",
+        },
+        inizio: ultimo.starts_at,
+      });
+    }
+  }
+
+  for (const r of dati.aperte) {
     const n = dati.nonLettiPerRichiesta.get(r.id) ?? 0;
     const giorni = r.created_at
       ? (adesso - new Date(r.created_at).getTime()) / 86400000
       : 0;
-    if (n === 0 && r.status === "matched" && giorni > 10) {
+    // Solo i lavori presi in chat: con un appuntamento vero (proposto,
+    // confermato o fatto; l'annullato e il rifiutato no) la domanda la fa
+    // «lavoro-fatto», al momento giusto. Cosi' una richiesta non ha mai le
+    // due righe insieme.
+    const conAppuntamento = dati.appuntamentiAperte.some(
+      (a) => a.request_id === r.id && appuntamentoVero(a)
+    );
+    if (n === 0 && r.status === "matched" && giorni > 10 && !conAppuntamento) {
       voci.push({ tipo: "chiusura", chiave: `close-${r.id}`, richiesta: r });
     }
   }

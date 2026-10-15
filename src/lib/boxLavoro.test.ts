@@ -11,6 +11,7 @@ const rossi = { id: "p2", name: "Idraulica Rossi" };
 function appt(extra: Partial<AppuntamentoBox>): AppuntamentoBox {
   return {
     id: "a1",
+    request_id: "r1",
     status: "proposed",
     proposed_by: "professional",
     // Martedi' 13 ottobre, 09:00 a Roma.

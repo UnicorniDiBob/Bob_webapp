@@ -30,9 +30,8 @@ import {
 } from "@/lib/daFareCliente";
 import type { Passo } from "@/lib/passiRichiesta";
 
-export interface AppuntamentoBox extends AppuntamentoDaFare {
-  professional_id: string;
-}
+/** Dal 15/10 AppuntamentoDaFare porta gia' request_id e professional_id. */
+export type AppuntamentoBox = AppuntamentoDaFare;
 
 function primo<A extends { starts_at: string }>(as: A[]): A | undefined {
   return [...as].sort(

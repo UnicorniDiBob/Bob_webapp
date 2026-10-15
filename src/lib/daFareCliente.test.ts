@@ -3,6 +3,7 @@ import {
   RIGHE_VISIBILI,
   divisiDaFare,
   giornoVicino,
+  lavoroAvvenuto,
   nonFinito,
   ordinaDaFare,
   propostaDaRispondere,
@@ -39,6 +40,8 @@ function appuntamento(
 ): AppuntamentoDaFare {
   return {
     id,
+    request_id: null,
+    professional_id: "p1",
     status: "proposed",
     proposed_by: "professional",
     starts_at: "2026-10-12T08:00:00.000Z",
@@ -49,6 +52,7 @@ function appuntamento(
 
 const vuoto = {
   appuntamenti: [] as AppuntamentoDaFare[],
+  appuntamentiAperte: [] as AppuntamentoDaFare[],
   aperte: [] as RichiestaDaFare[],
   chiuse: [] as RichiestaDaFare[],
   nonLettiPerCoppia: new Map<string, number>(),
@@ -57,14 +61,22 @@ const vuoto = {
 };
 
 describe("da fare ora del cliente", () => {
-  it("ordine fisso: proposta, risposta, chiusura, recensioni", () => {
+  it("ordine fisso: proposta, risposta, lavoro fatto, chiusura, recensioni", () => {
     const voci = vociDaFare(
       {
         ...vuoto,
         appuntamenti: [appuntamento("a1")],
+        appuntamentiAperte: [
+          appuntamento("ieri", {
+            request_id: "fatta",
+            status: "confirmed",
+            starts_at: "2026-10-08T08:00:00.000Z",
+          }),
+        ],
         aperte: [
           richiesta("aperta"),
           richiesta("ferma", { created_at: "2026-09-20T10:00:00.000Z" }),
+          richiesta("fatta"),
         ],
         chiuse: [richiesta("chiusa", { status: "closed" })],
         nonLettiPerCoppia: new Map([["aperta:p1", 2]]),
@@ -75,6 +87,7 @@ describe("da fare ora del cliente", () => {
     expect(voci.map((v) => v.tipo)).toEqual([
       "proposta",
       "risposta",
+      "lavoro-fatto",
       "chiusura",
       "recensioni",
     ]);
@@ -102,6 +115,23 @@ describe("da fare ora del cliente", () => {
     expect(visibili).toHaveLength(6);
     expect(visibili.every((v) => v.tipo === "proposta" || v.tipo === "risposta")).toBe(true);
     expect(nascoste.map((v) => v.tipo)).toEqual(["chiusura", "recensioni"]);
+  });
+
+  it("il lavoro fatto non e' fra le urgenze: riempie fino a quattro come gli altri", () => {
+    const voci = ordinaDaFare([
+      { tipo: "recensioni" as const },
+      ...Array.from({ length: 3 }, () => ({ tipo: "lavoro-fatto" as const })),
+      ...Array.from({ length: 2 }, () => ({ tipo: "risposta" as const })),
+      { tipo: "chiusura" as const },
+    ]);
+    const { visibili, nascoste } = divisiDaFare(voci);
+    expect(visibili.map((v) => v.tipo)).toEqual([
+      "risposta",
+      "risposta",
+      "lavoro-fatto",
+      "lavoro-fatto",
+    ]);
+    expect(nascoste.map((v) => v.tipo)).toEqual(["lavoro-fatto", "chiusura", "recensioni"]);
   });
 
   it("chiusure e recensioni riempiono fino a quattro righe, il resto e' «+N altri»", () => {
@@ -181,6 +211,99 @@ describe("da fare ora del cliente", () => {
       ).filter((v) => v.tipo === "chiusura")
     ).toHaveLength(0);
     expect(vociDaFare({ ...vuoto, aperte: [richiesta("giovane")] }, ora)).toHaveLength(0);
+  });
+});
+
+describe("il lavoro fatto: «Com'è andato il lavoro con…?»", () => {
+  // Giovedi' 8 ottobre, 10:00 a Roma: finito ieri.
+  const ieri = appuntamento("ieri", {
+    request_id: "r",
+    professional_id: "p2",
+    status: "confirmed",
+    starts_at: "2026-10-08T08:00:00.000Z",
+  });
+  const r = richiesta("r", { status: "matched", pros: [pro("p1"), pro("p2")] });
+  const fatti = (dati: Partial<typeof vuoto>) =>
+    vociDaFare({ ...vuoto, aperte: [r], ...dati }, ora).filter((v) => v.tipo === "lavoro-fatto");
+
+  it("un confermato finito su una richiesta aperta: la voce, con il suo pro e l'orario", () => {
+    const [v] = fatti({ appuntamentiAperte: [ieri] });
+    expect(v?.tipo).toBe("lavoro-fatto");
+    if (v?.tipo !== "lavoro-fatto") return;
+    expect(v.richiesta.id).toBe("r");
+    expect(v.pro).toEqual(pro("p2"));
+    expect(v.inizio).toBe("2026-10-08T08:00:00.000Z");
+  });
+
+  it("subito dopo la fine, non prima: inizio + durata, un'ora se manca", () => {
+    // Iniziato alle 11:30 di oggi a Roma, adesso sono le 12:00.
+    const inCorso = { ...ieri, starts_at: "2026-10-09T09:30:00.000Z", duration_minutes: 60 };
+    expect(fatti({ appuntamentiAperte: [inCorso] })).toHaveLength(0);
+    const appenaFinito = { ...ieri, starts_at: "2026-10-09T08:30:00.000Z", duration_minutes: null };
+    expect(fatti({ appuntamentiAperte: [appenaFinito] })).toHaveLength(1);
+  });
+
+  it("con un secondo confermato ancora da venire, il lavoro non e' finito", () => {
+    const torna = { ...ieri, id: "torna", starts_at: "2026-10-12T08:00:00.000Z" };
+    expect(fatti({ appuntamentiAperte: [ieri, torna] })).toHaveLength(0);
+  });
+
+  it("fra due finiti vale il piu' recente", () => {
+    const prima = { ...ieri, id: "prima", professional_id: "p1", starts_at: "2026-10-01T08:00:00.000Z" };
+    const [v] = fatti({ appuntamentiAperte: [ieri, prima] });
+    expect(v?.tipo === "lavoro-fatto" && v.pro.id).toBe("p2");
+  });
+
+  it("richiesta gia' chiusa: niente voce, va fra le recensioni", () => {
+    const chiusa = richiesta("r", { status: "closed", pros: [pro("p2")] });
+    const voci = vociDaFare({ ...vuoto, chiuse: [chiusa], appuntamentiAperte: [ieri] }, ora);
+    expect(voci.map((v) => v.tipo)).toEqual(["recensioni"]);
+  });
+
+  it("proposto o annullato nel passato: niente voce", () => {
+    for (const status of ["proposed", "cancelled", "declined"]) {
+      expect(fatti({ appuntamentiAperte: [{ ...ieri, status }] })).toHaveLength(0);
+    }
+  });
+
+  it("«completed» dal pro vale come fatto, anche prima della fine prevista", () => {
+    const segnato = { ...ieri, status: "completed", starts_at: "2026-10-09T09:30:00.000Z" };
+    expect(lavoroAvvenuto(segnato, ora)).toBe(true);
+    expect(fatti({ appuntamentiAperte: [segnato] })).toHaveLength(1);
+  });
+
+  it("gli appuntamenti di un'altra richiesta non contano", () => {
+    expect(fatti({ appuntamentiAperte: [{ ...ieri, request_id: "altra" }] })).toHaveLength(0);
+  });
+
+  it("il conto del sottotitolo lo include", () => {
+    const voci = vociDaFare({ ...vuoto, aperte: [r], appuntamentiAperte: [ieri] }, ora);
+    expect(riepilogoCliente(voci.length, [], adesso)).toBe("1 cosa da fare");
+  });
+});
+
+describe("«E' andato tutto bene?» resta per i lavori presi in chat", () => {
+  const ferma = richiesta("ferma", { created_at: "2026-09-20T10:00:00.000Z" });
+  const tipi = (appuntamentiAperte: AppuntamentoDaFare[]) =>
+    vociDaFare({ ...vuoto, aperte: [ferma], appuntamentiAperte }, ora).map((v) => v.tipo);
+
+  it("senza appuntamenti: la riga di sempre", () => {
+    expect(tipi([])).toEqual(["chiusura"]);
+  });
+
+  it("con un appuntamento vero (proposto, confermato futuro o finito): mai «chiusura»", () => {
+    const base = { request_id: "ferma" };
+    expect(tipi([appuntamento("p", base)])).toEqual([]);
+    expect(tipi([appuntamento("c", { ...base, status: "confirmed" })])).toEqual([]);
+    expect(
+      tipi([appuntamento("f", { ...base, status: "confirmed", starts_at: "2026-10-08T08:00:00.000Z" })])
+    ).toEqual(["lavoro-fatto"]);
+  });
+
+  it("un appuntamento annullato o rifiutato non conta: torna la riga di sempre", () => {
+    for (const status of ["cancelled", "declined"]) {
+      expect(tipi([appuntamento("x", { request_id: "ferma", status })])).toEqual(["chiusura"]);
+    }
   });
 });
 

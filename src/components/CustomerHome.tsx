@@ -4,8 +4,8 @@
 // non per data di creazione delle richieste. Sul telefono, in quest'ordine
 // (15/10; sul desktop vedi «DUE COLONNE» piu' sotto):
 //   1. Da fare ora    → proposte di appuntamento, risposte non lette,
-//                       lavori da chiudere, recensioni mancanti — in
-//                       quest'ordine (lib/daFareCliente.ts, 15/10)
+//                       lavori fatti da chiudere, lavori fermi, recensioni
+//                       mancanti — in quest'ordine (lib/daFareCliente.ts, 15/10)
 //   2. Prossimi appuntamenti → proposte da confermare + confermati (migration 021)
 //   3. Lavori in corso → un box per richiesta aperta, che apre la sua pagina
 //                       (15/10, BoxLavoro; o, se non c'e' niente di niente,
@@ -38,8 +38,10 @@ import {
   daRecensire,
   divisiDaFare,
   nonFinito,
+  quandoBreve,
   riepilogoCliente,
   vociDaFare,
+  type AppuntamentoDaFare,
   type VoceDaFare,
 } from "@/lib/daFareCliente";
 
@@ -96,9 +98,12 @@ export function CustomerHome({
     new Map()
   );
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  // Tutti gli appuntamenti delle richieste aperte, di ogni stato e data:
+  // «lavoro-fatto» e la vecchia «chiusura» (15/10, PR 6). Quelli qui sopra
+  // sono solo i prossimi, per «Prossimi appuntamenti».
+  const [appuntamentiAperte, setAppuntamentiAperte] = useState<AppuntamentoDaFare[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
-  const [confirmClose, setConfirmClose] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [tuttiDaFare, setTuttiDaFare] = useState(false);
   const [tuttiAppuntamenti, setTuttiAppuntamenti] = useState(false);
@@ -199,6 +204,19 @@ export function CustomerHome({
         .limit(6);
       setAppointments((appts as Appointment[]) ?? []);
 
+      // Gli appuntamenti delle richieste aperte, senza limiti di data: un
+      // lavoro finito la settimana scorsa e' ancora da chiudere (15/10).
+      const aperteIds = reqs.filter((r) => OPEN_STATUSES.includes(r.status)).map((r) => r.id);
+      if (aperteIds.length) {
+        const { data: storia } = await supabase
+          .from("appointments")
+          .select("id, request_id, professional_id, status, starts_at, duration_minutes, proposed_by")
+          .in("request_id", aperteIds);
+        setAppuntamentiAperte((storia as AppuntamentoDaFare[]) ?? []);
+      } else {
+        setAppuntamentiAperte([]);
+      }
+
       const { data: myRatings } = await supabase
         .from("ratings")
         .select("request_id, professional_id")
@@ -213,6 +231,7 @@ export function CustomerHome({
     } else {
       setUnreadByReq(new Map());
       setAppointments([]);
+      setAppuntamentiAperte([]);
     }
     setLoadingData(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,16 +240,6 @@ export function CustomerHome({
   useEffect(() => {
     load();
   }, [load]);
-
-  async function markClosed(id: string) {
-    const { error } = await supabase
-      .from("requests")
-      .update({ status: "closed" })
-      .eq("id", id);
-    if (!error) {
-      setRequests((rs) => rs.map((r) => (r.id === id ? { ...r, status: "closed" } : r)));
-    }
-  }
 
   // Conferma / Rifiuta: la stessa risposta della pagina della richiesta
   // (lib/appuntamentoCliente.ts, 15/10).
@@ -268,6 +277,7 @@ export function CustomerHome({
   // c'e' solo come si disegna ogni riga.
   const daFare = vociDaFare({
     appuntamenti: appointments,
+    appuntamentiAperte,
     aperte: openRequests,
     chiuse: closedRequests,
     nonLettiPerCoppia: unreadByPair,
@@ -355,12 +365,33 @@ export function CustomerHome({
           </LinkChat>
         );
       }
+      // CHIUDERE SI FA NELLA PAGINA DELLA RICHIESTA (15/10, PR 6). Le due
+      // righe portano a «Com'è andata?» (#com-e-andata), dove «Sì, è
+      // concluso» e le stelle stanno insieme: qui c'era una finestra di
+      // conferma che chiudeva alla cieca, senza vedere con chi e come.
+      case "lavoro-fatto": {
+        const r = v.richiesta;
+        return (
+          <Link
+            href={`/dashboard/richieste/${r.id}#com-e-andata`}
+            className={RIGA_TASTO}
+            data-testid={`todo-${v.chiave}`}
+          >
+            {testoRiga(
+              `Com'è andato il lavoro con ${v.pro.name}?`,
+              `${r.service?.name ?? "Lavoro"} · ${quandoBreve(v.inizio)}`
+            )}
+            <span className="shrink-0 text-sm font-semibold text-bob-indigo">
+              Chiudi e recensisci →
+            </span>
+          </Link>
+        );
+      }
       case "chiusura": {
         const r = v.richiesta;
         return (
-          <button
-            type="button"
-            onClick={() => setConfirmClose(r.id)}
+          <Link
+            href={`/dashboard/richieste/${r.id}#com-e-andata`}
             className={RIGA_TASTO}
             data-testid={`todo-${v.chiave}`}
           >
@@ -371,7 +402,7 @@ export function CustomerHome({
             <span className="shrink-0 text-sm font-semibold text-bob-indigo">
               Chiudi e recensisci →
             </span>
-          </button>
+          </Link>
         );
       }
       case "recensioni": {
@@ -763,47 +794,6 @@ export function CustomerHome({
           onChiudi={() => setSlotPickerFor(null)}
           onProposto={load}
         />
-      )}
-
-      {confirmClose && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setConfirmClose(null)}
-        >
-          <div
-            className="card w-full max-w-sm p-6"
-            onClick={(e) => e.stopPropagation()}
-            data-testid="dialog-close-request"
-          >
-            <h3 className="text-lg font-bold text-bob-ink">Lavoro concluso?</h3>
-            <p className="mt-2 text-sm text-bob-ink/65">
-              Confermi che il lavoro è stato concluso? Dopo potrai lasciare una
-              recensione al professionista.
-            </p>
-            <div className="mt-5 flex gap-2">
-              <button
-                onClick={() => setConfirmClose(null)}
-                className="btn-secondary flex-1 py-2.5"
-                data-testid="button-close-cancel"
-              >
-                Non ancora
-              </button>
-              <button
-                onClick={async () => {
-                  const id = confirmClose;
-                  setConfirmClose(null);
-                  await markClosed(id);
-                }}
-                className="btn-primary flex-1 py-2.5"
-                data-testid="button-close-confirm"
-              >
-                Sì, concluso ✓
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {reviewFor && (
