@@ -131,10 +131,12 @@ export function RichiestaCliente({ id }: { id: string }) {
   // SCEGLI E RIAPRI (15/10, PR 7). Una finestra sola, per l'una o l'altra
   // domanda; la riga di conferma resta sotto le schede dopo il ricarico.
   const [domanda, setDomanda] = useState<{
-    tipo: "scegli" | "riapri" | "archivia";
+    tipo: "scegli" | "archivia";
     pro: { id: string; nome: string };
   } | null>(null);
   const [inviando, setInviando] = useState(false);
+  /** Il pro la cui conversazione si sta riaprendo (16/10): spegne il suo «Riapri». */
+  const [riaprendo, setRiaprendo] = useState<string | null>(null);
   const [erroreDomanda, setErroreDomanda] = useState<string | null>(null);
   const [fatto, setFatto] = useState<string | null>(null);
   const [archiviAperti, setArchiviAperti] = useState(false);
@@ -315,6 +317,29 @@ export function RichiestaCliente({ id }: { id: string }) {
 
   const { rispondi, inCorso } = useRispostaAppuntamento(user?.id, carica);
 
+  // RIAPRIRE E' SILENZIOSO (16/10, migrazione 123): il pro torna a poter
+  // scrivere ma non riceve niente, e sentira' il cliente solo quando il
+  // cliente gli scrive davvero. Niente domanda prima: non avvisa nessuno e
+  // si disfa archiviando di nuovo.
+  async function riapriSubito(pro: { id: string; nome: string }) {
+    setRiaprendo(pro.id);
+    setFatto(null);
+    try {
+      const res = await fetch(`/api/richieste/${id}/riapri`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ professionalId: pro.id }),
+      });
+      const corpo = (await res.json().catch(() => ({}))) as { error?: string };
+      setFatto(res.ok ? `Hai riaperto la conversazione con ${pro.nome}. Potete scrivervi di nuovo.` : corpo.error ?? "Non è andata. Riprova fra poco.");
+      if (res.ok) await carica();
+    } catch {
+      setFatto("Non è andata. Riprova fra poco.");
+    } finally {
+      setRiaprendo(null);
+    }
+  }
+
   async function rispondiDomanda() {
     if (!domanda) return;
     setInviando(true);
@@ -333,11 +358,9 @@ export function RichiestaCliente({ id }: { id: string }) {
       setFatto(
         domanda.tipo === "scegli"
           ? `Hai scelto ${domanda.pro.nome}. Le altre conversazioni sono archiviate.`
-          : domanda.tipo === "archivia"
-            ? `Hai archiviato la conversazione con ${domanda.pro.nome}.${
-                corpo.sceltaAnnullata ? " La scelta è annullata: puoi sceglierne un altro." : ""
-              }`
-            : `Hai riaperto la conversazione con ${domanda.pro.nome}.`
+          : `Hai archiviato la conversazione con ${domanda.pro.nome}.${
+              corpo.sceltaAnnullata ? " La scelta è annullata: puoi sceglierne un altro." : ""
+            }`
       );
       setDomanda(null);
       await carica();
@@ -558,8 +581,8 @@ export function RichiestaCliente({ id }: { id: string }) {
         {/* CONVERSAZIONI ARCHIVIATE (15/10, PR 7). Sotto le schede, chiuse
             all'inizio: sono il passato del confronto, non la scelta di oggi.
             Da qui si rileggono («Apri», in sola lettura per il pro) e si
-            riaprono («Riapri»: il pro torna a poter scrivere e lo sa da un
-            messaggio di Bob). */}
+            riaprono («Riapri»: il pro torna a poter scrivere; dal 16/10 in
+            silenzio, senza messaggi di Bob — migrazione 123). */}
         {archiviate.length > 0 && (
           <div className="card mt-3 p-2" data-testid="archiviate">
             <button
@@ -598,10 +621,8 @@ export function RichiestaCliente({ id }: { id: string }) {
                       </LinkChat>
                       <button
                         type="button"
-                        onClick={() => {
-                          setErroreDomanda(null);
-                          setDomanda({ tipo: "riapri", pro: { id: p.id, nome: p.nome } });
-                        }}
+                        onClick={() => void riapriSubito({ id: p.id, nome: p.nome })}
+                        disabled={riaprendo === p.id}
                         className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-sm font-semibold text-bob-indigo hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
                         data-testid={`riapri-${p.id}`}
                       >
@@ -695,11 +716,9 @@ export function RichiestaCliente({ id }: { id: string }) {
           titolo={
             domanda.tipo === "scegli"
               ? `Scegli ${domanda.pro.nome}?`
-              : domanda.tipo === "archivia"
-                ? `Archiviare la conversazione con ${domanda.pro.nome}?`
-                : `Riaprire la conversazione con ${domanda.pro.nome}?`
+              : `Archiviare la conversazione con ${domanda.pro.nome}?`
           }
-          conferma={domanda.tipo === "scegli" ? "Scegli" : domanda.tipo === "archivia" ? "Archivia" : "Riapri"}
+          conferma={domanda.tipo === "scegli" ? "Scegli" : "Archivia"}
           inCorso={inviando}
           errore={erroreDomanda}
           onConferma={() => void rispondiDomanda()}
@@ -720,10 +739,8 @@ export function RichiestaCliente({ id }: { id: string }) {
                 </>
               );
             })()
-          ) : domanda.tipo === "archivia" ? (
-            <>Riceverà: «Il cliente ha chiuso questa richiesta.» Potrai riaprirla quando vuoi.</>
           ) : (
-            <>Riceverà: «Il cliente ha riaperto la conversazione.»</>
+            <>Riceverà: «Il cliente ha chiuso questa richiesta.» Potrai riaprirla quando vuoi.</>
           )}
         </FinestraConferma>
       )}

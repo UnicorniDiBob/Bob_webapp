@@ -47,8 +47,8 @@ import { ProCalendar } from "@/components/ProCalendar";
 import { FinestraConferma } from "@/components/FinestraConferma";
 import { RigaConversazione } from "@/components/RigaConversazione";
 import { MenuConversazione, type VoceMenu } from "@/components/MenuConversazione";
-import { CodaArchivia, type DaArchiviare } from "@/lib/scorri";
-import { BOB_CHIUSA, BOB_RIAPERTA } from "@/lib/scelta";
+import { CodaArchivia, azioniRiga, type DaArchiviare } from "@/lib/scorri";
+import { BOB_CHIUSA } from "@/lib/scelta";
 import {
   altezzaCampo,
   altezzaCornice,
@@ -269,7 +269,8 @@ function MessaggiInner() {
   // della richiesta) la scheda giusta e' «Archiviate», anche senza ?vista.
   const vistaDecisa = useRef(params.get("vista") != null);
   const [domandaChat, setDomandaChat] = useState<{
-    tipo: "archivia" | "riapri";
+    // Solo «archivia»: riaprire non chiede piu' niente (16/10, 123).
+    tipo: "archivia";
     conv: ConversationSummary;
   } | null>(null);
   const [inviandoChat, setInviandoChat] = useState(false);
@@ -378,19 +379,56 @@ function MessaggiInner() {
   }
 
   /** Le azioni di una conversazione, per il «⋯», il tasto destro e la chat. */
+  // RIAPRIRE E' SILENZIOSO (16/10, migrazione 123): il pro torna a poter
+  // scrivere ma non riceve niente, e sentira' il cliente solo quando il
+  // cliente gli scrive davvero. Per questo riaprire non ha la barra
+  // «Annulla» ne' una domanda prima: non avvisa nessuno, e si disfa
+  // archiviando di nuovo. La riga lascia «Archiviate» e compare in «Attive»;
+  // dalla lista non si cambia scheda.
+  async function riapriSubito(c: ConversationSummary): Promise<boolean> {
+    if (!c.professionalId || !user) return false;
+    setAvvisoLista(null);
+    try {
+      const res = await fetch(`/api/richieste/${c.requestId}/riapri`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ professionalId: c.professionalId }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string; motivo?: string };
+      if (!res.ok && j.motivo !== "non_archiviata") {
+        setAvvisoLista(j.error ?? "Non è andata. Riprova fra poco.");
+        return false;
+      }
+      setConversations(await getConversations(user.id, role));
+      return true;
+    } catch {
+      setAvvisoLista("Non è andata. Riprova fra poco.");
+      return false;
+    }
+  }
+
+  /** Le azioni di una conversazione, per il «⋯», il tasto destro e la chat. */
   function vociDi(c: ConversationSummary): VoceMenu[] {
-    const voci: VoceMenu[] = [];
-    // Il cliente non segna le archiviate (le vede solo nella loro scheda); il
-    // pro si', le rilegge in sola lettura.
-    if (!(conSchede && c.archiviata)) {
-      voci.push({
+    // Le stesse dello scorrimento (lib/scorri.ts, azioniRiga): «da leggere»
+    // per tutti, anche sulle archiviate; per il cliente «Archivia» nelle
+    // attive e «Riapri» nelle archiviate.
+    const a = azioniRiga({
+      ruolo: myType,
+      archiviata: Boolean(c.archiviata),
+      chiusa: c.status === "closed",
+      daLeggere: Boolean(c.daLeggere),
+    });
+    const voci: VoceMenu[] = [
+      {
         etichetta: c.daLeggere ? "Segna come letto" : "Segna come da leggere",
         azione: () => void cambiaDaLeggere(c, !c.daLeggere),
         testid: "voce-da-leggere",
-      });
-    }
-    if (conSchede && !c.archiviata && c.status !== "closed") {
+      },
+    ];
+    if (a.sinistra?.tipo === "archivia") {
       voci.push({ etichetta: "Archivia", azione: () => archiviaConAnnulla(c), testid: "voce-archivia" });
+    } else if (a.sinistra?.tipo === "riapri") {
+      voci.push({ etichetta: "Riapri", azione: () => void riapriSubito(c), testid: "voce-riapri" });
     }
     return voci;
   }
@@ -959,19 +997,30 @@ function MessaggiInner() {
                     ...c,
                     lastMessage: row.message ?? c.lastMessage,
                     lastAt: row.created_at ?? c.lastAt,
-                    // (120) La nota di Bob arriva quando il cliente archivia
-                    // o riapre: il campo del pro si chiude o si riapre
-                    // subito, senza ricaricare la pagina.
+                    // (120) La nota di Bob arriva quando il cliente archivia:
+                    // il campo del pro si chiude subito.
                     archiviata:
-                      row.sender_type === "bob" && row.message === BOB_CHIUSA
-                        ? true
-                        : row.sender_type === "bob" && row.message === BOB_RIAPERTA
-                          ? false
-                          : c.archiviata,
+                      row.sender_type === "bob" && row.message === BOB_CHIUSA ? true : c.archiviata,
                   }
                 : c
             )
           );
+          // (16/10, 123) Riaprire non manda piu' una nota: il pro se ne
+          // accorge al primo messaggio vero del cliente. A ogni messaggio
+          // dell'altra parte si rilegge lo stato della conversazione, cosi'
+          // il campo si riapre senza ricaricare.
+          if (myType === "professional" && row.sender_type === "customer" && activeP) {
+            void (async () => {
+              const { data } = await createClient()
+                .from("request_professionals")
+                .select("archived_at")
+                .eq("request_id", activeR)
+                .eq("professional_id", activeP)
+                .maybeSingle();
+              const archiviata = Boolean((data as { archived_at: string | null } | null)?.archived_at);
+              setConversations((cs) => cs.map((c) => (keyOf(c) === activeId ? { ...c, archiviata } : c)));
+            })();
+          }
         }
       )
       .subscribe();
@@ -1449,25 +1498,29 @@ function MessaggiInner() {
               {nellaVista.map((c) => {
                 const isActive = keyOf(c) === activeId;
                 const nonLetto = (c.nonLetti ?? 0) > 0 || Boolean(c.daLeggere);
-                // Chi puo' scorrere cosa (15/10): a destra cliente e pro (il
-                // cliente non sulle archiviate), a sinistra solo il cliente,
-                // nella scheda «Attive», su una richiesta non chiusa.
-                const puoSegnare = !(conSchede && c.archiviata);
-                const puoArchiviare = conSchede && !c.archiviata && c.status !== "closed";
+                // Chi puo' scorrere cosa: lib/scorri.ts, azioniRiga (16/10).
+                const az = azioniRiga({
+                  ruolo: myType,
+                  archiviata: Boolean(c.archiviata),
+                  chiusa: c.status === "closed",
+                  daLeggere: Boolean(c.daLeggere),
+                });
                 return (
                   <RigaConversazione
                     key={keyOf(c)}
                     attiva={isActive && !telefono}
                     onApri={(e) => selectConversation(c, puntoDelTocco(e))}
-                    destra={
-                      puoSegnare
-                        ? {
-                            etichetta: c.daLeggere ? "Letto" : "Da leggere",
-                            azione: () => void cambiaDaLeggere(c, !c.daLeggere),
-                          }
-                        : null
+                    destra={{
+                      etichetta: az.destra.etichetta,
+                      azione: () => void cambiaDaLeggere(c, !c.daLeggere),
+                    }}
+                    sinistra={
+                      az.sinistra?.tipo === "archivia"
+                        ? { etichetta: "Archivia", tono: "archivia", azione: () => archiviaConAnnulla(c) }
+                        : az.sinistra?.tipo === "riapri"
+                          ? { etichetta: "Riapri", tono: "riapri", azione: () => riapriSubito(c) }
+                          : null
                     }
-                    sinistra={puoArchiviare ? { etichetta: "Archivia", azione: () => archiviaConAnnulla(c) } : null}
                     voci={vociDi(c)}
                     testid={`conv-${c.requestId}`}
                     chiave={keyOf(c)}
@@ -1594,14 +1647,27 @@ function MessaggiInner() {
                       <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
                     </button>
                   )}
-                  {/* (PR 9, 15/10) Il cliente archivia o riapre da qui, con la
-                      stessa domanda della pagina della richiesta. */}
+                  {/* (PR 9, 15/10) Il cliente archivia da qui, con la stessa
+                      domanda della pagina della richiesta; riapre subito,
+                      senza domanda (16/10, 123). */}
                   {conSchede && (active.archiviata || active.status !== "closed") && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         setErroreChat(null);
-                        setDomandaChat({ tipo: active.archiviata ? "riapri" : "archivia", conv: active });
+                        if (!active.archiviata) {
+                          setDomandaChat({ tipo: "archivia", conv: active });
+                          return;
+                        }
+                        // Riaprire e' silenzioso (123): niente domanda. Da qui
+                        // si segue la conversazione nella scheda «Attive».
+                        const conv = active;
+                        if (await riapriSubito(conv)) {
+                          vistaDecisa.current = true;
+                          setVista("attive");
+                          router.replace(indirizzo(conv, "attive"), { scroll: false });
+                          loadThread(conv.requestId, conv.professionalId, { silenzioso: true });
+                        }
                       }}
                       className={`${vociDi(active).some((v) => v.testid === "voce-da-leggere") ? "" : "ml-auto"} inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40 ${
                         active.archiviata
@@ -1851,19 +1917,15 @@ function MessaggiInner() {
 
       {domandaChat && (
         <FinestraConferma
-          titolo={`${domandaChat.tipo === "archivia" ? "Archiviare" : "Riaprire"} la conversazione con ${domandaChat.conv.counterpartName}?`}
-          conferma={domandaChat.tipo === "archivia" ? "Archivia" : "Riapri"}
+          titolo={`Archiviare la conversazione con ${domandaChat.conv.counterpartName}?`}
+          conferma="Archivia"
           inCorso={inviandoChat}
           errore={erroreChat}
           onConferma={() => void rispondiDomandaChat()}
           onAnnulla={() => setDomandaChat(null)}
           testid={`finestra-chat-${domandaChat.tipo}`}
         >
-          {domandaChat.tipo === "archivia" ? (
-            <>Riceverà: «Il cliente ha chiuso questa richiesta.» Potrai riaprirla quando vuoi.</>
-          ) : (
-            <>Riceverà: «Il cliente ha riaperto la conversazione.»</>
-          )}
+          <>Riceverà: «Il cliente ha chiuso questa richiesta.» Potrai riaprirla quando vuoi.</>
         </FinestraConferma>
       )}
 

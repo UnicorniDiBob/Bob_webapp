@@ -1,10 +1,12 @@
 // POST /api/richieste/[id]/riapri  { professionalId }
 //
 // IL CLIENTE RIAPRE UNA CONVERSAZIONE ARCHIVIATA (15/10, PR 7, migrazione
-// 120). Il pro torna a poter scrivere e riceve in chat da Bob «Il cliente ha
-// riaperto la conversazione.». La scelta non cambia: si riapre per parlare,
-// non per scegliere. Una transazione sola, riapri_conversazione() nel
-// database; qui chi e' l'utente e se la richiesta e' sua (sceltaServer.ts).
+// 120). Il pro torna a poter scrivere. IN SILENZIO dal 16/10 (migrazione
+// 123): niente piu' la nota di Bob «Il cliente ha riaperto la
+// conversazione.»; il pro sente il cliente solo quando il cliente gli scrive
+// davvero. La scelta non cambia: si riapre per parlare, non per scegliere.
+// Una transazione sola, riapri_conversazione() nel database; qui chi e'
+// l'utente e se la richiesta e' sua (sceltaServer.ts).
 
 import { NextResponse } from "next/server";
 import { preparaScelta, rifiuto } from "@/lib/sceltaServer";

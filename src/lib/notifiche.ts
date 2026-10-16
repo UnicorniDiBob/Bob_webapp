@@ -293,7 +293,8 @@ export async function caricaNotifiche(
       } | null);
   if (!rigaPro) return ordina(out);
 
-  // 2bis. La richiesta chiusa o riaperta dal cliente (PR 8, 15/10).
+  // 2bis. La richiesta chiusa dal cliente (PR 8, 15/10). Dal 16/10 (123)
+  //      riaprire e' silenzioso: le voci «riaperta» sono solo quelle vecchie.
   out.push(...(await caricaNotificheChiusure(supabase, rigaPro.id)));
 
   const [servizi, verifica] = await Promise.all([

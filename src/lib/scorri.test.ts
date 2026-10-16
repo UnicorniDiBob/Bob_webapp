@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ATTESA_ARCHIVIA_MS,
+  azioniRiga,
+  pallino,
   CodaArchivia,
   azioneAlRilascio,
   bloccoDirezione,
@@ -133,5 +135,51 @@ describe("il pallino con i segni «da leggere»", () => {
         { nonLetti: 0, daLeggere: false },
       ])
     ).toBe(1 + 3 + 2);
+  });
+});
+
+describe("chi puo' scorrere cosa (16/10)", () => {
+  const base = { archiviata: false, chiusa: false, daLeggere: false };
+
+  it("cliente, «Attive»: a destra «Da leggere», a sinistra «Archivia» con «Annulla»", () => {
+    expect(azioniRiga({ ...base, ruolo: "customer" })).toEqual({
+      destra: { etichetta: "Da leggere" },
+      sinistra: { tipo: "archivia", etichetta: "Archivia", conAnnulla: true },
+    });
+  });
+
+  it("cliente, «Archiviate»: a destra «Da leggere», a sinistra «Riapri» SENZA «Annulla»", () => {
+    expect(azioniRiga({ ...base, ruolo: "customer", archiviata: true })).toEqual({
+      destra: { etichetta: "Da leggere" },
+      sinistra: { tipo: "riapri", etichetta: "Riapri", conAnnulla: false },
+    });
+  });
+
+  it("segnata: a destra «Letto»", () => {
+    expect(azioniRiga({ ...base, ruolo: "customer", archiviata: true, daLeggere: true }).destra.etichetta).toBe("Letto");
+  });
+
+  it("richiesta chiusa, attiva: niente da archiviare", () => {
+    expect(azioniRiga({ ...base, ruolo: "customer", chiusa: true }).sinistra).toBeNull();
+  });
+
+  it("il pro: solo a destra, anche sulle archiviate", () => {
+    expect(azioniRiga({ ...base, ruolo: "professional" }).sinistra).toBeNull();
+    expect(azioniRiga({ ...base, ruolo: "professional", archiviata: true }).sinistra).toBeNull();
+  });
+});
+
+describe("il pallino per ruolo (16/10)", () => {
+  const conv = [
+    { nonLetti: 0, daLeggere: true, archiviata: true },
+    { nonLetti: 2, daLeggere: false, archiviata: false },
+  ];
+
+  it("il cliente conta il segno anche su un'archiviata", () => {
+    expect(pallino("customer", conv)).toBe(3);
+  });
+
+  it("il pro no: le archiviate non contano", () => {
+    expect(pallino("professional", conv)).toBe(2);
   });
 });

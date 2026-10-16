@@ -3,7 +3,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { archiviateInFondo } from "@/lib/scelta";
-import { contaNonLetti } from "@/lib/scorri";
+import { pallino } from "@/lib/scorri";
 import type {
   Appointment,
   ChatMessage,
@@ -292,20 +292,15 @@ async function statiLettura(userId: string, role: Role): Promise<Map<string, Sta
 }
 
 // Numero totale di messaggi non letti ricevuti dall'utente (da usare per il
-// badge). (122) Una conversazione segnata «da leggere» conta almeno 1; su
-// una archiviata il segno non conta (il cliente li' non lo puo' mettere, il
-// pro non conta le archiviate).
+// badge). (122) Una conversazione segnata «da leggere» conta almeno 1.
 export async function getUnreadCount(
   userId: string,
   role: Role
 ): Promise<number> {
   const stati = await statiLettura(userId, role);
-  return contaNonLetti(
-    Array.from(stati.values()).map((s) => ({
-      nonLetti: s.nonLetti,
-      daLeggere: s.daLeggere && !s.archiviata,
-    }))
-  );
+  // (16/10) Il cliente puo' segnare anche le archiviate, e li' il segno
+  // conta; il pro non conta le archiviate (lib/scorri.ts, pallino).
+  return pallino(role === "professional" ? "professional" : "customer", Array.from(stati.values()));
 }
 
 // (122) Segna o toglie «da leggere» per chi e' dentro: la route decide la
