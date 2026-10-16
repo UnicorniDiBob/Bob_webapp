@@ -92,7 +92,10 @@ export async function svuotaFileUtente(admin: SupabaseClient, userId: string): P
       const { count, error: e2 } = await admin
         .from("job_briefs")
         .select("id", { count: "exact", head: true })
-        .contains("photos", [{ storagePath: p }])
+        // .contains() con un array JS manda un array letterale di Postgres
+        // ({...}), non JSON: su una colonna jsonb la query fallisce. Trovato
+        // dal vivo il 16/10. Il filtro cs vuole il JSON come testo.
+        .filter("photos", "cs", JSON.stringify([{ storagePath: p }]))
         .or(`user_id.is.null,user_id.neq.${userId}`);
       if (e2) throw new Error(`job_briefs (controllo): ${e2.message}`);
       if ((count ?? 0) > 0) esito.tenuti++;

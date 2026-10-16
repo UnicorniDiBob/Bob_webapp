@@ -34,7 +34,15 @@ function finto(file: Record<string, string[]>, brief: Brief[], rotto: string[] =
     const q = {
       select: (_c: string, o?: { count?: string; head?: boolean }) => { contare = !!o?.head; return q; },
       eq: (_c: string, v: string) => { righe = righe.filter((r) => r.user_id === v); return q; },
-      contains: (_c: string, v: { storagePath: string }[]) => { righe = righe.filter((r) => r.photos.some((f) => f.storagePath === v[0].storagePath)); return q; },
+      // Come PostgREST su una colonna jsonb: il valore di cs deve essere JSON
+      // come testo. Un array JS (cio' che manda .contains()) e' un errore.
+      filter: (_c: string, op: string, v: unknown) => {
+        if (op !== "cs" || typeof v !== "string") throw new Error("cs su jsonb vuole JSON come testo");
+        const cercato = (JSON.parse(v) as { storagePath: string }[])[0].storagePath;
+        righe = righe.filter((r) => r.photos.some((f) => f.storagePath === cercato));
+        return q;
+      },
+      contains: () => { throw new Error("contains() su jsonb manda un array Postgres, non JSON"); },
       or: (f: string) => { const id = f.split("user_id.neq.")[1]; righe = righe.filter((r) => r.user_id === null || r.user_id !== id); return q; },
       update: (val: { photos: [] }) => ({
         eq: async (_c: string, v: string) => { for (const r of brief) if (r.user_id === v) r.photos = val.photos; return { error: null }; },

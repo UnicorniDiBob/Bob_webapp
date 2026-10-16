@@ -123,7 +123,12 @@ export async function GET(request: Request) {
     // orfano lo segnaliamo con il contatore, l'account va via.
     const file = await svuotaFileUtente(admin, riga.user_id);
     fileRimossi += Object.values(file.rimossi).reduce((a, n) => a + n, 0);
-    if (file.errori.length > 0) errori.push(`storage:${riga.user_id.slice(0, 8)}`);
+    if (file.errori.length > 0) {
+      errori.push(`storage:${riga.user_id.slice(0, 8)}`);
+      // Il motivo, non solo il prefisso: il 16/10 un errore di query restava
+      // muto dietro «storage:…». I messaggi non contengono dati personali.
+      console.error(`[cancella-account] file di ${riga.user_id.slice(0, 8)}:`, file.errori.join("; "));
+    }
 
     const { error: delErr } = await admin.auth.admin.deleteUser(riga.user_id);
     if (delErr) {
