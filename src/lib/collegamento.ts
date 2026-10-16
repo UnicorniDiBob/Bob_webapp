@@ -8,7 +8,12 @@
 // che la chat di Bob usa per non far scegliere di piu', e la traduzione dei
 // rifiuti in parole per chi li vede.
 
-/** Quanti professionisti al massimo per richiesta. La 125 ha lo stesso 3. */
+/**
+ * Quanti professionisti al massimo per richiesta. REGOLA DI PRODOTTO (André,
+ * 16/10): un preventivo si chiede a pochi. E' l'unico posto dell'app dove sta
+ * il numero: lo usano la chat di Bob e il testo del rifiuto. La 125 ha lo
+ * stesso 3 nel database, e collegamento.test.ts controlla che coincidano.
+ */
 export const MAX_PRO_PER_RICHIESTA = 3;
 
 // I testi esatti dei RAISE della 125: arrivano cosi' come sono in

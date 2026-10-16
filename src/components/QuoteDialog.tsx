@@ -229,8 +229,9 @@ export function QuoteDialog({
 
       // PRIMA I COLLEGAMENTI, POI I MESSAGGI (16/10, 125): come in
       // RequestDialog. Un insert solo per tutti i pro: la 125 li controlla
-      // insieme (pronti, non il proprio profilo, al massimo 3) e li rifiuta
-      // insieme, e allora nessun messaggio parte.
+      // insieme (pronti, non il proprio profilo, al massimo
+      // MAX_PRO_PER_RICHIESTA) e li rifiuta insieme, e allora nessun
+      // messaggio parte.
       const linkRes = await supabase.from("request_professionals").insert(links);
       if (linkRes.error) throw linkRes.error;
       const msgRes = await supabase.from("request_messages").insert(msgs);

@@ -1,8 +1,10 @@
 -- 125_collegamento_pro_guardia.sql
 --
--- ALLA PROPRIA RICHIESTA SI COLLEGANO SOLO PROFESSIONISTI CONTATTABILI
--- (16/10, decisioni di André; chiude il rilievo serio del 29/09 «Dal browser
--- si puo' attaccare alla propria richiesta qualunque professionista»).
+-- CHI PUO' RAGGIUNGERE CHI: ALLA PROPRIA RICHIESTA SI COLLEGANO SOLO
+-- PROFESSIONISTI CONTATTABILI, E SI SCRIVE SOLO A QUELLI COLLEGATI (16/10,
+-- decisioni di André; chiude il rilievo serio del 29/09 «Dal browser si puo'
+-- attaccare alla propria richiesta qualunque professionista» e il buco
+-- gemello sui messaggi).
 --
 -- IL BUCO. Il browser del cliente scrive request_professionals in due flussi
 -- legittimi: «Contatta» dal profilo (RequestDialog, un pro) e la richiesta di
@@ -23,8 +25,13 @@
 --      profilo mostrano solo profili non spenti; il profilo non offre piu'
 --      «Contatta» a chi non e' pronto (stessa PR).
 --   2. Il pro non deve essere del chiamante (professionals.user_id).
---   3. Al massimo 3 pro per richiesta: la chat di Bob ne fa scegliere al
---      massimo 3 (stessa PR, src/lib/collegamento.ts).
+--   3. Al massimo 3 pro per richiesta. E' una REGOLA DI PRODOTTO (André,
+--      16/10): un preventivo si chiede a pochi, perche' il cliente possa
+--      confrontare con calma e i pro abbiano motivo di rispondere. Nell'app
+--      il numero sta in un posto solo, MAX_PRO_PER_RICHIESTA in
+--      src/lib/collegamento.ts: lo usano la chat di Bob (non se ne scelgono
+--      di piu') e il testo del rifiuto; un test controlla che coincida col
+--      3 di questo file.
 -- QuoteDialog inserisce PIU' righe in una sola istruzione: un trigger BEFORE
 -- per riga non vede le righe sorelle. Per questo e' un trigger AFTER INSERT
 -- per ISTRUZIONE, con la tabella di transizione delle righe nuove: conta le
@@ -54,11 +61,25 @@
 -- 1 collegamento al proprio profilo (ca9d1532..., 03/06/2026). Resta: e'
 -- storia, e i trigger guardano solo gli inserimenti nuovi.
 --
--- PRIVACY. Riduce chi puo' leggere le richieste dei clienti; nessun dato o
--- finalita' nuova: il registro dei trattamenti non cambia.
+-- I MESSAGGI DEL CLIENTE, LO STESSO BUCO. «User inserts own request_messages»
+-- (letta viva il 16/10) controllava richiesta del chiamante, sender_type
+-- 'customer' e sender_id, ma non il pro: il cliente poteva scrivere sulla
+-- propria richiesta a un pro QUALUNQUE, e quel pro lo leggeva («Pro reads
+-- assigned messages» guarda solo professional_id). Si riscrive dalla
+-- definizione viva aggiungendo esattamente: professional_id non nullo, e
+-- collegato alla richiesta con una riga NON archiviata (per un pro
+-- archiviato si riapre prima con «Riapri», come l'interfaccia gia' chiede;
+-- e' la stessa condizione che la 120 mette al pro). Letto in produzione:
+-- nessun messaggio con professional_id nullo (le conversazioni sono per
+-- coppia dalla 022), nessun messaggio del cliente a un pro non collegato.
+-- Le note di Bob le scrivono funzioni col service role: non cambiano; la
+-- policy del pro (120) non si tocca.
 --
--- Idempotente: create or replace, drop-then-create dei trigger, revoke
--- ripetibili.
+-- PRIVACY. Riduce chi puo' leggere le richieste e i messaggi dei clienti;
+-- nessun dato o finalita' nuova: il registro dei trattamenti non cambia.
+--
+-- Idempotente: create or replace, drop-then-create dei trigger e della
+-- policy, revoke ripetibili.
 
 -- 1 e 2, e il tetto: una funzione sola, per istruzione.
 create or replace function public.guardia_collegamento_pro()
@@ -148,3 +169,24 @@ drop trigger if exists proteggi_collegamento on public.request_professionals;
 create trigger proteggi_collegamento
   before update of request_id, professional_id on public.request_professionals
   for each row execute function public.proteggi_collegamento();
+
+-- 5: si scrive solo a un pro collegato e non archiviato. Riscritta dalla
+-- definizione viva (pg_policies del 16/10, md5 del WITH CHECK
+-- 3217fc4cd4e52793886c6670da7d6434): le prime tre condizioni sono quelle,
+-- le ultime due sono nuove.
+drop policy if exists "User inserts own request_messages" on public.request_messages;
+create policy "User inserts own request_messages" on public.request_messages
+  for insert to public
+  with check (
+    (request_id in (select requests.id from public.requests where requests.customer_id = (select auth.uid())))
+    and (sender_type = 'customer'::text)
+    and (sender_id = (select auth.uid()))
+    -- (125)
+    and (professional_id is not null)
+    and (exists (
+      select 1 from public.request_professionals rp
+       where rp.request_id = request_messages.request_id
+         and rp.professional_id = request_messages.professional_id
+         and rp.archived_at is null
+    ))
+  );
