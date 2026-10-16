@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { chiamante } from "@/lib/supabase/chiamante";
+import { pulisciBase64 } from "@/lib/immagini";
 import { getServices, getAllSubservices } from "@/lib/data";
 import { guessServiceSlug } from "@/lib/matching";
 import {
@@ -181,6 +182,25 @@ export async function POST(request: Request) {
   const messages = Array.isArray(body.messages) ? body.messages : [];
   const prev: JobBrief = body.brief ?? EMPTY_BRIEF;
 
+  // LA FOTO SI PULISCE QUI, UNA VOLTA, PRIMA DI TUTTO (16/10): GPS, dispositivo
+  // e data se ne vanno prima che la foto vada nel bucket E prima che vada a
+  // Claude — il fornitore riceve solo i pixel. Il canvas di BobChat oggi la
+  // ri-codifica gia', ma un'app nativa la mandera' come esce dal telefono, e
+  // il server non si fida di nessuno dei due: il media type dichiarato non si
+  // legge, decidono i byte (src/lib/immagini.ts). Rifiutata o illeggibile: la
+  // conversazione prosegue senza foto, come gia' per un tipo non ammesso.
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  if (lastUser?.imageBase64) {
+    const pulita = await pulisciBase64(lastUser.imageBase64).catch(() => null);
+    if (pulita) {
+      lastUser.imageBase64 = pulita.base64;
+      lastUser.imageMediaType = pulita.mediaType;
+    } else {
+      delete lastUser.imageBase64;
+      delete lastUser.imageMediaType;
+    }
+  }
+
   // Catalogo reale dal DB per ancorare le scelte di Bob.
   const [servicesRaw, subservices] = await Promise.all([
     getServices(),
@@ -195,8 +215,8 @@ export async function POST(request: Request) {
     takes_article: s.takes_article,
   }));
 
-  // Foto sull'ultimo messaggio utente: upload nel bucket privato (in parallelo alla vision).
-  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  // Foto sull'ultimo messaggio utente, gia' pulita sopra: upload nel bucket
+  // privato (in parallelo alla vision).
   const hasPhoto =
     !!lastUser?.imageBase64 &&
     !!lastUser?.imageMediaType &&

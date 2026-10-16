@@ -9,7 +9,9 @@
 // nel bucket privato `verifica-documenti` e lo staff li vede nella coda.
 //
 // SICUREZZA E PRIVACY
-// - bucket privato, path per-utente (<user_id>/<uuid>-<file>): la RLS dello
+// - il file lo scrive il server (/api/upload/immagine, dal 16/10): le foto
+//   escono senza GPS ne' metadati, i PDF si controllano dai byte e nel peso;
+// - bucket privato, path per-utente (<user_id>/<uuid>.<ext>): la RLS dello
 //   storage lascia leggere solo proprietario e staff;
 // - i metadati stanno in verification_documents (RLS: idem);
 // - niente anteprime pubbliche, niente URL permanenti: la lettura passa da
@@ -19,6 +21,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { caricaFile, riduciPerInvio } from "@/lib/caricaFile";
 import { FileText, Upload, CheckCircle2, XCircle, Clock } from "lucide-react";
 
 interface DocRow {
@@ -30,7 +33,11 @@ interface DocRow {
   uploaded_at: string;
 }
 
-const MAX_MB = 10;
+// 4 MB, non piu' 10: il file passa da una Vercel Function, che rifiuta corpi
+// oltre 4,5 MB. Vale per i PDF; le foto le riduce il browser prima dell'invio
+// (src/lib/caricaFile.ts), quindi possono partire anche piu' pesanti.
+const MAX_MB = 4;
+const MAX_MB_FOTO = 25;
 const ACCEPTED = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
 export default function VerificationDocuments({
@@ -63,8 +70,9 @@ export default function VerificationDocuments({
       setError("Formato non supportato: carica PDF, JPG, PNG o WebP.");
       return;
     }
-    if (file.size > MAX_MB * 1024 * 1024) {
-      setError(`Il file supera ${MAX_MB} MB: riducilo o dividilo.`);
+    const ePdf = file.type === "application/pdf";
+    if (file.size > (ePdf ? MAX_MB : MAX_MB_FOTO) * 1024 * 1024) {
+      setError(`Il file supera ${ePdf ? MAX_MB : MAX_MB_FOTO} MB: riducilo o dividilo.`);
       return;
     }
     setBusy(true);
@@ -74,12 +82,13 @@ export default function VerificationDocuments({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Sessione scaduta: ricarica la pagina.");
 
-      // Path per-utente: la policy dello storage accetta solo la propria cartella.
-      const path = `${user.id}/${crypto.randomUUID()}-${file.name}`;
-      const { error: upErr } = await supabase.storage
-        .from("verifica-documenti")
-        .upload(path, file, { contentType: file.type });
-      if (upErr) throw upErr;
+      // Il percorso lo sceglie il server, nella cartella <user_id>/. Il nome
+      // originale resta in verification_documents.file_name per lo staff.
+      const { path } = await caricaFile(
+        ePdf ? file : await riduciPerInvio(file),
+        "verifica-documenti",
+        file.name
+      );
 
       const { error: rowErr } = await supabase.from("verification_documents").insert({
         professional_id: professionalId,
@@ -127,7 +136,7 @@ export default function VerificationDocuments({
           <Upload className="h-4 w-4" aria-hidden="true" />
           {busy ? "Carico…" : "Carica un documento"}
         </button>
-        <span className="text-xs text-bob-ink/65">PDF, JPG, PNG · max {MAX_MB} MB</span>
+        <span className="text-xs text-bob-ink/65">PDF max {MAX_MB} MB · JPG, PNG, WebP</span>
       </div>
 
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}

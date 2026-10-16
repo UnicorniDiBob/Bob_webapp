@@ -10,6 +10,7 @@ import {
   ImmagineRifiutata,
   MAX_BYTE,
   MAX_LATO,
+  pulisciBase64,
   pulisciImmagine,
   tipoDaiByte,
   type MotivoRifiuto,
@@ -195,5 +196,21 @@ describe("pulisciImmagine: PNG", () => {
       await sharp({ create: { width: 10, height: 10, channels: 4, background: { r: 9, g: 9, b: 9, alpha: 1 } } }).png().toBuffer()
     );
     expect(out.contentType).toBe("image/jpeg");
+  });
+});
+
+describe("pulisciBase64: la stessa pulizia per la foto della chat", () => {
+  it("una foto con GPS in base64 torna in base64 senza exif, ruotata", async () => {
+    const out = await pulisciBase64((await fotoDaTelefono()).toString("base64"));
+    expect(out).not.toBeNull();
+    expect(out!.mediaType).toBe("image/jpeg");
+    const m = await sharp(Buffer.from(out!.base64, "base64")).metadata();
+    expect(m.exif).toBeUndefined();
+    expect(m.orientation).toBeUndefined();
+    expect([m.width, m.height]).toEqual([20, 40]);
+  });
+
+  it("un PDF in base64 dichiarato image/jpeg torna null: la chat prosegue senza foto", async () => {
+    expect(await pulisciBase64(Buffer.from("%PDF-1.7 finto").toString("base64"))).toBeNull();
   });
 });
