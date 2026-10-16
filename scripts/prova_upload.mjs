@@ -108,7 +108,8 @@ async function main() {
       if (!SERVIZIO) {
         console.log("\n(senza SUPABASE_SERVICE_ROLE_KEY lo script non puo' riscaricare ne' cancellare il file: va tolto a mano)");
       } else {
-        const admin = createClient(URL_SB, SERVIZIO, { auth: { persistSession: false } });
+        // Node 20 non ha WebSocket nativo e qui il realtime non serve: trasporto finto.
+        const admin = createClient(URL_SB, SERVIZIO, { auth: { persistSession: false }, realtime: { transport: class WsFinta {} } });
         const { data: blob, error } = await admin.storage.from(BUCKET).download(ok.corpo.path);
         if (error || !blob) throw new Error(`download: ${error?.message}`);
         const salvato = Buffer.from(await blob.arrayBuffer());
