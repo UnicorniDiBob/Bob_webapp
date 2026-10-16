@@ -25,6 +25,7 @@ import {
 import { Stars, PriceTag, VerificationLevelBadge } from "./ui";
 import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
+import { MAX_PRO_PER_RICHIESTA } from "@/lib/collegamento";
 import { SchedaLavoro, type Scope } from "./SchedaLavoro";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
@@ -217,7 +218,8 @@ export function BobChat({
       setSubtaskOptions(draft.subtaskOptions ?? []);
       setQuoteFields(draft.quoteFields ?? []);
       setResults(draft.results ?? []);
-      setSelected(new Set(draft.selectedIds ?? []));
+      // (125) Una bozza di prima del tetto puo' averne di piu': si tengono i primi.
+      setSelected(new Set((draft.selectedIds ?? []).slice(0, MAX_PRO_PER_RICHIESTA)));
       setWaitlistCity(draft.waitlistCity ?? null);
       setBriefId(draft.briefId ?? null);
     } catch {
@@ -777,11 +779,14 @@ export function BobChat({
     });
   }
 
+  // AL MASSIMO 3 (16/10, migrazione 125): il database non collega piu' di
+  // MAX_PRO_PER_RICHIESTA pro a una richiesta, quindi qui non se ne scelgono
+  // di piu'. Oltre il tetto il tocco non fa niente, e i pulsanti lo dicono.
   function toggleSelect(id: string) {
     setSelected((s) => {
       const n = new Set(s);
       if (n.has(id)) n.delete(id);
-      else n.add(id);
+      else if (n.size < MAX_PRO_PER_RICHIESTA) n.add(id);
       return n;
     });
   }
@@ -812,6 +817,7 @@ export function BobChat({
   }
 
   const selectedPros = results.filter((p) => selected.has(p.id));
+  const sceltaPiena = selectedPros.length >= MAX_PRO_PER_RICHIESTA;
 
   // Il servizio dal catalogo porta genere e numero: serve per l'articolo
   // ("delle pulizie", non "un pulizie"). Se manca, si ripiega sul solo nome.
@@ -1097,8 +1103,9 @@ export function BobChat({
                       {collected.wantsQuotes && (
                         <button
                           onClick={() => toggleSelect(p.id)}
+                          disabled={!isSelected && sceltaPiena}
                           aria-label={isSelected ? "Deseleziona" : "Seleziona"}
-                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                             isSelected
                               ? "border-bob-indigo bg-bob-indigo text-white"
                               : "border-black/20 bg-white"
@@ -1156,7 +1163,8 @@ export function BobChat({
                     {collected.wantsQuotes ? (
                       <button
                         onClick={() => toggleSelect(p.id)}
-                        className={`flex-1 py-2 text-xs ${
+                        disabled={!isSelected && sceltaPiena}
+                        className={`flex-1 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${
                           isSelected ? "btn-secondary" : "btn-primary"
                         }`}
                         data-testid={`button-toggle-${p.id}`}
@@ -1488,6 +1496,12 @@ export function BobChat({
                         : "professionisti"
                     }`}
               </button>
+            )}
+            {collected.wantsQuotes && sceltaPiena && results.length > MAX_PRO_PER_RICHIESTA && (
+              <p className="text-center text-xs text-bob-ink/65" role="status" data-testid="scelta-piena">
+                Puoi chiedere un preventivo al massimo a {MAX_PRO_PER_RICHIESTA} professionisti per
+                volta: togline uno per sceglierne un altro.
+              </p>
             )}
             <Link
               href="/professionisti"

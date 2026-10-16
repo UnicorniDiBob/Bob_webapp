@@ -255,7 +255,10 @@ export default async function ProfessionalDetailPage({
         </aside>
       </div>
 
-      {/* Barra contatto fissa in basso su mobile: il CTA principale resta sempre visibile */}
+      {/* Barra contatto fissa in basso su mobile: il CTA principale resta sempre visibile.
+          (125) Non per chi non riceve richieste: lo dice gia' la scheda qui
+          sopra, e una barra fissa senza niente da fare toglie solo spazio. */}
+      {p.contattabile !== false && (
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/5 bg-white/95 px-4 py-3 backdrop-blur-md lg:hidden">
         <div className="mx-auto flex max-w-md items-center gap-3">
           <div className="min-w-0 shrink-0 text-base font-semibold">
@@ -268,6 +271,7 @@ export default async function ProfessionalDetailPage({
           />
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -163,6 +163,7 @@ export async function getServiceCounts(): Promise<Record<string, number>> {
 type RawProfessionalRow = {
   id: string;
   user_id: string;
+  deactivated_at?: string | null;
   business_name: string | null;
   headline: string | null;
   bio: string | null;
@@ -209,6 +210,7 @@ const PROFESSIONAL_SELECT = `
   verification_badge_max_until,
   verification_under_review,
   response_time_label,
+  deactivated_at,
   city_id,
   cities ( name, slug ),
   professional_services ( min_price, max_price, price_note, service_id, subservice_id, services ( name, slug, gender, is_plural, takes_article ), subservices ( name, slug, superseded_by ) ),
@@ -389,6 +391,12 @@ function toCard(
     // Scaduta o oltre il tetto: niente data (la regola sta in vat.ts).
     verifiedAt: dataVerificaVisibile(row),
     responseTimeLabel: row.response_time_label,
+    // (125) La stessa regola di private.pro_e_pronto, che il database usa
+    // per accettare un collegamento: almeno un servizio, profilo non spento.
+    // Si conta OGNI riga di professional_services, anche quelle su slug
+    // superati che le offerte nascondono: pro_e_pronto le conta.
+    contattabile:
+      (row.professional_services ?? []).length > 0 && !row.deactivated_at,
     coverageKeys: cop?.keys ?? [],
     excludedKeys: cop?.excludedKeys ?? [],
     bestScope: cop?.bestScope ?? null,
