@@ -169,7 +169,10 @@ export function RigaConversazione({
           touchAction: "pan-y",
           transition: animata ? "transform 180ms ease-out" : "none",
         }}
-        className={`group relative ${attiva ? "bg-bob-indigo-50" : "bg-white"}`}
+        // Lo sfondo della riga attiva solo da md in su, dove la conversazione
+        // si vede accanto alla lista (16/10): sul telefono si vede solo la
+        // lista, e la riga scelta da sola sembrava gia' aperta.
+        className={`group relative ${attiva ? "bg-white md:bg-bob-indigo-50" : "bg-white"}`}
       >
         <button
           ref={principale}
