@@ -137,6 +137,56 @@ function MessaggiInner() {
   const [mobileThread, setMobileThread] = useState<boolean>(
     params.get("r") != null
   );
+
+  // LA LISTA SUL TELEFONO (16/10, provato sull'iPhone di André). Tre cose
+  // non andavano, tutte per la stessa ragione: la pagina trattava il telefono
+  // come il desktop, dove lista e conversazione stanno una accanto all'altra.
+  //   1. Senza ?r= la prima conversazione si seleziona da sola (giusto sul
+  //      desktop): sul telefono si vede solo la lista, e quella riga restava
+  //      evidenziata come se fosse aperta. Lo sfondo ora vale solo da md in su
+  //      (RigaConversazione), e sul telefono niente aria-current.
+  //   2. La freccia «Torna alle conversazioni» chiudeva la chat ma lasciava
+  //      ?r=&p= nell'indirizzo: ricaricando, la chat si riapriva.
+  //   3. Aprire una chat SOSTITUIVA la voce della cronologia, quindi il
+  //      «torna indietro» di Safari usciva da /messaggi invece di tornare
+  //      alla lista.
+  // Adesso sul telefono aprire una chat AGGIUNGE una voce (router.push); la
+  // freccia torna indietro se quella voce l'abbiamo aggiunta noi, altrimenti
+  // sostituisce con l'indirizzo della lista; e quando l'indirizzo perde ?r=
+  // (freccia, indietro del browser, gesto di Safari) si vede la lista. Sul
+  // desktop resta tutto com'era: cambiare conversazione non riempie la
+  // cronologia. «Telefono» = sotto md (768px), lo stesso punto in cui il
+  // layout mette la lista e la conversazione una accanto all'altra.
+  const [telefono, setTelefono] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767.98px)");
+    const aggiorna = () => setTelefono(mq.matches);
+    aggiorna();
+    mq.addEventListener("change", aggiorna);
+    return () => mq.removeEventListener("change", aggiorna);
+  }, []);
+  /** Abbiamo aggiunto noi la voce della chat aperta: la freccia puo' tornare indietro. */
+  const voceAggiunta = useRef(false);
+  const rDellIndirizzo = params.get("r");
+  const pDellIndirizzo = params.get("p");
+  useEffect(() => {
+    if (!telefono) return;
+    if (!rDellIndirizzo) {
+      // Freccia, indietro del browser o gesto di Safari: si torna alla lista.
+      voceAggiunta.current = false;
+      setMobileThread(false);
+    } else {
+      // Avanti del browser: la chat dell'indirizzo torna aperta. Con un
+      // vecchio link solo ?r= (senza &p=) si tiene la conversazione che il
+      // caricamento ha gia' trovato per quella richiesta.
+      setActiveId((cur) =>
+        !pDellIndirizzo && cur?.startsWith(`${rDellIndirizzo}::`)
+          ? cur
+          : `${rDellIndirizzo}::${pDellIndirizzo ?? ""}`
+      );
+      setMobileThread(true);
+    }
+  }, [telefono, rDellIndirizzo, pDellIndirizzo]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // (033) appuntamenti citati dai messaggi del thread, per stato aggiornato:
   // il messaggio è immutabile, la riga appointments no.
@@ -794,7 +844,9 @@ function MessaggiInner() {
     // Dall'elenco la conversazione si apre dal punto del tocco, come dagli
     // altri tasti «Apri la chat». Il DOM cambia in modo sincrono (flushSync):
     // la transizione fotografa il prima e il dopo.
-    if (tocco && keyOf(c) !== activeId) {
+    // Sul telefono anche la riga scelta da sola si apre col suo movimento:
+    // per chi guarda la lista non era aperta (16/10).
+    if (tocco && (keyOf(c) !== activeId || (telefono && !mobileThread))) {
       transizioneNellaPagina("apri", tocco, () =>
         flushSync(() => {
           setActiveId(keyOf(c));
@@ -805,7 +857,12 @@ function MessaggiInner() {
       setActiveId(keyOf(c));
       setMobileThread(true);
     }
-    router.replace(indirizzo(c, vista), { scroll: false });
+    if (telefono) {
+      voceAggiunta.current = true;
+      router.push(indirizzo(c, vista), { scroll: false });
+    } else {
+      router.replace(indirizzo(c, vista), { scroll: false });
+    }
     if (c.daLeggere) void cambiaDaLeggere(c, false);
   }
 
@@ -828,7 +885,8 @@ function MessaggiInner() {
     const corrente = nella.find((c) => keyOf(c) === activeId) ?? nella[0] ?? null;
     setActiveId(corrente ? keyOf(corrente) : null);
     setMobileThread(false);
-    router.replace(indirizzo(corrente, v), { scroll: false });
+    // Sul telefono si resta sulla lista: niente ?r= nell'indirizzo (16/10).
+    router.replace(indirizzo(telefono ? null : corrente, v), { scroll: false });
   }
 
   async function rispondiDomandaChat() {
@@ -1399,7 +1457,7 @@ function MessaggiInner() {
                 return (
                   <RigaConversazione
                     key={keyOf(c)}
-                    attiva={isActive}
+                    attiva={isActive && !telefono}
                     onApri={(e) => selectConversation(c, puntoDelTocco(e))}
                     destra={
                       puoSegnare
@@ -1478,6 +1536,16 @@ function MessaggiInner() {
                       transizioneNellaPagina("chiudi", tocco, () =>
                         flushSync(() => setMobileThread(false))
                       );
+                      // L'indirizzo torna quello della lista (16/10): indietro
+                      // se la voce della chat l'abbiamo aggiunta noi, cosi' la
+                      // cronologia resta pulita; altrimenti (arrivati da un
+                      // link) la si sostituisce.
+                      if (voceAggiunta.current) {
+                        voceAggiunta.current = false;
+                        router.back();
+                      } else {
+                        router.replace(indirizzo(null, vista), { scroll: false });
+                      }
                     }}
                     className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-bob-ink/70 hover:bg-black/[0.04] hover:text-bob-indigo md:hidden"
                     aria-label="Torna alle conversazioni"
