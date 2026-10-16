@@ -1,5 +1,5 @@
 // Limite di frequenza per /api/bob/chat e /api/bob/brief (Fase 5, P1.5,
-// migrazione 097). Due meccanismi distinti — vedi il commento in testa
+// migrazione 097) e per /api/upload/immagine (migrazione 126). Due meccanismi distinti — vedi il commento in testa
 // alla migrazione per il perché di ciascuno:
 //
 // 1. checkActorRateLimit — per attore (IP anonimo o utente loggato):
@@ -19,7 +19,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export type Route = "chat" | "brief";
+export type Route = "chat" | "brief" | "upload";
 
 interface ActorLimits {
   perMinute: number;
@@ -50,6 +50,16 @@ export const ACTOR_LIMITS: Record<Route, { anonymous: ActorLimits; authenticated
   brief: {
     anonymous: { perMinute: 30, perHour: 200 },
     authenticated: { perMinute: 60, perHour: 400 },
+  },
+  // upload (126): la route vuole un account, quindi anonimo = 0, cioe' «mai»
+  // (e' gia' un 401 prima di arrivare qui; lo zero e' la seconda rete). Il
+  // costo e' CPU di sharp e spazio nel bucket, non Claude. Un pro che riempie
+  // il portfolio carica qualche foto di fila: 10 al minuto la regge, 60
+  // all'ora e' ben sopra una sessione vera e tiene uno script a 1440 file al
+  // giorno al massimo, non a migliaia.
+  upload: {
+    anonymous: { perMinute: 0, perHour: 0 },
+    authenticated: { perMinute: 10, perHour: 60 },
   },
 };
 
@@ -83,9 +93,13 @@ export const GLOBAL_DAILY_CAP_CHAT = 2000;
 //
 // brief non porta mai binario: solo JSON strutturato coi percorsi delle
 // foto (il binario è già su brief-photos), quindi il tetto resta stretto.
+//
+// upload: il file (8 MB, il tetto di src/lib/immagini.ts) piu' il margine
+// del multipart (confini, intestazioni delle parti, il campo bucket).
 export const MAX_BODY_BYTES: Record<Route, number> = {
   chat: 2 * 1024 * 1024,
   brief: 64 * 1024,
+  upload: 8 * 1024 * 1024 + 64 * 1024,
 };
 
 // Timeout sul controllo stesso: se Postgres è lento SOLO su questa tabella
@@ -144,13 +158,25 @@ export async function readBodyWithLimit(
   request: Request,
   maxBytes: number
 ): Promise<{ ok: true; text: string } | { ok: false }> {
+  const letto = await readBytesWithLimit(request, maxBytes);
+  return letto.ok ? { ok: true, text: new TextDecoder().decode(letto.bytes) } : letto;
+}
+
+/**
+ * Come readBodyWithLimit, ma restituisce i byte: un corpo binario (multipart
+ * con un file dentro) non si puo' decodificare in testo senza rovinarlo.
+ */
+export async function readBytesWithLimit(
+  request: Request,
+  maxBytes: number
+): Promise<{ ok: true; bytes: Uint8Array<ArrayBuffer> } | { ok: false }> {
   const declared = request.headers.get("content-length");
   if (declared && Number(declared) > maxBytes) {
     return { ok: false };
   }
 
   if (!request.body) {
-    return { ok: true, text: "" };
+    return { ok: true, bytes: new Uint8Array(0) };
   }
 
   const reader = request.body.getReader();
@@ -176,7 +202,7 @@ export async function readBodyWithLimit(
     merged.set(chunk, offset);
     offset += chunk.byteLength;
   }
-  return { ok: true, text: new TextDecoder().decode(merged) };
+  return { ok: true, bytes: merged };
 }
 
 interface TimedResult<T> {
