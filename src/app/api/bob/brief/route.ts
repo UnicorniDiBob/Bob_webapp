@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { EMPTY_BRIEF, validateScope, type JobBrief } from "@/lib/bob";
 import type { QuoteField } from "@/lib/supabase/types";
 import {
@@ -54,11 +54,16 @@ export async function POST(request: Request) {
   // Se l'utente è loggato, agganciamo il brief al suo account — e usiamo lo
   // stesso id come chiave del limite di frequenza, invece di un secondo
   // giro di autenticazione.
+  // Un Bearer presentato e rifiutato da Supabase e' un 401, non un anonimo:
+  // chi manda un token deve sapere che non vale. Senza header resta tutto
+  // come prima, anonimo compreso.
   let userId: string | null = null;
   try {
-    const supabase = createClient();
-    const { data } = await supabase.auth.getUser();
-    userId = data.user?.id ?? null;
+    const c = await chiamante(request);
+    if (c.tokenRifiutato) {
+      return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+    }
+    userId = c.user?.id ?? null;
   } catch {
     userId = null;
   }

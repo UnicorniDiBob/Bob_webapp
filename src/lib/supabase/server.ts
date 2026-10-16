@@ -5,8 +5,10 @@ import { creaClientServer } from "./fabbrica";
 // Usato per SSR del catalogo e per leggere la sessione utente.
 //
 // E' IL PUNTO UNICO che dice chi sta guardando: vedi ./fabbrica.ts e il test
-// ./punto-unico.test.ts. Una route che deve sapere chi chiama usa questa
-// funzione e basta — mai i cookie letti a mano, mai un token preso altrove.
+// ./punto-unico.test.ts. Una route che deve sapere chi chiama usa
+// chiamante() di ./chiamante.ts, che sul cookie chiama questa funzione e
+// sul Bearer fa validare il token a Supabase — mai i cookie letti a mano,
+// mai un token preso altrove.
 export function createClient() {
   const cookieStore = cookies();
 

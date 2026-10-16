@@ -24,7 +24,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { buildEmail, sendEmail } from "@/lib/email";
 import {
   busyFromAppointments,
@@ -77,10 +77,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Orario non valido" }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await chiamante(request);
   if (!user) {
     return NextResponse.json({ error: "Accedi per prenotare" }, { status: 401 });
   }

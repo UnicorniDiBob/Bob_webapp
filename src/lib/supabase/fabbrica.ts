@@ -7,7 +7,8 @@ import { createServerClient } from "@supabase/ssr";
 // ./punto-unico.test.ts la usa con cookie finti. Con due sessioni nello stesso
 // browser, una route che ricavasse l'utente in un altro modo agirebbe
 // sull'account sbagliato con un token valido, e la RLS non la fermerebbe:
-// per lei quell'utente e' legittimo. Chi deve sapere chi chiama passa di qui.
+// per lei quell'utente e' legittimo. Chi deve sapere chi chiama passa di qui,
+// attraverso chiamante() di ./chiamante.ts (cookie del sito o Bearer, 16/10).
 //
 // @supabase/ssr legge SOLO i cookie sb-<ref>-auth-token: bob-attesa (l'account
 // in attesa, lib/sessioni/attesa.ts) non viene mai letto da questo client.
