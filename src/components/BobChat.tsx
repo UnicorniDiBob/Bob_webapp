@@ -351,8 +351,12 @@ export function BobChat({
     return base;
   }
 
-  // Ridimensiona e ri-codifica la foto in JPEG via canvas:
-  // il re-encoding elimina anche i metadati EXIF (incluso il GPS).
+  // Ridimensiona e ri-codifica la foto in JPEG via canvas, SOLO PER IL PESO:
+  // la foto viaggia in base64 dentro il JSON di /api/bob/chat, che accetta al
+  // massimo 2 MB (MAX_BODY_BYTES.chat), sotto i 4,5 MB di una Vercel Function.
+  // NON e' il controllo privacy: GPS e metadati li toglie il server
+  // (src/lib/immagini.ts, chiamato in /api/bob/chat prima dello storage e
+  // prima di Claude), e vale anche per chi non ha un canvas, come l'app nativa.
   async function handlePhotoFile(file: File) {
     if (!file.type.startsWith("image/")) return;
     const url = URL.createObjectURL(file);

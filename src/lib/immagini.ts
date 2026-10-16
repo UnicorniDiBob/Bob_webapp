@@ -124,6 +124,23 @@ export async function pulisciImmagine(input: Buffer): Promise<ImmaginePulita> {
   }
 }
 
+/**
+ * La stessa pulizia su una foto in base64, per /api/bob/chat: la foto arriva
+ * dentro il JSON della conversazione, non da un modulo. null se e' rifiutata
+ * (la chat prosegue senza foto, come gia' per un tipo non ammesso).
+ */
+export async function pulisciBase64(
+  base64: string
+): Promise<{ base64: string; mediaType: ImmaginePulita["contentType"] } | null> {
+  try {
+    const pulita = await pulisciImmagine(Buffer.from(base64, "base64"));
+    return { base64: pulita.buffer.toString("base64"), mediaType: pulita.contentType };
+  } catch (e) {
+    if (e instanceof ImmagineRifiutata) return null;
+    throw e;
+  }
+}
+
 function rifiutoDa(e: unknown): ImmagineRifiutata {
   if (e instanceof ImmagineRifiutata) return e;
   const msg = e instanceof Error ? e.message : "";

@@ -7,8 +7,13 @@
 // scritta, col service role, in `<userId>/<uuid>.<jpg|png>` — la stessa
 // cartella per utente che le policy dello storage gia' richiedono.
 //
-// In questa PR nasce e basta: ProPortfolio, VerificationDocuments e
-// /api/bob/chat caricano ancora come prima. Spostarli e' il lavoro dopo.
+// Dal 16/10 (strip-exif-client-switch) ci passano ProPortfolio e
+// VerificationDocuments; /api/bob/chat pulisce da se' con la stessa
+// funzione, perche' la foto arriva dentro il JSON della conversazione.
+//
+// UNA ECCEZIONE, SOLO PER verifica-documenti: i PDF (visure, attestati).
+// Riconosciuti dai byte, controllati nel peso, NON ri-codificati: vedi
+// src/lib/pdf.ts. In portfolio e brief-photos un PDF resta un 415.
 //
 // Chi chiama: chiamante() (cookie del sito o Bearer validato da Supabase), il
 // Bearer e' la strada dell'app nativa, che non ha un canvas per pulire da se'.
@@ -18,9 +23,10 @@
 
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { createClient as createServiceClient } from "@supabase/supabase-js";
+import { createClient as createServiceClient, type SupabaseClient } from "@supabase/supabase-js";
 import { chiamante } from "@/lib/supabase/chiamante";
 import { ImmagineRifiutata, pulisciImmagine, type MotivoRifiuto } from "@/lib/immagini";
+import { ePdf, verificaPdf } from "@/lib/pdf";
 import { ACTOR_LIMITS, MAX_BODY_BYTES, checkActorRateLimit, readBytesWithLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -106,9 +112,18 @@ export async function POST(request: Request) {
 
   // Il content-type dichiarato e il nome del file non si leggono nemmeno:
   // il tipo lo dicono i byte.
+  const grezzo = Buffer.from(await file.arrayBuffer());
+
+  if (b === "verifica-documenti" && ePdf(grezzo)) {
+    const esito = verificaPdf(grezzo);
+    if (esito === "troppo_grande") return errore(413, "Il PDF supera 4 MB: riducilo o dividilo");
+    if (esito !== "ok") return errore(415, "Formato non supportato");
+    return scrivi(admin, b, user.id, grezzo, "application/pdf", "pdf");
+  }
+
   let pulita;
   try {
-    pulita = await pulisciImmagine(Buffer.from(await file.arrayBuffer()));
+    pulita = await pulisciImmagine(grezzo);
   } catch (e) {
     if (e instanceof ImmagineRifiutata) {
       const r = STATO_RIFIUTO[e.motivo];
@@ -119,10 +134,21 @@ export async function POST(request: Request) {
   }
 
   const estensione = pulita.contentType === "image/png" ? "png" : "jpg";
-  const path = `${user.id}/${randomUUID()}.${estensione}`;
+  return scrivi(admin, b, user.id, pulita.buffer, pulita.contentType, estensione);
+}
+
+async function scrivi(
+  admin: SupabaseClient,
+  b: Bucket,
+  userId: string,
+  contenuto: Buffer,
+  contentType: string,
+  estensione: string
+) {
+  const path = `${userId}/${randomUUID()}.${estensione}`;
   const { error: upErr } = await admin.storage
     .from(b)
-    .upload(path, pulita.buffer, { contentType: pulita.contentType, upsert: false });
+    .upload(path, contenuto, { contentType, upsert: false });
   if (upErr) {
     console.error("[upload/immagine] scrittura fallita:", upErr.message);
     return errore(500, "Caricamento non riuscito");

@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { pianoById } from "@/lib/piani";
+import { caricaFile, riduciPerInvio } from "@/lib/caricaFile";
 import {
   PORTFOLIO_LIMITS,
   type PortfolioItem,
@@ -16,10 +17,10 @@ import {
 
 export function ProPortfolio({
   professionalId,
-  userId,
   tier,
 }: {
   professionalId: string;
+  /** Non serve piu' qui (il percorso lo sceglie il server): resta per i chiamanti. */
   userId: string;
   tier: SubscriptionTier;
 }) {
@@ -57,17 +58,19 @@ export function ProPortfolio({
     setError(null);
 
     try {
-      const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-      const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-
-      const { error: upErr } = await supabase.storage
-        .from("portfolio")
-        .upload(path, file, { contentType: file.type });
-      if (upErr) throw upErr;
-
-      const { data: pub } = supabase.storage
-        .from("portfolio")
-        .getPublicUrl(path);
+      // Il file lo scrive il server (/api/upload/immagine), dopo avergli tolto
+      // GPS e metadati: questo bucket e' pubblico. Il percorso lo sceglie lui,
+      // sempre nella cartella <userId>/ — per questo il rollback qui sotto
+      // funziona ancora col client: la policy portfolio_storage_owner_delete
+      // lascia cancellare al proprietario nella propria cartella.
+      let caricato;
+      try {
+        caricato = await caricaFile(await riduciPerInvio(file), "portfolio", file.name);
+      } catch (upErr) {
+        setError(upErr instanceof Error ? upErr.message : "Errore durante il caricamento. Riprova.");
+        return;
+      }
+      const path = caricato.path;
 
       const { data: row, error: insErr } = await supabase
         .from("portfolio_items")
@@ -75,7 +78,7 @@ export function ProPortfolio({
           professional_id: professionalId,
           title: title.trim(),
           description: description.trim() || null,
-          image_url: pub.publicUrl,
+          image_url: caricato.publicUrl,
         })
         .select()
         .single();
