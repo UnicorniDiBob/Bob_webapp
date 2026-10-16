@@ -139,7 +139,16 @@ Progetta le verifiche perché possano FALLIRE.
 - Rito del giovedì, 20 minuti — sta sul confine fra la settimana che si chiude e
   quella che comincia: (1) generare da git e Supabase cosa è uscito nella
   settimana chiusa il giorno prima — commit, file, migrazioni applicate, advisor,
-  giri del cron; (2) spuntare il Piano solo da quell'elenco; (3) scegliere le
+  giri del cron — e dei giri, due domande precise su `system_job_runs`: quali
+  hanno `ok = false` o `falliti > 0` (trenta secondi: un guasto che colpisce
+  un utente si vede entro una settimana), e quali hanno lavorato su ZERO
+  elementi per tutta la settimana. Un lavoro che non ha mai avuto niente da
+  fare non ha mai provato il proprio percorso, e non puo' registrare il
+  proprio guasto: dal 28/09 al 16/10 nessun account si poteva cancellare, e il
+  cron ha scritto «ok, 0 scadute» ogni notte. L'ha trovato solo una prova che
+  cancellava davvero. Un lavoro fermo a zero da piu' di due settimane si prova
+  con il suo `scripts/prova_*.mjs`; (2) spuntare il Piano solo da
+  quell'elenco; (3) scegliere le
   attività della settimana entrante, ognuna con proprietario e settimana; (4)
   quello che slitta cambia settimana con una riga sul perché; (5) chi ha lavorato
   aggiorna HANDOFF.md.

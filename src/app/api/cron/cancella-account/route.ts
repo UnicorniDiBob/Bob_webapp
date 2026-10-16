@@ -7,8 +7,10 @@
 // auth.users porta via tutto il resto per cascata (verificato vincolo per
 // vincolo il 19/08), tranne due cose che vanno fatte a mano e che la cascata
 // non conosce:
-//   - i file nello storage sotto verifica-documenti/<user_id>/, che non sono
-//     righe di database (era il punto 8 di "cosa manca" nel ROPA);
+//   - i FILE nello storage, che non sono righe di database: verifica-documenti,
+//     portfolio e brief-photos, cartella dell'utente e foto della chat citate
+//     nei suoi job_briefs (src/lib/fileUtente.ts, dal 16/10; prima solo
+//     verifica-documenti, e solo i primi 100 file — ROPA A28);
 //   - niente altro: le recensioni restano di proposito, de-identificate dalla
 //     056 (customer_id a NULL), perche' appartengono anche al professionista
 //     che le ha ricevute.
@@ -22,6 +24,7 @@
 // account questo conta molto piu' che altrove.
 
 import { NextResponse } from "next/server";
+import { svuotaFileUtente } from "@/lib/fileUtente";
 import {
   createClient as createServiceClient,
   type SupabaseClient,
@@ -109,24 +112,22 @@ export async function GET(request: Request) {
 
   let cancellati = 0;
   let falliti = 0;
+  let fileRimossi = 0;
   const errori: string[] = [];
 
   for (const riga of scadute) {
     // Prima i file, poi l'account: se cancellassi prima l'account perderei
-    // l'unica cosa che mi dice quale cartella svuotare.
-    try {
-      const { data: files } = await admin.storage
-        .from("verifica-documenti")
-        .list(riga.user_id);
-      if (files && files.length > 0) {
-        await admin.storage
-          .from("verifica-documenti")
-          .remove(files.map((f) => `${riga.user_id}/${f.name}`));
-      }
-    } catch {
-      // Un bucket che non risponde non deve bloccare una cancellazione dovuta:
-      // il file orfano lo segnaliamo con il contatore, l'account va via.
+    // l'unica cosa che mi dice quale cartella svuotare — e job_briefs.user_id
+    // andrebbe a NULL, quindi anche quali foto della chat erano sue.
+    // Un bucket che non risponde non blocca una cancellazione dovuta: il file
+    // orfano lo segnaliamo con il contatore, l'account va via.
+    const file = await svuotaFileUtente(admin, riga.user_id);
+    fileRimossi += Object.values(file.rimossi).reduce((a, n) => a + n, 0);
+    if (file.errori.length > 0) {
       errori.push(`storage:${riga.user_id.slice(0, 8)}`);
+      // Il motivo, non solo il prefisso: il 16/10 un errore di query restava
+      // muto dietro «storage:…». I messaggi non contengono dati personali.
+      console.error(`[cancella-account] file di ${riga.user_id.slice(0, 8)}:`, file.errori.join("; "));
     }
 
     const { error: delErr } = await admin.auth.admin.deleteUser(riga.user_id);
@@ -141,7 +142,7 @@ export async function GET(request: Request) {
   await registraGiro(admin, {
     started_at: inizioGiro,
     ok: falliti === 0,
-    outcome: { scadute: scadute.length, cancellati, falliti },
+    outcome: { scadute: scadute.length, cancellati, falliti, file_rimossi: fileRimossi },
     error: errori.length > 0 ? errori.join(", ") : null,
   });
 
