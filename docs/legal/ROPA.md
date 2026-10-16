@@ -305,6 +305,8 @@ DATA_COMPLIANCE.md §8.
 
 *Aggiunta il 19 agosto 2026, con la migrazione 056.*
 
+
+*16 ottobre 2026: dal 28/09 (migrazione 100) al 16/10 la cancellazione **non funzionava**: ogni `deleteUser` falliva sul trigger `termini_account_chiuso` («permission denied for table terms_acceptances»). Nessuna persona colpita, la coda delle cancellazioni scadute è stata vuota per tutto il periodo. Corretta con la migrazione 128 e provata dal vivo (#186). Dalla stessa PR il cron toglie anche i file delle foto (A28). Provata solo per un cliente con profilo e brief: la prova con appuntamenti e con un professionista è CANC2 (`roadmap/roadmap.csv`).*
 | | |
 |---|---|
 | **Finalità** | Eseguire la richiesta di cancellazione, e nel frattempo impedire che l'account continui a operare |
