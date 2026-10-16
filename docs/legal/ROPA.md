@@ -459,3 +459,22 @@ per conto suo.
 | **Sicurezza** | RLS: lettura e cancellazione del proprietario, scrittura solo per Plus e Business. Tetto di 5.000 righe per pro e per anno, controllato a fine istruzione |
 | **Diritti** | Scaricabili in Excel dalla pagina in ogni momento e su ogni piano. Quando arriverà l'export artt. 15/20 dei professionisti, ci entrano |
 | **DPIA** | Non innesca: nessuna profilazione, nessuna decisione automatizzata, nessuna combinazione con dati di Bob se non nei numeri del pro stesso, su sua richiesta |
+
+## A28 — Foto caricate: i file nello storage
+
+*Aggiunta il 16 ottobre 2026 (rami `strip-exif-server-endpoint`, `strip-exif-client-switch`, `strip-exif-storage-lockdown`; migrazioni 126 e 127). Le RIGHE che puntano a queste foto stanno in A2 (`job_briefs`), A16 (`verification_documents`) e A21 (`portfolio_items`); questa voce copre i FILE, che non seguono le cascate delle righe.*
+
+| | |
+|---|---|
+| **Finalità** | Mostrare il lavoro del professionista sul suo profilo (portfolio); far vedere il problema al professionista e a Bob (brief-photos); far esaminare allo staff i documenti richiesti (verifica-documenti, A16) |
+| **Base giuridica** | Contratto — art. 6(1)(b), come le voci di cui sono parte (A2, A16, A21) |
+| **Interessati** | Professionisti e clienti che caricano; **chiunque compaia o sia riconoscibile nella foto** (un vicino, un cliente, la casa di qualcuno) |
+| **Dati** | Solo i pixel. **Dal 16/10 i metadati si tolgono sul server** prima di scrivere (`src/lib/immagini.ts`): niente GPS, marca e modello del telefono, data dello scatto, orientamento applicato ai pixel, lato lungo massimo 2000px. I PDF di verifica si controllano dai byte e nel peso (4 MB) ma **non si ri-codificano**: i loro metadati interni (autore, programma) restano |
+| **Tabelle** | Bucket `portfolio` (**pubblico**: chiunque abbia l'URL), `brief-photos` (privato, 014), `verifica-documenti` (privato, 052). Percorso `<user_id>/<uuid>.<ext>`; le foto della chat in `brief-photos/chat/` |
+| **Codice** | `src/app/api/upload/immagine/route.ts` (l'unico ingresso per portfolio e verifica-documenti), `src/app/api/bob/chat/route.ts` (brief-photos), `src/lib/immagini.ts`, `src/lib/pdf.ts` |
+| **Destinatari** | Supabase (A1). Le foto della chat vanno anche ad Anthropic per la descrizione (A10), **già pulite**. Il professionista vede le foto delle richieste a cui è invitato con URL firmati a scadenza |
+| **Trasferimenti** | Come A1; per la chat come A10 |
+| **Conservazione — la regola** | **portfolio**: finché la foto è nel portfolio e il profilo esiste; via quando il pro la cancella e alla chiusura dell'account. **brief-photos**: con la richiesta (A2); via alla chiusura dell'account del cliente, salvo le richieste legate a una transazione (DATA_COMPLIANCE §5); le foto di chat mai diventate richiesta, dopo 90 giorni (A23). **verifica-documenti**: con la pratica, come A16 |
+| **Conservazione — cosa fa il codice oggi** | **verifica-documenti**: rispettata, il cron `cancella-account` svuota `verifica-documenti/<user_id>/` prima di cancellare l'account (A20). **portfolio**: rispettata solo quando il pro cancella una foto dalla dashboard (`remove()` in ProPortfolio, policy `portfolio_storage_owner_delete`); **alla chiusura dell'account i file restano**, anche se `portfolio_items` va via a cascata. **brief-photos**: **NON RISPETTATA**, nessun codice cancella mai un file da questo bucket. Entrambe registrate in `roadmap/findings.csv` |
+| **Sicurezza** | Dalla 127 nessun client scrive nei tre bucket: solo il service role, dopo la pulizia. Limite di frequenza per utente (A24, rotta `upload`). Lettura: portfolio pubblica; brief-photos via URL firmati dal server; verifica-documenti proprietario e staff (A16) |
+| **Note** | Finestra in cui una foto col GPS poteva finire nel bucket pubblico: `roadmap/findings.csv`, riga del 16/10. Il 16/10 i tre bucket contengono 0 file |

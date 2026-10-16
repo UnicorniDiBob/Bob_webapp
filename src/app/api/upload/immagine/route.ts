@@ -35,7 +35,7 @@ export const runtime = "nodejs";
 // esiste per questa route.
 //   portfolio          PUBBLICO: solo il professionista, sul proprio profilo
 //   verifica-documenti privato: solo il pro titolare della pratica
-//   brief-photos       privato (044): qualunque account, nella propria cartella
+//   brief-photos       privato (014): qualunque account, nella propria cartella
 const BUCKET = ["portfolio", "verifica-documenti", "brief-photos"] as const;
 type Bucket = (typeof BUCKET)[number];
 const SOLO_PRO: ReadonlySet<Bucket> = new Set(["portfolio", "verifica-documenti"]);

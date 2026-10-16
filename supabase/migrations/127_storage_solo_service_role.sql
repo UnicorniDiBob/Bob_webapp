@@ -14,7 +14,7 @@
 --                                               nella propria cartella
 --   * "Pro uploads verification docs"    (052)  INSERT to authenticated,
 --                                               bucket verifica-documenti
---   brief-photos non ha mai avuto policy: ci scrive solo il service role (022).
+--   brief-photos (014) non ha mai avuto policy: ci scrive solo il service role.
 --   Policy di UPDATE su questi bucket: nessuna, ne' prima ne' dopo.
 --
 -- NON TOCCATE, di proposito:
