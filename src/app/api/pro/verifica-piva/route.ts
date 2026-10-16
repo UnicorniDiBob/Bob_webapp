@@ -16,7 +16,7 @@
 // promuoversi da sé, può solo chiedere la verifica tramite questa route.
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import {
   vatValidationError,
@@ -32,10 +32,7 @@ const MAX_ATTEMPTS_24H = 3;
 
 export async function POST(request: Request) {
   // --- 1. Autenticazione e identificazione del professionista ---
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await chiamante(request);
   if (!user) {
     return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
   }

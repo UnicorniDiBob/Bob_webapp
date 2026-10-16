@@ -20,7 +20,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import {
   busyFromAppointments,
   computeFreeSlotsWithAvailability,
@@ -40,10 +40,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "professionalId mancante" }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await chiamante(request);
   if (!user) {
     return NextResponse.json({ slots: [], orariConfermati: true }, { status: 401 });
   }

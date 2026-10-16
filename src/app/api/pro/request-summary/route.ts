@@ -13,7 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { stripAddresses } from "@/lib/redact";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const runtime = "nodejs";
@@ -99,9 +99,8 @@ async function buildSummary(
   };
 }
 
-export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function GET(request: Request) {
+  const { supabase, user } = await chiamante(request);
   if (!user) return NextResponse.json({ requests: [] }, { status: 401 });
 
   // Verifica che l'utente sia un professionista

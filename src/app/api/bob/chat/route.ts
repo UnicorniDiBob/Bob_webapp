@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { getServices, getAllSubservices } from "@/lib/data";
 import { guessServiceSlug } from "@/lib/matching";
 import {
@@ -132,11 +132,15 @@ export async function POST(request: Request) {
   const admin =
     url && serviceKey ? createServiceClient(url, serviceKey) : null;
 
+  // Un Bearer presentato e rifiutato da Supabase e' un 401, non un anonimo:
+  // chi manda un token deve sapere che non vale (vedi lib/supabase/chiamante).
   let actorKey = `ip:${extractClientIp(request)}`;
   try {
-    const supabase = createServerClient();
-    const { data } = await supabase.auth.getUser();
-    if (data.user?.id) actorKey = `user:${data.user.id}`;
+    const c = await chiamante(request);
+    if (c.tokenRifiutato) {
+      return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+    }
+    if (c.user?.id) actorKey = `user:${c.user.id}`;
   } catch {
     // Nessuna sessione leggibile: resta l'IP, comportamento invariato.
   }
