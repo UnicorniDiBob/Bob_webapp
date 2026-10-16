@@ -374,11 +374,13 @@ per conto suo.
 
 <!-- A23 riservata al lavoro sulla purga delle foto orfane di brief-photos (Fase 5, PR due) -->
 
-## A24 — Limite di frequenza su /api/bob/chat, /api/bob/brief e /api/sessioni/aggiungi
+## A24 — Limite di frequenza su /api/bob/chat, /api/bob/brief, /api/sessioni/aggiungi e /api/upload/immagine
 
 *Allargata il 29 settembre 2026 con la migrazione 104: la finalità ora comprende i tentativi di accesso per aggiungere un secondo account.*
 
 *Ristretta il 30 settembre 2026 (ramo `feat/aggiungi-account-dal-login`): `/api/sessioni/aggiungi` non esiste più, e con lei il trattamento per la rotta `accesso` — niente più HMAC dell'email tentata né IP per questa rotta. «Aggiungi un altro account» ora accede dal pannello di `/login` direttamente su Supabase, e le nostre route non ricevono né l'email tentata né la password (`/api/sessioni/adotta` riceve solo il refresh token della sessione già nata). Le righe `accesso` rimaste in `rate_limit_counters` le cancella `purge_stale_rate_limit_counters()` entro 48 ore; il vincolo della 104 ammette ancora il valore `accesso` finché una migrazione non lo toglie (roadmap/findings.csv). Il resto della voce, per `chat` e `brief`, resta com'è.*
+
+*Allargata il 16 ottobre 2026 con la migrazione 126 (ramo `strip-exif-server-endpoint`): rotta `upload`, per `/api/upload/immagine`. Solo account loggati, chiave `user:<id>` — mai l'IP, perché la route senza account risponde 401 prima del controllo. Stessi dati (id utente, rotta, contatore per minuto/ora), stessa conservazione di 48 ore, stessa purga. Il contenuto del file non entra nel contatore. La route stessa toglie dalle foto GPS, dispositivo e data prima di scriverle (src/lib/immagini.ts): è una misura di minimizzazione per A2, A16 e A21, non un trattamento nuovo.*
 
 | | |
 |---|---|
