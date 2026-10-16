@@ -410,6 +410,10 @@ export interface ConversationSummary {
   status: string;
   /** (120) la conversazione di questo pro su questa richiesta e' archiviata. */
   archiviata?: boolean;
+  /** (122) i messaggi dell'altra parte non ancora letti. */
+  nonLetti?: number;
+  /** (122) il PROPRIO segno «da leggere» (l'altra parte non lo vede). */
+  daLeggere?: boolean;
 }
 
 // (033) un messaggio può essere una proposta di appuntamento collegata a una

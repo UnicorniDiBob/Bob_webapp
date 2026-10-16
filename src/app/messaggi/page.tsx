@@ -12,7 +12,7 @@ import {
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Calendar, MessageCircle } from "lucide-react";
+import { Calendar, MessageCircle, MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/components/AuthProvider";
 import { useUnread } from "@/components/UnreadProvider";
 import { createClient } from "@/lib/supabase/client";
@@ -33,6 +33,7 @@ import {
   ERRORE_SOVRAPPOSIZIONE,
   TESTO_SOVRAPPOSIZIONE,
   getConversations,
+  segnaDaLeggere,
   getMessages,
   markConversationRead,
   sendMessage,
@@ -44,6 +45,9 @@ import type {
 } from "@/lib/supabase/types";
 import { ProCalendar } from "@/components/ProCalendar";
 import { FinestraConferma } from "@/components/FinestraConferma";
+import { RigaConversazione } from "@/components/RigaConversazione";
+import { MenuConversazione, type VoceMenu } from "@/components/MenuConversazione";
+import { CodaArchivia, type DaArchiviare } from "@/lib/scorri";
 import { BOB_CHIUSA, BOB_RIAPERTA } from "@/lib/scelta";
 import {
   altezzaCampo,
@@ -221,6 +225,126 @@ function MessaggiInner() {
   const [inviandoChat, setInviandoChat] = useState(false);
   const [erroreChat, setErroreChat] = useState<string | null>(null);
 
+  // SCORRERE PER ARCHIVIARE (15/10). La riga esce subito, «Annulla» resta 5
+  // secondi, e la richiesta parte solo quando la barra si chiude: archiviare
+  // lo dice al pro, e non si disfa in silenzio (lib/scorri.ts, CodaArchivia).
+  const [nascoste, setNascoste] = useState<Set<string>>(new Set());
+  const [inAttesa, setInAttesa] = useState<DaArchiviare | null>(null);
+  const [avvisoLista, setAvvisoLista] = useState<string | null>(null);
+  const [menuChat, setMenuChat] = useState<{ x: number; y: number } | null>(null);
+  const menuChatTasto = useRef<HTMLButtonElement>(null);
+  const coda = useRef<CodaArchivia | null>(null);
+  const inviaArchivio = useRef<(d: DaArchiviare, modo: "normale" | "beacon") => void>(() => {});
+  inviaArchivio.current = (d, modo) => {
+    const url = `/api/richieste/${d.requestId}/archivia`;
+    const corpo = JSON.stringify({ professionalId: d.professionalId });
+    if (modo === "beacon") {
+      // La scheda si chiude: sendBeacon parte anche dopo, coi cookie della
+      // sessione. Una stringa e' testo semplice: la route legge il JSON lo
+      // stesso. La riga resta nascosta: al prossimo giro e' archiviata.
+      navigator.sendBeacon(url, corpo);
+      return;
+    }
+    void (async () => {
+      let ok = false;
+      let errore = "Non è andata. Riprova fra poco.";
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: corpo,
+          keepalive: true,
+        });
+        const j = (await res.json().catch(() => ({}))) as { error?: string; motivo?: string };
+        // Gia' archiviata (dal beacon, da un'altra scheda): e' fatto.
+        ok = res.ok || j.motivo === "gia_archiviata";
+        if (!ok && j.error) errore = j.error;
+      } catch {
+        ok = false;
+      }
+      if (ok && user) setConversations(await getConversations(user.id, role));
+      setNascoste((n) => {
+        const m = new Set(n);
+        m.delete(d.chiave);
+        return m;
+      });
+      if (!ok) setAvvisoLista(errore);
+    })();
+  };
+  if (!coda.current) {
+    coda.current = new CodaArchivia(
+      (d, modo) => inviaArchivio.current(d, modo),
+      (d) => setInAttesa(d)
+    );
+  }
+  // Uscire dalla pagina manda; chiudere o nascondere la scheda manda col
+  // beacon. Una volta sola: la coda si svuota al primo invio.
+  useEffect(() => {
+    const q = coda.current;
+    const viaScheda = () => q?.svuota("beacon");
+    const nascosta = () => {
+      if (document.visibilityState === "hidden") q?.svuota("beacon");
+    };
+    window.addEventListener("pagehide", viaScheda);
+    document.addEventListener("visibilitychange", nascosta);
+    return () => {
+      window.removeEventListener("pagehide", viaScheda);
+      document.removeEventListener("visibilitychange", nascosta);
+      q?.svuota("normale");
+    };
+  }, []);
+
+  function archiviaConAnnulla(c: ConversationSummary) {
+    if (!c.professionalId) return;
+    setAvvisoLista(null);
+    const chiave = keyOf(c);
+    setNascoste((n) => new Set(n).add(chiave));
+    coda.current?.aggiungi({ chiave, requestId: c.requestId, professionalId: c.professionalId });
+  }
+
+  function annullaArchivio() {
+    const d = coda.current?.annulla();
+    if (!d) return;
+    setNascoste((n) => {
+      const m = new Set(n);
+      m.delete(d.chiave);
+      return m;
+    });
+  }
+
+  // «DA LEGGERE» E' PERSONALE (15/10, migrazione 122): un promemoria nella
+  // propria casella, che l'altra parte non vede e che non le cambia niente.
+  // Si toglie da solo quando si apre la conversazione.
+  async function cambiaDaLeggere(c: ConversationSummary, valore: boolean) {
+    if (!c.professionalId) return;
+    const chiave = keyOf(c);
+    setConversations((cs) => cs.map((x) => (keyOf(x) === chiave ? { ...x, daLeggere: valore } : x)));
+    const { error } = await segnaDaLeggere(c.requestId, c.professionalId, valore);
+    if (error) {
+      setConversations((cs) => cs.map((x) => (keyOf(x) === chiave ? { ...x, daLeggere: !valore } : x)));
+      setAvvisoLista(error);
+    }
+    refreshUnread();
+  }
+
+  /** Le azioni di una conversazione, per il «⋯», il tasto destro e la chat. */
+  function vociDi(c: ConversationSummary): VoceMenu[] {
+    const voci: VoceMenu[] = [];
+    // Il cliente non segna le archiviate (le vede solo nella loro scheda); il
+    // pro si', le rilegge in sola lettura.
+    if (!(conSchede && c.archiviata)) {
+      voci.push({
+        etichetta: c.daLeggere ? "Segna come letto" : "Segna come da leggere",
+        azione: () => void cambiaDaLeggere(c, !c.daLeggere),
+        testid: "voce-da-leggere",
+      });
+    }
+    if (conSchede && !c.archiviata && c.status !== "closed") {
+      voci.push({ etichetta: "Archivia", azione: () => archiviaConAnnulla(c), testid: "voce-archivia" });
+    }
+    return voci;
+  }
+
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
@@ -257,6 +381,28 @@ function MessaggiInner() {
       active = false;
     };
   }, [user, role]);
+
+  // Arrivare con un link esplicito a una conversazione (?r=) e' aprirla: se
+  // era segnata «da leggere», il segno si toglie, una volta (15/10, 122).
+  // Senza link la prima conversazione si seleziona da sola sul desktop: quella
+  // non e' un'apertura, e il segno resta.
+  // L'indirizzo con cui la pagina si e' APERTA, non quello di adesso: dopo un
+  // tocco l'indirizzo ha ?r= anche lui, e il segno messo subito dopo dal menu
+  // dell'intestazione veniva tolto da qui (provato il 15/10).
+  const segnoTolto = useRef(false);
+  const rIniziale = useRef(params.get("r"));
+  useEffect(() => {
+    if (segnoTolto.current || loadingConvs) return;
+    if (!rIniziale.current) {
+      segnoTolto.current = true;
+      return;
+    }
+    const a = conversations.find((c) => keyOf(c) === activeId);
+    if (!a) return;
+    segnoTolto.current = true;
+    if (a.daLeggere) void cambiaDaLeggere(a, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations, activeId, loadingConvs]);
 
   // La scheda di partenza, una volta caricato l'elenco (PR 9, 15/10): con un
   // link a una conversazione archiviata si apre «Archiviate»; senza link si
@@ -660,6 +806,7 @@ function MessaggiInner() {
       setMobileThread(true);
     }
     router.replace(indirizzo(c, vista), { scroll: false });
+    if (c.daLeggere) void cambiaDaLeggere(c, false);
   }
 
   /** L'indirizzo di una conversazione, con la scheda (PR 9). */
@@ -1139,9 +1286,11 @@ function MessaggiInner() {
 
   const active = conversations.find((c) => keyOf(c) === activeId) ?? null;
   const nArchiviate = conversations.filter((c) => c.archiviata).length;
-  const nellaVista = conSchede
-    ? conversations.filter((c) => (vista === "archiviate") === Boolean(c.archiviata))
-    : conversations;
+  const nellaVista = (
+    conSchede
+      ? conversations.filter((c) => (vista === "archiviate") === Boolean(c.archiviata))
+      : conversations
+  ).filter((c) => !nascoste.has(keyOf(c)));
 
   // A TUTTO SCHERMO (07/10, Lucio). Prima /messaggi era una finestra alta
   // 600px dentro la pagina, con l'intestazione «Le tue conversazioni» sopra
@@ -1241,19 +1390,42 @@ function MessaggiInner() {
               )}
               {nellaVista.map((c) => {
                 const isActive = keyOf(c) === activeId;
+                const nonLetto = (c.nonLetti ?? 0) > 0 || Boolean(c.daLeggere);
+                // Chi puo' scorrere cosa (15/10): a destra cliente e pro (il
+                // cliente non sulle archiviate), a sinistra solo il cliente,
+                // nella scheda «Attive», su una richiesta non chiusa.
+                const puoSegnare = !(conSchede && c.archiviata);
+                const puoArchiviare = conSchede && !c.archiviata && c.status !== "closed";
                 return (
-                  <button
+                  <RigaConversazione
                     key={keyOf(c)}
-                    onClick={(e) => selectConversation(c, puntoDelTocco(e))}
-                    className={`flex min-h-[64px] w-full flex-col justify-center gap-0.5 px-4 py-3 text-left transition ${
-                      isActive ? "bg-bob-indigo-50" : "hover:bg-black/[0.02]"
-                    }`}
-                    aria-current={isActive ? "true" : undefined}
-                    data-testid={`conv-${c.requestId}`}
+                    attiva={isActive}
+                    onApri={(e) => selectConversation(c, puntoDelTocco(e))}
+                    destra={
+                      puoSegnare
+                        ? {
+                            etichetta: c.daLeggere ? "Letto" : "Da leggere",
+                            azione: () => void cambiaDaLeggere(c, !c.daLeggere),
+                          }
+                        : null
+                    }
+                    sinistra={puoArchiviare ? { etichetta: "Archivia", azione: () => archiviaConAnnulla(c) } : null}
+                    voci={vociDi(c)}
+                    testid={`conv-${c.requestId}`}
+                    chiave={keyOf(c)}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-1.5">
-                        <span className="truncate font-semibold text-bob-ink">
+                        {/* (122) Non letto o segnato «da leggere»: lo stesso
+                            pallino e lo stesso nome in evidenza. */}
+                        {nonLetto && (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-bob-indigo"
+                            aria-label={c.daLeggere && !(c.nonLetti ?? 0) ? "Da leggere" : "Non letto"}
+                            data-testid={`conv-nonletto-${c.requestId}`}
+                          />
+                        )}
+                        <span className={`truncate text-bob-ink ${nonLetto ? "font-bold" : "font-semibold"}`}>
                           {c.counterpartName}
                         </span>
                         {/* (PR 8, 15/10) Per il pro: il cliente ha chiuso questa
@@ -1277,11 +1449,11 @@ function MessaggiInner() {
                       {c.cityName ? ` · ${c.cityName}` : ""}
                     </span>
                     {c.lastMessage && (
-                      <span className="truncate text-xs text-bob-ink/70">
+                      <span className={`truncate text-xs ${nonLetto ? "font-medium text-bob-ink" : "text-bob-ink/70"}`}>
                         {c.lastMessage}
                       </span>
                     )}
-                  </button>
+                  </RigaConversazione>
                 );
               })}
             </div>
@@ -1335,6 +1507,25 @@ function MessaggiInner() {
                       <span className="sm:hidden">Proponi</span>
                     </button>
                   )}
+                  {/* (15/10) Sui touch il «⋯» delle righe non c'e': le stesse
+                      azioni, «da leggere» compreso, stanno qui. */}
+                  {vociDi(active).some((v) => v.testid === "voce-da-leggere") && (
+                    <button
+                      ref={menuChatTasto}
+                      type="button"
+                      aria-label="Altre azioni"
+                      aria-haspopup="menu"
+                      aria-expanded={menuChat !== null}
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setMenuChat({ x: r.right - 224, y: r.bottom + 4 });
+                      }}
+                      className={`${myType === "professional" && myProId && !active.archiviata ? "" : "ml-auto"} inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-bob-ink/65 hover:bg-black/[0.04] hover:text-bob-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40`}
+                      data-testid="chat-altro"
+                    >
+                      <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  )}
                   {/* (PR 9, 15/10) Il cliente archivia o riapre da qui, con la
                       stessa domanda della pagina della richiesta. */}
                   {conSchede && (active.archiviata || active.status !== "closed") && (
@@ -1344,7 +1535,7 @@ function MessaggiInner() {
                         setErroreChat(null);
                         setDomandaChat({ tipo: active.archiviata ? "riapri" : "archivia", conv: active });
                       }}
-                      className={`ml-auto inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40 ${
+                      className={`${vociDi(active).some((v) => v.testid === "voce-da-leggere") ? "" : "ml-auto"} inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40 ${
                         active.archiviata
                           ? "font-semibold text-bob-indigo hover:bg-bob-indigo-50"
                           : "font-medium text-bob-ink/65 hover:bg-black/[0.03] hover:text-bob-ink"
@@ -1546,6 +1737,48 @@ function MessaggiInner() {
             )}
           </section>
         </>
+      )}
+
+      {menuChat && active && (
+        <MenuConversazione
+          voci={vociDi(active).filter((v) => v.testid === "voce-da-leggere")}
+          punto={menuChat}
+          onChiudi={() => {
+            setMenuChat(null);
+            menuChatTasto.current?.focus();
+          }}
+        />
+      )}
+
+      {/* LA BARRA «ANNULLA» (15/10): 5 secondi, poi parte. role="status" la
+          legge il lettore di schermo; il tasto si raggiunge col Tab. */}
+      {(inAttesa || avvisoLista) && (
+        <div
+          role="status"
+          className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 mx-auto flex w-[min(92vw,26rem)] items-center justify-between gap-3 rounded-xl bg-bob-ink px-4 py-1.5 text-sm text-white shadow-card"
+          data-testid="barra-archivia"
+        >
+          <span className="py-2.5">{inAttesa ? "Conversazione archiviata" : avvisoLista}</span>
+          {inAttesa ? (
+            <button
+              type="button"
+              onClick={annullaArchivio}
+              className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-3 font-semibold text-bob-yellow hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-yellow"
+              data-testid="barra-annulla"
+            >
+              Annulla
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAvvisoLista(null)}
+              className="inline-flex min-h-[44px] shrink-0 items-center rounded-lg px-3 font-semibold text-white/80 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label="Chiudi l'avviso"
+            >
+              OK
+            </button>
+          )}
+        </div>
       )}
 
       {domandaChat && (

@@ -3,6 +3,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { archiviateInFondo } from "@/lib/scelta";
+import { contaNonLetti } from "@/lib/scorri";
 import type {
   Appointment,
   ChatMessage,
@@ -173,6 +174,15 @@ export async function getConversations(
     };
   });
 
+  // (122) Non letti e segno «da leggere» di ogni riga, dalla stessa lettura
+  // del pallino.
+  const stati = await statiLettura(userId, role);
+  for (const c of out) {
+    const s = stati.get(`${c.requestId}:${c.professionalId ?? ""}`);
+    c.nonLetti = s ? s.nonLetti : 0;
+    c.daLeggere = Boolean(s?.daLeggere);
+  }
+
   out.sort((a, b) => (b.lastAt ?? "").localeCompare(a.lastAt ?? ""));
   // (PR 8, 15/10) Per il pro le conversazioni archiviate vanno sotto tutte
   // quelle aperte; il cliente resta com'era (il suo filtro e' la PR 9).
@@ -203,50 +213,120 @@ async function myRequestIds(
   return (data ?? []).map((r) => r.id as string);
 }
 
-// Numero totale di messaggi non letti ricevuti dall'utente (da usare per il badge).
+// LO STATO DI LETTURA DI OGNI CONVERSAZIONE (15/10, migrazione 122). Una
+// lettura sola per la lista e per il pallino, cosi' non possono dire due cose
+// diverse: per ogni coppia «richiesta:pro» i messaggi non letti dell'altra
+// parte, il PROPRIO segno «da leggere» (il cliente vede solo
+// cliente_da_leggere, il pro solo pro_da_leggere) e se e' archiviata.
+// Le regole di prima restano: le note di Bob non sono non letti per nessuno;
+// per il pro le conversazioni archiviate non contano (PR 8); per il cliente i
+// messaggi dei pro contano come prima.
+export interface StatoLettura {
+  nonLetti: number;
+  daLeggere: boolean;
+  archiviata: boolean;
+}
+
+async function statiLettura(userId: string, role: Role): Promise<Map<string, StatoLettura>> {
+  const supabase = createClient();
+  const out = new Map<string, StatoLettura>();
+  if (role === "professional") {
+    const proId = await getMyProfessionalId(userId);
+    if (!proId) return out;
+    const { data: righe, error } = await supabase
+      .from("request_professionals")
+      .select("request_id, archived_at, pro_da_leggere")
+      .eq("professional_id", proId);
+    logQueryError(`statiLettura/request_professionals(${proId})`, error);
+    for (const r of (righe ?? []) as { request_id: string; archived_at: string | null; pro_da_leggere: boolean }[]) {
+      out.set(`${r.request_id}:${proId}`, {
+        nonLetti: 0,
+        daLeggere: Boolean(r.pro_da_leggere),
+        archiviata: Boolean(r.archived_at),
+      });
+    }
+    const { data: msg } = await supabase
+      .from("request_messages")
+      .select("request_id")
+      .eq("professional_id", proId)
+      .eq("sender_type", "customer")
+      .is("read_at", null);
+    for (const m of (msg ?? []) as { request_id: string }[]) {
+      const s = out.get(`${m.request_id}:${proId}`);
+      if (s && !s.archiviata) s.nonLetti += 1;
+    }
+    return out;
+  }
+  const requestIds = await myRequestIds(userId, role);
+  if (requestIds.length === 0) return out;
+  const { data: righe, error } = await supabase
+    .from("request_professionals")
+    .select("request_id, professional_id, archived_at, cliente_da_leggere")
+    .in("request_id", requestIds);
+  logQueryError("statiLettura/request_professionals(cliente)", error);
+  for (const r of (righe ?? []) as {
+    request_id: string;
+    professional_id: string;
+    archived_at: string | null;
+    cliente_da_leggere: boolean;
+  }[]) {
+    out.set(`${r.request_id}:${r.professional_id}`, {
+      nonLetti: 0,
+      daLeggere: Boolean(r.cliente_da_leggere),
+      archiviata: Boolean(r.archived_at),
+    });
+  }
+  // (120) Il cliente conta solo i messaggi dei pro: le note di Bob («Il
+  // cliente ha chiuso questa richiesta.») sono per il pro, non per lui.
+  const { data: msg } = await supabase
+    .from("request_messages")
+    .select("request_id, professional_id")
+    .in("request_id", requestIds)
+    .eq("sender_type", "professional")
+    .is("read_at", null);
+  for (const m of (msg ?? []) as { request_id: string; professional_id: string | null }[]) {
+    const s = out.get(`${m.request_id}:${m.professional_id ?? ""}`);
+    if (s) s.nonLetti += 1;
+  }
+  return out;
+}
+
+// Numero totale di messaggi non letti ricevuti dall'utente (da usare per il
+// badge). (122) Una conversazione segnata «da leggere» conta almeno 1; su
+// una archiviata il segno non conta (il cliente li' non lo puo' mettere, il
+// pro non conta le archiviate).
 export async function getUnreadCount(
   userId: string,
   role: Role
 ): Promise<number> {
-  const myType: "customer" | "professional" =
-    role === "professional" ? "professional" : "customer";
-  const supabase = createClient();
-  if (role === "professional") {
-    // (022) il pro conta solo i messaggi del proprio thread.
-    const proId = await getMyProfessionalId(userId);
-    if (!proId) return 0;
-    // (PR 8, 15/10) Solo i messaggi del cliente, e non quelli delle
-    // conversazioni archiviate: una richiesta che il cliente ha chiuso non
-    // aspetta piu' una risposta del pro. Le note di Bob («Il cliente ha
-    // chiuso…») non sono messaggi da leggere: la notizia arriva dalla
-    // campanella (lib/notificheChiusure.ts).
-    const { data: archiviate } = await supabase
-      .from("request_professionals")
-      .select("request_id")
-      .eq("professional_id", proId)
-      .not("archived_at", "is", null);
-    let q = supabase
-      .from("request_messages")
-      .select("id", { count: "exact", head: true })
-      .eq("professional_id", proId)
-      .eq("sender_type", "customer")
-      .is("read_at", null);
-    const fuori = (archiviate ?? []).map((r) => r.request_id as string);
-    if (fuori.length) q = q.not("request_id", "in", `(${fuori.join(",")})`);
-    const { count } = await q;
-    return count ?? 0;
+  const stati = await statiLettura(userId, role);
+  return contaNonLetti(
+    Array.from(stati.values()).map((s) => ({
+      nonLetti: s.nonLetti,
+      daLeggere: s.daLeggere && !s.archiviata,
+    }))
+  );
+}
+
+// (122) Segna o toglie «da leggere» per chi e' dentro: la route decide la
+// parte dalla sessione (segna_da_leggere nel database).
+export async function segnaDaLeggere(
+  requestId: string,
+  professionalId: string,
+  valore: boolean
+): Promise<{ error: string | null }> {
+  try {
+    const res = await fetch("/api/conversazioni/da-leggere", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ requestId, professionalId, valore }),
+    });
+    if (res.ok) return { error: null };
+    const corpo = (await res.json().catch(() => ({}))) as { error?: string };
+    return { error: corpo.error ?? "Non è andata. Riprova fra poco." };
+  } catch {
+    return { error: "Non è andata. Riprova fra poco." };
   }
-  const requestIds = await myRequestIds(userId, role);
-  if (requestIds.length === 0) return 0;
-  // (120) Il cliente conta solo i messaggi dei pro: le note di Bob («Il
-  // cliente ha chiuso questa richiesta.») sono per il pro, non per lui.
-  const { count } = await supabase
-    .from("request_messages")
-    .select("id", { count: "exact", head: true })
-    .in("request_id", requestIds)
-    .eq("sender_type", "professional")
-    .is("read_at", null);
-  return count ?? 0;
 }
 
 // Segna come letti i messaggi ricevuti in una conversazione.
