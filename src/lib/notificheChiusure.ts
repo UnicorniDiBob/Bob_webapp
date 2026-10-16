@@ -23,6 +23,12 @@
 // note «riaperta», quindi non arrivano piu' voci «Il cliente ha riaperto la
 // richiesta». Quelle gia' nel database restano e si leggono come prima.
 //
+// E DALLA 124 (16/10) IL «CHIUSO» ARRIVA UNA VOLTA SOLA PER CHIUSURA VERA:
+// se l'ultimo messaggio della chat e' gia' un «chiuso», riarchiviare non
+// scrive niente (il pro non ha visto riaprire, quindi per lui non e' cambiato
+// niente). Qui non cambia nulla: una voce per nota, e le note sono meno. I
+// «chiuso» doppi scritti prima della 124 restano voci doppie.
+//
 // NON DICE MAI CHI E' STATO SCELTO (decisione 4). Le parole sono sempre «il
 // cliente ha chiuso / riaperto»: il nome dell'altro pro e' un'informazione
 // commerciale che a questo pro non serve, e sapere di aver «perso» contro

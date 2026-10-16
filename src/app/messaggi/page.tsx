@@ -1009,17 +1009,8 @@ function MessaggiInner() {
           // accorge al primo messaggio vero del cliente. A ogni messaggio
           // dell'altra parte si rilegge lo stato della conversazione, cosi'
           // il campo si riapre senza ricaricare.
-          if (myType === "professional" && row.sender_type === "customer" && activeP) {
-            void (async () => {
-              const { data } = await createClient()
-                .from("request_professionals")
-                .select("archived_at")
-                .eq("request_id", activeR)
-                .eq("professional_id", activeP)
-                .maybeSingle();
-              const archiviata = Boolean((data as { archived_at: string | null } | null)?.archived_at);
-              setConversations((cs) => cs.map((c) => (keyOf(c) === activeId ? { ...c, archiviata } : c)));
-            })();
+          if (myType === "professional" && row.sender_type === "customer") {
+            void rileggiArchiviata();
           }
         }
       )
@@ -1333,6 +1324,22 @@ function MessaggiInner() {
     return () => clearTimeout(t);
   }, [mobileThread, activeId, loading]);
 
+  // Il pro rilegge se la conversazione aperta e' archiviata (16/10). Serve
+  // perche' dalla 123 riaprire e' silenzioso e dalla 124 riarchiviare senza
+  // niente in mezzo non manda il «chiuso»: il pro che ha aperto la chat
+  // mentre era riaperta la vede ancora aperta, e lo scopre solo cosi'.
+  async function rileggiArchiviata() {
+    if (myType !== "professional" || !activeR || !activeP) return;
+    const { data } = await createClient()
+      .from("request_professionals")
+      .select("archived_at")
+      .eq("request_id", activeR)
+      .eq("professional_id", activeP)
+      .maybeSingle();
+    const archiviata = Boolean((data as { archived_at: string | null } | null)?.archived_at);
+    setConversations((cs) => cs.map((c) => (keyOf(c) === activeId ? { ...c, archiviata } : c)));
+  }
+
   async function handleSend() {
     const text = draft.trim();
     if (!text || !user || !activeR || sending) return;
@@ -1363,6 +1370,10 @@ function MessaggiInner() {
       // ripristina in caso di errore
       setMessages((m) => m.filter((x) => x.id !== optimistic.id));
       setDraft(text);
+      // (124) Il rifiuto piu' probabile per il pro: la chat e' stata
+      // riarchiviata senza nota. Se e' cosi', compare il riquadro «Il
+      // cliente ha chiuso questa richiesta.» al posto del campo.
+      void rileggiArchiviata();
     } else {
       notifyEvent("new_message", {
         requestId: activeR,
