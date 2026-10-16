@@ -4,8 +4,9 @@
 // registra il pro scelto; le conversazioni degli altri pro collegati vengono
 // archiviate (leggono, non scrivono piu'), le loro proposte d'orario ancora
 // aperte rifiutate, e ognuno riceve in chat da Bob «Il cliente ha chiuso
-// questa richiesta.». Se il pro scelto era archiviato torna attivo e riceve
-// «Il cliente ha riaperto la conversazione.».
+// questa richiesta.». Se il pro scelto era archiviato torna attivo, in
+// silenzio (16/10, migrazione 123: niente piu' «Il cliente ha riaperto la
+// conversazione.»; il pro sente il cliente quando il cliente gli scrive).
 //
 // TUTTO IN UNA TRANSAZIONE: scegli_professionista() nel database. Qui solo
 // chi e' l'utente e se la richiesta e' sua (sceltaServer.ts); i rifiuti —

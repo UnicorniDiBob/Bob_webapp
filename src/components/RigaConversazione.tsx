@@ -17,7 +17,7 @@
 // stanno nel «⋯» (che compare al passaggio e al fuoco) e nel tasto destro.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { Archive, ArchiveRestore, MoreHorizontal } from "lucide-react";
 import { MenuConversazione, type VoceMenu } from "@/components/MenuConversazione";
 import {
   azioneAlRilascio,
@@ -42,8 +42,13 @@ export function RigaConversazione({
   onApri: (e: React.MouseEvent) => void;
   /** Lo scorrimento a destra: «Da leggere» o «Letto». null = non c'e'. */
   destra: { etichetta: string; azione: () => void } | null;
-  /** Lo scorrimento a sinistra: «Archivia». null = non c'e'. */
-  sinistra: { etichetta: string; azione: () => void } | null;
+  /**
+   * Lo scorrimento a sinistra: «Archivia» (scheda «Attive») o «Riapri»
+   * (scheda «Archiviate», 16/10). null = non c'e'. Se l'azione restituisce
+   * una promessa, alla fine la riga torna al suo posto: se la pagina l'ha
+   * tolta non si vede, se il server ha detto di no torna visibile.
+   */
+  sinistra: { etichetta: string; azione: () => void | Promise<unknown>; tono?: "archivia" | "riapri" } | null;
   /** Le voci del «⋯» e del tasto destro. */
   voci: VoceMenu[];
   testid: string;
@@ -124,7 +129,12 @@ export function RigaConversazione({
     if (azione === "sinistra" && sinistra) {
       // La riga esce dalla sua parte; la pagina la toglie e mostra «Annulla».
       setDx(-larghezza);
-      window.setTimeout(() => sinistra.azione(), piano ? 0 : 180);
+      window.setTimeout(() => {
+        void Promise.resolve(sinistra.azione()).finally(() => {
+          setAnimata(!piano);
+          setDx(0);
+        });
+      }, piano ? 0 : 180);
       return;
     }
     setDx(0);
@@ -151,8 +161,21 @@ export function RigaConversazione({
               {destra.etichetta}
             </div>
           )}
+          {/* Colori col testo bianco sopra 4,5:1 (16/10): ambra 700 per
+              archiviare, smeraldo 700 per riaprire — non il colore
+              dell'archivio, perche' fa il contrario. */}
           {dx < 0 && sinistra && (
-            <div className="flex flex-1 items-center justify-end bg-amber-600 pr-5" data-testid="scorri-sinistra">
+            <div
+              className={`flex flex-1 items-center justify-end pr-5 ${
+                sinistra.tono === "riapri" ? "bg-emerald-700" : "bg-amber-700"
+              }`}
+              data-testid="scorri-sinistra"
+            >
+              {sinistra.tono === "riapri" ? (
+                <ArchiveRestore aria-hidden="true" className="mr-2 h-5 w-5" />
+              ) : (
+                <Archive aria-hidden="true" className="mr-2 h-5 w-5" />
+              )}
               {sinistra.etichetta}
             </div>
           )}

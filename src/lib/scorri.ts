@@ -154,3 +154,54 @@ export class CodaArchivia {
 export function contaNonLetti(conversazioni: { nonLetti: number; daLeggere: boolean }[]): number {
   return conversazioni.reduce((n, c) => n + Math.max(c.nonLetti, c.daLeggere ? 1 : 0), 0);
 }
+
+// ---------------------------------------------------------------------------
+// Chi puo' scorrere cosa (16/10)
+// ---------------------------------------------------------------------------
+//
+// A destra sempre «Da leggere» / «Letto», per cliente e pro, anche nella
+// scheda «Archiviate» del cliente. A sinistra solo il cliente: nella scheda
+// «Attive» archivia (con «Annulla», perche' avvisa il pro), in «Archiviate»
+// RIAPRE, subito e senza barra: riaprire non avvisa nessuno (123) e si
+// disfa archiviando di nuovo. Il pro non ha la sinistra: archiviare e'
+// una decisione del cliente (Lucio 14/10).
+
+export type AzioneSinistra = "archivia" | "riapri";
+
+export interface AzioniRiga {
+  destra: { etichetta: "Da leggere" | "Letto" };
+  sinistra: { tipo: AzioneSinistra; etichetta: "Archivia" | "Riapri"; conAnnulla: boolean } | null;
+}
+
+export function azioniRiga(r: {
+  ruolo: "customer" | "professional";
+  archiviata: boolean;
+  /** Richiesta chiusa: niente da archiviare. */
+  chiusa: boolean;
+  daLeggere: boolean;
+}): AzioniRiga {
+  const destra = { etichetta: r.daLeggere ? ("Letto" as const) : ("Da leggere" as const) };
+  if (r.ruolo !== "customer") return { destra, sinistra: null };
+  if (r.archiviata) {
+    return { destra, sinistra: { tipo: "riapri", etichetta: "Riapri", conAnnulla: false } };
+  }
+  if (r.chiusa) return { destra, sinistra: null };
+  return { destra, sinistra: { tipo: "archivia", etichetta: "Archivia", conAnnulla: true } };
+}
+
+/**
+ * Il pallino della bolla, per ruolo. Il segno «da leggere» conta anche su
+ * una conversazione archiviata del cliente (dal 16/10 la puo' segnare li');
+ * per il pro le archiviate non contano mai (PR 8).
+ */
+export function pallino(
+  ruolo: "customer" | "professional",
+  conversazioni: { nonLetti: number; daLeggere: boolean; archiviata: boolean }[]
+): number {
+  return contaNonLetti(
+    conversazioni.map((c) => ({
+      nonLetti: c.nonLetti,
+      daLeggere: c.daLeggere && !(ruolo === "professional" && c.archiviata),
+    }))
+  );
+}

@@ -19,6 +19,10 @@
 // lo stato (scegli_professionista / riapri_conversazione): una voce per
 // evento, id stabile (cosi' «letto» regge), e la sequenza intera resta vera.
 //
+// DAL 16/10 RIAPRIRE E' SILENZIOSO (migrazione 123): non si scrivono piu'
+// note «riaperta», quindi non arrivano piu' voci «Il cliente ha riaperto la
+// richiesta». Quelle gia' nel database restano e si leggono come prima.
+//
 // NON DICE MAI CHI E' STATO SCELTO (decisione 4). Le parole sono sempre «il
 // cliente ha chiuso / riaperto»: il nome dell'altro pro e' un'informazione
 // commerciale che a questo pro non serve, e sapere di aver «perso» contro

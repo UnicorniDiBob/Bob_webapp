@@ -11,7 +11,10 @@
 //   6. «Scegli» solo su chi ha scritto almeno un messaggio;
 //   7. con un pro solo niente «Scegli»: non c'e' niente da confrontare.
 
-/** I testi delle note di Bob: gli stessi di scegli_professionista() e riapri_conversazione() (120). */
+/**
+ * I testi delle note di Bob (120). Dal 16/10 (123) riaprire non ne scrive
+ * piu': BOB_RIAPERTA resta per riconoscere quelle gia' nel database.
+ */
 export const BOB_CHIUSA = "Il cliente ha chiuso questa richiesta.";
 export const BOB_RIAPERTA = "Il cliente ha riaperto la conversazione.";
 
