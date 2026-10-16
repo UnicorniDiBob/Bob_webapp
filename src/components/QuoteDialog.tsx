@@ -10,6 +10,7 @@ import { CircleCheck } from "lucide-react";
 import type { ProfessionalCard, QuoteField } from "@/lib/supabase/types";
 import type { Severity } from "@/lib/bob";
 import { resolveQuoteModeFromScope, type QuoteLevel } from "@/lib/quoting";
+import { rifiutoCollegamento } from "@/lib/collegamento";
 
 interface QuoteContext {
   citySlug?: string;
@@ -132,6 +133,7 @@ export function QuoteDialog({
     if (!user || professionals.length === 0) return;
     setSubmitting(true);
     setError(null);
+    let idRichiesta: string | null = null;
     try {
       const [cityId, serviceId] = await Promise.all([
         resolveId("cities", context.citySlug ?? professionals[0].city.slug),
@@ -196,6 +198,7 @@ export function QuoteDialog({
         .single();
 
       if (reqErr || !req) throw reqErr ?? new Error("Richiesta non creata");
+      idRichiesta = req.id as string;
 
       // (41.1) L'indirizzo viaggia a parte, mai nella prosa. Se l'insert fallisce
       // non si annulla la richiesta: il cliente ha comunque chiesto il preventivo
@@ -224,11 +227,14 @@ export function QuoteDialog({
         message,
       }));
 
-      const [linkRes, msgRes] = await Promise.all([
-        supabase.from("request_professionals").insert(links),
-        supabase.from("request_messages").insert(msgs),
-      ]);
+      // PRIMA I COLLEGAMENTI, POI I MESSAGGI (16/10, 125): come in
+      // RequestDialog. Un insert solo per tutti i pro: la 125 li controlla
+      // insieme (pronti, non il proprio profilo, al massimo
+      // MAX_PRO_PER_RICHIESTA) e li rifiuta insieme, e allora nessun
+      // messaggio parte.
+      const linkRes = await supabase.from("request_professionals").insert(links);
       if (linkRes.error) throw linkRes.error;
+      const msgRes = await supabase.from("request_messages").insert(msgs);
       if (msgRes.error) throw msgRes.error;
 
       for (const p of professionals) {
@@ -239,8 +245,14 @@ export function QuoteDialog({
         });
       }
       setDone(true);
-    } catch {
-      setError("Qualcosa è andato storto nell'invio. Riprova tra poco.");
+    } catch (e) {
+      // (16/10) Come RequestDialog: una richiesta nata senza pro collegati
+      // torna «draft», cosi' non compare fra i lavori in corso.
+      if (idRichiesta) {
+        await supabase.from("requests").update({ status: "draft" }).eq("id", idRichiesta);
+      }
+      // (125) Un rifiuto della guardia ha la sua frase: riprovare non serve.
+      setError(rifiutoCollegamento(e) ?? "Qualcosa è andato storto nell'invio. Riprova tra poco.");
     } finally {
       setSubmitting(false);
     }

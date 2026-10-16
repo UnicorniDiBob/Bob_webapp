@@ -36,6 +36,19 @@ export function ContactButton({
   // resta quella che aveva davanti quando ha premuto.
   const [intervento, setIntervento] = useState<string | null>(null);
 
+  // (125) Un pro non ancora pronto (nessun servizio dichiarato) ha il
+  // profilo pubblico ma non riceve richieste: il database le rifiuterebbe.
+  if (professional.contattabile === false) {
+    return (
+      <p
+        className="rounded-xl bg-black/[0.03] px-4 py-3 text-center text-sm text-bob-ink/70"
+        data-testid="contatto-non-disponibile"
+      >
+        {professional.displayName} non sta ancora ricevendo richieste.
+      </p>
+    );
+  }
+
   const prefilled = `Ciao ${professional.displayName}, ho bisogno ${
     professional.serviceNeedPhrase ?? "di un intervento"
   } a ${professional.city.name}. Quando saresti disponibile e che costo prevedi?`;

@@ -279,6 +279,13 @@ export interface ProfessionalCard {
   /** Data del riscontro che ha prodotto il livello: si mostra sempre col badge. */
   verifiedAt: string | null;
   responseTimeLabel: string | null;
+  /**
+   * (125) Si puo' contattare: la stessa regola con cui il database accetta
+   * il collegamento (private.pro_e_pronto). Facoltativo perche' le schede
+   * salvate nelle bozze della chat di Bob vengono da prima: per loro conta
+   * solo un false esplicito.
+   */
+  contattabile?: boolean;
   city: { name: string; slug: string };
   serviceName: string | null;
   serviceSlug: string | null;

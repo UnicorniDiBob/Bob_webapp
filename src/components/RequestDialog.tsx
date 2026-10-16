@@ -9,6 +9,7 @@ import { notifyEvent } from "@/lib/notify";
 import { CircleCheck } from "lucide-react";
 import type { ProfessionalCard, QuoteField } from "@/lib/supabase/types";
 import { resolveQuoteModeFromScope, type QuoteLevel } from "@/lib/quoting";
+import { rifiutoCollegamento } from "@/lib/collegamento";
 
 interface RequestContext {
   citySlug?: string;
@@ -218,21 +219,25 @@ export function RequestDialog({
       // pro non riceveva niente — mentre il cliente aspettava una risposta che
       // non poteva arrivare. Il gemello QuoteDialog controllava gia' entrambi:
       // due file che fanno la stessa cosa, uno giusto e uno no.
-      const [linkRes, msgRes] = await Promise.all([
-        supabase.from("request_professionals").insert({
-          request_id: req.id,
-          professional_id: professional.id,
-          status: "contacted",
-        }),
-        supabase.from("request_messages").insert({
-          request_id: req.id,
-          professional_id: professional.id,
-          sender_type: "customer",
-          sender_id: user.id,
-          message,
-        }),
-      ]);
+      //
+      // PRIMA IL COLLEGAMENTO, POI IL MESSAGGIO (16/10, 125). In parallelo, un
+      // collegamento rifiutato lasciava passare il messaggio: arrivava a un
+      // pro che non era collegato alla richiesta. Il database ora rifiuta i
+      // pro non contattabili, e il messaggio parte solo se il collegamento
+      // c'e'.
+      const linkRes = await supabase.from("request_professionals").insert({
+        request_id: req.id,
+        professional_id: professional.id,
+        status: "contacted",
+      });
       if (linkRes.error) throw linkRes.error;
+      const msgRes = await supabase.from("request_messages").insert({
+        request_id: req.id,
+        professional_id: professional.id,
+        sender_type: "customer",
+        sender_id: user.id,
+        message,
+      });
       if (msgRes.error) throw msgRes.error;
 
       notifyEvent("new_request", {
@@ -242,7 +247,7 @@ export function RequestDialog({
       });
       setDone(true);
       setIndirizzoPerso(indirizzoNonSalvato);
-    } catch {
+    } catch (e) {
       // La richiesta puo' essere nata e restare senza destinatario. Non c'e'
       // una policy di delete su requests per il cliente, ma c'e' quella di
       // update: la si riporta a "draft", cioe' allo stato di chi non ha ancora
@@ -255,8 +260,10 @@ export function RequestDialog({
           .update({ status: "draft" })
           .eq("id", idRichiesta);
       }
+      // (125) Un rifiuto della guardia ha la sua frase: riprovare non serve.
       setError(
-        "Non sono riuscito a consegnare il messaggio: non è stato inviato niente. Riprova tra poco."
+        rifiutoCollegamento(e) ??
+          "Non sono riuscito a consegnare il messaggio: non è stato inviato niente. Riprova tra poco."
       );
     } finally {
       setSubmitting(false);
