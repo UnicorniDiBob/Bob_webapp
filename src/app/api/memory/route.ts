@@ -3,13 +3,14 @@
 // La tabella va creata con la migrazione SQL inclusa in /supabase/migrations/010_customer_memory.sql
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 
 export const runtime = "nodejs";
 
-export async function GET() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function GET(request: Request) {
+  const { supabase, user, tokenRifiutato } = await chiamante(request);
+  // Senza nessuno la memoria e' vuota; un Bearer rifiutato e' un 401.
+  if (tokenRifiutato) return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
   if (!user) return NextResponse.json({ memory: null });
 
   const { data } = await supabase
@@ -22,8 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await chiamante(request);
   if (!user) return NextResponse.json({ ok: false }, { status: 401 });
 
   let body: Record<string, unknown>;

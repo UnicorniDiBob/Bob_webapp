@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { readBodyWithLimit } from "@/lib/rate-limit";
 import { sembraUnId } from "@/lib/richiestaCliente";
 
@@ -35,10 +35,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Parametri mancanti" }, { status: 400 });
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await chiamante(request);
   if (!user) return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

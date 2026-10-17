@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { pubblicoPerRuolo, ultimaPubblicata } from "@/lib/termini/registro";
 
 export const runtime = "nodejs";
@@ -43,10 +43,7 @@ export async function POST(request: Request) {
   }
   const versione = typeof body.versione === "string" ? body.versione : "";
 
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await chiamante(request);
   if (!user) {
     return NextResponse.json({ error: "Devi essere autenticato." }, { status: 401 });
   }

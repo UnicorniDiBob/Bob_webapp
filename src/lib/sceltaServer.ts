@@ -11,7 +11,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { readBodyWithLimit } from "@/lib/rate-limit";
 import { sembraUnId } from "@/lib/richiestaCliente";
 import { statoRifiuto, testoRifiuto } from "@/lib/scelta";
@@ -40,10 +40,7 @@ export async function preparaScelta(request: Request, requestId: string): Promis
     return errore(400, "Parametri mancanti");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await chiamante(request);
   if (!user) return errore(401, "Non autenticato");
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
