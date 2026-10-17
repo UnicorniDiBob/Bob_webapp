@@ -7,6 +7,7 @@ I numeri qui sotto sono letti in sola lettura dalla produzione il 17/10/2026.
 ## 1. Gli idraulici demo
 
 - **Cos'è:** sei «Idraulico Demo 1…6» a Milano (pro `b1000000-…-0008` … `000d`) e tre «Recensore Demo», con 45 richieste chiuse, 90 messaggi e 45 recensioni. Servono a provare il tetto di 3 pro (125), il confronto, Scegli/archivia e l'ordinamento.
+- **In produzione dal 17/10/2026 alle 16:03** (14:03:33 UTC), con `execute_sql` in una transazione, non come migrazione. Demo 1 e 2 sono attaccati agli account `idraulico1.demo` / `idraulico2.demo` creati da André. Righe per tabella prima e dopo nel commento alla PR #182.
 - **Dove:** `scripts/demo/idraulici_seed.sql` li crea; id, ingressi e ordine atteso in `scripts/demo/README.md`.
 - **Come si toglie:** `scripts/demo/idraulici_cleanup.sql`, una transazione, idempotente. Toglie esattamente quello che crea il seed, `search_events` compresi. Provato in locale: torna identico all'inizio in 22 tabelle.
 - **Resta a mano:** gli account `idraulico1.demo@bobapp.it` e `idraulico2.demo@bobapp.it` li ha creati André. La pulizia toglie il loro profilo da pro, non l'account: si eliminano da Supabase → Authentication → Users.
