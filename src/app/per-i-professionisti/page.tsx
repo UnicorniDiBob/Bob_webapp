@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BobConCariola } from "@/components/BobConCariola";
+import { BobApe } from "@/components/BobApe";
 import { Faq } from "@/components/Faq";
 import { Rivela } from "@/components/Rivela";
 import { Blocco, Fascia, TestaSezione } from "@/components/sezioni";
@@ -115,7 +115,21 @@ export default function PerIProfessionistiPage() {
           </div>
 
           <div className="animate-fade-up [animation-delay:80ms]">
-            <BobConCariola />
+            {/* (17/10) L'ape che festeggia al posto di Bob con la cariola
+                piena di banconote: cariola e soldi senza Bob non dicevano
+                piu' niente, e un'ape con la cariola e' nell'elenco delle
+                pose da fare (docs/MASCOTTE_pose_mancanti.md). Il riquadro
+                resta quello di prima, 440 per 352 (10:8). La posa e' una
+                carta su fondo bianco: sulla fascia indaco va in tondo, un
+                medaglione alto quanto il riquadro (vedi BobApe). */}
+            <div className="relative mx-auto aspect-[10/8] w-full max-w-[440px]" data-testid="scena-eroe-pro">
+              <BobApe
+                posa="successo"
+                alt="Bob, l'ape di BOB BEE, festeggia un lavoro concluso"
+                sizes="(min-width: 640px) 352px, 280px"
+                className="absolute left-1/2 top-0 h-full w-auto -translate-x-1/2 rounded-full"
+              />
+            </div>
           </div>
         </div>
       </Fascia>
