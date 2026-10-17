@@ -12,6 +12,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  INTESTAZIONE_EMAIL,
   POSTA_TRANSAZIONALE,
   buildEmail,
   emailEnabled,
@@ -78,4 +79,30 @@ describe("i testi degli avvisi di appuntamento", () => {
       expect(e.text.split("\n")[0]).toBe("Ciao Marco,");
     });
   }
+});
+
+describe("l'intestazione delle email: il wordmark BOB BEE (17/10)", () => {
+  const html = buildEmail("new_message", "a@example.com", {
+    recipientName: null,
+    senderName: null,
+    serviceName: null,
+    cityName: null,
+    preview: null,
+    link: "/messaggi",
+  }).html;
+
+  it("c'e' il wordmark nuovo, col nome intero per chi legge con la sintesi vocale", () => {
+    expect(html).toContain(INTESTAZIONE_EMAIL);
+    expect(INTESTAZIONE_EMAIL).toContain('aria-label="BOB BEE"');
+    expect(INTESTAZIONE_EMAIL).toMatch(/>BOB<span[^>]*color:#fbbf24[^>]*>BEE<\/span>/);
+  });
+
+  it("non c'e' piu' il vecchio «BOB.» col punto arancione", () => {
+    expect(html).not.toContain("#f59e0b");
+    expect(html).not.toMatch(/BOB<span[^>]*>\.<\/span>/);
+  });
+
+  it("e' posta, non una pagina: niente flex, niente em", () => {
+    expect(INTESTAZIONE_EMAIL).not.toMatch(/flex|\dem\b/);
+  });
 });
