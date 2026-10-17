@@ -141,6 +141,10 @@ do $$ declare a public.appointments%rowtype; g timestamptz; begin
 end $$;
 
 -- R3. Il ritardo ha i suoi limiti ------------------------------------------
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 values ('00000000-0000-0000-0000-00000000aa0d', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000f1',
         'Cliente Uno', date_trunc('day', now()) + interval '10 days 10 hours', 60, 'confirmed', 'professional');
@@ -271,6 +275,10 @@ do $$ declare a public.appointments%rowtype; begin
 end $$;
 
 -- R7. Dentro il preavviso: dal calendario no, dalla funzione solo dopo la telefonata
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 values ('00000000-0000-0000-0000-00000000aa10', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000f1',
         'Cliente Uno', date_trunc('minute', now()) + interval '24 hours', 60, 'confirmed', 'professional');
@@ -312,6 +320,10 @@ do $$ declare a public.appointments%rowtype; begin
 end $$;
 
 -- R8. Il pro annulla senza motivo: passa, e il messaggio non ha «Motivo» ---
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 values ('00000000-0000-0000-0000-00000000aa11', '00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000f1',
         'Cliente Due', date_trunc('day', now()) + interval '20 days 10 hours', 60, 'confirmed', 'professional');
