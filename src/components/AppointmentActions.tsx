@@ -5,8 +5,8 @@
 //
 // Prima il cliente doveva uscire dalla conversazione e andare nell'area
 // personale per confermare. Qui ha i tre tasti dove sta guardando:
-//   Approva  → status 'confirmed'   (permesso al cliente dal trigger di 031)
-//   Rifiuta  → status 'declined'    (idem)
+//   Approva  → status 'confirmed'   (il cliente: POST /api/appointments/[id]/conferma)
+//   Rifiuta  → status 'declined'    (il cliente: POST /api/appointments/[id]/rifiuta)
 //   Modifica → controproposta       (deve passare dal server: il cliente non
 //              ha INSERT su appointments, vedi POST /api/appointments/counter)
 //
@@ -20,7 +20,6 @@
 
 import { useState } from "react";
 import { Check, Clock, PencilLine, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import {
   ERRORE_SOVRAPPOSIZIONE,
   sendMessage,
@@ -272,20 +271,37 @@ export function AppointmentActions({
     setBusy(true);
     setErr(null);
 
+    // IL CLIENTE PASSA DAL SERVER (17/10): stato, messaggio in chat e
+    // notifica li fa POST /api/appointments/[id]/conferma | /rifiuta, la
+    // stessa strada dell'app e delle altre pagine del sito. Finche' non
+    // risponde bene, il biglietto non cambia.
+    if (viewer === "customer") {
+      try {
+        const res = await fetch(`/api/appointments/${a.id}/${ok ? "conferma" : "rifiuta"}`, {
+          method: "POST",
+        });
+        if (!res.ok) {
+          const d = (await res.json().catch(() => null)) as { error?: string } | null;
+          setErr(
+            res.status === 401
+              ? "Sei uscito dall'account: rientra e riprova."
+              : d?.error ?? "Non sono riuscito a salvare. Riprova."
+          );
+          setBusy(false);
+          return;
+        }
+      } catch {
+        setErr("Non riesco a raggiungere Bob. Controlla la connessione e riprova.");
+        setBusy(false);
+        return;
+      }
+      await onChanged();
+      setBusy(false);
+      return;
+    }
+
     const next = ok ? "confirmed" : "declined";
-    // Il cliente aggiorna direttamente (il trigger di 031 consente
-    // proposed → confirmed/declined); il pro passa dall'helper condiviso.
-    const { error, code } =
-      viewer === "customer"
-        ? await (async () => {
-            const supabase = createClient();
-            const { error } = await supabase
-              .from("appointments")
-              .update({ status: next })
-              .eq("id", a.id);
-            return { error: error ? error.message : null, code: error?.code ?? null };
-          })()
-        : await updateAppointment(a.id, { status: next });
+    const { error, code } = await updateAppointment(a.id, { status: next });
 
     if (error) {
       // Il pro rifiuta uno spostamento ma l'orario di prima nel frattempo e'
@@ -315,14 +331,9 @@ export function AppointmentActions({
     }
 
     const { dow, day, time } = fmtDayParts(a.starts_at);
-    const text =
-      viewer === "customer"
-        ? ok
-          ? `Ho confermato l'appuntamento di ${dow} ${day} alle ${time}.`
-          : `Non posso ${dow} ${day} alle ${time}: proponi un altro orario?`
-        : ok
-          ? `Confermo l'appuntamento di ${dow} ${day} alle ${time}. A presto!`
-          : `Purtroppo ${dow} ${day} alle ${time} non riesco: scrivimi e troviamo un altro orario.`;
+    const text = ok
+      ? `Confermo l'appuntamento di ${dow} ${day} alle ${time}. A presto!`
+      : `Purtroppo ${dow} ${day} alle ${time} non riesco: scrivimi e troviamo un altro orario.`;
 
     await sendMessage(a.request_id, professionalId, userId, viewer, text);
     notifyEvent(ok ? "appointment_confirmed" : "appointment_declined", {

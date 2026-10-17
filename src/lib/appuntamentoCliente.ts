@@ -5,11 +5,14 @@
 // cose ovunque: cambiare lo stato, scrivere in chat cosa si e' deciso,
 // avvisare il pro. Se una delle due pagine le facesse in modo diverso, il pro
 // riceverebbe due versioni della stessa conferma.
+//
+// DAL 17/10 LE FA IL SERVER (POST /api/appointments/[id]/conferma e
+// /rifiuta, src/lib/rispostaProposta.ts), lo stesso per il sito e per l'app.
+// Qui resta solo la chiamata: finche' il server non ha detto si', la pagina
+// non mostra niente di confermato; se dice no, un messaggio breve sotto i
+// tasti, e i tasti tornano cliccabili.
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { sendMessage } from "@/lib/messages";
-import { notifyEvent } from "@/lib/notify";
 
 export interface AppuntamentoCliente {
   id: string;
@@ -38,43 +41,50 @@ export function fmtDayParts(d: string) {
   };
 }
 
+/** Cosa dire sotto i tasti quando la risposta non e' andata. */
+export interface ErroreRisposta {
+  id: string;
+  testo: string;
+}
+
 /**
  * Conferma o rifiuta una proposta. Tiene lo stato «sto rispondendo a questo»
- * (per spegnere i tasti) e chiama `onFatto` quando la risposta e' andata.
+ * (per spegnere i tasti), l'errore dell'ultima risposta andata male, e chiama
+ * `onFatto` quando il server ha risposto bene.
  */
 export function useRispostaAppuntamento(
   userId: string | null | undefined,
   onFatto: () => void | Promise<void>
 ) {
   const [inCorso, setInCorso] = useState<string | null>(null);
+  const [errore, setErrore] = useState<ErroreRisposta | null>(null);
 
   async function rispondi(a: AppuntamentoCliente, ok: boolean) {
-    if (!userId) return;
+    if (!userId || inCorso) return;
     setInCorso(a.id);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status: ok ? "confirmed" : "declined" })
-      .eq("id", a.id);
-    if (!error && a.request_id) {
-      const { dow, day, time } = fmtDayParts(a.starts_at);
-      await sendMessage(
-        a.request_id,
-        a.professional_id,
-        userId,
-        "customer",
-        ok
-          ? `Ho confermato l'appuntamento di ${dow} ${day} alle ${time}.`
-          : `Non posso ${dow} ${day} alle ${time}: proponi un altro orario?`
-      );
-      notifyEvent(ok ? "appointment_confirmed" : "appointment_declined", {
-        requestId: a.request_id,
-        professionalId: a.professional_id,
+    setErrore(null);
+    try {
+      const res = await fetch(`/api/appointments/${a.id}/${ok ? "conferma" : "rifiuta"}`, {
+        method: "POST",
       });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => null)) as { error?: string } | null;
+        setErrore({
+          id: a.id,
+          testo:
+            res.status === 401
+              ? "Sei uscito dall'account: rientra e riprova."
+              : d?.error ?? "Non sono riuscito a salvare. Riprova.",
+        });
+        return;
+      }
       await onFatto();
+    } catch {
+      setErrore({ id: a.id, testo: "Non riesco a raggiungere Bob. Controlla la connessione e riprova." });
+    } finally {
+      setInCorso(null);
     }
-    setInCorso(null);
   }
 
-  return { rispondi, inCorso };
+  return { rispondi, inCorso, errore };
 }
