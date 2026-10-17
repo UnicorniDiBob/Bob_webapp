@@ -1,8 +1,8 @@
 # Pulizia prima del pilota
 
-Creato il 19/10/2026 (André con Claude). È l'unico elenco di quello che va tolto da produzione **prima del pilota di Milano (gennaio 2027)**: dati di prova, demo, tracce dei test dal vivo. Ogni voce dice cos'è, dove sta e come si toglie. Quando una voce è fatta, si scrive la data e la prova (commit, riga di `system_job_runs`, conteggio prima/dopo), mai a memoria.
+Creato il 17/10/2026 (André con Claude). È l'unico elenco di quello che va tolto da produzione **prima del pilota di Milano (gennaio 2027)**: dati di prova, demo, tracce dei test dal vivo. Ogni voce dice cos'è, dove sta e come si toglie. Quando una voce è fatta, si scrive la data e la prova (commit, riga di `system_job_runs`, conteggio prima/dopo), mai a memoria.
 
-I numeri qui sotto sono letti in sola lettura dalla produzione il 19/10/2026.
+I numeri qui sotto sono letti in sola lettura dalla produzione il 17/10/2026.
 
 ## 1. Gli idraulici demo
 
