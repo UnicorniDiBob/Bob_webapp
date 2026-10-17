@@ -44,14 +44,19 @@ file (CLAUDE.md, «Fonti di verità»).*
   che ritrova le foto della chat proprio dai brief), poi `delete` di tutti i
   `job_briefs` del cliente in una sola istruzione, poi `deleteUser`. Se la
   cancellazione dei brief fallisce l'account non si cancella quella notte e il
-  giro registra `falliti`.
+  giro registra `falliti`. Lo stesso se non si riescono a togliere le foto
+  della chat (`fotoChatFallite`): i brief sono l'unico modo di ritrovarle,
+  quindi restano intatti, con l'account, fino alla notte dopo (`falliti` +1,
+  motivo `foto-chat:<id>`).
 - Unica chiave esterna verso `job_briefs`: `requests.brief_id` ON DELETE SET
   NULL. I tre trigger BEFORE UPDATE di `requests` lasciano passare il SET NULL
   fatto col service role (letti da `pg_get_functiondef` sulla produzione il
   17/10). Nessuna migrazione necessaria.
 - Prova: `scripts/prova_cancellazione.mjs`, 17/10 — cancellati 2, falliti 0,
   zero brief del cliente, nessun id della prova nelle colonne uuid di `public`,
-  `auth` e `storage`.
+  `auth` e `storage`. Con lo storage guasto sulle foto della chat
+  (`scripts/prova_cancellazione_guasto.cjs`): falliti 1, brief, foto e account
+  intatti; la notte dopo, cancellati 1.
 
 ## Cosa manca prima della prima garanzia venduta
 

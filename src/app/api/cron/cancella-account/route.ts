@@ -123,8 +123,9 @@ export async function GET(request: Request) {
     // Prima i file, poi l'account: se cancellassi prima l'account perderei
     // l'unica cosa che mi dice quale cartella svuotare — e job_briefs.user_id
     // andrebbe a NULL, quindi anche quali foto della chat erano sue.
-    // Un bucket che non risponde non blocca una cancellazione dovuta: il file
-    // orfano lo segnaliamo con il contatore, l'account va via.
+    // Una cartella <user_id>/ che non risponde non blocca una cancellazione
+    // dovuta: il file orfano lo segnaliamo con il contatore, l'account va via.
+    // Le foto della chat invece si' (sotto).
     const file = await svuotaFileUtente(admin, riga.user_id);
     fileRimossi += Object.values(file.rimossi).reduce((a, n) => a + n, 0);
     if (file.errori.length > 0) {
@@ -132,6 +133,15 @@ export async function GET(request: Request) {
       // Il motivo, non solo il prefisso: il 16/10 un errore di query restava
       // muto dietro «storage:…». I messaggi non contengono dati personali.
       console.error(`[cancella-account] file di ${riga.user_id.slice(0, 8)}:`, file.errori.join("; "));
+    }
+    // Le foto della chat sono l'eccezione: si ritrovano SOLO dai brief, che
+    // stanno per essere cancellati. Se non sono andate via, brief e account
+    // restano come sono e si riprova la notte dopo (17/10).
+    if (file.fotoChatFallite) {
+      falliti++;
+      errori.push(`foto-chat:${riga.user_id.slice(0, 8)}`);
+      console.error(`[cancella-account] foto della chat di ${riga.user_id.slice(0, 8)} non tolte: brief e account rimandati alla notte dopo`);
+      continue;
     }
 
     // I brief si cancellano per intero (decisione del 17/10): oggi nessun

@@ -23,7 +23,8 @@
 // la foto di qualcun altro. Un percorso fuori da chat/ o con ".." non si tocca.
 //
 // Non lancia: restituisce cosa ha tolto e cosa non e' riuscito. Il cron decide
-// (oggi: un file orfano non ferma una cancellazione dovuta, e si conta).
+// (oggi: un file orfano nelle cartelle dell'utente non ferma una cancellazione
+// dovuta, e si conta; le foto della chat si', vedi fotoChatFallite).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -36,6 +37,14 @@ export interface EsitoFileUtente {
   /** Percorsi di brief tenuti perche' citati anche da un altro brief. */
   tenuti: number;
   errori: string[];
+  /**
+   * Le foto della chat non sono state tolte (lettura dei brief, controllo o
+   * remove falliti): i brief citano ancora i loro percorsi e sono l'UNICO
+   * modo di ritrovarle. Il cron allora non tocca i brief e rimanda l'account
+   * alla notte dopo (17/10): una cartella <user_id>/ si ritrova sempre, una
+   * foto di chat senza il suo brief non piu'.
+   */
+  fotoChatFallite: boolean;
 }
 
 async function elencaCartella(admin: SupabaseClient, bucket: string, cartella: string): Promise<string[]> {
@@ -96,7 +105,7 @@ export async function fotoConsegnabile(
 }
 
 export async function svuotaFileUtente(admin: SupabaseClient, userId: string): Promise<EsitoFileUtente> {
-  const esito: EsitoFileUtente = { rimossi: {}, tenuti: 0, errori: [] };
+  const esito: EsitoFileUtente = { rimossi: {}, tenuti: 0, errori: [], fotoChatFallite: false };
 
   for (const bucket of BUCKET_PER_UTENTE) {
     try {
@@ -139,6 +148,7 @@ export async function svuotaFileUtente(admin: SupabaseClient, userId: string): P
     }
   } catch (e) {
     esito.errori.push(e instanceof Error ? e.message : "brief: errore");
+    esito.fotoChatFallite = true;
   }
 
   return esito;

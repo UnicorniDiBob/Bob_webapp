@@ -10,7 +10,7 @@ const ALTRO = "22222222-2222-2222-2222-222222222222";
 
 type Brief = { id: string; user_id: string | null; photos: { storagePath: string }[] };
 
-function finto(file: Record<string, string[]>, brief: Brief[], rotto: string[] = []) {
+function finto(file: Record<string, string[]>, brief: Brief[], rotto: string[] = [], removeRotto: (p: string) => boolean = () => false) {
   const bucket = Object.fromEntries(Object.entries(file).map(([b, ps]) => [b, new Set(ps)]));
   const chiamateList: { bucket: string; offset: number }[] = [];
   const storage = {
@@ -22,6 +22,7 @@ function finto(file: Record<string, string[]>, brief: Brief[], rotto: string[] =
         return { data: nomi.slice(o.offset, o.offset + o.limit).map((name) => ({ id: `id-${name}`, name })), error: null };
       },
       remove: async (ps: string[]) => {
+        if (ps.some(removeRotto)) return { data: null, error: { message: "remove giu'" } };
         const tolti = ps.filter((p) => bucket[b]?.delete(p));
         return { data: tolti.map((name) => ({ name })), error: null };
       },
@@ -125,5 +126,27 @@ describe("svuotaFileUtente", () => {
     expect(e.errori).toHaveLength(1);
     expect(e.errori[0]).toMatch(/verifica-documenti/);
     expect(f.bucket.portfolio.size).toBe(0);
+    expect(e.fotoChatFallite).toBe(false);
+  });
+
+  it("se le foto della chat non si tolgono lo dice, e i brief restano come erano", async () => {
+    const f = finto(
+      { "brief-photos": [`${IO}/1.jpg`, "chat/1-aaa.jpg"] },
+      [{ id: "b1", user_id: IO, photos: [{ storagePath: "chat/1-aaa.jpg" }] }],
+      [],
+      (p) => p.startsWith("chat/")
+    );
+    const e = await svuotaFileUtente(f.admin, IO);
+    expect(e.fotoChatFallite).toBe(true);
+    expect(e.errori).toEqual(["remove brief-photos: remove giu'"]);
+    expect(Array.from(f.bucket["brief-photos"])).toEqual(["chat/1-aaa.jpg"]);
+    expect(f.brief[0].photos).toEqual([{ storagePath: "chat/1-aaa.jpg" }]);
+  });
+
+  it("una cartella dell'utente che non risponde NON conta come foto della chat", async () => {
+    const f = finto({ "brief-photos": [`${IO}/1.jpg`] }, [], ["brief-photos"]);
+    const e = await svuotaFileUtente(f.admin, IO);
+    expect(e.errori).toHaveLength(1);
+    expect(e.fotoChatFallite).toBe(false);
   });
 });
