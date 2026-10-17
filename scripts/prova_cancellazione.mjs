@@ -12,8 +12,16 @@
 // - un CLIENTE (prova.cancellazione.cliente@bobapp.it): una richiesta
 //   collegata al pro e con il pro scelto, messaggi dei due e una proposta,
 //   un appuntamento confermato futuro e uno concluso passato; il suo brief con
-//   due foto di chat e un brief ANONIMO che ne cita una (quella deve restare),
-//   un file in brief-photos.
+//   due foto di chat e i contatti nel testo libero, e un brief ANONIMO che ne
+//   cita una (quella deve restare), un file in brief-photos. Dopo il cron il
+//   brief del cliente NON deve esistere piu' (decisione del 17/10: si cancella
+//   per intero, docs/legal/DECISIONE_conservazione_garanzia.md).
+// - poi un TERZO utente, un cliente (prova.cancellazione.guasto@bobapp.it) con
+//   un brief e una foto di chat, cancellato con lo storage GUASTO: il server
+//   parte con scripts/prova_cancellazione_guasto.cjs, che fa fallire solo la
+//   remove delle foto chat/. Atteso: falliti 1 col motivo foto-chat, e brief,
+//   foto e account intatti. Poi lo stesso cron senza guasto (la «notte dopo»):
+//   cancellati 1, e brief e foto spariti.
 //
 // PERCHE' COSI' (CANC2): dei 14 trigger SECURITY INVOKER sulle tabelle che la
 // cancellazione tocca, la cascata ne fa partire solo tre — un trigger
@@ -46,6 +54,9 @@ import { createClient } from "@supabase/supabase-js";
 const PORTA = 3125;
 const EMAIL_PRO = "prova.cancellazione.pro@bobapp.it";
 const EMAIL_CLIENTE = "prova.cancellazione.cliente@bobapp.it";
+const EMAIL_GUASTO = "prova.cancellazione.guasto@bobapp.it";
+const PRELOAD_GUASTO = path.resolve("scripts/prova_cancellazione_guasto.cjs");
+const SEGNO_GUASTO = path.join(process.env.TMPDIR ?? "/tmp", "prova_cancellazione_guasto_segno.txt");
 const TELEFONO_FINTO = "+39 333 000 0000";
 const EMAIL_FINTA = "contatto.prova@example.com";
 const REGISTRO = process.env.REGISTRO_PROVA ?? path.join(process.env.TMPDIR ?? "/tmp", "prova_cancellazione_registro.json");
@@ -148,13 +159,13 @@ async function scadute() {
   return (data ?? []).map((r) => r.user_id);
 }
 
-async function avviaServer(segreto) {
-  server = spawn("npx", ["next", "start", "-p", String(PORTA)], {
-    env: { ...process.env, CRON_SECRET: segreto },
+async function avviaServer(segreto, porta = PORTA, envExtra = {}) {
+  server = spawn("npx", ["next", "start", "-p", String(porta)], {
+    env: { ...process.env, CRON_SECRET: segreto, ...envExtra },
     stdio: ["ignore", "ignore", "ignore"],
   });
   for (let i = 0; i < 60; i++) {
-    try { await fetch(`http://localhost:${PORTA}/`); return; } catch { await new Promise((r) => setTimeout(r, 1000)); }
+    try { await fetch(`http://localhost:${porta}/`); return; } catch { await new Promise((r) => setTimeout(r, 1000)); }
   }
   throw new Error("il server locale non parte");
 }
@@ -177,38 +188,13 @@ async function carica(f, jpeg) {
   if (error) throw new Error(`upload ${f.bucket}/${f.path}: ${error.message}`);
 }
 
-// IL BRIEF DE-IDENTIFICATO, CAMPO PER CAMPO (17/10). Il brief resta per
-// scelta (user_id a NULL, foto tolte): quello si controlla. Dove restano
-// email e telefono si RIPORTA soltanto: svuotare access_notes e
-// timing_availability e' una decisione sospesa (ramo brief-contatti-sospeso,
-// che ha anche la sua prova --solo-brief nel commit 8d794f4).
-const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-const TEL_RE = /(?:\+39[\s.-]*)?(?:\d[\s.-]*){9,12}\d/;
-async function riportoBrief(briefId) {
-  const { data: b } = await admin.from("job_briefs").select("*").eq("id", briefId).maybeSingle();
-  console.log("\n== il brief de-identificato del cliente, campo per campo ==");
-  if (!b) { ok("il brief del cliente esiste ancora (de-identificato)", false); return; }
-  const testo = (v) => (v === null ? "" : typeof v === "string" ? v : JSON.stringify(v));
-  const contatti = (v) => [EMAIL_RE.test(testo(v)) && "email", TEL_RE.test(testo(v)) && "telefono"].filter(Boolean).join("+") || "nessun contatto";
-  for (const [k, v] of Object.entries(b)) {
-    if (["id", "created_at"].includes(k)) continue;
-    const valore = v === null ? "null" : Array.isArray(v) ? `[${v.length}]` : typeof v === "object" ? `{${Object.keys(v).length} chiavi}` : JSON.stringify(v);
-    console.log(`   ${k.padEnd(20)} ${valore.length > 70 ? valore.slice(0, 67) + "..." : valore.padEnd(70)} ${contatti(v)}`);
-  }
-  ok("brief: user_id null", b.user_id === null);
-  ok("brief: nessuna foto", Array.isArray(b.photos) && b.photos.length === 0);
-  const conContatti = Object.entries(b).filter(([k, v]) => !["id", "created_at"].includes(k) && v !== null && (EMAIL_RE.test(testo(v)) || TEL_RE.test(testo(v)))).map(([k]) => k);
-  console.log(`RIPORTO (non e' un controllo): email o telefono ancora in ${conContatti.join(", ") || "nessun campo"}`);
-  ok("brief: descrizione, zona e budget restano", b.summary === "Presa che scintilla in cucina" && b.zone === "Brera" && Number(b.budget_min) === 80 && Number(b.budget_max) === 150);
-}
-
 async function prova() {
   // 0. Nessun residuo di un giro precedente, e la coda e' quella che pensiamo.
   if (!registroVuoto(leggiRegistro())) {
     throw new Error(`c'e' un registro di un giro interrotto (${REGISTRO}): prima node scripts/prova_cancellazione.mjs --pulisci`);
   }
   const { data: esistenti } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  for (const email of [EMAIL_PRO, EMAIL_CLIENTE]) {
+  for (const email of [EMAIL_PRO, EMAIL_CLIENTE, EMAIL_GUASTO]) {
     if ((esistenti?.users ?? []).some((u) => u.email === email)) throw new Error(`${email} esiste gia': non lo tocco`);
   }
   const primaDellaProva = await scadute();
@@ -252,7 +238,7 @@ async function prova() {
   for (const f of [fileCliente, chatSua, chatCondivisa]) await carica(f, jpeg);
   for (const b of [
     // Il testo come lo scriverebbe un cliente vero, con i contatti dentro: e'
-    // quello che il riporto finale cerca (numero e indirizzo finti).
+    // quello che non deve sopravvivere al cron (numero e indirizzo finti).
     {
       user_id: cliUid, photos: [{ storagePath: chatSua.path, aiCaption: null }, { storagePath: chatCondivisa.path, aiCaption: null }], source: "rules",
       summary: "Presa che scintilla in cucina", zone: "Brera", budget_min: 80, budget_max: 150,
@@ -340,12 +326,76 @@ async function prova() {
   for (const f of [fileVerifica, filePortfolio, fileCliente, chatSua]) ok(`storage: ${f.bucket}/${f.path.replace(/^[0-9a-f-]{36}/, "<uid>")} tolto`, !(await esisteFile(f)));
   ok("storage: la foto di chat citata anche dal brief anonimo e' rimasta", await esisteFile(chatCondivisa));
   const { data: brief } = await admin.from("job_briefs").select("id, user_id, photos").in("id", [briefSuo, briefAnonimo]);
+  ok("job_briefs: zero brief del cliente (cancellato per intero, non de-identificato)", !(brief ?? []).some((b) => b.id === briefSuo));
   const anon = (brief ?? []).find((b) => b.id === briefAnonimo);
   ok("il brief anonimo non e' stato toccato", !!anon && anon.photos.length === 1);
 
-  await riportoBrief(briefSuo);
+  await provaGuasto(jpeg, tag, milano, sub, ids);
 
   console.log(`\nid per la ricerca su tutte le colonne uuid: ${JSON.stringify(ids)}`);
+}
+
+// LO STORAGE CHE NON RISPONDE SULLE FOTO DELLA CHAT (17/10). Le foto della
+// chat si ritrovano solo dai brief: se non vanno via, il cron non deve
+// cancellare ne' i brief ne' l'account, e la notte dopo deve riuscirci.
+async function provaGuasto(jpeg, tag, milano, sub, ids) {
+  console.log("\n== storage guasto sulle foto della chat ==");
+  if (server) { server.kill("SIGTERM"); server = null; }
+  if ((await scadute()).length) throw new Error("la coda NON e' vuota prima del caso del guasto: mi fermo");
+  fs.rmSync(SEGNO_GUASTO, { force: true });
+
+  const uid = await nuovoUtente(EMAIL_GUASTO, "customer");
+  ids.guasto = uid;
+  const chat = { bucket: "brief-photos", path: `chat/prova-guasto-${tag}.jpg` };
+  await carica(chat, jpeg);
+  const briefId = randomUUID();
+  reg.brief.push(briefId); annota();
+  await scrivi("job_briefs", {
+    id: briefId, user_id: uid, photos: [{ storagePath: chat.path, aiCaption: null }], source: "rules",
+    summary: "Prova del guasto", zone: "Brera", access_notes: `Chiamatemi al ${TELEFONO_FINTO}`,
+  });
+  ids.briefGuasto = briefId;
+  const richiesta = await scrivi("requests", {
+    customer_id: uid, city_id: milano.id, service_id: sub.service_id, subservice_id: sub.id,
+    status: "matched", problem_description: "Prova del guasto", brief_id: briefId,
+  });
+  ids.richiestaGuasto = richiesta.id;
+  const ieri = new Date(Date.now() - 86400_000).toISOString();
+  const { error } = await admin.from("account_deletion_requests").insert({ user_id: uid, requested_at: ieri, scheduled_for: ieri });
+  if (error) throw new Error(`account_deletion_requests: ${error.message}`);
+
+  const giro = async (porta, envExtra) => {
+    const segreto = randomBytes(32).toString("base64url");
+    await avviaServer(segreto, porta, envExtra);
+    const coda = await scadute();
+    if (coda.length !== 1 || coda[0] !== uid) throw new Error("in coda c'e' qualcosa che non e' la prova del guasto: il cron NON parte");
+    const inizio = new Date().toISOString();
+    const r = await fetch(`http://localhost:${porta}/api/cron/cancella-account`, { headers: { authorization: `Bearer ${segreto}` } });
+    console.log(`GET /api/cron/cancella-account -> HTTP ${r.status} ${JSON.stringify(await r.json().catch(() => null))}`);
+    server.kill("SIGTERM"); server = null;
+    const { data } = await admin.from("system_job_runs").select("ok, outcome, error").eq("job", "cancella-account").gte("started_at", inizio).order("started_at", { ascending: false }).limit(1);
+    return data?.[0];
+  };
+  const leggiBrief = async () => (await admin.from("job_briefs").select("id, user_id, photos, access_notes").eq("id", briefId).maybeSingle()).data;
+
+  // La notte del guasto.
+  const g1 = await giro(PORTA + 1, { NODE_OPTIONS: `--require ${PRELOAD_GUASTO}`, GUASTO_SEGNO: SEGNO_GUASTO });
+  ok("guasto: il guasto e' scattato davvero (remove di chat/ rifiutata)", fs.existsSync(SEGNO_GUASTO) && fs.readFileSync(SEGNO_GUASTO, "utf8").includes(chat.path));
+  ok("guasto: system_job_runs scadute 1, cancellati 0, falliti 1, motivo foto-chat", !!g1 && g1.ok === false && g1.outcome?.scadute === 1 && g1.outcome?.cancellati === 0 && g1.outcome?.falliti === 1 && String(g1.error).includes(`foto-chat:${uid.slice(0, 8)}`), JSON.stringify(g1));
+  ok("guasto: l'account esiste ancora", !!(await admin.auth.admin.getUserById(uid)).data?.user);
+  const b1 = await leggiBrief();
+  ok("guasto: il brief e' intatto (suo, con la foto e il testo)", !!b1 && b1.user_id === uid && b1.photos.length === 1 && b1.photos[0].storagePath === chat.path && !!b1.access_notes);
+  ok("guasto: la foto della chat e' ancora nello storage", await esisteFile(chat));
+  const { count: inCoda } = await admin.from("account_deletion_requests").select("user_id", { count: "exact", head: true }).eq("user_id", uid);
+  ok("guasto: la richiesta di cancellazione e' ancora in coda", inCoda === 1);
+
+  // La notte dopo, storage sano.
+  const g2 = await giro(PORTA + 2, {});
+  ok("notte dopo: system_job_runs scadute 1, cancellati 1, falliti 0", !!g2 && g2.ok === true && g2.outcome?.cancellati === 1 && g2.outcome?.falliti === 0, JSON.stringify(g2));
+  ok("notte dopo: l'account non esiste piu'", !(await admin.auth.admin.getUserById(uid)).data?.user);
+  ok("notte dopo: il brief non esiste piu'", !(await leggiBrief()));
+  ok("notte dopo: la foto della chat e' stata tolta", !(await esisteFile(chat)));
+  fs.rmSync(SEGNO_GUASTO, { force: true });
 }
 
 const soloPulizia = process.argv.includes("--pulisci");
