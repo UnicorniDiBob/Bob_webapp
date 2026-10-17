@@ -46,21 +46,29 @@ export async function POST(request: Request) {
     email: body.email,
     password: body.password,
     email_confirm: true, // Nessuna email di conferma necessaria per account CS
-    user_metadata: { role: "cs", full_name: body.fullName },
+    user_metadata: { full_name: body.fullName },
   });
 
   if (createErr || !newUser.user) {
     return NextResponse.json({ error: createErr?.message ?? "Errore nella creazione" }, { status: 500 });
   }
 
-  // Imposta il ruolo CS nella tabella users
-  const { error: roleErr } = await adminClient
+  // Imposta il ruolo CS nella tabella users. Dalla 130 handle_new_user non
+  // accetta 'cs' dal metadata: senza questo update l'account resta customer.
+  // Se la riga non torna col ruolo giusto, l'account si cancella.
+  const { data: roleRow, error: roleErr } = await adminClient
     .from("users")
     .update({ role: "cs" })
-    .eq("id", newUser.user.id);
+    .eq("id", newUser.user.id)
+    .select("role")
+    .maybeSingle();
 
-  if (roleErr) {
-    return NextResponse.json({ error: roleErr.message }, { status: 500 });
+  if (roleErr || roleRow?.role !== "cs") {
+    await adminClient.auth.admin.deleteUser(newUser.user.id);
+    return NextResponse.json(
+      { error: `Ruolo non impostato, account annullato: ${roleErr?.message ?? "riga non aggiornata"}` },
+      { status: 500 }
+    );
   }
 
   // Aggiorna il profilo con il nome
