@@ -190,6 +190,10 @@ end $$;
 reset role;
 
 -- P7. Sovrapposizione con un altro appuntamento con un cliente: occupato
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 select '00000000-0000-0000-0000-00000000aa02', '00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000f1',
        'Cliente Due', v + interval '5 days', 60, 'confirmed', 'professional' from t where k = 'g';
@@ -212,6 +216,10 @@ end $$;
 reset role;
 
 -- P8. Dentro il preavviso il cliente non sposta (chiama)
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 values ('00000000-0000-0000-0000-00000000aa03', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000f1',
         'Cliente Uno', now() + interval '24 hours', 60, 'confirmed', 'professional');
@@ -245,6 +253,10 @@ end $$;
 reset role;
 
 -- P10. La prima proposta del pro, rifiutata dal cliente: resta rifiutata (come oggi)
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 select '00000000-0000-0000-0000-00000000aa04', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000f1',
        'Cliente Uno', v + interval '6 days', 60, 'proposed', 'professional' from t where k = 'g';
@@ -253,6 +265,10 @@ set role authenticated;
 update public.appointments set status = 'declined' where id = '00000000-0000-0000-0000-00000000aa04';
 reset role;
 -- ... e la controproposta del cliente (route counter, service role), rifiutata dal pro: resta rifiutata
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 select '00000000-0000-0000-0000-00000000aa05', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000f1',
        'Cliente Uno', v + interval '7 days', 60, 'proposed', 'customer' from t where k = 'g';
@@ -281,6 +297,10 @@ select public.sposta_appuntamento('00000000-0000-0000-0000-00000000aa01', v + in
   from t where k = 'g';
 reset role;
 -- Un altro cliente prende l'orario lasciato libero (2 giorni dopo il giorno g).
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 select '00000000-0000-0000-0000-00000000aa06', '00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000f1',
        'Cliente Due', v + interval '2 days', 60, 'confirmed', 'professional' from t where k = 'g';

@@ -99,6 +99,10 @@ do $$ begin
 end $$;
 
 -- P5. Dopo la disdetta lo slot e' di nuovo libero per il secondo cliente ----
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_id, customer_name, starts_at, duration_minutes, status, proposed_by, source)
 select '00000000-0000-0000-0000-00000000aa02', '00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000f1',
        '00000000-0000-0000-0000-0000000000c2', 'Cliente Due', v + interval '30 minutes', 60, 'confirmed', 'customer', 'direct' from t where k = 'g';
@@ -126,6 +130,10 @@ end $$;
 reset role;
 
 -- Un appuntamento confermato della richiesta 3 (non diretta) fra 24 ore: dentro il preavviso di 48
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 values ('00000000-0000-0000-0000-00000000aa03', '00000000-0000-0000-0000-0000000000b3', '00000000-0000-0000-0000-0000000000f1',
         'Cliente Uno', now() + interval '24 hours', 60, 'confirmed', 'professional');
@@ -190,6 +198,10 @@ do $$ begin
 end $$;
 
 -- P10. Il pro non annulla ne' elimina dal browser un appuntamento confermato con un cliente
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 select '00000000-0000-0000-0000-00000000aa04', '00000000-0000-0000-0000-0000000000b3', '00000000-0000-0000-0000-0000000000f1',
        'Cliente Uno', v + interval '1 day', 60, 'confirmed', 'professional' from t where k = 'g';
@@ -250,6 +262,10 @@ set request.jwt.claim.sub = '00000000-0000-0000-0000-0000000000a1';
 set role authenticated;
 update public.professionals set preavviso_annullamento_ore = 24 where id = '00000000-0000-0000-0000-0000000000f1';
 reset role;
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 select '00000000-0000-0000-0000-00000000aa05', '00000000-0000-0000-0000-0000000000b3', '00000000-0000-0000-0000-0000000000f1',
        'Cliente Uno', v + interval '3 days', 60, 'proposed', 'professional' from t where k = 'g';

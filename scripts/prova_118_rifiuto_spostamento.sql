@@ -106,6 +106,10 @@ do $$ declare g timestamptz; begin
 end $$;
 
 -- P3. La prima proposta del pro rifiutata dal cliente: come prima ------------
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 select '00000000-0000-0000-0000-00000000aa02', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000f1',
        'Cliente Uno', v + interval '6 days', 60, 'proposed', 'professional' from t where k = 'g';
@@ -122,6 +126,10 @@ do $$ begin
 end $$;
 
 -- P4. Il ritardo (116, bob.tipo) resta un «ritardo» ---------------------------
+-- (131) Il dato di prova lo scrive il service role, non il pro: senza
+-- questa riga resta acceso il sub del pro della prova precedente, e la
+-- 131 tratta l'inserimento come suo (lo rende una proposta).
+reset request.jwt.claim.sub;
 insert into public.appointments (id, request_id, professional_id, customer_name, starts_at, duration_minutes, status, proposed_by)
 values ('00000000-0000-0000-0000-00000000aa03', '00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000f1',
         'Cliente Uno', date_trunc('minute', now()) - interval '5 minutes', 30, 'confirmed', 'professional');

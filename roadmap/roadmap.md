@@ -232,6 +232,10 @@ La valutazione di professionals_score e' una media bayesiana: 25 x ((media x n +
 
 In professionals_score il prezzo vale 15 punti se il pro dichiara un prezzo sull'intervento cercato, 10 se lo dichiara su un altro intervento, 0 se non ne dichiara: caro o economico prende gli stessi punti. Coerente con quello che dice la pagina («prezzo quando e' dichiarato»: premia la trasparenza, non lo sconto), ma non era detto da nessuna parte che fosse una scelta, e chi prepara i dati o legge l'ordine se lo aspetta diverso: preparando gli idraulici demo, 45-70 euro e 90-130 euro hanno preso gli stessi 10 punti. Da decidere se e' voluto (allora scriverlo nella funzione e in /come-funziona) o se il livello deve pesare.
 
+**Un professionista collegato può ottenere l'indirizzo del cliente creando o confermando da solo un appuntamento** — _Aperta, trovata il 17 ott 2026 · correzione nella migrazione 131 (PR aperta, da applicare dopo l'approvazione di Lucio)_
+
+La divulgazione progressiva (044) apre via e civico (request_addresses) a un pro solo con un appuntamento confermato o concluso sulla richiesta, e alla conferma li copia nell'appuntamento. Il cancello era giusto, ma lo stato confermato o concluso il pro collegato poteva ottenerlo senza che il cliente avesse confermato niente, e la copia dell'indirizzo avveniva prima della regola che rimette la proposta da confermare. Cosi' un pro collegato, mai scelto, leggeva l'indirizzo del cliente. Vale per i pro collegati a un preventivo dalla 044 in poi; il messaggio col budget della chat di Bob non salva l'indirizzo (PR #200). In produzione il 17/10 una sola riga in request_addresses, di un account di prova, e nessun indirizzo copiato in un appuntamento: nessun indirizzo di un cliente reale esposto. La 131 fa creare al pro solo proposte, lascia confermare solo il cliente (o il pro che accetta tale e quale una proposta del cliente), toglie l'esenzione per le date passate alla conferma e copia l'indirizzo per ultima, sullo stato finale.
+
 
 ## M1 · The build tells the truth
 

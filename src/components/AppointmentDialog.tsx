@@ -119,6 +119,16 @@ export function AppointmentDialog({
   const attivoConCliente =
     conCliente &&
     (existing?.status === "confirmed" || existing?.status === "proposed");
+  // CONFERMATO LO DICE IL CLIENTE (17/10, migrazione 131). Su un appuntamento
+  // con un cliente il pro non porta da qui a «Confermato» o «Completato»
+  // quello che non e' gia' confermato: il database lo rimetterebbe «da
+  // confermare», e la conferma e' il momento in cui il pro riceve l'indirizzo.
+  // La proposta DEL cliente si accetta dalla chat («Approva»). L'agenda
+  // personale (senza richiesta) resta com'e'.
+  const statoConfermabile =
+    !conCliente ||
+    existing?.status === "confirmed" ||
+    existing?.status === "completed";
 
   useEffect(() => {
     let vivo = true;
@@ -520,8 +530,12 @@ export function AppointmentDialog({
                 {existing?.status === "proposed" && (
                   <option value="proposed">Da confermare</option>
                 )}
-                <option value="confirmed">Confermato</option>
-                <option value="completed">Completato</option>
+                {statoConfermabile && (
+                  <>
+                    <option value="confirmed">Confermato</option>
+                    <option value="completed">Completato</option>
+                  </>
+                )}
                 {(!confermatoConCliente || existing?.status === "cancelled") && (
                   <option value="cancelled">Annullato</option>
                 )}
