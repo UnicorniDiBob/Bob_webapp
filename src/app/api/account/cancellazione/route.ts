@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { GIORNI_RIPENSAMENTO, motivoValido } from "@/lib/cancellazione";
 
 export const runtime = "nodejs";
@@ -41,10 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Body non valido" }, { status: 400 });
   }
 
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await chiamante(request);
   if (!user?.email) {
     return NextResponse.json({ error: "Devi essere autenticato." }, { status: 401 });
   }
@@ -161,11 +158,8 @@ export async function POST(request: Request) {
   return NextResponse.json({ ok: true, scheduledFor });
 }
 
-export async function DELETE() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function DELETE(request: Request) {
+  const { user } = await chiamante(request);
   if (!user) {
     return NextResponse.json({ error: "Devi essere autenticato." }, { status: 401 });
   }

@@ -13,7 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { buildEmail, sendEmail } from "@/lib/email";
 
 export const runtime = "nodejs";
@@ -30,10 +30,7 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await chiamante(request);
   if (!user) return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
 
   let inizio: Date | null = null;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import { creaZip } from "@/lib/zip";
 import {
   INTERVALLO_EXPORT_MS,
@@ -30,8 +30,8 @@ export const dynamic = "force-dynamic";
 // (city_waitlist e' leggibile solo dal service role) e un export deve essere
 // COMPLETO, altrimenti stiamo rispondendo male a una richiesta di accesso.
 // La regola che sostituisce la RLS e' una sola, e va tenuta d'occhio a ogni
-// modifica: l'identita' viene SEMPRE da getUser() sui cookie, mai dal corpo o
-// dai parametri della richiesta. Non c'e' nessun id in ingresso da manomettere.
+// modifica: l'identita' viene SEMPRE da chiamante() (cookie del sito o Bearer
+// validato da Supabase), mai dal corpo o dai parametri della richiesta. Non c'e' nessun id in ingresso da manomettere.
 //
 // PERCHE' SOLO I CLIENTI, PER ORA
 // I dati di un professionista vivono in una ventina di tabelle in piu'
@@ -48,11 +48,8 @@ function serviceClient() {
   return createServiceClient(url, key, { auth: { persistSession: false } });
 }
 
-export async function GET() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function GET(request: Request) {
+  const { user } = await chiamante(request);
   if (!user?.email) {
     return NextResponse.json({ error: "Devi essere autenticato." }, { status: 401 });
   }

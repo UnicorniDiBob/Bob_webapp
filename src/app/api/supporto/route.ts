@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 
 export const runtime = "nodejs";
 
@@ -83,11 +83,13 @@ export async function POST(request: Request) {
     );
   }
 
-  // Chi sta scrivendo, secondo il server e non secondo il body.
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Chi sta scrivendo, secondo il server e non secondo il body. Scrivere da
+  // anonimi si puo'; con un Bearer rifiutato no: chi ha presentato un token
+  // non diventa anonimo, come in chiamante() non diventa il cookie.
+  const { user, tokenRifiutato } = await chiamante(request);
+  if (tokenRifiutato) {
+    return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
+  }
 
   const email = (user?.email ?? body.email ?? "").trim().toLowerCase();
   if (!EMAIL_RE.test(email) || email.length > 254) {

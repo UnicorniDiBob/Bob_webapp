@@ -41,7 +41,7 @@ import {
   createClient as createServiceClient,
   type SupabaseClient,
 } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
+import { chiamante } from "@/lib/supabase/chiamante";
 import type { SubscriptionTier } from "@/lib/supabase/types";
 import {
   NESSUNO_SCONTO,
@@ -62,10 +62,7 @@ interface CodiceAttivo {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user } = await chiamante(request);
   if (!user) {
     return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
   }
