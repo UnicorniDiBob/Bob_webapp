@@ -11,8 +11,10 @@
 //     portfolio e brief-photos, cartella dell'utente e foto della chat citate
 //     nei suoi job_briefs (src/lib/fileUtente.ts, dal 16/10; prima solo
 //     verifica-documenti, e solo i primi 100 file — ROPA A28);
-//   - i CONTATTI nei brief: access_notes e timing_availability si svuotano
-//     prima di deleteUser, perche' il brief resta anonimo (dal 17/10);
+//   - i BRIEF del cliente (job_briefs): si cancellano per intero prima di
+//     deleteUser, perche' job_briefs.user_id e' ON DELETE SET NULL e la
+//     cascata li lascerebbe anonimi. Nessuna copia de-identificata
+//     (decisione del 17/10, docs/legal/DECISIONE_conservazione_garanzia.md);
 //   - niente altro: le recensioni restano di proposito, de-identificate dalla
 //     056 (customer_id a NULL), perche' appartengono anche al professionista
 //     che le ha ricevute.
@@ -34,9 +36,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-/** I campi di testo libero di job_briefs che alla cancellazione si svuotano. */
-const CONTATTI_BRIEF_VUOTI = { access_notes: null, timing_availability: null };
 
 /** Quante cancellazioni per giro: sono irreversibili, meglio a piccoli passi. */
 const MAX_PER_RUN = 25;
@@ -135,16 +134,19 @@ export async function GET(request: Request) {
       console.error(`[cancella-account] file di ${riga.user_id.slice(0, 8)}:`, file.errori.join("; "));
     }
 
-    // I brief restano, de-identificati (job_briefs.user_id va a NULL), ma
-    // senza i campi di testo libero dove un cliente scrive i suoi contatti
-    // (17/10, CANC2). Restano descrizione, zona e budget; scope no, perche'
-    // i suoi campi di testo rifiutano gia' email e telefono all'ingresso.
-    // Va fatto ADESSO: dopo deleteUser nessuno sa piu' quali brief erano suoi.
-    // Se non riesce l'account non si cancella stanotte: la notte dopo si
-    // riprova, invece di lasciare i contatti in una riga che nessuno ritrova.
+    // I brief si cancellano per intero (decisione del 17/10): oggi nessun
+    // lavoro e' coperto dalla Garanzia Bob, quindi non c'e' niente che la
+    // legge imponga di tenere. L'unica chiave esterna verso job_briefs e'
+    // requests.brief_id, ON DELETE SET NULL: le richieste del cliente perdono
+    // il collegamento e poi vanno via con deleteUser (customer_id CASCADE);
+    // i trigger BEFORE UPDATE di requests col service role lasciano passare
+    // (verificato sulla produzione il 17/10). Una sola DELETE: o tutti o
+    // nessuno. Va fatto DOPO i file, che si ritrovano proprio dai brief, e
+    // PRIMA di deleteUser, che li lascerebbe anonimi e irraggiungibili.
+    // Se non riesce l'account non si cancella stanotte: si riprova domani.
     const { error: briefErr } = await admin
       .from("job_briefs")
-      .update(CONTATTI_BRIEF_VUOTI)
+      .delete()
       .eq("user_id", riga.user_id);
     if (briefErr) {
       falliti++;

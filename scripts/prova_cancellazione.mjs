@@ -12,8 +12,10 @@
 // - un CLIENTE (prova.cancellazione.cliente@bobapp.it): una richiesta
 //   collegata al pro e con il pro scelto, messaggi dei due e una proposta,
 //   un appuntamento confermato futuro e uno concluso passato; il suo brief con
-//   due foto di chat e un brief ANONIMO che ne cita una (quella deve restare),
-//   un file in brief-photos.
+//   due foto di chat e i contatti nel testo libero, e un brief ANONIMO che ne
+//   cita una (quella deve restare), un file in brief-photos. Dopo il cron il
+//   brief del cliente NON deve esistere piu' (decisione del 17/10: si cancella
+//   per intero, docs/legal/DECISIONE_conservazione_garanzia.md).
 //
 // PERCHE' COSI' (CANC2): dei 14 trigger SECURITY INVOKER sulle tabelle che la
 // cancellazione tocca, la cascata ne fa partire solo tre — un trigger
@@ -177,31 +179,6 @@ async function carica(f, jpeg) {
   if (error) throw new Error(`upload ${f.bucket}/${f.path}: ${error.message}`);
 }
 
-// IL BRIEF DE-IDENTIFICATO, CAMPO PER CAMPO (17/10). Il brief resta per
-// scelta (user_id a NULL, foto tolte): quello si controlla. Dove restano
-// email e telefono si RIPORTA soltanto: svuotare access_notes e
-// timing_availability e' una decisione sospesa (ramo brief-contatti-sospeso,
-// che ha anche la sua prova --solo-brief nel commit 8d794f4).
-const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
-const TEL_RE = /(?:\+39[\s.-]*)?(?:\d[\s.-]*){9,12}\d/;
-async function riportoBrief(briefId) {
-  const { data: b } = await admin.from("job_briefs").select("*").eq("id", briefId).maybeSingle();
-  console.log("\n== il brief de-identificato del cliente, campo per campo ==");
-  if (!b) { ok("il brief del cliente esiste ancora (de-identificato)", false); return; }
-  const testo = (v) => (v === null ? "" : typeof v === "string" ? v : JSON.stringify(v));
-  const contatti = (v) => [EMAIL_RE.test(testo(v)) && "email", TEL_RE.test(testo(v)) && "telefono"].filter(Boolean).join("+") || "nessun contatto";
-  for (const [k, v] of Object.entries(b)) {
-    if (["id", "created_at"].includes(k)) continue;
-    const valore = v === null ? "null" : Array.isArray(v) ? `[${v.length}]` : typeof v === "object" ? `{${Object.keys(v).length} chiavi}` : JSON.stringify(v);
-    console.log(`   ${k.padEnd(20)} ${valore.length > 70 ? valore.slice(0, 67) + "..." : valore.padEnd(70)} ${contatti(v)}`);
-  }
-  ok("brief: user_id null", b.user_id === null);
-  ok("brief: nessuna foto", Array.isArray(b.photos) && b.photos.length === 0);
-  const conContatti = Object.entries(b).filter(([k, v]) => !["id", "created_at"].includes(k) && v !== null && (EMAIL_RE.test(testo(v)) || TEL_RE.test(testo(v)))).map(([k]) => k);
-  console.log(`RIPORTO (non e' un controllo): email o telefono ancora in ${conContatti.join(", ") || "nessun campo"}`);
-  ok("brief: descrizione, zona e budget restano", b.summary === "Presa che scintilla in cucina" && b.zone === "Brera" && Number(b.budget_min) === 80 && Number(b.budget_max) === 150);
-}
-
 async function prova() {
   // 0. Nessun residuo di un giro precedente, e la coda e' quella che pensiamo.
   if (!registroVuoto(leggiRegistro())) {
@@ -252,7 +229,7 @@ async function prova() {
   for (const f of [fileCliente, chatSua, chatCondivisa]) await carica(f, jpeg);
   for (const b of [
     // Il testo come lo scriverebbe un cliente vero, con i contatti dentro: e'
-    // quello che il riporto finale cerca (numero e indirizzo finti).
+    // quello che non deve sopravvivere al cron (numero e indirizzo finti).
     {
       user_id: cliUid, photos: [{ storagePath: chatSua.path, aiCaption: null }, { storagePath: chatCondivisa.path, aiCaption: null }], source: "rules",
       summary: "Presa che scintilla in cucina", zone: "Brera", budget_min: 80, budget_max: 150,
@@ -340,10 +317,9 @@ async function prova() {
   for (const f of [fileVerifica, filePortfolio, fileCliente, chatSua]) ok(`storage: ${f.bucket}/${f.path.replace(/^[0-9a-f-]{36}/, "<uid>")} tolto`, !(await esisteFile(f)));
   ok("storage: la foto di chat citata anche dal brief anonimo e' rimasta", await esisteFile(chatCondivisa));
   const { data: brief } = await admin.from("job_briefs").select("id, user_id, photos").in("id", [briefSuo, briefAnonimo]);
+  ok("job_briefs: zero brief del cliente (cancellato per intero, non de-identificato)", !(brief ?? []).some((b) => b.id === briefSuo));
   const anon = (brief ?? []).find((b) => b.id === briefAnonimo);
   ok("il brief anonimo non e' stato toccato", !!anon && anon.photos.length === 1);
-
-  await riportoBrief(briefSuo);
 
   console.log(`\nid per la ricerca su tutte le colonne uuid: ${JSON.stringify(ids)}`);
 }
