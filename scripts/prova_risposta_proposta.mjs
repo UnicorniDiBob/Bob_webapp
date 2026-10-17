@@ -109,6 +109,16 @@ async function lavoro(id) {
   const { data } = await admin.from("professional_work_events").select("*").eq("rif", id).order("evento");
   return data ?? [];
 }
+// Cosa conta nel confronto: niente id, niente orari di scrittura.
+const VIA = new Set(["id", "created_at", "updated_at", "read_at", "avvenuto_al"]);
+const pulisci = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !VIA.has(k)).sort(([a], [b]) => a.localeCompare(b)));
+const forma = (g) => ({
+  riga: pulisci(g.riga),
+  messaggi: g.messaggi.map(pulisci),
+  eventi: g.eventi.map(pulisci),
+  lavoro: g.lavoro.map(pulisci),
+});
+
 // Gli id che c'erano prima di un giro: alla fine si cancellano SOLO le righe
 // con un id nuovo, mai per data (una riga di qualcun altro scritta nello
 // stesso minuto resterebbe intatta).
