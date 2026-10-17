@@ -3,9 +3,10 @@
 // NON SI MODIFICA: e' il testo che qualcuno ha accettato. Una correzione e'
 // una versione nuova, con la sua voce in src/lib/termini/registro.ts.
 // Cambiano solo l'involucro (nome della funzione, tipo del pubblico) e la
-// riga finale, dove le costanti di allora sono scritte per esteso.
+// riga finale, dove le costanti di allora sono scritte per esteso. Il 17/10
+// next/link e' diventato LinkTesto (un <a>, stesso HTML): vedi LinkTesto.tsx.
 
-import Link from "next/link";
+import { LinkTesto as Link } from "@/components/termini/LinkTesto";
 import { LegalSection } from "@/components/LegalPage";
 import { COMPANY } from "@/lib/company";
 import type { PubblicoTermini } from "@/lib/termini/registro";
