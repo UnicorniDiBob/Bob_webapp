@@ -8,9 +8,17 @@ import {
   leggimi,
   raccogliDatiCliente,
 } from "@/lib/export-dati";
+import { raccogliDatiProfessionista } from "@/lib/export-pro";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// NIENTE CACHE SULLE LETTURE (17/10). force-dynamic da solo non basta: con il
+// Bearer (l'app) la rotta non tocca cookies(), e Next 14 metteva in cache le
+// GET che supabase-js fa con fetch. Provato dal vivo: il secondo export entro
+// 24 ore leggeva last_export_at ancora null dalla cache e passava (200 invece
+// di 429), per il cliente come per il pro. E un export servito dalla cache e'
+// una copia vecchia dei dati, presentata come attuale.
+export const fetchCache = "force-no-store";
 
 // GET /api/account/esporta — la copia dei propri dati, artt. 15 e 20 GDPR.
 //
@@ -33,13 +41,11 @@ export const dynamic = "force-dynamic";
 // modifica: l'identita' viene SEMPRE da chiamante() (cookie del sito o Bearer
 // validato da Supabase), mai dal corpo o dai parametri della richiesta. Non c'e' nessun id in ingresso da manomettere.
 //
-// PERCHE' SOLO I CLIENTI, PER ORA
-// I dati di un professionista vivono in una ventina di tabelle in piu'
-// (verifica, documenti, abbonamento, pagamenti, disponibilita', portfolio) che
-// stanno nel perimetro di Lucio. Consegnare a un pro un archivio che si
-// intitola "i tuoi dati" e ne contiene meta' sarebbe peggio che non dargliene
-// nessuno: e' una risposta formalmente data e sostanzialmente falsa. Quindi la
-// rotta si ferma, lo dice chiaramente, e il blocco pro arriva nella sua PR.
+// CLIENTI E PROFESSIONISTI (dal 17/10)
+// Fino al 17/10 un professionista riceveva 409 (findings.csv, 29/09): il suo
+// blocco ora e' src/lib/export-pro.ts, con la regola su cosa dei clienti puo'
+// uscire. Lo staff (admin, cs) resta fuori: i suoi dati sono di un altro
+// genere (il registro delle azioni sui dati altrui) e passano a mano.
 
 function serviceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -68,15 +74,16 @@ export async function GET(request: Request) {
     .eq("id", user.id)
     .maybeSingle();
   const role = (userRow as { role?: string } | null)?.role ?? "customer";
-  if (role !== "customer") {
+  if (role !== "customer" && role !== "professional") {
     return NextResponse.json(
       {
         error:
-          "Per ora il download automatico copre gli account cliente. Il tuo account professionista ha gli stessi diritti: scrivici e ti mandiamo la copia completa.",
+          "Il download automatico copre gli account cliente e professionista. Per il tuo account scrivici e ti mandiamo la copia completa.",
       },
       { status: 409 }
     );
   }
+  const professionista = role === "professional";
 
   // Limite di frequenza (art. 12(5)). Non blocca un diritto: distanzia le
   // richieste ripetute di 24 ore, e lo dice con l'ora esatta del prossimo giro
@@ -106,13 +113,14 @@ export async function GET(request: Request) {
   const quando = new Date();
   let archivio: Buffer;
   try {
-    const { documento, allegati } = await raccogliDatiCliente(admin, {
+    const raccogli = professionista ? raccogliDatiProfessionista : raccogliDatiCliente;
+    const { documento, allegati } = await raccogli(admin, {
       id: user.id,
       email: user.email,
     });
     archivio = creaZip(
       [
-        { nome: "LEGGIMI.txt", dati: Buffer.from(leggimi(quando), "utf8") },
+        { nome: "LEGGIMI.txt", dati: Buffer.from(leggimi(quando, professionista), "utf8") },
         {
           nome: "dati.json",
           dati: Buffer.from(JSON.stringify(documento, null, 2), "utf8"),
@@ -121,7 +129,8 @@ export async function GET(request: Request) {
       ],
       quando
     );
-  } catch {
+  } catch (e) {
+    console.error("[esporta] raccolta fallita:", e instanceof Error ? e.message : e);
     // Un export incompleto non si consegna: meglio un errore onesto di un
     // archivio che sembra completo e non lo e'.
     return NextResponse.json(

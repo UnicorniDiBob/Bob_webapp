@@ -18,7 +18,7 @@
 import { useState } from "react";
 import { INTERVALLO_EXPORT_ORE } from "@/lib/export-dati";
 
-export function EsportaDati() {
+export function EsportaDati({ isPro = false }: { isPro?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [fatto, setFatto] = useState(false);
@@ -69,11 +69,9 @@ export function EsportaDati() {
           Scarica i tuoi dati
         </h3>
         <p className="mt-1.5 text-sm leading-relaxed text-bob-ink/70">
-          Un archivio con tutto quello che Bob tiene collegato al tuo account:
-          profilo, richieste, conversazioni con i professionisti, appuntamenti,
-          recensioni che hai scritto, le tue scelte sulle comunicazioni e le
-          foto che avevi caricato parlando con Bob. È tuo, non devi spiegare
-          perché lo vuoi, e puoi portartelo altrove.
+          {isPro
+            ? "Un archivio con tutto quello che Bob tiene collegato al tuo account: profilo e azienda, servizi e prezzi, orari, zone, verifica con i documenti che hai caricato, portfolio, richieste ricevute, conversazioni, appuntamenti, recensioni ricevute, piano, le tue scelte sulle comunicazioni e i termini che hai accettato. Dei tuoi clienti c’è solo quello che vedi già qui, mai il loro telefono o la loro email. È tuo, non devi spiegare perché lo vuoi, e puoi portartelo altrove."
+            : "Un archivio con tutto quello che Bob tiene collegato al tuo account: profilo, richieste, conversazioni con i professionisti, appuntamenti, recensioni che hai scritto, le tue scelte sulle comunicazioni e le foto che avevi caricato parlando con Bob. È tuo, non devi spiegare perché lo vuoi, e puoi portartelo altrove."}
         </p>
         <p className="mt-1.5 text-xs leading-relaxed text-bob-ink/65">
           Formato JSON, come previsto dal diritto alla portabilità (art. 20
