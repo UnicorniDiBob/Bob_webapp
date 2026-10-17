@@ -3,9 +3,9 @@ Le righe dell'altro non si toccano, nemmeno per correggerle: se sono superate, l
 
 ## André
 
-**Fatto (17 ottobre 2026, André con Claude):** PR 2 del brief docs/BRIEF_logo_mascotte_bee.md, ramo `mascotte-ape`: l'ape al posto di Bob disegnato nelle 8 scene (eroe della home, tre passi in home e /come-funziona, elenco nella fascia indaco, eroe di /servizi, eroe di /per-i-professionisti, «Come ordiniamo i risultati»). Nuovo `BobApe` (<picture> AVIF → WebP → PNG, width/height sempre, priorità solo per l'eroe), 42 file del pacchetto in public/mascotte/ (checksum uguali). Le pose-carta su fondo non bianco vanno in tondo, misurato che l'ape ci sta intera; tolti cariola, banconote, scala e attrezzi; via Bob.tsx, BobCheSaluta, BobConCariola, ScalaDeiMestieri; BobConElenco diventa ApeConElenco. docs/MASCOTTE_pose_mancanti.md. Prima, la #188: intestazione delle email BOB BEE.
-**A metà:** niente del brief. Restano da generare le pose in docs/MASCOTTE_pose_mancanti.md (ape al telefono, con la bilancia, con la cariola, di schiena sulla scala) e l'animazione, che André farà più avanti.
-**Applicato in produzione:** niente nel database. L'ape arriva su Vercel con il merge della PR (codice e immagini statiche).
+**Fatto (17 ottobre 2026, André con Claude):** mascotte ape (PR #189, unita e provata dal vivo) e ritocchi di André sul ramo `mascotte-ape-ritocchi`: nella fascia indaco della home l'ape «successo» (medaglione) al posto di «sceglie lo strumento»; nell'eroe di /servizi «benvenuto» (medaglione nel tondo) con l'alt nuovo; il titolo del telefono dice «Professionisti» invece di «Idraulici», su due righe con «Milano» sul desktop (su una non ci stava: misurato). Prima, la #188: intestazione delle email BOB BEE.
+**A metà:** restano da generare le pose in docs/MASCOTTE_pose_mancanti.md (ape al telefono, con la bilancia, con la cariola, di schiena sulla scala) e l'animazione, che André farà più avanti.
+**Applicato in produzione:** niente nel database. I ritocchi arrivano su Vercel con il merge della PR.
 
 ## Lucio
 

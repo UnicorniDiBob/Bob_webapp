@@ -8,7 +8,7 @@ Il sito usa oggi le pose del pacchetto `BOB-mascot-asset-pack-v2.0` (cartella `w
 
 | # | Posa da generare | Dove andrebbe | Oggi al suo posto |
 |---|---|---|---|
-| 1 | **Ape al telefono** (lo tiene e lo guarda; meglio se il telefono si vede di fronte) | Righe 4 e 5 del brief: home e /come-funziona passo 3 (`ScenaMessaggio` in `src/components/SceneBob.tsx`); home, fascia indaco (`ApeConElenco` in `src/components/ApeConElenco.tsx`) | Passo 3: «successo» con la nuvoletta del messaggio e la spunta accanto. Fascia indaco: «sceglie lo strumento» con il telefono dell'elenco di fianco, non in mano |
+| 1 | **Ape al telefono** (lo tiene e lo guarda; meglio se il telefono si vede di fronte) | Righe 4 e 5 del brief: home e /come-funziona passo 3 (`ScenaMessaggio` in `src/components/SceneBob.tsx`); home, fascia indaco (`ApeConElenco` in `src/components/ApeConElenco.tsx`) | Passo 3: «successo» con la nuvoletta del messaggio e la spunta accanto. Fascia indaco: «successo» in un medaglione, con il telefono dell'elenco di fianco, non in mano (ritocco del 17/10) |
 | 2 | **Ape con la bilancia / che confronta** due cose | Riga 3: passo 2 (`ScenaConfronto`) | «Sceglie lo strumento», con le tre schede dei profili accanto |
 | 3 | **Ape che spinge una cariola** | Riga 7: eroe di /per-i-professionisti | «Successo» in un medaglione tondo; cariola e banconote tolte. Se torna la cariola, serve trasparente (la fascia è indaco) |
 | 4 | **Api di schiena al lavoro**, su una scala, ognuna con un attrezzo diverso (chiave, pennello, scatolone, cacciavite) | Riga 8: /come-funziona, «Come ordiniamo i risultati», colonna accanto al testo (solo da 1024px in su) | Tre carte ferme, una accanto all'altra: elettricista, pulizie, giardinaggio |
