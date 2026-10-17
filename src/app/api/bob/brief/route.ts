@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { chiamante } from "@/lib/supabase/chiamante";
 import { EMPTY_BRIEF, validateScope, type JobBrief } from "@/lib/bob";
+import { fotoAttestate } from "@/lib/fotoBrief";
 import type { QuoteField } from "@/lib/supabase/types";
 import {
   checkActorRateLimit,
@@ -135,7 +136,10 @@ export async function POST(request: Request) {
         zone: brief.zone,
         scope,
         red_flags: brief.redFlags ?? [],
-        photos: brief.photos ?? [],
+        // Solo le foto che /api/bob/chat ha scritto per QUESTO chiamante: un
+        // percorso copiato da un altro non ha l'attestazione giusta e resta
+        // fuori (FOTO1, src/lib/fotoBrief.ts).
+        photos: fotoAttestate(brief.photos, userId),
         field_meta: brief.fieldMeta ?? {},
         // job_briefs.source ammette solo 'ai'/'rules' (mig 014): vero SOLO se
         // /api/bob/chat ha davvero risposto con un tool_use. Prima il verso

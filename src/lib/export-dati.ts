@@ -40,6 +40,7 @@
 // mettiamo il nome con cui il pro si presenta sulla piattaforma.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fotoConsegnabile } from "@/lib/fileUtente";
 
 /** Un export ogni 24 ore: art. 12(5), richieste "eccessive per ripetitivita'". */
 export const INTERVALLO_EXPORT_ORE = 24;
@@ -262,6 +263,16 @@ export async function raccogliDatiCliente(
         descrizione_automatica: f.aiCaption ?? null,
         nel_file: null,
       };
+
+      // Il percorso l'ha scritto il browser nei brief di prima del 17/10: se un
+      // brief di un altro lo citava gia', la foto e' sua e non esce da qui
+      // (FOTO1, src/lib/fotoBrief.ts).
+      const created = String(b.created_at ?? "");
+      if (!created || !(await fotoConsegnabile(admin, { id: String(b.id), created_at: created }, utente.id, percorso))) {
+        voce.nota = "Non inclusa: questa foto risulta caricata da un altro account.";
+        elencoFoto.push(voce);
+        continue;
+      }
 
       if (allegati.length >= MAX_FOTO || byteScaricati >= MAX_BYTE_FOTO) {
         voce.nota =

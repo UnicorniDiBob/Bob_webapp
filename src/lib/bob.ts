@@ -26,6 +26,9 @@ export interface FieldMeta {
 export interface BriefPhoto {
   storagePath: string;
   aiCaption: string | null;
+  // Firmata da /api/bob/chat per chi ha caricato la foto; /api/bob/brief la
+  // verifica e non la salva (FOTO1, src/lib/fotoBrief.ts).
+  attestazione?: string;
 }
 
 // Messaggio nella conversazione, formato neutro condiviso client/server.

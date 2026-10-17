@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
 import { chiamante } from "@/lib/supabase/chiamante";
 import { pulisciBase64 } from "@/lib/immagini";
+import { attestaFoto } from "@/lib/fotoBrief";
 import { getServices, getAllSubservices } from "@/lib/data";
 import { guessServiceSlug } from "@/lib/matching";
 import {
@@ -136,12 +137,14 @@ export async function POST(request: Request) {
   // Un Bearer presentato e rifiutato da Supabase e' un 401, non un anonimo:
   // chi manda un token deve sapere che non vale (vedi lib/supabase/chiamante).
   let actorKey = `ip:${extractClientIp(request)}`;
+  let userId: string | null = null;
   try {
     const c = await chiamante(request);
     if (c.tokenRifiutato) {
       return NextResponse.json({ error: "Non autenticato" }, { status: 401 });
     }
-    if (c.user?.id) actorKey = `user:${c.user.id}`;
+    userId = c.user?.id ?? null;
+    if (userId) actorKey = `user:${userId}`;
   } catch {
     // Nessuna sessione leggibile: resta l'IP, comportamento invariato.
   }
@@ -319,7 +322,13 @@ export async function POST(request: Request) {
         typeof briefIn.photoCaption === "string" && briefIn.photoCaption.trim()
           ? briefIn.photoCaption.trim()
           : null;
-      brief = { ...brief, photos: [...brief.photos, { storagePath, aiCaption }] };
+      // L'attestazione lega il percorso a chi l'ha caricato: /api/bob/brief
+      // non salva una foto senza (FOTO1, src/lib/fotoBrief.ts).
+      const attestazione = attestaFoto(storagePath, userId) ?? undefined;
+      brief = {
+        ...brief,
+        photos: [...brief.photos, { storagePath, aiCaption, attestazione }],
+      };
     }
 
     const modelNext = input.next === "city" ? "city" : "ask";
