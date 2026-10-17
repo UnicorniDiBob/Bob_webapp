@@ -13,10 +13,10 @@
 //   4. I tuoi professionisti → ricontatto in un tap
 //   5. Storico        → richieste concluse, ripiegate
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LinkChat } from "@/components/LinkChat";
-import { Bell, Calendar, MessageCircle } from "lucide-react";
+import { AlertTriangle, Bell, Calendar, MessageCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { ReviewDialog } from "@/components/ReviewDialog";
@@ -24,6 +24,7 @@ import { BoxLavoro } from "@/components/BoxLavoro";
 import { passiRichiesta, type StatoAppuntamento } from "@/lib/passiRichiesta";
 import { rigaStatoLavoro } from "@/lib/boxLavoro";
 import { chiaveCoppia, senzaArchiviati } from "@/lib/scelta";
+import { ErroreLettura, controlla, testoErrore } from "@/lib/erroreLettura";
 import { AltroOrario } from "@/components/AltroOrario";
 import {
   RIGA_APPUNTAMENTO_CLIENTE,
@@ -68,6 +69,19 @@ interface CustomerRequest {
 type Appointment = AppuntamentoCliente;
 
 const OPEN_STATUSES = ["sent", "quote_request", "matched"];
+
+/** Una lettura completa della home, scritta negli stati tutta insieme. */
+interface StatoCasa {
+  requests: CustomerRequest[];
+  unreadByReq: Map<string, number>;
+  unreadByPair: Map<string, number>;
+  appointments: Appointment[];
+  appuntamentiAperte: AppuntamentoDaFare[];
+  rispondenti: Map<string, Set<string>>;
+  ultimoMessaggio: Map<string, string>;
+  /** null: nessuna richiesta, le recensioni non si sono lette. */
+  reviewed: Set<string> | null;
+}
 
 function fmtDate(d: string | null) {
   if (!d) return "";
@@ -118,6 +132,14 @@ export function CustomerHome({
   // vero per richiesta, nelle conversazioni non archiviate.
   const [ultimoMessaggio, setUltimoMessaggio] = useState<Map<string, string>>(new Map());
   const [loadingData, setLoadingData] = useState(true);
+  // LA LETTURA ANDATA MALE SI DICE (17/10). Prima un guasto di rete o del
+  // database finiva in `data ?? []`, e la home diceva «Nessuna richiesta
+  // ancora» o «Nessun appuntamento in programma». Adesso, come nell'app:
+  // senza dati, «Non vedo i tuoi lavori» e Riprova; con i dati di prima,
+  // restano quelli e un avviso sopra.
+  const [erroreCasa, setErroreCasa] = useState<string | null>(null);
+  const [caricata, setCaricata] = useState(false);
+  const ultimaLettura = useRef(0);
   const [reviewFor, setReviewFor] = useState<CustomerRequest | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [tuttiDaFare, setTuttiDaFare] = useState(false);
@@ -127,168 +149,196 @@ export function CustomerHome({
 
   const load = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("requests")
-      .select(
-        "id, status, closed_reason, problem_description, created_at, chosen_professional_id, services ( name ), cities ( name ), request_professionals ( professional_id, archived_at, professionals ( id, user_id ) )"
-      )
-      .eq("customer_id", user.id)
-      // «draft» = mai partita. Ci finiscono le richieste declassate quando la
-      // consegna al professionista fallisce (RequestDialog): esistono come
-      // riga, ma nessuno le ha ricevute. Fra i lavori in corso non ci vanno —
-      // nell'export dei dati sì, perché restano dati della persona.
-      .neq("status", "draft")
-      .order("created_at", { ascending: false });
+    const n = ++ultimaLettura.current;
+    try {
+      const { data, error: erroreRichieste } = await supabase
+        .from("requests")
+        .select(
+          "id, status, closed_reason, problem_description, created_at, chosen_professional_id, services ( name ), cities ( name ), request_professionals ( professional_id, archived_at, professionals ( id, user_id ) )"
+        )
+        .eq("customer_id", user.id)
+        // «draft» = mai partita. Ci finiscono le richieste declassate quando la
+        // consegna al professionista fallisce (RequestDialog): esistono come
+        // riga, ma nessuno le ha ricevute. Fra i lavori in corso non ci vanno —
+        // nell'export dei dati sì, perché restano dati della persona.
+        .neq("status", "draft")
+        .order("created_at", { ascending: false });
+      controlla(erroreRichieste);
 
-    const rows = (data ?? []) as Record<string, unknown>[];
+      const rows = (data ?? []) as Record<string, unknown>[];
 
-    // Nomi dei professionisti coinvolti.
-    const proUserIds = new Set<string>();
-    for (const r of rows) {
-      for (const rp of (r.request_professionals ?? []) as Record<string, unknown>[]) {
-        const prof = rp.professionals as { user_id?: string } | null;
-        if (prof?.user_id) proUserIds.add(prof.user_id);
-      }
-    }
-    const nameByUser = new Map<string, string>();
-    if (proUserIds.size) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", Array.from(proUserIds));
-      for (const p of (profs ?? []) as { user_id: string; full_name: string | null }[]) {
-        if (p.full_name) nameByUser.set(p.user_id, p.full_name);
-      }
-    }
-
-    // SCEGLI E ARCHIVIA (15/10, PR 7). Le coppie «richiesta:pro» archiviate:
-    // quei pro escono da tutto quello che la dashboard conta.
-    const archiviati = new Set<string>();
-    for (const r of rows) {
-      for (const rp of (r.request_professionals ?? []) as Record<string, unknown>[]) {
-        if (rp.archived_at) archiviati.add(chiaveCoppia(r.id as string, rp.professional_id as string));
-      }
-    }
-
-    const reqs: CustomerRequest[] = rows.map((r) => {
-      const rps = ((r.request_professionals ?? []) as Record<string, unknown>[]).filter(
-        (rp) => !rp.archived_at
-      );
-      const scelto = (r.chosen_professional_id as string | null) ?? null;
-      const pros = rps
-        .map((rp) => {
-          const prof = rp.professionals as { id: string; user_id: string | null } | null;
-          if (!prof) return null;
-          return {
-            id: prof.id,
-            name: (prof.user_id && nameByUser.get(prof.user_id)) || "Professionista",
-          };
-        })
-        .filter(Boolean) as { id: string; name: string }[];
-      return {
-        id: r.id as string,
-        status: r.status as string,
-        closed_reason: (r.closed_reason as string | null) ?? null,
-        problem_description: (r.problem_description as string) ?? null,
-        created_at: (r.created_at as string) ?? null,
-        service: r.services as { name: string } | null,
-        city: r.cities as { name: string } | null,
-        pros,
-        scelto: scelto && pros.some((p) => p.id === scelto) ? scelto : null,
-      };
-    });
-    setRequests(reqs);
-
-    const ids = reqs.map((r) => r.id);
-    if (ids.length) {
-      // Non letti per conversazione (risposte dei pro).
-      const { data: unreadRows } = await supabase
-        .from("request_messages")
-        .select("request_id, professional_id")
-        .in("request_id", ids)
-        .eq("sender_type", "professional")
-        .is("read_at", null);
-      const m = new Map<string, number>();
-      const mp = new Map<string, number>();
-      for (const u of senzaArchiviati(
-        (unreadRows ?? []) as { request_id: string; professional_id: string | null }[],
-        archiviati
-      )) {
-        m.set(u.request_id, (m.get(u.request_id) ?? 0) + 1);
-        const k = `${u.request_id}:${u.professional_id ?? ""}`;
-        mp.set(k, (mp.get(k) ?? 0) + 1);
-      }
-      setUnreadByReq(m);
-      setUnreadByPair(mp);
-
-      // Appuntamenti futuri (proposti o confermati) sulle mie richieste.
-      const { data: appts } = await supabase
-        .from("appointments")
-        .select(COLONNE_APPUNTAMENTO_CLIENTE)
-        .in("request_id", ids)
-        .in("status", ["proposed", "confirmed"])
-        .gte("starts_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
-        .order("starts_at", { ascending: true })
-        .limit(6);
-      setAppointments(senzaArchiviati((appts as Appointment[]) ?? [], archiviati));
-
-      // Gli appuntamenti delle richieste aperte, senza limiti di data: un
-      // lavoro finito la settimana scorsa e' ancora da chiudere (15/10).
-      const aperteIds = reqs.filter((r) => OPEN_STATUSES.includes(r.status)).map((r) => r.id);
-      if (aperteIds.length) {
-        const { data: storia } = await supabase
-          .from("appointments")
-          .select("id, request_id, professional_id, status, starts_at, duration_minutes, proposed_by")
-          .in("request_id", aperteIds);
-        setAppuntamentiAperte(senzaArchiviati((storia as AppuntamentoDaFare[]) ?? [], archiviati));
-
-        // Solo gli id, mai il testo dei messaggi: serve sapere chi ha
-        // scritto, non cosa.
-        // (PR 9, 15/10) La stessa lettura serve anche all'orologio di «È
-        // andato tutto bene?»: messaggi del cliente e dei pro, con l'ora.
-        // Sempre solo id e date, mai il testo.
-        const { data: scritti } = await supabase
-          .from("request_messages")
-          .select("request_id, professional_id, sender_type, created_at")
-          .in("request_id", aperteIds)
-          .in("sender_type", ["customer", "professional"]);
-        const righe = (scritti ?? []) as {
-          request_id: string;
-          professional_id: string | null;
-          sender_type: string;
-          created_at: string;
-        }[];
-        setUltimoMessaggio(ultimoMessaggioPerRichiesta(righe, archiviati));
-        const chi = new Map<string, Set<string>>();
-        for (const m of senzaArchiviati(righe, archiviati)) {
-          if (m.sender_type !== "professional" || !m.professional_id) continue;
-          if (!chi.has(m.request_id)) chi.set(m.request_id, new Set());
-          chi.get(m.request_id)!.add(m.professional_id);
+      // Nomi dei professionisti coinvolti.
+      const proUserIds = new Set<string>();
+      for (const r of rows) {
+        for (const rp of (r.request_professionals ?? []) as Record<string, unknown>[]) {
+          const prof = rp.professionals as { user_id?: string } | null;
+          if (prof?.user_id) proUserIds.add(prof.user_id);
         }
-        setRispondenti(chi);
-      } else {
-        setAppuntamentiAperte([]);
-        setRispondenti(new Map());
-        setUltimoMessaggio(new Map());
+      }
+      const nameByUser = new Map<string, string>();
+      if (proUserIds.size) {
+        const { data: profs, error: erroreProfili } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", Array.from(proUserIds));
+        controlla(erroreProfili);
+        for (const p of (profs ?? []) as { user_id: string; full_name: string | null }[]) {
+          if (p.full_name) nameByUser.set(p.user_id, p.full_name);
+        }
       }
 
-      const { data: myRatings } = await supabase
-        .from("ratings")
-        .select("request_id, professional_id")
-        .eq("customer_id", user.id);
-      setReviewed(
-        new Set(
+      // SCEGLI E ARCHIVIA (15/10, PR 7). Le coppie «richiesta:pro» archiviate:
+      // quei pro escono da tutto quello che la dashboard conta.
+      const archiviati = new Set<string>();
+      for (const r of rows) {
+        for (const rp of (r.request_professionals ?? []) as Record<string, unknown>[]) {
+          if (rp.archived_at) archiviati.add(chiaveCoppia(r.id as string, rp.professional_id as string));
+        }
+      }
+
+      const reqs: CustomerRequest[] = rows.map((r) => {
+        const rps = ((r.request_professionals ?? []) as Record<string, unknown>[]).filter(
+          (rp) => !rp.archived_at
+        );
+        const scelto = (r.chosen_professional_id as string | null) ?? null;
+        const pros = rps
+          .map((rp) => {
+            const prof = rp.professionals as { id: string; user_id: string | null } | null;
+            if (!prof) return null;
+            return {
+              id: prof.id,
+              name: (prof.user_id && nameByUser.get(prof.user_id)) || "Professionista",
+            };
+          })
+          .filter(Boolean) as { id: string; name: string }[];
+        return {
+          id: r.id as string,
+          status: r.status as string,
+          closed_reason: (r.closed_reason as string | null) ?? null,
+          problem_description: (r.problem_description as string) ?? null,
+          created_at: (r.created_at as string) ?? null,
+          service: r.services as { name: string } | null,
+          city: r.cities as { name: string } | null,
+          pros,
+          scelto: scelto && pros.some((p) => p.id === scelto) ? scelto : null,
+        };
+      });
+      // Si scrive tutto insieme alla fine: un guasto a meta' non deve lasciare
+      // le richieste nuove accanto agli appuntamenti di prima.
+      const nuovo: StatoCasa = {
+        requests: reqs,
+        unreadByReq: new Map(),
+        unreadByPair: new Map(),
+        appointments: [],
+        appuntamentiAperte: [],
+        rispondenti: new Map(),
+        ultimoMessaggio: new Map(),
+        reviewed: null,
+      };
+
+      const ids = reqs.map((r) => r.id);
+      if (ids.length) {
+        // Non letti per conversazione (risposte dei pro).
+        const { data: unreadRows, error: erroreNonLetti } = await supabase
+          .from("request_messages")
+          .select("request_id, professional_id")
+          .in("request_id", ids)
+          .eq("sender_type", "professional")
+          .is("read_at", null);
+        controlla(erroreNonLetti);
+        const m = new Map<string, number>();
+        const mp = new Map<string, number>();
+        for (const u of senzaArchiviati(
+          (unreadRows ?? []) as { request_id: string; professional_id: string | null }[],
+          archiviati
+        )) {
+          m.set(u.request_id, (m.get(u.request_id) ?? 0) + 1);
+          const k = `${u.request_id}:${u.professional_id ?? ""}`;
+          mp.set(k, (mp.get(k) ?? 0) + 1);
+        }
+        nuovo.unreadByReq = m;
+        nuovo.unreadByPair = mp;
+
+        // Appuntamenti futuri (proposti o confermati) sulle mie richieste.
+        const { data: appts, error: erroreAppuntamenti } = await supabase
+          .from("appointments")
+          .select(COLONNE_APPUNTAMENTO_CLIENTE)
+          .in("request_id", ids)
+          .in("status", ["proposed", "confirmed"])
+          .gte("starts_at", new Date(Date.now() - 24 * 3600 * 1000).toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(6);
+        controlla(erroreAppuntamenti);
+        nuovo.appointments = senzaArchiviati((appts as Appointment[]) ?? [], archiviati);
+
+        // Gli appuntamenti delle richieste aperte, senza limiti di data: un
+        // lavoro finito la settimana scorsa e' ancora da chiudere (15/10).
+        const aperteIds = reqs.filter((r) => OPEN_STATUSES.includes(r.status)).map((r) => r.id);
+        if (aperteIds.length) {
+          const { data: storia, error: erroreStoria } = await supabase
+            .from("appointments")
+            .select("id, request_id, professional_id, status, starts_at, duration_minutes, proposed_by")
+            .in("request_id", aperteIds);
+          controlla(erroreStoria);
+          nuovo.appuntamentiAperte = senzaArchiviati((storia as AppuntamentoDaFare[]) ?? [], archiviati);
+
+          // Solo gli id, mai il testo dei messaggi: serve sapere chi ha
+          // scritto, non cosa.
+          // (PR 9, 15/10) La stessa lettura serve anche all'orologio di «È
+          // andato tutto bene?»: messaggi del cliente e dei pro, con l'ora.
+          // Sempre solo id e date, mai il testo.
+          const { data: scritti, error: erroreScritti } = await supabase
+            .from("request_messages")
+            .select("request_id, professional_id, sender_type, created_at")
+            .in("request_id", aperteIds)
+            .in("sender_type", ["customer", "professional"]);
+          controlla(erroreScritti);
+          const righe = (scritti ?? []) as {
+            request_id: string;
+            professional_id: string | null;
+            sender_type: string;
+            created_at: string;
+          }[];
+          nuovo.ultimoMessaggio = ultimoMessaggioPerRichiesta(righe, archiviati);
+          const chi = new Map<string, Set<string>>();
+          for (const m of senzaArchiviati(righe, archiviati)) {
+            if (m.sender_type !== "professional" || !m.professional_id) continue;
+            if (!chi.has(m.request_id)) chi.set(m.request_id, new Set());
+            chi.get(m.request_id)!.add(m.professional_id);
+          }
+          nuovo.rispondenti = chi;
+        }
+
+        const { data: myRatings, error: erroreRecensioni } = await supabase
+          .from("ratings")
+          .select("request_id, professional_id")
+          .eq("customer_id", user.id);
+        controlla(erroreRecensioni);
+        nuovo.reviewed = new Set(
           ((myRatings ?? []) as { request_id: string | null; professional_id: string }[])
             .filter((x) => x.request_id)
             .map((x) => `${x.request_id}:${x.professional_id}`)
-        )
-      );
-    } else {
-      setUnreadByReq(new Map());
-      setAppointments([]);
-      setAppuntamentiAperte([]);
-      setRispondenti(new Map());
-      setUltimoMessaggio(new Map());
+        );
+      }
+
+      // Solo l'ultima lettura partita conta: un «Riprova» premuto due volte
+      // non deve far vincere la risposta piu' lenta.
+      if (n !== ultimaLettura.current) return;
+      setRequests(nuovo.requests);
+      setUnreadByReq(nuovo.unreadByReq);
+      setUnreadByPair(nuovo.unreadByPair);
+      setAppointments(nuovo.appointments);
+      setAppuntamentiAperte(nuovo.appuntamentiAperte);
+      setRispondenti(nuovo.rispondenti);
+      setUltimoMessaggio(nuovo.ultimoMessaggio);
+      if (nuovo.reviewed) setReviewed(nuovo.reviewed);
+      setErroreCasa(null);
+      setCaricata(true);
+    } catch (e) {
+      if (n !== ultimaLettura.current) return;
+      // I dati di prima restano: meglio vecchi e detti vecchi che spariti.
+      console.error("[home cliente] lettura non riuscita:", e instanceof ErroreLettura ? e.tipo : e);
+      setErroreCasa(testoErrore(e));
     }
     setLoadingData(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -300,8 +350,11 @@ export function CustomerHome({
 
   // Conferma / Rifiuta: la stessa risposta della pagina della richiesta
   // (lib/appuntamentoCliente.ts, 15/10).
-  const { rispondi: respondToAppointment, inCorso: respondingAppt } =
-    useRispostaAppuntamento(user?.id, load);
+  const {
+    rispondi: respondToAppointment,
+    inCorso: respondingAppt,
+    errore: erroreRisposta,
+  } = useRispostaAppuntamento(user?.id, load);
 
   function openSlotPicker(a: Appointment) {
     setSlotPickerFor(a);
@@ -346,9 +399,11 @@ export function CustomerHome({
   const righeDaFare = tuttiDaFare ? daFare : visibili;
   const riepilogo = riepilogoCliente(daFare.length, appointments);
 
+  // Senza una lettura riuscita non c'e' niente da riassumere: «Nessuna
+  // novità: tutto in ordine» sopra un errore sarebbe falso.
   useEffect(() => {
-    if (!loadingData) onRiepilogo?.(riepilogo);
-  }, [loadingData, riepilogo, onRiepilogo]);
+    if (!loadingData && caricata) onRiepilogo?.(riepilogo);
+  }, [loadingData, caricata, riepilogo, onRiepilogo]);
 
   function testoRiga(testo: string, sotto: string) {
     return (
@@ -398,6 +453,11 @@ export function CustomerHome({
                 Rifiuta
               </button>
             </span>
+            {erroreRisposta?.id === a.id && (
+              <p role="alert" className="w-full text-xs text-red-600" data-testid={`appt-errore-${a.id}`}>
+                {erroreRisposta.testo}
+              </p>
+            )}
           </div>
         );
       }
@@ -562,26 +622,74 @@ export function CustomerHome({
     );
   }
 
+  function riprova() {
+    setErroreCasa(null);
+    if (!caricata) setLoadingData(true);
+    void load();
+  }
+
+  // Niente dati e la lettura e' andata male: non e' «nessuna richiesta».
+  if (erroreCasa && !caricata) {
+    return (
+      <div
+        role="alert"
+        className="card flex flex-col items-center gap-3 px-6 py-14 text-center"
+        data-testid="home-errore"
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+          <AlertTriangle className="h-6 w-6" aria-hidden="true" />
+        </div>
+        <h3 className="font-semibold text-bob-ink">Non vedo i tuoi lavori</h3>
+        <p className="max-w-sm text-sm text-bob-ink/70">{erroreCasa}</p>
+        <button type="button" onClick={riprova} className="btn-primary mt-1 px-5 py-2.5">
+          Riprova
+        </button>
+      </div>
+    );
+  }
+
+  // I dati di prima restano, con un avviso sopra.
+  const avvisoAggiornamento = erroreCasa ? (
+    <div
+      role="alert"
+      className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700"
+      data-testid="home-avviso-errore"
+    >
+      <span>Non ho potuto aggiornare. {erroreCasa}</span>
+      <button
+        type="button"
+        onClick={riprova}
+        className="inline-flex min-h-[44px] items-center rounded-lg px-2 font-semibold underline focus:outline-none focus-visible:ring-2 focus-visible:ring-bob-indigo/40"
+      >
+        Riprova
+      </button>
+    </div>
+  ) : null;
+
   if (requests.length === 0) {
     return (
-      <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-bob-indigo">
-          <MessageCircle className="h-6 w-6" aria-hidden="true" />
+      <>
+        {avvisoAggiornamento}
+        <div className="card flex flex-col items-center gap-3 px-6 py-14 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-bob-indigo-50 text-bob-indigo">
+            <MessageCircle className="h-6 w-6" aria-hidden="true" />
+          </div>
+          <h3 className="font-semibold text-bob-ink">Nessuna richiesta ancora</h3>
+          <p className="max-w-sm text-sm text-bob-ink/70">
+            Racconta a Bob il tuo problema: capisce di cosa hai bisogno e ti
+            mette in contatto con i professionisti giusti.
+          </p>
+          <Link href="/#bob" className="btn-primary mt-1 px-5 py-2.5">
+            Parla con Bob
+          </Link>
         </div>
-        <h3 className="font-semibold text-bob-ink">Nessuna richiesta ancora</h3>
-        <p className="max-w-sm text-sm text-bob-ink/70">
-          Racconta a Bob il tuo problema: capisce di cosa hai bisogno e ti
-          mette in contatto con i professionisti giusti.
-        </p>
-        <Link href="/#bob" className="btn-primary mt-1 px-5 py-2.5">
-          Parla con Bob
-        </Link>
-      </div>
+      </>
     );
   }
 
   return (
     <div>
+      {avvisoAggiornamento}
       {/* DUE COLONNE COME IL PRO (15/10). Sul desktop la colonna principale
           (Da fare ora, Lavori in corso) e una laterale di 320px
           (appuntamenti, professionisti), le stesse proporzioni di

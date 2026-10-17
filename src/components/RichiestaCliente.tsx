@@ -315,7 +315,7 @@ export function RichiestaCliente({ id }: { id: string }) {
     void carica();
   }, [carica]);
 
-  const { rispondi, inCorso } = useRispostaAppuntamento(user?.id, carica);
+  const { rispondi, inCorso, errore: erroreRisposta } = useRispostaAppuntamento(user?.id, carica);
 
   // RIAPRIRE E' SILENZIOSO (16/10, migrazione 123): il pro torna a poter
   // scrivere ma non riceve niente, e sentira' il cliente solo quando il
@@ -677,6 +677,11 @@ export function RichiestaCliente({ id }: { id: string }) {
               >
                 Rifiuta
               </button>
+              {erroreRisposta?.id === prossimo.id && (
+                <p role="alert" className="w-full px-2 text-xs text-red-600" data-testid={`appt-errore-${prossimo.id}`}>
+                  {erroreRisposta.testo}
+                </p>
+              )}
             </div>
           )}
         </section>
