@@ -2,8 +2,8 @@ import Link from "next/link";
 import { getCities, getServices } from "@/lib/data";
 import { BobChat } from "@/components/BobChat";
 import { RicercaBox } from "@/components/RicercaBox";
-import { BobCheSaluta } from "@/components/BobCheSaluta";
-import { BobConElenco } from "@/components/BobConElenco";
+import { BobApe } from "@/components/BobApe";
+import { ApeConElenco } from "@/components/ApeConElenco";
 import { Rivela } from "@/components/Rivela";
 import { Blocco, Fascia, Passo, TestaSezione } from "@/components/sezioni";
 import {
@@ -43,7 +43,19 @@ export default async function HomePage() {
       >
         <div className="container-bob grid grid-cols-1 items-end gap-8 py-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] lg:gap-14 lg:py-16">
           <div className="animate-fade-up justify-self-center lg:justify-self-stretch">
-            <BobCheSaluta className="mx-auto w-40 sm:w-52 lg:w-full lg:max-w-[380px]" />
+            {/* (17/10) L'ape al posto di Bob che saluta, stessa larghezza. E'
+                l'unica immagine nella prima schermata: priorita'. Ritagliata
+                in tondo perche' la posa e' una carta su fondo bianco e qui il
+                fondo e' la sfumatura indaco dell'eroe (vedi BobApe). */}
+            <div className="mx-auto w-40 sm:w-52 lg:w-full lg:max-w-[380px]" data-testid="scena-eroe-home">
+              <BobApe
+                posa="benvenuto"
+                priorita
+                alt="Bob, l'ape di BOB BEE, ti dà il benvenuto"
+                sizes="(min-width: 1024px) 380px, (min-width: 640px) 208px, 160px"
+                className="w-full rounded-full"
+              />
+            </div>
           </div>
           <div className="animate-fade-up [animation-delay:80ms]">
             <BobChat cities={cities} services={services} />
@@ -137,7 +149,7 @@ export default async function HomePage() {
           </div>
 
           <Rivela ritardo={100} className="w-full">
-            <BobConElenco />
+            <ApeConElenco />
           </Rivela>
         </div>
       </Fascia>

@@ -1,28 +1,37 @@
-import { Bob } from "./Bob";
+import { BobApe } from "./BobApe";
 
 /**
- * Le tre scene illustrate dei passi della home.
+ * Le tre scene illustrate dei passi della home (e di /come-funziona).
  *
- * Non sono un SVG unico: sono un cerchio in CSS con dentro Bob e un oggetto,
- * posizionati in percentuale. Costa meno di un disegno intero, resta
- * ricolorabile con le classi del progetto, e soprattutto Bob dentro la scena e'
- * lo STESSO componente dell'eroe — non una copia che col tempo divergera'.
+ * Un cerchio in CSS con dentro l'ape e un oggetto, posizionati in
+ * percentuale: la scena e' un quadrato che si adatta alla colonna, e su un
+ * telefono si rimpicciolisce tutta insieme.
  *
- * Le proporzioni sono in percentuale e non in pixel: la scena e' un quadrato
- * che si adatta alla colonna, e su un telefono si rimpicciolisce tutta insieme.
+ * DAL 17/10 C'E' L'APE (PR 2 del brief docs/BRIEF_logo_mascotte_bee.md) al
+ * posto di Bob disegnato. Restano il cerchio, la sua misura e gli oggetti del
+ * passo (la richiesta sul telefono, le tre schede, il messaggio con la
+ * spunta): non erano attrezzi in mano a Bob, raccontano il passo, e accanto
+ * all'ape si leggono uguale. Le pose «benvenuto» e «successo» sono carte su
+ * fondo bianco: dentro il cerchio colorato vanno in tondo (vedi BobApe).
+ * «sceglie-strumento» e' trasparente e sta sul cerchio come stava Bob.
+ *
+ * Quanto e' larga l'ape sullo schermo, per `sizes`: il cerchio arriva a 320px
+ * e l'ape ne prende la meta' circa, quindi 170px bastano a ogni misura.
  */
 
 /**
  * Il tondo su cui poggiano le scene.
  *
- * Esportato perche' serve anche fuori da qui: su una fascia scura Bob ha la
- * salopette dello stesso indaco del fondo, e senza un tondo chiaro dietro si
- * perde nello sfondo. E' il suo mestiere, dare un fondo a Bob.
+ * Esportato perche' serve anche fuori da qui: nell'eroe di /servizi, su una
+ * fascia indaco, e' il tondo chiaro che da' un fondo alla mascotte. Nato
+ * quando Bob aveva la salopette dello stesso indaco della fascia e senza
+ * tondo spariva; con l'ape resta per lo stesso motivo di misura e di fondo.
  */
 export function Cerchio({
   tinta,
   appoggio = "bg-black/[0.06]",
   children,
+  testid,
 }: {
   tinta: string;
   /**
@@ -34,9 +43,10 @@ export function Cerchio({
    */
   appoggio?: string;
   children: React.ReactNode;
+  testid?: string;
 }) {
   return (
-    <div className="relative mx-auto aspect-square w-full max-w-[320px]">
+    <div className="relative mx-auto aspect-square w-full max-w-[320px]" data-testid={testid}>
       <div className={`absolute inset-0 rounded-full ${tinta}`} />
       <div
         className={`absolute inset-x-0 bottom-0 h-1/2 overflow-hidden rounded-b-[999px] ${appoggio}`}
@@ -49,8 +59,13 @@ export function Cerchio({
 /** Passo 1 — la richiesta arriva sul telefono. */
 export function ScenaRichiesta() {
   return (
-    <Cerchio tinta="bg-bob-indigo-100">
-      <Bob posa="neutro" className="absolute bottom-[7%] left-[3%] w-[48%]" />
+    <Cerchio tinta="bg-bob-indigo-100" testid="scena-richiesta">
+      <BobApe
+        posa="benvenuto"
+        alt="Bob, l'ape di BOB BEE, ti dà il benvenuto"
+        sizes="170px"
+        className="absolute bottom-[7%] left-[3%] w-[52%] rounded-full"
+      />
       <div className="absolute right-[9%] top-[26%] w-[27%] rounded-[14%/9%] bg-bob-ink p-[6%] shadow-card">
         <div className="rounded-[10%/7%] bg-white p-[9%]">
           <div className="h-1.5 w-4/5 rounded-full bg-bob-indigo-100" />
@@ -66,8 +81,13 @@ export function ScenaRichiesta() {
 /** Passo 2 — i profili si confrontano, uno emerge. */
 export function ScenaConfronto() {
   return (
-    <Cerchio tinta="bg-bob-yellow/25">
-      <Bob posa="neutro" className="absolute bottom-[7%] left-[1%] w-[46%]" />
+    <Cerchio tinta="bg-bob-yellow/25" testid="scena-confronto">
+      <BobApe
+        posa="sceglie-strumento"
+        alt="Bob, l'ape di BOB BEE, sceglie lo strumento giusto"
+        sizes="170px"
+        className="absolute bottom-[7%] left-[1%] w-[50%]"
+      />
       <div className="absolute right-[6%] top-[20%] flex w-[44%] flex-col gap-[7%]">
         <SchedaFinta colore="bg-bob-indigo" />
         <SchedaFinta colore="bg-bob-indigo-600" />
@@ -96,8 +116,13 @@ function SchedaFinta({ colore, scelta = false }: { colore: string; scelta?: bool
 /** Passo 3 — Bob scrive il primo messaggio, e il lavoro parte. */
 export function ScenaMessaggio() {
   return (
-    <Cerchio tinta="bg-bob-indigo-100">
-      <Bob posa="telefono" className="absolute bottom-[7%] left-[3%] w-[48%]" />
+    <Cerchio tinta="bg-bob-indigo-100" testid="scena-messaggio">
+      <BobApe
+        posa="successo"
+        alt="Bob, l'ape di BOB BEE, festeggia il lavoro partito"
+        sizes="170px"
+        className="absolute bottom-[7%] left-[3%] w-[52%] rounded-full"
+      />
       <div className="absolute right-[7%] top-[24%] w-[42%] rounded-2xl bg-white p-[9%] shadow-card">
         <div className="h-1.5 w-full rounded-full bg-bob-indigo-100" />
         <div className="mt-[9%] h-1.5 w-4/5 rounded-full bg-bob-indigo-100" />
@@ -156,65 +181,5 @@ export function Bilancia({
       <path d="M6 46h37c0 10-8 16-18.5 16S6 56 6 46z" fill="#fbbf24" />
       <path d="M77 46h37c0 10-8 16-18.5 16S77 56 77 46z" fill="#fbbf24" />
     </svg>
-  );
-}
-
-/** Quali attrezzi sa tenere Bob. */
-export type TipoAttrezzo =
-  | "chiave"
-  | "pennello"
-  | "scatolone"
-  | "cacciavite";
-
-/**
- * Gli attrezzi che Bob puo' tenere in mano, disegnati attorno alla sua mano
- * destra, che nel viewBox sta a (135.5, 206).
- *
- * STANNO QUI E NON DENTRO LA SCALA. La scala e' il primo posto che li ha
- * usati, non il loro proprietario: un attrezzo serve ovunque Bob faccia un
- * mestiere, e l'eroe della pagina per i professionisti e' il secondo posto.
- *
- * Partono da x=140 e non da 135: il corpo arriva a x=134, e un attrezzo
- * disegnato sulla mano finirebbe per meta' dietro la camicia. A 140 la mano ne
- * copre il manico — sembra impugnato — e il resto si vede.
- *
- * Niente testo: le misure scalano, le parole no.
- */
-export function Attrezzo({ tipo }: { tipo: TipoAttrezzo }) {
-  if (tipo === "chiave") {
-    return (
-      <g transform="rotate(12 150 210)">
-        <rect x="144" y="196" width="13" height="56" rx="6.5" fill="#8f98ad" />
-        <path
-          d="M150.5 168a16 16 0 1 1 0 32 16 16 0 0 1 0-32zm0 9a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"
-          fill="#8f98ad"
-        />
-      </g>
-    );
-  }
-  if (tipo === "pennello") {
-    return (
-      <g transform="rotate(-10 150 210)">
-        <rect x="145" y="174" width="11" height="42" rx="5.5" fill="#c8a179" />
-        <rect x="141" y="214" width="19" height="11" rx="2.5" fill="#8f98ad" />
-        <path d="M141 225h19v20a9.5 9.5 0 0 1-19 0z" fill="#3730a3" />
-      </g>
-    );
-  }
-  if (tipo === "scatolone") {
-    return (
-      <g>
-        <rect x="138" y="190" width="56" height="48" rx="5" fill="#c8a179" />
-        <rect x="138" y="207" width="56" height="9" fill="#a8845c" />
-        <rect x="161" y="190" width="9" height="48" fill="#a8845c" />
-      </g>
-    );
-  }
-  return (
-    <g transform="rotate(20 150 210)">
-      <rect x="143" y="166" width="15" height="34" rx="7" fill="#fbbf24" />
-      <rect x="147" y="198" width="7" height="48" rx="3" fill="#8f98ad" />
-      <rect x="145" y="196" width="11" height="7" rx="2" fill="#eaa50c" />
-    </g>
   );
 }

@@ -3,9 +3,9 @@ Le righe dell'altro non si toccano, nemmeno per correggerle: se sono superate, l
 
 ## André
 
-**Fatto (17 ottobre 2026, André con Claude):** logo BOB BEE (PR #187, unita e provata dal vivo il 16/10, schermate approvate da André). Ramo `logo-email-bob-bee`: l'intestazione delle email (src/lib/email.ts) passa da «BOB.» col punto arancione al wordmark BOB BEE, con le stesse proporzioni del sito ma in px e stili in linea, adatti alla posta. Nome del sito, metadati e avatar della chat restano come sono, per decisione di André.
-**A metà:** PR 2 del brief (mascotte ape, ramo `mascotte-ape`) da fare dopo questa.
-**Applicato in produzione:** niente nel database. La posta transazionale è spenta (POSTA_TRANSAZIONALE = "spenta"): la nuova intestazione si vedrà alla prima email, quando la si accende.
+**Fatto (17 ottobre 2026, André con Claude):** PR 2 del brief docs/BRIEF_logo_mascotte_bee.md, ramo `mascotte-ape`: l'ape al posto di Bob disegnato nelle 8 scene (eroe della home, tre passi in home e /come-funziona, elenco nella fascia indaco, eroe di /servizi, eroe di /per-i-professionisti, «Come ordiniamo i risultati»). Nuovo `BobApe` (<picture> AVIF → WebP → PNG, width/height sempre, priorità solo per l'eroe), 42 file del pacchetto in public/mascotte/ (checksum uguali). Le pose-carta su fondo non bianco vanno in tondo, misurato che l'ape ci sta intera; tolti cariola, banconote, scala e attrezzi; via Bob.tsx, BobCheSaluta, BobConCariola, ScalaDeiMestieri; BobConElenco diventa ApeConElenco. docs/MASCOTTE_pose_mancanti.md. Prima, la #188: intestazione delle email BOB BEE.
+**A metà:** niente del brief. Restano da generare le pose in docs/MASCOTTE_pose_mancanti.md (ape al telefono, con la bilancia, con la cariola, di schiena sulla scala) e l'animazione, che André farà più avanti.
+**Applicato in produzione:** niente nel database. L'ape arriva su Vercel con il merge della PR (codice e immagini statiche).
 
 ## Lucio
 

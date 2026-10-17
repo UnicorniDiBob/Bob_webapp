@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ScalaDeiMestieri } from "@/components/ScalaDeiMestieri";
+import { BobApe } from "@/components/BobApe";
 import {
   Bilancia,
   ScenaConfronto,
@@ -265,11 +265,26 @@ export default function ComeFunzionaPage() {
             </div>
           </div>
 
-          {/* Sotto i 1024px la scala non c'e': sarebbe una colonna decorativa
+          {/* Sotto i 1024px le api non ci sono: sarebbero una colonna decorativa
               infilata dentro un testo lungo, su uno schermo che di spazio non
               ne ha. E' decorazione, e la decorazione e' la prima a cedere. */}
           <div className="hidden lg:block">
-            <ScalaDeiMestieri />
+            {/* (17/10) Tre api al lavoro, una accanto all'altra, al posto
+                della scala coi quattro Bob di schiena. Ferme: l'idea della
+                scala che si anima scorrendo torna quando ci saranno le pose
+                di schiena (docs/MASCOTTE_pose_mancanti.md). La fila e'
+                «sticky»: la colonna e' alta quanto il testo lungo qui
+                accanto, e cosi' le api accompagnano la lettura invece di
+                restare in cima a una striscia vuota. Fondo bianco: le carte
+                non vanno in tondo («giardinaggio» non ci starebbe), ma il loro
+                fondo (253,253,251) sul bianco si vedeva come un quadrato
+                sbiadito: con gli angoli arrotondati diventano carte volute.
+                Misurato: gli angoli non tagliano nessun pixel delle api. */}
+            <div className="sticky top-28 grid grid-cols-3 gap-3" data-testid="scena-mestieri">
+              <BobApe posa="elettricista" alt="Bob, l'ape di BOB BEE, al lavoro da elettricista" sizes="125px" className="w-full rounded-2xl" />
+              <BobApe posa="pulizie" alt="Bob, l'ape di BOB BEE, al lavoro con le pulizie" sizes="125px" className="w-full rounded-2xl" />
+              <BobApe posa="giardinaggio" alt="Bob, l'ape di BOB BEE, al lavoro in giardino" sizes="125px" className="w-full rounded-2xl" />
+            </div>
           </div>
         </div>
       </Fascia>

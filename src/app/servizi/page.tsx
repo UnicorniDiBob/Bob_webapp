@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bob } from "@/components/Bob";
+import { BobApe } from "@/components/BobApe";
 import { Rivela } from "@/components/Rivela";
-import { Attrezzo, Cerchio } from "@/components/SceneBob";
+import { Cerchio } from "@/components/SceneBob";
 import { Fascia, TestaSezione } from "@/components/sezioni";
 import { getServices, getServiceCounts } from "@/lib/data";
 import { ServiceIcon } from "@/lib/serviceIcons";
@@ -122,14 +122,15 @@ export default async function ServicesPage() {
           </div>
 
           <Rivela ritardo={120} className="w-full">
-            <Cerchio tinta="bg-bob-indigo-100" appoggio="bg-white/25">
-              <Bob
-                posa="neutro"
-                gradiBraccioDestro={-28}
-                attrezzoDestro={<Attrezzo tipo="chiave" />}
-                fuoriBordo
-                alt="Bob, pronto ad ascoltare il tuo problema"
-                className="absolute bottom-[7%] left-1/2 w-[62%] -translate-x-1/2"
+            {/* (17/10) L'ape al posto di Bob con la chiave inglese: gli
+                attrezzi ce li ha gia' lei, la chiave a parte non serve piu'.
+                E' trasparente, sta sul tondo come stava Bob. */}
+            <Cerchio tinta="bg-bob-indigo-100" appoggio="bg-white/25" testid="scena-eroe-servizi">
+              <BobApe
+                posa="sceglie-strumento"
+                alt="Bob, l'ape di BOB BEE, sceglie lo strumento giusto per il tuo problema"
+                sizes="230px"
+                className="absolute bottom-[7%] left-1/2 w-[72%] -translate-x-1/2"
               />
             </Cerchio>
           </Rivela>
