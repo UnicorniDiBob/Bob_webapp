@@ -7,11 +7,11 @@
 // Sui dati di prova «PROVA-APP casa-cliente» di cliente.demo, mai su clienti
 // veri. La proposta del pro (ID_PROPOSTA) viene confermata e rifiutata piu'
 // volte; fra un giro e l'altro torna com'era (service role) e quello che il
-// giro ha scritto si cancella. Alla fine la riga, lo storico e le analisi
+// giro ha scritto si cancella, per id. Alla fine la riga, lo storico e le analisi
 // tornano esattamente come prima, e la prova lo VERIFICA.
 //
-// 1. IL SITO DI OGGI: gli stessi passi di useRispostaAppuntamento
-//    (src/lib/appuntamentoCliente.ts) con la sessione del cliente — update
+// 1. IL SITO DI PRIMA DELLA #205: gli stessi passi che faceva
+//    useRispostaAppuntamento nel browser, con la sessione del cliente — update
 //    dello stato, messaggio in chat con fmtDayParts nel fuso del browser
 //    (per questo TZ=Europe/Rome), POST /api/notify. Per conferma e rifiuto.
 // 2. LE ROUTE: conferma col cookie del sito, rifiuto col Bearer dell'app.
@@ -24,6 +24,11 @@
 // 4. I no: senza login 401, il pro della proposta 403, la proposta fatta dal
 //    cliente 409 «proposta_tua», un id che non e' uuid 404, un uuid che non
 //    c'e' 404.
+// 5. Conversazione archiviata (dalla 132): 409 «archiviata», niente scritto,
+//    nemmeno lo stato.
+//
+// La pulizia cancella SOLO le righe con un id nato nel giro (messaggi,
+// storico, analisi), mai per data.
 //
 // Le sessioni nascono da un magic link generato dall'admin: nessuna email
 // parte, nessuna password passa di qui. I token non si stampano.
@@ -59,6 +64,7 @@ const admin = createClient(URL_SB, env.SUPABASE_SERVICE_ROLE_KEY, opz);
 
 let server = null;
 let foto = null; // lo stato di partenza, da rimettere
+let archiviata = null; // la coppia archiviata dal caso 5, finche' non torna com'era
 const sessioni = [];
 
 async function sessione(email) {
@@ -103,14 +109,6 @@ async function lavoro(id) {
   const { data } = await admin.from("professional_work_events").select("*").eq("rif", id).order("evento");
   return data ?? [];
 }
-async function scrittoDal(dal, a) {
-  const [m, e] = await Promise.all([
-    admin.from("request_messages").select("*").eq("request_id", a.request_id).gt("created_at", dal).order("created_at"),
-    admin.from("appointment_events").select("*").eq("appointment_id", a.id).gt("created_at", dal).order("created_at"),
-  ]);
-  return { messaggi: m.data ?? [], eventi: e.data ?? [] };
-}
-
 // Cosa conta nel confronto: niente id, niente orari di scrittura.
 const VIA = new Set(["id", "created_at", "updated_at", "read_at", "avvenuto_al"]);
 const pulisci = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !VIA.has(k)).sort(([a], [b]) => a.localeCompare(b)));
@@ -121,32 +119,59 @@ const forma = (g) => ({
   lavoro: g.lavoro.map(pulisci),
 });
 
-// Rimette la proposta com'era e cancella cio' che il giro ha scritto.
-async function rimetti(dal) {
+// Gli id che c'erano prima di un giro: alla fine si cancellano SOLO le righe
+// con un id nuovo, mai per data (una riga di qualcun altro scritta nello
+// stesso minuto resterebbe intatta).
+async function idPresenti(a) {
+  const [m, e] = await Promise.all([
+    admin.from("request_messages").select("id").eq("request_id", a.request_id),
+    admin.from("appointment_events").select("id").eq("appointment_id", a.id),
+  ]);
+  if (m.error || e.error) throw new Error(`idPresenti: ${(m.error ?? e.error).message}`);
+  return { m: new Set(m.data.map((x) => x.id)), e: new Set(e.data.map((x) => x.id)) };
+}
+async function scrittoDopo(prima, a) {
+  const [m, e] = await Promise.all([
+    admin.from("request_messages").select("*").eq("request_id", a.request_id).order("created_at"),
+    admin.from("appointment_events").select("*").eq("appointment_id", a.id).order("created_at"),
+  ]);
+  return {
+    messaggi: (m.data ?? []).filter((x) => !prima.m.has(x.id)),
+    eventi: (e.data ?? []).filter((x) => !prima.e.has(x.id)),
+  };
+}
+
+// Rimette la proposta com'era e cancella, per id, solo cio' che il giro ha
+// scritto. Le righe di analisi di prima che un trigger ha tolto tornano.
+async function rimetti(prima) {
   const { id, request_id, created_at, updated_at, customer_id, ...campi } = foto.riga;
   const { error } = await admin.from("appointments").update(campi).eq("id", id);
   if (error) throw new Error(`rimetti: ${error.message}`);
-  await admin.from("request_messages").delete().eq("request_id", request_id).gt("created_at", dal);
-  await admin.from("appointment_events").delete().eq("appointment_id", id).gt("created_at", dal);
-  await admin.from("professional_work_events").delete().eq("rif", id);
-  if (foto.lavoro.length) {
-    // id e' una identity «always»: si reinserisce senza.
-    const { error: e2 } = await admin
-      .from("professional_work_events")
-      .insert(foto.lavoro.map(({ id: _id, ...resto }) => resto));
+  const nuove = await scrittoDopo(prima, foto.riga);
+  const idMsg = nuove.messaggi.map((x) => x.id);
+  const idEv = nuove.eventi.map((x) => x.id);
+  if (idMsg.length) await admin.from("request_messages").delete().in("id", idMsg);
+  if (idEv.length) await admin.from("appointment_events").delete().in("id", idEv);
+  const ora = await lavoro(id);
+  const idLavoroFoto = new Set(foto.lavoro.map((x) => x.id));
+  const lavoroNuovo = ora.filter((x) => !idLavoroFoto.has(x.id)).map((x) => x.id);
+  if (lavoroNuovo.length) await admin.from("professional_work_events").delete().in("id", lavoroNuovo);
+  const idOra = new Set(ora.map((x) => x.id));
+  // id e' una identity «always»: una riga tolta si reinserisce senza.
+  const tolte = foto.lavoro.filter((x) => !idOra.has(x.id)).map(({ id: _id, ...resto }) => resto);
+  if (tolte.length) {
+    const { error: e2 } = await admin.from("professional_work_events").insert(tolte);
     if (e2) throw new Error(`rimetti lavoro: ${e2.message}`);
   }
 }
-
 async function giro(nome, fai) {
-  const dal = new Date().toISOString();
-  await dorme(50);
+  const prima = await idPresenti(foto.riga);
   const esito = await fai();
   await dorme(300);
   const r = await riga(ID_PROPOSTA);
-  const scritto = await scrittoDal(dal, r);
+  const scritto = await scrittoDopo(prima, r);
   const g = { nome, esito, riga: r, ...scritto, lavoro: await lavoro(ID_PROPOSTA) };
-  await rimetti(dal);
+  await rimetti(prima);
   return g;
 }
 
@@ -288,10 +313,31 @@ async function prova() {
   controlla("i no non scrivono niente", no.messaggi.length === 0 && no.eventi.length === 0 && no.riga.status === "proposed");
   const altra = await riga(ID_PROPOSTA_CLIENTE);
   controlla("la proposta del cliente resta com'era", altra.status === "proposed" && altra.proposed_by === "customer");
+
+  // 5. Conversazione archiviata (132): il cliente l'ha archiviata ma la
+  // proposta e' ancora aperta (il pro l'ha riproposta dopo, o la risposta
+  // e' partita mentre si archiviava). La RLS non lascia scrivere il messaggio:
+  // con la RPC non deve cambiare NIENTE, nemmeno lo stato.
+  const coppia = { request_id: foto.riga.request_id, professional_id: foto.riga.professional_id };
+  const { data: rp } = await admin.from("request_professionals").select("archived_at").match(coppia).single();
+  if (rp.archived_at !== null) throw new Error("la conversazione di prova e' gia' archiviata: non tocco niente");
+  archiviata = coppia;
+  await admin.from("request_professionals").update({ archived_at: new Date().toISOString() }).match(coppia);
+  const arch = await giro("conversazione archiviata", () => rotta("conferma", ID_PROPOSTA, bearer));
+  await admin.from("request_professionals").update({ archived_at: null }).match(coppia);
+  archiviata = null;
+  console.log(`   archiviata: ${arch.esito.stato} ${JSON.stringify(arch.esito.corpo)}`);
+  controlla("archiviata: niente scritto, resta proposta", arch.riga.status === "proposed" && arch.messaggi.length === 0 && arch.eventi.length === 0);
+  controlla("archiviata: 409 «archiviata» con il testo per riaprirla",
+    arch.esito.stato === 409 && arch.esito.corpo?.motivo === "archiviata" && /riaprila dalla pagina della richiesta/.test(arch.esito.corpo?.error ?? ""));
 }
 
 async function chiudi() {
   if (server) { server.kill("SIGTERM"); server = null; }
+  if (archiviata) {
+    await admin.from("request_professionals").update({ archived_at: null }).match(archiviata);
+    console.log("conversazione di prova riaperta dalla pulizia");
+  }
   for (const s of sessioni) {
     await fetch(`${URL_SB}/auth/v1/logout?scope=local`, { method: "POST", headers: { apikey: ANON, authorization: `Bearer ${s.access_token}` } }).catch(() => {});
   }
