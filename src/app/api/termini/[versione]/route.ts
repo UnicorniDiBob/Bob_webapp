@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { isPubblico, testoTermini } from "@/lib/termini/testoPerApp";
+import {
+  CACHE_ERRORE,
+  CACHE_OK,
+  isPubblico,
+  testoTermini,
+} from "@/lib/termini/testoPerApp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,13 +24,12 @@ export const dynamic = "force-dynamic";
 //   404  versione inesistente, non di quel pubblico o non ancora pubblicata —
 //        come la pagina: l'archivio non anticipa
 //
+// Quale sia la versione di oggi lo dice /api/termini/corrente.
+//
 // DINAMICA E CON CACHE BREVE. Quale versione esiste dipende dall'ora della
 // richiesta (pubblicazione programmata, vedi registro.ts): una risposta
 // costruita al build ignorerebbe la data. Cinque minuti di cache sono il
 // ritardo massimo con cui una versione appena pubblicata arriva all'app.
-
-const CACHE_OK = "public, max-age=300, s-maxage=300";
-const CACHE_ERRORE = "public, max-age=60, s-maxage=60";
 
 export async function GET(request: Request, { params }: { params: { versione: string } }) {
   const pubblico = new URL(request.url).searchParams.get("pubblico");

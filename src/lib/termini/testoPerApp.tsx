@@ -1,6 +1,7 @@
 import { TESTI } from "@/components/termini/testi";
 import {
   trovaPubblicata,
+  ultimaPubblicata,
   type PubblicoTermini,
   type VersioneTermini,
 } from "@/lib/termini/registro";
@@ -26,8 +27,9 @@ import {
 // le dichiarazioni import, non import(). Qui non c'e' un componente da
 // restituire, c'e' una stringa da mettere in un JSON.
 //
-// E' UN CONTRATTO CON L'APP: la forma di TestoTermini e la route che la serve
-// (/api/termini/[versione]) non cambiano senza cambiare anche Bob_app.
+// E' UN CONTRATTO CON L'APP: la forma di TestoTermini e VersioneCorrente e le
+// route che le servono (/api/termini/[versione], /api/termini/corrente) non
+// cambiano senza cambiare anche Bob_app.
 
 export interface TestoTermini {
   versione: VersioneTermini["versione"];
@@ -35,6 +37,17 @@ export interface TestoTermini {
   /** ISO 8601 con fuso, come nel registro. */
   pubblicataIl: string;
   html: string;
+}
+
+/** Cache delle due route: il ritardo massimo di una pubblicazione nell'app. */
+export const CACHE_OK = "public, max-age=300, s-maxage=300";
+export const CACHE_ERRORE = "public, max-age=60, s-maxage=60";
+
+export interface VersioneCorrente {
+  versione: VersioneTermini["versione"];
+  pubblico: PubblicoTermini;
+  /** ISO 8601 con fuso, come nel registro. */
+  pubblicataIl: string;
 }
 
 export const SITO = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.meetonda.com";
@@ -73,4 +86,22 @@ export async function testoTermini(
     pubblicataIl: v.pubblicataIl,
     html: pulisci(renderToStaticMarkup(<Testo audience={pubblico} />), sito),
   };
+}
+
+/**
+ * La versione pubblicata a `adesso` per un pubblico: la stessa che mostra
+ * /termini[/professionisti] e che accetta chi si iscrive dal sito
+ * (ultimaPubblicata). null se non ce n'e' nessuna, invece di lanciare.
+ */
+export function versioneCorrente(
+  pubblico: PubblicoTermini,
+  adesso: Date = new Date()
+): VersioneCorrente | null {
+  let v: VersioneTermini;
+  try {
+    v = ultimaPubblicata(pubblico, adesso);
+  } catch {
+    return null;
+  }
+  return { versione: v.versione, pubblico: v.pubblico, pubblicataIl: v.pubblicataIl };
 }
