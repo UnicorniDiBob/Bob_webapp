@@ -3,9 +3,9 @@ Le righe dell'altro non si toccano, nemmeno per correggerle: se sono superate, l
 
 ## André
 
-**Fatto (16 ottobre 2026, André con Claude):** ramo `logo-bob-bee`, PR 1 del brief docs/BRIEF_logo_mascotte_bee.md (solo logo, nessun colore/font/layout, nessun database). Wordmark «BOB BEE» (BEE giallo, 0.48em, 800, stessa riga di base) in header e piede; tessera «M2» (B grande bianca, B piccola gialla sulla stessa riga di base: bottom calc(50% - 0.9963em) invece del 24% del riferimento, che a 64px la lasciava 4px sotto); favicon con le lettere in tracciati e, sotto i 24px, solo la B grande; og.png con il nuovo wordmark e il resto identico al pixel. Provato in locale su /, /come-funziona, /servizi, /per-i-professionisti, /login a 1440 e 390: BEE sulla riga di BOB (0px), niente scorrimento orizzontale, header invariato.
-**A metà:** PR 2 (mascotte ape, ramo `mascotte-ape`) non iniziata: prima André guarda le schermate del logo dal vivo. Restano col vecchio «BOB.» l'intestazione delle email (src/lib/email.ts:94) e il nome «BOB» nei metadati: elencati nella PR, non toccati (non sono interfaccia del sito).
-**Applicato in produzione:** niente nel database. Il logo arriva su Vercel con il merge della PR (solo codice e due file statici, icon.svg e og.png). Dal giro prima: migrazione 125 applicata il 16/10 senza review di Lucio, per decisione di André.
+**Fatto (17 ottobre 2026, André con Claude):** logo BOB BEE (PR #187, unita e provata dal vivo il 16/10, schermate approvate da André). Ramo `logo-email-bob-bee`: l'intestazione delle email (src/lib/email.ts) passa da «BOB.» col punto arancione al wordmark BOB BEE, con le stesse proporzioni del sito ma in px e stili in linea, adatti alla posta. Nome del sito, metadati e avatar della chat restano come sono, per decisione di André.
+**A metà:** PR 2 del brief (mascotte ape, ramo `mascotte-ape`) da fare dopo questa.
+**Applicato in produzione:** niente nel database. La posta transazionale è spenta (POSTA_TRANSAZIONALE = "spenta"): la nuova intestazione si vedrà alla prima email, quando la si accende.
 
 ## Lucio
 

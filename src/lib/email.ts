@@ -82,6 +82,20 @@ const FOOTER_THREAD =
 const FOOTER_VERIFICATION =
   "Ricevi questa email perché hai chiesto la verifica del tuo profilo professionale su BOB. È una comunicazione di servizio, non promozionale.";
 
+// IL WORDMARK BOB BEE NELLE EMAIL (17/10, come quello del sito: Logo.tsx e
+// docs/BRIEF_logo_mascotte_bee.md). BOB peso 900, tracking-tight; accanto BEE
+// giallo Bob (#fbbf24), 0.48 di BOB, peso 800, staccato di 0.12em del suo
+// corpo, sulla stessa riga di base. Fatto per la posta, non per il browser:
+// - solo stili in linea, niente flex (Outlook lo ignora): due span nella
+//   stessa riga di testo stanno gia' sulla stessa riga di base;
+// - misure in px e non in em, calcolate dai rapporti del sito sui 22px di
+//   qui: BEE 22 x 0.48 = 10,56 -> 11px, distacco 0.12 x 11 = 1px, tracking
+//   -0.025em = -0,55px;
+// - Arial come prima: i programmi di posta non caricano Schibsted Grotesk.
+// role="img" + aria-label, cosi' un lettore di schermo dice «BOB BEE».
+export const INTESTAZIONE_EMAIL =
+  '<div role="img" aria-label="BOB BEE" style="font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:22px;line-height:1;letter-spacing:-0.55px;color:#3730a3;margin-bottom:16px;">BOB<span style="color:#fbbf24;font-size:11px;font-weight:800;letter-spacing:0;margin-left:1px;">BEE</span></div>';
+
 function shell(
   title: string,
   bodyHtml: string,
@@ -91,7 +105,7 @@ function shell(
 ): string {
   return `<!doctype html><html lang="it"><body style="margin:0;background:#f4f4f8;font-family:Arial,Helvetica,sans-serif;color:#1a1a2e;">
   <div style="max-width:520px;margin:0 auto;padding:24px;">
-    <div style="font-weight:bold;font-size:22px;color:#3730a3;margin-bottom:16px;">BOB<span style="color:#f59e0b;">.</span></div>
+    ${INTESTAZIONE_EMAIL}
     <div style="background:#ffffff;border-radius:16px;padding:24px;">
       <h1 style="font-size:18px;margin:0 0 12px;">${title}</h1>
       ${bodyHtml}
