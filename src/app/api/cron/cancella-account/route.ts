@@ -11,8 +11,6 @@
 //     portfolio e brief-photos, cartella dell'utente e foto della chat citate
 //     nei suoi job_briefs (src/lib/fileUtente.ts, dal 16/10; prima solo
 //     verifica-documenti, e solo i primi 100 file — ROPA A28);
-//   - i CONTATTI nei brief: access_notes e timing_availability si svuotano
-//     prima di deleteUser, perche' il brief resta anonimo (dal 17/10);
 //   - niente altro: le recensioni restano di proposito, de-identificate dalla
 //     056 (customer_id a NULL), perche' appartengono anche al professionista
 //     che le ha ricevute.
@@ -34,9 +32,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-/** I campi di testo libero di job_briefs che alla cancellazione si svuotano. */
-const CONTATTI_BRIEF_VUOTI = { access_notes: null, timing_availability: null };
 
 /** Quante cancellazioni per giro: sono irreversibili, meglio a piccoli passi. */
 const MAX_PER_RUN = 25;
@@ -133,24 +128,6 @@ export async function GET(request: Request) {
       // Il motivo, non solo il prefisso: il 16/10 un errore di query restava
       // muto dietro «storage:…». I messaggi non contengono dati personali.
       console.error(`[cancella-account] file di ${riga.user_id.slice(0, 8)}:`, file.errori.join("; "));
-    }
-
-    // I brief restano, de-identificati (job_briefs.user_id va a NULL), ma
-    // senza i campi di testo libero dove un cliente scrive i suoi contatti
-    // (17/10, CANC2). Restano descrizione, zona e budget; scope no, perche'
-    // i suoi campi di testo rifiutano gia' email e telefono all'ingresso.
-    // Va fatto ADESSO: dopo deleteUser nessuno sa piu' quali brief erano suoi.
-    // Se non riesce l'account non si cancella stanotte: la notte dopo si
-    // riprova, invece di lasciare i contatti in una riga che nessuno ritrova.
-    const { error: briefErr } = await admin
-      .from("job_briefs")
-      .update(CONTATTI_BRIEF_VUOTI)
-      .eq("user_id", riga.user_id);
-    if (briefErr) {
-      falliti++;
-      errori.push(`brief:${riga.user_id.slice(0, 8)}`);
-      console.error(`[cancella-account] brief di ${riga.user_id.slice(0, 8)}:`, briefErr.message);
-      continue;
     }
 
     const { error: delErr } = await admin.auth.admin.deleteUser(riga.user_id);

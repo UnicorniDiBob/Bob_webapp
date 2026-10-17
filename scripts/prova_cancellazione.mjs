@@ -2,7 +2,6 @@
 //
 //   npm run build
 //   node scripts/prova_cancellazione.mjs            la prova
-//   node scripts/prova_cancellazione.mjs --solo-brief  solo il cliente col brief (contatti nel testo)
 //   node scripts/prova_cancellazione.mjs --pulisci  toglie cio' che un giro interrotto ha lasciato
 //
 // DUE UTENTI USA-E-GETTA, creati qui, mai account reali o demo:
@@ -179,10 +178,10 @@ async function carica(f, jpeg) {
 }
 
 // IL BRIEF DE-IDENTIFICATO, CAMPO PER CAMPO (17/10). Il brief resta per
-// scelta (user_id a NULL); dal 17/10 il cron svuota access_notes e
-// timing_availability. Descrizione, zona e budget restano. Si riporta ogni
-// campo e dove si trova ancora un'email o un telefono; i controlli sono solo
-// sui campi che il cron deve svuotare.
+// scelta (user_id a NULL, foto tolte): quello si controlla. Dove restano
+// email e telefono si RIPORTA soltanto: svuotare access_notes e
+// timing_availability e' una decisione sospesa (ramo brief-contatti-sospeso,
+// che ha anche la sua prova --solo-brief nel commit 8d794f4).
 const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
 const TEL_RE = /(?:\+39[\s.-]*)?(?:\d[\s.-]*){9,12}\d/;
 async function riportoBrief(briefId) {
@@ -198,46 +197,9 @@ async function riportoBrief(briefId) {
   }
   ok("brief: user_id null", b.user_id === null);
   ok("brief: nessuna foto", Array.isArray(b.photos) && b.photos.length === 0);
-  ok("brief: access_notes svuotato", b.access_notes === null);
-  ok("brief: timing_availability svuotato", b.timing_availability === null);
   const conContatti = Object.entries(b).filter(([k, v]) => !["id", "created_at"].includes(k) && v !== null && (EMAIL_RE.test(testo(v)) || TEL_RE.test(testo(v)))).map(([k]) => k);
-  ok("brief: nessuna email o telefono in nessun campo", conContatti.length === 0, conContatti.join(", "));
+  console.log(`RIPORTO (non e' un controllo): email o telefono ancora in ${conContatti.join(", ") || "nessun campo"}`);
   ok("brief: descrizione, zona e budget restano", b.summary === "Presa che scintilla in cucina" && b.zone === "Brera" && Number(b.budget_min) === 80 && Number(b.budget_max) === 150);
-}
-
-// SOLO LA PARTE DEL BRIEF (--solo-brief): un cliente, il suo brief coi
-// contatti nel testo, la cancellazione scaduta, il cron. Niente altro.
-async function provaSoloBrief() {
-  if (!registroVuoto(leggiRegistro())) throw new Error(`c'e' un registro di un giro interrotto (${REGISTRO}): prima --pulisci`);
-  const { data: esistenti } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if ((esistenti?.users ?? []).some((u) => u.email === EMAIL_CLIENTE)) throw new Error(`${EMAIL_CLIENTE} esiste gia': non lo tocco`);
-  if ((await scadute()).length) throw new Error("la coda NON e' vuota: il cron cancellerebbe account veri. Mi fermo.");
-
-  const cliUid = await nuovoUtente(EMAIL_CLIENTE, "customer");
-  const id = randomUUID();
-  reg.brief.push(id); annota();
-  await scrivi("job_briefs", {
-    id, user_id: cliUid, source: "rules", photos: [],
-    summary: "Presa che scintilla in cucina", zone: "Brera", budget_min: 80, budget_max: 150,
-    access_notes: `Citofono Prova, terzo piano. Chiamatemi al ${TELEFONO_FINTO} o scrivete a ${EMAIL_FINTA}`,
-    timing_availability: `Dopo le 18, se no chiamate il ${TELEFONO_FINTO}`,
-  });
-  console.log(`cliente di prova ${cliUid}, brief ${id}`);
-  const ieri = new Date(Date.now() - 86400_000).toISOString();
-  const { error } = await admin.from("account_deletion_requests").insert({ user_id: cliUid, requested_at: ieri, scheduled_for: ieri });
-  if (error) throw new Error(`account_deletion_requests: ${error.message}`);
-
-  const segreto = randomBytes(32).toString("base64url");
-  await avviaServer(segreto);
-  const coda = await scadute();
-  if (coda.length !== 1 || coda[0] !== cliUid) throw new Error("in coda c'e' qualcosa che non e' la prova: il cron NON parte");
-  const inizio = new Date().toISOString();
-  const r = await fetch(`http://localhost:${PORTA}/api/cron/cancella-account`, { headers: { authorization: `Bearer ${segreto}` } });
-  console.log(`GET /api/cron/cancella-account -> HTTP ${r.status} ${JSON.stringify(await r.json().catch(() => null))}`);
-  const { data: giri } = await admin.from("system_job_runs").select("ok, outcome, error").eq("job", "cancella-account").gte("started_at", inizio).limit(1);
-  ok("system_job_runs: scadute 1, cancellati 1, falliti 0", giri?.[0]?.outcome?.cancellati === 1 && giri?.[0]?.outcome?.falliti === 0, JSON.stringify(giri?.[0] ?? null));
-  ok("auth.users: il cliente non esiste piu'", !(await admin.auth.admin.getUserById(cliUid)).data?.user);
-  await riportoBrief(id);
 }
 
 async function prova() {
@@ -387,14 +349,13 @@ async function prova() {
 }
 
 const soloPulizia = process.argv.includes("--pulisci");
-const soloBrief = process.argv.includes("--solo-brief");
 let esito = 1;
 try {
   if (soloPulizia) {
     reg = leggiRegistro();
     esito = (await pulisci("--pulisci")) ? 0 : 1;
   } else {
-    await (soloBrief ? provaSoloBrief() : prova());
+    await prova();
     esito = controlli.every(Boolean) ? 0 : 1;
   }
 } catch (e) {
