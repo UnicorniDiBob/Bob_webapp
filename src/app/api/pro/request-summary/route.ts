@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { stripAddresses } from "@/lib/redact";
 import { chiamante } from "@/lib/supabase/chiamante";
+import { fotoConsegnabile } from "@/lib/fileUtente";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const runtime = "nodejs";
@@ -137,6 +138,7 @@ export async function GET(request: Request) {
       budget_max,
       created_at,
       brief_id,
+      customer_id,
       zone_slug,
       postal_code,
       services ( name ),
@@ -153,14 +155,19 @@ export async function GET(request: Request) {
 
   // (022) Contesto del brief di Bob: riassunto + foto (URL firmati, bucket
   // privato brief-photos). Best-effort: senza service role si salta.
-  const briefIds = Array.from(
-    new Set(
-      (requests as unknown as RawRequest[])
-        .map((r) => (r as { brief_id?: string | null }).brief_id)
-        .filter(Boolean)
-    )
-  ) as string[];
-  const briefById = new Map<
+  //
+  // FOTO1 (17/10): il service role non guarda di chi sono le cose, quindi lo
+  // fa questa route. requests.brief_id lo scrive il browser: un brief di un
+  // altro account non si mostra affatto (un brief anonimo si', e' la chat
+  // fatta prima di accedere). E una foto esce solo se e' del cliente della
+  // richiesta: vedi fotoConsegnabile in src/lib/fileUtente.ts. Per questo la
+  // mappa e' per richiesta, non per brief.
+  const conBrief = (requests as unknown as (RawRequest & {
+    brief_id?: string | null;
+    customer_id?: string | null;
+  })[]).filter((r) => r.brief_id && r.customer_id);
+  const briefIds = Array.from(new Set(conBrief.map((r) => r.brief_id as string)));
+  const briefPerRichiesta = new Map<
     string,
     { summary: string | null; photos: { url: string; caption: string | null }[] }
   >();
@@ -174,24 +181,32 @@ export async function GET(request: Request) {
       const admin = createServiceClient(svcUrl, svcKey);
       const { data: briefs } = await admin
         .from("job_briefs")
-        .select("id, summary, photos")
+        .select("id, user_id, created_at, summary, photos")
         .in("id", briefIds);
-      for (const b of (briefs ?? []) as {
-        id: string;
-        summary: string | null;
-        photos: { storagePath?: string; aiCaption?: string | null }[];
-      }[]) {
+      const briefPerId = new Map(
+        ((briefs ?? []) as {
+          id: string;
+          user_id: string | null;
+          created_at: string;
+          summary: string | null;
+          photos: { storagePath?: string; aiCaption?: string | null }[];
+        }[]).map((b) => [b.id, b])
+      );
+      for (const r of conBrief) {
+        const b = briefPerId.get(r.brief_id as string);
+        const cliente = r.customer_id as string;
+        if (!b || (b.user_id && b.user_id !== cliente)) continue;
         const photos: { url: string; caption: string | null }[] = [];
         for (const ph of (b.photos ?? []).slice(0, 3)) {
-          if (!ph.storagePath) continue;
+          if (!(await fotoConsegnabile(admin, b, cliente, ph.storagePath))) continue;
           const { data: signed } = await admin.storage
             .from("brief-photos")
-            .createSignedUrl(ph.storagePath, 3600);
+            .createSignedUrl(ph.storagePath as string, 3600);
           if (signed?.signedUrl) {
             photos.push({ url: signed.signedUrl, caption: ph.aiCaption ?? null });
           }
         }
-        briefById.set(b.id, { summary: b.summary ?? null, photos });
+        briefPerRichiesta.set(r.id, { summary: b.summary ?? null, photos });
       }
     } catch {
       // il riassunto funziona anche senza contesto brief
@@ -203,9 +218,7 @@ export async function GET(request: Request) {
   const enriched = await Promise.all(
     slice.map(async (req) => {
       const { summary, draftReply } = await buildSummary(req, apiKey);
-      const brief = briefById.get(
-        ((req as { brief_id?: string | null }).brief_id ?? "") as string
-      );
+      const brief = briefPerRichiesta.get(req.id);
       return {
         id: req.id,
         service: (req.services as { name: string } | null)?.name ?? null,

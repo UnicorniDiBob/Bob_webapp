@@ -65,6 +65,36 @@ export function percorsoChatValido(p: unknown): p is string {
   return typeof p === "string" && /^chat\/[^/]+$/.test(p) && !p.includes("..");
 }
 
+/**
+ * Si puo' consegnare a `proprietario` questo percorso, letto dal brief
+ * `brief`? No se e' fuori da chat/, o se un brief di un altro (o anonimo),
+ * diverso da questo, lo citava gia' prima. Un errore della query nega.
+ */
+// FOTO1 (17/10), lo strato 2 di src/lib/fotoBrief.ts: per l'export e per
+// /api/pro/request-summary, che leggono i brief col service role.
+export async function fotoConsegnabile(
+  admin: SupabaseClient,
+  brief: { id: string; created_at: string },
+  proprietario: string,
+  percorso: unknown
+): Promise<boolean> {
+  if (!percorsoChatValido(percorso)) return false;
+  const { count, error } = await admin
+    .from("job_briefs")
+    .select("id", { count: "exact", head: true })
+    // Il JSON come testo: .contains() con un array JS su jsonb fallisce
+    // (trovato dal vivo il 16/10, vedi sotto).
+    .filter("photos", "cs", JSON.stringify([{ storagePath: percorso }]))
+    .neq("id", brief.id)
+    .lte("created_at", brief.created_at)
+    .or(`user_id.is.null,user_id.neq.${proprietario}`);
+  if (error) {
+    console.error("[fileUtente] controllo dei brief altrui fallito, la foto non esce:", error.message);
+    return false;
+  }
+  return (count ?? 0) === 0;
+}
+
 export async function svuotaFileUtente(admin: SupabaseClient, userId: string): Promise<EsitoFileUtente> {
   const esito: EsitoFileUtente = { rimossi: {}, tenuti: 0, errori: [] };
 
