@@ -30,6 +30,9 @@
 --   non_proposta -> 409  (non aspetta piu' una risposta)
 --   proposta_tua -> 409  (l'ha proposta il cliente: aspetta il pro)
 --   scaduta      -> 409  (l'orario e' gia' passato)
+--   archiviata   -> 409  (il cliente ha archiviato la conversazione con quel
+--                         pro: la riapre dalla pagina della richiesta). Nuovo:
+--                         l'app lo deve conoscere.
 -- La stessa risposta ripetuta non e' un errore: torna gia_fatto = true e non
 -- scrive niente. La riga si blocca (for update): due risposte insieme si
 -- mettono in fila, la seconda trova lo stato gia' cambiato.
@@ -96,6 +99,22 @@ begin
   if a.starts_at <= now() then
     raise exception 'Questo orario è già passato: chiedi al professionista un altro orario'
       using hint = 'scaduta';
+  end if;
+
+  -- La conversazione archiviata dal cliente non riceve risposte: la RLS
+  -- rifiuterebbe il messaggio e si annullerebbe tutto, ma con un errore che
+  -- non dice perche'. Archiviare rifiuta gia' le proposte aperte; una aperta
+  -- qui l'ha riproposta il pro dopo (la sua policy di update non guarda
+  -- archived_at), o la risposta e' partita mentre si archiviava. Da «Riapri»
+  -- nella pagina della richiesta il cliente torna a poter rispondere.
+  if exists (
+    select 1 from public.request_professionals rp
+     where rp.request_id = a.request_id
+       and rp.professional_id = a.professional_id
+       and rp.archived_at is not null
+  ) then
+    raise exception 'Hai archiviato questa conversazione: riaprila dalla pagina della richiesta per rispondere.'
+      using hint = 'archiviata';
   end if;
 
   -- 1. Lo stato.

@@ -35,6 +35,8 @@ const STATO_PER_MOTIVO: Record<string, 403 | 404 | 409> = {
   non_proposta: 409,
   proposta_tua: 409,
   scaduta: 409,
+  // (132) Il cliente ha archiviato la conversazione con quel pro.
+  archiviata: 409,
 };
 
 const errore = (stato: 401 | 403 | 404 | 409 | 500, motivo: string, error: string): EsitoRisposta => ({

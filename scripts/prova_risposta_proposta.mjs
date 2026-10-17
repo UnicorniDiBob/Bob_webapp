@@ -24,7 +24,8 @@
 // 4. I no: senza login 401, il pro della proposta 403, la proposta fatta dal
 //    cliente 409 «proposta_tua», un id che non e' uuid 404, un uuid che non
 //    c'e' 404.
-// 5. Conversazione archiviata (dalla 132): niente scritto, nemmeno lo stato.
+// 5. Conversazione archiviata (dalla 132): 409 «archiviata», niente scritto,
+//    nemmeno lo stato.
 //
 // La pulizia cancella SOLO le righe con un id nato nel giro (messaggi,
 // storico, analisi), mai per data.
@@ -317,7 +318,8 @@ async function prova() {
   archiviata = null;
   console.log(`   archiviata: ${arch.esito.stato} ${JSON.stringify(arch.esito.corpo)}`);
   controlla("archiviata: niente scritto, resta proposta", arch.riga.status === "proposed" && arch.messaggi.length === 0 && arch.eventi.length === 0);
-  controlla("archiviata: la route non risponde 200", arch.esito.stato !== 200);
+  controlla("archiviata: 409 «archiviata» con il testo per riaprirla",
+    arch.esito.stato === 409 && arch.esito.corpo?.motivo === "archiviata" && /riaprila dalla pagina della richiesta/.test(arch.esito.corpo?.error ?? ""));
 }
 
 async function chiudi() {
