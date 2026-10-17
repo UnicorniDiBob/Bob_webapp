@@ -65,8 +65,8 @@ interface QuoteContext {
 //   collegamenti 'contacted', il messaggio gia' scritto da Bob. Prima ogni
 //   scheda apriva RequestDialog e creava una richiesta NUOVA con un pro solo:
 //   il 17/10 in produzione quattro richieste in dieci secondi per la stessa
-//   perdita. I dati scritti sono gli stessi di RequestDialog; in piu' c'e'
-//   l'indirizzo, che la chat raccoglie e che in quel modo si perdeva.
+//   perdita. I dati scritti sono gli stessi di RequestDialog: niente
+//   indirizzo, come prima (vedi il blocco di request_addresses piu' sotto).
 //
 // LA STESSA RICHIESTA, SE C'E' (17/10). Con `richiestaEsistente` non se ne
 // crea un'altra: si collegano i pro nuovi e si scrive solo a loro. Serve
@@ -255,7 +255,11 @@ export function QuoteDialog({
         // (41.1) L'indirizzo viaggia a parte, mai nella prosa. Se l'insert fallisce
         // non si annulla la richiesta: il cliente ha comunque chiesto il preventivo
         // e l'indirizzo si può ridare al momento dell'appuntamento.
-        if (context.address) {
+        // (17/10) SOLO nel preventivo, come prima di questa PR: un pro collegato
+        // oggi puo' farsi copiare l'indirizzo creando o confermando da solo un
+        // appuntamento (rilievo di sicurezza, migrazione a parte). Finche' quella
+        // correzione non e' in produzione, il messaggio col budget non lo salva.
+        if (modo === "preventivo" && context.address) {
           await supabase.from("request_addresses").insert({
             request_id: req.id,
             address_line: context.address.slice(0, 200),
