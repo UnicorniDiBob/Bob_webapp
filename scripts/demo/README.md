@@ -124,7 +124,7 @@ select p.business_name, s.* from public.professionals_score(
 
 ## Da sapere
 
-- **Il tempo di risposta scade.** Il cron delle 04:10 (`aggiorna_tutti_i_segnali`) lo ricalcola ogni notte dai messaggi degli **ultimi 90 giorni**. I messaggi demo sono fra 5 e 70 giorni prima del seed: già ~20 giorni dopo cominciano a uscire dalla finestra, e i tempi di risposta (e l'ordine) si spostano. Per rinfrescarli: cleanup + seed.
+- **Il tempo di risposta scade.** Il cron delle 04:10 (`aggiorna_tutti_i_segnali`) lo ricalcola ogni notte dai messaggi degli **ultimi 90 giorni**. Misurato in produzione dopo il seed del 17/10: il primo messaggio demo esce dalla finestra l'**11/11/2026** (il più vecchio di Demo 1, che tiene comunque 15 minuti di mediana, perché i suoi ritardi girano sugli stessi valori); gli ultimi escono fra l'**8 e il 14/01/2027**. Da lì quei pro tornano a «nessun dato» (10 punti) e l'ordine si sposta. Per rinfrescarli: cleanup + seed. (Prima qui c'era «~20 giorni»: era una stima sbagliata.)
 - **«Nessun voto» batte «10 voti a 4,5».** Con la formula viva, Demo 4 (nessun voto) prende 21,29 punti di valutazione, più di Demo 2 (10 voti a 4,5: 19,60). Zero voti valgono la media della piattaforma. È la regola, non un errore del seed: da guardare quando si ritocca il punteggio.
 - **Il prezzo conta solo se c'è.** La differenza fra Demo 2 (45–70 €) e Demo 3 (90–130 €) non sposta il punteggio, solo l'ordinamento «prezzo» della pagina.
 - **«0 lavori conclusi»** sulla dashboard di Demo 1 e 2: il contatore conta gli appuntamenti completati, e il seed non ne crea. Le 30 (o 10) richieste chiuse si vedono in /messaggi.

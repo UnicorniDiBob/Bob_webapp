@@ -3,9 +3,9 @@ Le righe dell'altro non si toccano, nemmeno per correggerle: se sono superate, l
 
 ## André
 
-**Fatto (17 ottobre 2026, André con Claude):** mascotte ape (PR #189, unita e provata dal vivo) e ritocchi di André sul ramo `mascotte-ape-ritocchi`: nella fascia indaco della home l'ape «successo» (medaglione) al posto di «sceglie lo strumento»; nell'eroe di /servizi «benvenuto» (medaglione nel tondo) con l'alt nuovo; il titolo del telefono dice «Professionisti» invece di «Idraulici», su due righe con «Milano» sul desktop (su una non ci stava: misurato). Prima, la #188: intestazione delle email BOB BEE.
-**A metà:** restano da generare le pose in docs/MASCOTTE_pose_mancanti.md (ape al telefono, con la bilancia, con la cariola, di schiena sulla scala) e l'animazione, che André farà più avanti.
-**Applicato in produzione:** niente nel database. I ritocchi arrivano su Vercel con il merge della PR.
+**Fatto (17 ottobre 2026, André con Claude):** idraulici demo applicati in produzione (scripts/demo/idraulici_seed.sql della PR #182). Ordine reale uguale alla tabella del README al centesimo, scenari A e B; la ricerca vera (/api/match) dà Demo 1, IdroMilano, Demo 2, 3, 4, 5, e con zone=duomo toglie Demo 5. Ramo `pulizia-pre-pilota`: docs/PULIZIA_PRE_PILOTA.md (idraulici demo, tre note «chiuso» doppie su ddaae033, 22 richieste di PROVA) e tre rilievi da decidere con Lucio in roadmap/findings.csv (is_test_fixture non filtrato, nessun voto batte dieci a 4,5, il prezzo conta solo se c'e').
+**A metà:** la PR di `pulizia-pre-pilota` è aperta e NON unita. I tempi di risposta demo reggono fino ai primi di gennaio: il primo messaggio demo esce dalla finestra di 90 giorni l'11/11 (Demo 1, che tiene comunque 15 min di mediana), gli ultimi fra l'8 e il 14/01/2027. Per rinfrescarli: cleanup e seed. Le richieste di PROVA non hanno ancora uno script di pulizia.
+**Applicato in produzione:** il seed degli idraulici demo, il 17/10 alle 16:03 (14:03:33 UTC), con execute_sql in una transazione e senza riga in schema_migrations. +6 pro (Demo 6 non pronto), +7 utenti (Demo 3-6 e 3 recensori, senza password), Demo 1 e 2 sugli account creati da André; +45 richieste chiuse, +90 messaggi, +45 recensioni, +45 search_events, +90 eventi di lavoro. La media della piattaforma passa da 4,7368 a 4,7031. Si toglie con scripts/demo/idraulici_cleanup.sql (prima del pilota).
 
 ## Lucio
 
