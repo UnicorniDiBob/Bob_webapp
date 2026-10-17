@@ -54,15 +54,35 @@ export async function POST(request: Request) {
 
   const origin = new URL(request.url).origin;
 
-  // Invita via email: il trigger handle_new_user legge role e full_name
-  // da raw_user_meta_data e crea le righe in users e profiles.
-  const { data, error } = await adminClient().auth.admin.inviteUserByEmail(body.email, {
-    data: { role: body.role, full_name: body.fullName },
+  // Invita via email: il trigger handle_new_user crea le righe in users e
+  // profiles. Dalla 130 il trigger non accetta più 'admin' o 'cs' dal metadata
+  // (chiunque poteva iscriversi admin): il ruolo staff si imposta qui sotto,
+  // esplicitamente, col service role.
+  const admin = adminClient();
+  const { data, error } = await admin.auth.admin.inviteUserByEmail(body.email, {
+    data: { full_name: body.fullName },
     redirectTo: `${origin}/auth/imposta-password`,
   });
 
   if (error || !data.user) {
     return NextResponse.json({ error: error?.message ?? "Errore nell'invito" }, { status: 500 });
+  }
+
+  // L'update restituisce la riga: se non torna col ruolo giusto, l'invito
+  // resterebbe un account customer con un link valido. Si annulla.
+  const { data: roleRow, error: roleErr } = await admin
+    .from("users")
+    .update({ role: body.role })
+    .eq("id", data.user.id)
+    .select("role")
+    .maybeSingle();
+
+  if (roleErr || roleRow?.role !== body.role) {
+    await admin.auth.admin.deleteUser(data.user.id);
+    return NextResponse.json(
+      { error: `Ruolo non impostato, invito annullato: ${roleErr?.message ?? "riga non aggiornata"}` },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true, userId: data.user.id });
