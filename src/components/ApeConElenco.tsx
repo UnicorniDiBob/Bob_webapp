@@ -1,18 +1,19 @@
 import { BobApe } from "./BobApe";
 
 /**
- * L'ape che sceglie, accanto a un telefono con l'elenco dei professionisti.
+ * L'ape che festeggia, accanto a un telefono con l'elenco dei professionisti.
  *
  * DAL 17/10 (PR 2 del brief docs/BRIEF_logo_mascotte_bee.md) c'e' l'ape al
- * posto di Bob che teneva il telefono in mano. La posa e' «sceglie lo
- * strumento», col punto di domanda: accanto a un elenco di professionisti si
- * legge come «sta scegliendo chi chiamare», quindi il telefono resta. Non e'
- * piu' impugnato — l'ape ha gia' le mani piene di attrezzi — e sta di fianco,
- * senza toccarla. Un'ape col telefono in mano e' nell'elenco delle pose da
- * fare (docs/MASCOTTE_pose_mancanti.md).
+ * posto di Bob che teneva il telefono in mano. Dal ritocco dello stesso giorno
+ * (André) la posa e' «successo» e non piu' «sceglie lo strumento»: l'elenco e'
+ * la risposta, non la domanda. E' una carta su fondo bianco e la fascia e'
+ * indaco: va in tondo, un medaglione (vedi BobApe). Il telefono non e'
+ * impugnato e sta di fianco, senza toccarla; un'ape col telefono in mano e'
+ * nell'elenco delle pose da fare (docs/MASCOTTE_pose_mancanti.md).
  *
  * LE MISURE. La scena ha un rapporto fisso (520/360) e dentro tutto e' in
- * percentuale: l'ape al 60% a sinistra, il telefono al 36% a destra, 40%
+ * percentuale: il medaglione al 56% a sinistra (al 60% sul telefono vero
+ * toccava il bordo del telefono), il telefono al 36% a destra, 40%
  * sotto i 640px. Il telefono sale al 40% sul telefono vero perche' li' la
  * scena e' larga ~350px e al 36% scenderebbe sotto i 130px: il testo dentro e'
  * a misura fissa e sotto quella larghezza le righe traboccano (misurato il
@@ -53,16 +54,23 @@ export function ApeConElenco({ className = "" }: { className?: string }) {
       data-testid="scena-elenco"
     >
       <BobApe
-        posa="sceglie-strumento"
-        alt="Bob, l'ape di BOB BEE, sceglie fra i professionisti dell'elenco"
-        sizes="(min-width: 640px) 312px, 60vw"
-        className="absolute bottom-0 left-0 w-[60%]"
+        posa="successo"
+        alt="Bob, l'ape di BOB BEE, festeggia accanto all'elenco dei professionisti"
+        sizes="(min-width: 640px) 292px, 56vw"
+        className="absolute bottom-[3%] left-0 w-[56%] rounded-full"
       />
       <div className="absolute right-[1%] top-[4%] w-[40%] rounded-[14%/8%] bg-bob-ink p-[4%] shadow-card-hover sm:w-[36%]">
         <div className="overflow-hidden rounded-[11%/6%] bg-white">
-          <div className="bg-bob-indigo-50 px-2 py-2">
-            <p className="truncate text-center text-2xs font-bold uppercase text-bob-indigo">
-              Idraulici<span className="hidden sm:inline"> · Milano</span>
+          {/* L'elenco mescola mestieri: il titolo dice «professionisti», non
+              «idraulici» (17/10). Su due righe, perche' «Professionisti ·
+              Milano» su una non ci sta: misurato, servono 151px dove ce ne
+              sono 130, e si leggeva «… MIL…». Sul telefono vero solo
+              «Professionisti», come prima solo il mestiere; li' ci stava per
+              1px, e il margine laterale passa da px-2 a px-1.5. */}
+          <div className="bg-bob-indigo-50 px-1.5 py-2 sm:px-2">
+            <p className="text-center text-2xs font-bold uppercase leading-tight text-bob-indigo">
+              <span className="block truncate">Professionisti</span>
+              <span className="hidden truncate sm:block">Milano</span>
             </p>
           </div>
           {/* Rapporto fisso: l'altezza della finestra segue la larghezza. */}

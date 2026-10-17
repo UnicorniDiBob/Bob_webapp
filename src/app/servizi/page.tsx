@@ -122,15 +122,17 @@ export default async function ServicesPage() {
           </div>
 
           <Rivela ritardo={120} className="w-full">
-            {/* (17/10) L'ape al posto di Bob con la chiave inglese: gli
-                attrezzi ce li ha gia' lei, la chiave a parte non serve piu'.
-                E' trasparente, sta sul tondo come stava Bob. */}
+            {/* (17/10) L'ape al posto di Bob con la chiave inglese. Posa
+                «benvenuto» (ritocco di André): e' la prima cosa che vede chi
+                arriva sui servizi. E' una carta su fondo bianco: dentro il
+                tondo colorato va in tondo anche lei, un medaglione (vedi
+                BobApe), come nel passo 1 della home. */}
             <Cerchio tinta="bg-bob-indigo-100" appoggio="bg-white/25" testid="scena-eroe-servizi">
               <BobApe
-                posa="sceglie-strumento"
-                alt="Bob, l'ape di BOB BEE, sceglie lo strumento giusto per il tuo problema"
+                posa="benvenuto"
+                alt="Bob, l'ape di BOB BEE, ti dà il benvenuto nei servizi"
                 sizes="230px"
-                className="absolute bottom-[7%] left-1/2 w-[72%] -translate-x-1/2"
+                className="absolute bottom-[7%] left-1/2 w-[72%] -translate-x-1/2 rounded-full"
               />
             </Cerchio>
           </Rivela>
