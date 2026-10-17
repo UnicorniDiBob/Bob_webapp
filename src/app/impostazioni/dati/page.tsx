@@ -224,9 +224,8 @@ export default function DatiPage() {
         </button>
       </form>
 
-      {/* Artt. 15 e 20 GDPR. Solo cliente: per il professionista mancano ancora
-          le tabelle del profilo di lavoro, e mezzo export non si consegna. */}
-      {!isPro && <EsportaDati />}
+      {/* Artt. 15 e 20 GDPR, cliente e professionista (dal 17/10). */}
+      <EsportaDati isPro={isPro} />
     </div>
   );
 }

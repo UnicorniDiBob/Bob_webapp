@@ -173,7 +173,7 @@ export async function raccogliDatiCliente(
   const authUser = autenticazione.data?.user ?? null;
 
   // --- 2. cosa hai messo tu -------------------------------------------------
-  const [indirizzi, consensi, memoria, assistenza, promo, cancellazione, attesa] =
+  const [indirizzi, consensi, memoria, assistenza, promo, cancellazione, attesa, onboarding] =
     await Promise.all([
       leggi(admin, "customer_addresses", "user_id", utente.id),
       leggi(admin, "communication_consents", "user_id", utente.id),
@@ -183,6 +183,10 @@ export async function raccogliDatiCliente(
       leggi(admin, "account_deletion_requests", "user_id", utente.id),
       // vedi la nota in testa al file: qui la chiave e' l'email, non l'utente
       leggi(admin, "city_waitlist", "email", utente.email),
+      // le risposte della registrazione (ruolo, mestiere, citta', come ci hai
+      // conosciuto): mancavano anche al cliente, trovato il 17/10 rifacendo
+      // l'elenco delle tabelle con user_id per il blocco del professionista
+      leggi(admin, "onboarding_answers", "user_id", utente.id),
     ]);
 
   // --- 3. le richieste, con dentro tutto quello che le riguarda -------------
@@ -346,6 +350,7 @@ export async function raccogliDatiCliente(
     codici_promozionali_usati: promo.map((r) => senza(r, "user_id")),
     cancellazione_in_corso: senza(cancellazione[0], "user_id"),
     liste_di_attesa: attesa,
+    risposte_alla_registrazione: onboarding.map((r) => senza(r, "user_id")),
     foto: elencoFoto,
   };
 
@@ -353,16 +358,35 @@ export async function raccogliDatiCliente(
 }
 
 /** Il foglio di accompagnamento: art. 12(1), "forma concisa e intelligibile". */
-export function leggimi(quando: Date): string {
+export function leggimi(quando: Date, professionista = false): string {
+  const contenuto = professionista
+    ? [
+        "  dati.json             tutto quello che Bob tiene collegato al tuo account;",
+        "                        il lavoro sta in attivita_da_professionista.",
+        "  documenti-verifica/   i documenti che hai caricato per la verifica.",
+        "  portfolio/            le foto dei tuoi lavori.",
+        "  foto-caricate/        altre foto che hai caricato.",
+        "  richieste/            le foto delle richieste ancora aperte, quelle che",
+        "                        vedi anche su Bob, una cartella per richiesta.",
+      ]
+    : [
+        "  dati.json   tutto quello che Bob tiene collegato al tuo account.",
+        "  foto/       le fotografie che hai caricato parlando con Bob, una",
+        "              cartella per ogni richiesta.",
+      ];
+  const clienti = professionista
+    ? [
+        "  Dei tuoi clienti c'e' solo quello che vedi gia' su Bob, e mai il loro",
+        "  telefono o la loro email: sono dati loro, non tuoi (art. 15(4) GDPR).",
+      ]
+    : [];
   return [
     "I TUOI DATI SU BOB",
     "",
     `Archivio generato il ${quando.toLocaleString("it-IT")}.`,
     "",
     "Cosa c'e' qui dentro",
-    "  dati.json   tutto quello che Bob tiene collegato al tuo account.",
-    "  foto/       le fotografie che hai caricato parlando con Bob, una",
-    "              cartella per ogni richiesta.",
+    ...contenuto,
     "",
     "Perche' JSON",
     "  E' un formato di testo che si apre con qualsiasi editor e che un altro",
@@ -373,6 +397,7 @@ export function leggimi(quando: Date): string {
     "Cosa NON c'e'",
     "  Le ricerche fatte sul sito: non sono collegate a nessun account, quindi",
     "  non sappiamo quali siano le tue.",
+    ...clienti,
     "",
     "Se qualcosa non torna, o pensi che manchi qualcosa, scrivici: hai diritto",
     "a una risposta e anche a rivolgerti al Garante per la protezione dei dati",

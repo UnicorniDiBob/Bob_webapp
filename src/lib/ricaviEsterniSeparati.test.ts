@@ -24,6 +24,8 @@ const AMMESSI = new Set([
   // la pagina del pro e il suo componente
   "src/app/numeri/esterni/page.tsx",
   "src/components/analisi/RicaviEsterni.tsx",
+  // l'export art. 15/20 del pro: gli consegna i SUOI ricavi, a lui solo
+  "src/lib/export-pro.ts",
   // questo test
   "src/lib/ricaviEsterniSeparati.test.ts",
 ]);
