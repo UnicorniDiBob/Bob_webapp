@@ -23,9 +23,15 @@ import {
   SEVERITY_LABELS,
 } from "@/lib/matching";
 import { Stars, PriceTag, VerificationLevelBadge } from "./ui";
-import { RequestDialog } from "./RequestDialog";
 import { QuoteDialog } from "./QuoteDialog";
 import { MAX_PRO_PER_RICHIESTA } from "@/lib/collegamento";
+import {
+  cambiaSelezione,
+  etichettaScrivi,
+  richiestaAncoraAperta,
+  selezionePiena,
+  statoScheda,
+} from "@/lib/selezioneChat";
 import { SchedaLavoro, type Scope } from "./SchedaLavoro";
 import { CityWaitlistForm } from "./CityWaitlistForm";
 import { useAuth } from "./AuthProvider";
@@ -137,6 +143,12 @@ interface ChatDraft {
   selectedIds: string[];
   waitlistCity: { slug: string; name: string } | null;
   briefId?: string | null;
+  /**
+   * (17/10) La richiesta che QUESTA conversazione ha gia' creato. Tornando,
+   * i pro nuovi si aggiungono a lei; i pro gia' collegati si rileggono dal
+   * database, che e' la verita', non da qui.
+   */
+  richiestaId?: string | null;
 }
 
 export function BobChat({
@@ -189,8 +201,16 @@ export function BobChat({
   const [results, setResults] = useState<ProfessionalCard[]>([]);
   const [loadingResults, setLoadingResults] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [requestFor, setRequestFor] = useState<ProfessionalCard | null>(null);
   const [quoteOpen, setQuoteOpen] = useState(false);
+  // I destinatari fermati all'apertura del dialog: dopo l'invio la scelta
+  // cambia (i pro diventano «contattati»), il dialog deve continuare a dire
+  // a chi ha scritto.
+  const [daScrivere, setDaScrivere] = useState<ProfessionalCard[]>([]);
+  // (17/10) La richiesta di questa conversazione e i pro che ci sono gia'.
+  const [richiestaId, setRichiestaId] = useState<string | null>(null);
+  const [contattati, setContattati] = useState<Set<string>>(new Set());
+  // Il dialog mostra «inviato» coi nomi: la scelta si azzera alla chiusura.
+  const appenaInviato = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -222,6 +242,7 @@ export function BobChat({
       setSelected(new Set((draft.selectedIds ?? []).slice(0, MAX_PRO_PER_RICHIESTA)));
       setWaitlistCity(draft.waitlistCity ?? null);
       setBriefId(draft.briefId ?? null);
+      setRichiestaId(draft.richiestaId ?? null);
     } catch {
       // draft corrotto o storage inaccessibile: si riparte da zero
     }
@@ -320,12 +341,44 @@ export function BobChat({
         selectedIds: Array.from(selected),
         waitlistCity,
         briefId,
+        richiestaId,
       };
       window.localStorage.setItem(chiaveUtenteConAdozione(DRAFT_KEY), JSON.stringify(draft));
     } catch {
       // quota piena o storage negato: la chat funziona comunque
     }
-  }, [step, messages, brief, collected, subtaskOptions, quoteFields, results, selected, waitlistCity, briefId]);
+  }, [step, messages, brief, collected, subtaskOptions, quoteFields, results, selected, waitlistCity, briefId, richiestaId]);
+
+  // (17/10) La richiesta di questa conversazione: chi c'e' gia' e se e'
+  // ancora aperta lo dice il database. Chiusa (o sparita, o di un altro
+  // utente) vuol dire che la prossima scelta ne apre una nuova.
+  useEffect(() => {
+    if (!richiestaId || !user) {
+      setContattati(new Set());
+      return;
+    }
+    let vivo = true;
+    (async () => {
+      const supabase = createClient();
+      const [{ data: r }, { data: rp }] = await Promise.all([
+        supabase.from("requests").select("status").eq("id", richiestaId).maybeSingle(),
+        supabase.from("request_professionals").select("professional_id").eq("request_id", richiestaId),
+      ]);
+      if (!vivo) return;
+      if (!richiestaAncoraAperta((r as { status?: string } | null)?.status)) {
+        setRichiestaId(null);
+        setContattati(new Set());
+        return;
+      }
+      const ids = new Set(((rp ?? []) as { professional_id: string }[]).map((x) => x.professional_id));
+      setContattati(ids);
+      // Chi e' gia' collegato non resta anche fra gli spuntati.
+      setSelected((sel) => new Set([...sel].filter((id) => !ids.has(id))));
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [richiestaId, user]);
 
   function bobSay(text: string) {
     setMessages((m) => [...m, { from: "bob", text }]);
@@ -785,14 +838,10 @@ export function BobChat({
 
   // AL MASSIMO 3 (16/10, migrazione 125): il database non collega piu' di
   // MAX_PRO_PER_RICHIESTA pro a una richiesta, quindi qui non se ne scelgono
-  // di piu'. Oltre il tetto il tocco non fa niente, e i pulsanti lo dicono.
+  // di piu', CONTANDO quelli gia' collegati alla richiesta di questa
+  // conversazione (17/10). Le regole stanno in lib/selezioneChat.ts.
   function toggleSelect(id: string) {
-    setSelected((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else if (n.size < MAX_PRO_PER_RICHIESTA) n.add(id);
-      return n;
-    });
+    setSelected((s) => cambiaSelezione(id, s, contattati));
   }
 
   function restart() {
@@ -812,6 +861,9 @@ export function BobChat({
     setCollected({});
     setResults([]);
     setSelected(new Set());
+    // Una conversazione nuova scrive una richiesta nuova.
+    setRichiestaId(null);
+    setContattati(new Set());
     setMessages([
       {
         from: "bob",
@@ -821,7 +873,7 @@ export function BobChat({
   }
 
   const selectedPros = results.filter((p) => selected.has(p.id));
-  const sceltaPiena = selectedPros.length >= MAX_PRO_PER_RICHIESTA;
+  const sceltaPiena = selezionePiena(selected, contattati);
 
   // Il servizio dal catalogo porta genere e numero: serve per l'articolo
   // ("delle pulizie", non "un pulizie"). Se manca, si ripiega sul solo nome.
@@ -1091,48 +1143,22 @@ export function BobChat({
         {step === "results" && results.length > 0 && (
           <div className="flex flex-col gap-2.5 pt-1">
             {results.map((p) => {
-              const isSelected = selected.has(p.id);
+              // (17/10) Una casella per scheda, in tutti e due i modi: si
+              // spuntano fino a 3 pro e si scrive UN messaggio (bottone sotto
+              // l'elenco). Niente piu' «Invia messaggio» per scheda: apriva una
+              // richiesta nuova con un pro solo.
+              const stato = statoScheda(p.id, selected, contattati);
+              const isSelected = stato === "selezionato";
               return (
                 <div
                   key={p.id}
                   className={`rounded-2xl border bg-white p-3.5 shadow-sm transition-colors ${
-                    collected.wantsQuotes && isSelected
-                      ? "border-bob-indigo ring-1 ring-bob-indigo"
-                      : "border-black/5"
+                    isSelected ? "border-bob-indigo ring-1 ring-bob-indigo" : "border-black/5"
                   }`}
                   data-testid={`chat-result-${p.id}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-start gap-2.5">
-                      {collected.wantsQuotes && (
-                        <button
-                          onClick={() => toggleSelect(p.id)}
-                          disabled={!isSelected && sceltaPiena}
-                          aria-label={isSelected ? "Deseleziona" : "Seleziona"}
-                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                            isSelected
-                              ? "border-bob-indigo bg-bob-indigo text-white"
-                              : "border-black/20 bg-white"
-                          }`}
-                          data-testid={`select-pro-${p.id}`}
-                        >
-                          {isSelected && (
-                            <svg
-                              className="h-3.5 w-3.5"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          )}
-                        </button>
-                      )}
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-bob-ink">
                           {p.displayName}
@@ -1160,29 +1186,38 @@ export function BobChat({
                   <div className="mt-3 flex gap-2">
                     <Link
                       href={`/professionisti/${p.id}`}
-                      className="btn-secondary flex-1 py-2 text-xs"
+                      className="btn-secondary flex min-h-[44px] flex-1 items-center justify-center py-2 text-xs"
                     >
                       Vedi profilo
                     </Link>
-                    {collected.wantsQuotes ? (
-                      <button
-                        onClick={() => toggleSelect(p.id)}
-                        disabled={!isSelected && sceltaPiena}
-                        className={`flex-1 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${
-                          isSelected ? "btn-secondary" : "btn-primary"
-                        }`}
-                        data-testid={`button-toggle-${p.id}`}
+                    {stato === "contattato" ? (
+                      <span
+                        className="flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-emerald-50 px-3 text-xs font-semibold text-emerald-800"
+                        data-testid={`contattato-${p.id}`}
                       >
-                        {isSelected ? "Selezionato ✓" : "Aggiungi al preventivo"}
-                      </button>
+                        ✓ Contattato
+                      </span>
                     ) : (
-                      <button
-                        onClick={() => setRequestFor(p)}
-                        className="btn-primary flex-1 py-2 text-xs"
-                        data-testid={`button-contact-${p.id}`}
+                      <label
+                        className={`flex min-h-[44px] flex-1 cursor-pointer select-none items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition-colors ${
+                          isSelected
+                            ? "border-bob-indigo bg-bob-indigo-50 text-bob-indigo"
+                            : stato === "bloccato"
+                              ? "cursor-not-allowed border-black/10 text-bob-ink/40"
+                              : "border-black/15 text-bob-ink hover:border-bob-indigo/50"
+                        }`}
+                        data-testid={`seleziona-${p.id}`}
                       >
-                        Invia messaggio
-                      </button>
+                        <input
+                          type="checkbox"
+                          className="h-5 w-5 accent-bob-indigo"
+                          checked={isSelected}
+                          disabled={stato === "bloccato"}
+                          onChange={() => toggleSelect(p.id)}
+                          data-testid={`select-pro-${p.id}`}
+                        />
+                        {isSelected ? "Selezionato" : "Seleziona"}
+                      </label>
                     )}
                   </div>
                 </div>
@@ -1485,26 +1520,34 @@ export function BobChat({
 
         {step === "results" && (
           <div className="space-y-2">
-            {collected.wantsQuotes && results.length > 0 && (
-              <button
-                onClick={() => setQuoteOpen(true)}
-                disabled={selectedPros.length === 0}
-                className="btn-primary w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                data-testid="button-request-quotes"
-              >
-                {selectedPros.length === 0
-                  ? "Seleziona almeno un professionista"
-                  : `Chiedi un preventivo a ${selectedPros.length} ${
-                      selectedPros.length === 1
-                        ? "professionista"
-                        : "professionisti"
-                    }`}
-              </button>
+            {/* (17/10) UN bottone per tutti gli spuntati: una richiesta, un
+                messaggio. Fermo in fondo ai suggerimenti finche' c'e'
+                qualcuno spuntato, cosi' sul telefono non si perde scorrendo
+                le schede. */}
+            {results.length > 0 && selectedPros.length > 0 && (
+              <div className="sticky bottom-0 z-10 -mx-1 bg-gradient-to-t from-white via-white to-white/0 px-1 pb-1 pt-3">
+                <button
+                  onClick={() => {
+                    setDaScrivere(selectedPros);
+                    setQuoteOpen(true);
+                  }}
+                  className="btn-primary min-h-[44px] w-full py-3 text-sm"
+                  data-testid="button-request-quotes"
+                >
+                  {etichettaScrivi(selectedPros.length)}
+                </button>
+              </div>
             )}
-            {collected.wantsQuotes && sceltaPiena && results.length > MAX_PRO_PER_RICHIESTA && (
+            {results.length > 0 && selectedPros.length === 0 && contattati.size < MAX_PRO_PER_RICHIESTA && (
+              <p className="text-center text-xs text-bob-ink/65" data-testid="scelta-suggerimento">
+                {contattati.size === 0
+                  ? `Spunta fino a ${MAX_PRO_PER_RICHIESTA} professionisti e scrivi un solo messaggio.`
+                  : "Puoi aggiungerne altri a questa richiesta."}
+              </p>
+            )}
+            {results.length > 0 && sceltaPiena && (
               <p className="text-center text-xs text-bob-ink/65" role="status" data-testid="scelta-piena">
-                Puoi chiedere un preventivo al massimo a {MAX_PRO_PER_RICHIESTA} professionisti per
-                volta: togline uno per sceglierne un altro.
+                Puoi contattare al massimo {MAX_PRO_PER_RICHIESTA} professionisti
               </p>
             )}
             <Link
@@ -1517,39 +1560,23 @@ export function BobChat({
         )}
       </div>
 
-      {/* invio messaggio singolo (modalità budget) */}
-      {requestFor && (
-        <RequestDialog
-          professional={requestFor}
-          prefilledMessage={bobPrefill}
-          context={{
-            citySlug: collected.citySlug,
-            serviceSlug: collected.serviceSlug ?? undefined,
-            problem: collected.summary ?? undefined,
-            urgency: collected.urgency,
-            budgetMin: collected.budgetMin ?? null,
-            budgetMax: collected.budgetMax ?? null,
-            briefId,
-            // (6b) il brief sa gia' quale lavoro e': non buttarlo via qui
-            subserviceSlug: brief.subtaskSlug ?? null,
-            // (045/046) posizione grossolana, visibile ai pro prima della scelta
-            zoneSlug: collected.zoneSlug ?? null,
-            postalCode: collected.postalCode ?? null,
-            // Scheda lavoro (Fase 4): scope gia' validato in chat, +
-            // quello che serve al risolutore di quote_mode (spec §2)
-            scope: brief.scope,
-            redFlags: brief.redFlags,
-            propertyType: brief.propertyType,
-            hasPhoto: brief.photos.length > 0,
-          }}
-          onClose={() => setRequestFor(null)}
-        />
-      )}
-
-      {/* invio richieste di preventivo multiple (modalità senza budget) */}
+      {/* (17/10) Un solo dialog per gli spuntati, coi due modi: messaggio col
+          budget (prima RequestDialog, un pro alla volta) o preventivo senza.
+          Se questa conversazione ha gia' una richiesta aperta, i pro nuovi si
+          aggiungono a lei. */}
       {quoteOpen && (
         <QuoteDialog
-          professionals={selectedPros}
+          professionals={daScrivere}
+          modo={collected.wantsQuotes ? "preventivo" : "messaggio"}
+          prefilledMessage={bobPrefill}
+          richiestaEsistente={richiestaId}
+          onInviato={(id, proIds) => {
+            appenaInviato.current = true;
+            setRichiestaId(id);
+            // Subito «contattati»: se la richiesta e' la stessa, l'id non
+            // cambia e la rilettura dal database non riparte da sola.
+            setContattati((c) => new Set([...c, ...proIds]));
+          }}
           context={{
             citySlug: collected.citySlug,
             cityName: collected.cityName,
@@ -1558,6 +1585,8 @@ export function BobChat({
             serviceNeedPhrase: prefillNeedPhrase,
             problem: collected.summary || undefined,
             urgency: collected.urgency,
+            budgetMin: collected.budgetMin ?? null,
+            budgetMax: collected.budgetMax ?? null,
             briefId,
             // (6b) il brief sa gia' quale lavoro e': non buttarlo via qui
             subserviceSlug: brief.subtaskSlug ?? null,
@@ -1573,7 +1602,13 @@ export function BobChat({
             propertyType: brief.propertyType,
             hasPhoto: brief.photos.length > 0,
           }}
-          onClose={() => setQuoteOpen(false)}
+          onClose={() => {
+            setQuoteOpen(false);
+            if (appenaInviato.current) {
+              appenaInviato.current = false;
+              setSelected(new Set());
+            }
+          }}
         />
       )}
     </div>

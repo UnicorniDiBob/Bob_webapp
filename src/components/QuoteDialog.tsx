@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +12,7 @@ import type { ProfessionalCard, QuoteField } from "@/lib/supabase/types";
 import type { Severity } from "@/lib/bob";
 import { resolveQuoteModeFromScope, type QuoteLevel } from "@/lib/quoting";
 import { rifiutoCollegamento } from "@/lib/collegamento";
+import { elencoNomi } from "@/lib/selezioneChat";
 
 interface QuoteContext {
   citySlug?: string;
@@ -45,18 +47,50 @@ interface QuoteContext {
   redFlags?: string[] | null;
   propertyType?: string | null;
   hasPhoto?: boolean;
+  /** Il budget detto in chat (solo in modo «messaggio»). */
+  budgetMin?: number | null;
+  budgetMax?: number | null;
 }
 
-// Dialog per chiedere un preventivo a PIÙ professionisti selezionati.
-// Crea una sola richiesta e la collega a tutti i pro scelti.
+// Il dialog della chat di Bob per scrivere a PIÙ professionisti scelti: una
+// sola richiesta, collegata a tutti, e lo stesso messaggio nella chat di
+// ciascuno.
+//
+// DUE MODI (17/10). Dalla chat si arriva qui in tutti e due i casi, che prima
+// prendevano strade diverse:
+// - «preventivo»: il cliente non ha un budget e chiede preventivi. Richiesta
+//   'quote_request', senza budget, collegamenti 'quote_requested'. Era gia'
+//   questo dialog.
+// - «messaggio»: il cliente ha detto un budget. Richiesta 'sent' col budget,
+//   collegamenti 'contacted', il messaggio gia' scritto da Bob. Prima ogni
+//   scheda apriva RequestDialog e creava una richiesta NUOVA con un pro solo:
+//   il 17/10 in produzione quattro richieste in dieci secondi per la stessa
+//   perdita. I dati scritti sono gli stessi di RequestDialog: niente
+//   indirizzo, come prima (vedi il blocco di request_addresses piu' sotto).
+//
+// LA STESSA RICHIESTA, SE C'E' (17/10). Con `richiestaEsistente` non se ne
+// crea un'altra: si collegano i pro nuovi e si scrive solo a loro. Serve
+// quando il cliente torna nella stessa conversazione con Bob e aggiunge un pro
+// (il tetto della 125 conta anche quelli gia' collegati).
 export function QuoteDialog({
   professionals,
   context,
   onClose,
+  modo = "preventivo",
+  prefilledMessage,
+  richiestaEsistente = null,
+  onInviato,
 }: {
   professionals: ProfessionalCard[];
   context: QuoteContext;
   onClose: () => void;
+  modo?: "preventivo" | "messaggio";
+  /** In modo «messaggio»: il testo che Bob ha gia' scritto. */
+  prefilledMessage?: string;
+  /** Una richiesta ancora aperta della stessa conversazione con Bob. */
+  richiestaEsistente?: string | null;
+  /** A invio riuscito: la richiesta e i pro appena collegati. */
+  onInviato?: (richiestaId: string, proIds: string[]) => void;
 }) {
   const { user, loading } = useAuth();
   const supabase = createClient();
@@ -72,7 +106,19 @@ export function QuoteDialog({
     context.problem ? ` ${context.problem}.` : ""
   } Vorrei un preventivo: puoi farmi sapere prezzo e disponibilità? Grazie.`;
 
-  const [message, setMessage] = useState(defaultMsg);
+  const [message, setMessage] = useState(
+    modo === "messaggio" && prefilledMessage ? prefilledMessage : defaultMsg
+  );
+  const nomi = elencoNomi(professionals.map((p) => p.displayName));
+  // DENTRO document.body, NON DENTRO LA CHAT (17/10). La colonna della chat
+  // nell'eroe ha un'animazione d'entrata (animate-fade-up) che le lascia un
+  // transform: un antenato col transform diventa il riferimento dei figli
+  // «fixed», e il dialog finiva dentro la colonna, col fondo scuro solo li' e
+  // il titolo («Scrivi a …») sotto l'intestazione del sito. Misurato: fondo
+  // 845x665 partendo da y -127 su uno schermo 1440x900. Col portale il
+  // riferimento torna la finestra. Montato solo nel browser (document).
+  const [montato, setMontato] = useState(false);
+  useEffect(() => setMontato(true), []);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,94 +179,106 @@ export function QuoteDialog({
     if (!user || professionals.length === 0) return;
     setSubmitting(true);
     setError(null);
+    // La richiesta nata QUI: se poi qualcosa va storto si riporta a «draft».
+    // Una richiesta che c'era gia' non si tocca.
     let idRichiesta: string | null = null;
     try {
-      const [cityId, serviceId] = await Promise.all([
-        resolveId("cities", context.citySlug ?? professionals[0].city.slug),
-        resolveId(
-          "services",
-          context.serviceSlug ?? professionals[0].serviceSlug ?? undefined
-        ),
-      ]);
+      let requestId: string | null = richiestaEsistente;
+      if (!requestId) {
+        const [cityId, serviceId] = await Promise.all([
+          resolveId("cities", context.citySlug ?? professionals[0].city.slug),
+          resolveId(
+            "services",
+            context.serviceSlug ?? professionals[0].serviceSlug ?? undefined
+          ),
+        ]);
 
-      if (!cityId || !serviceId) {
-        setError(
-          "Mi mancano città o servizio per registrare la richiesta. Riprova dalla chat di Bob."
+        if (!cityId || !serviceId) {
+          setError(
+            "Mi mancano città o servizio per registrare la richiesta. Riprova dalla chat di Bob."
+          );
+          setSubmitting(false);
+          return;
+        }
+
+        const subservice = await resolveSubservice(
+          serviceId,
+          context.subserviceSlug
         );
-        setSubmitting(false);
-        return;
+        const scope = context.scope ?? {};
+        // Fuori dalla scala se il sotto-servizio non si e' risolto: senza
+        // quote_level di default il risolutore non ha niente da abbassare.
+        const quoteMode =
+          subservice && context.subserviceSlug
+            ? resolveQuoteModeFromScope({
+                subtaskSlug: context.subserviceSlug,
+                defaultQuoteLevel: subservice.quoteLevel,
+                quoteFields: subservice.quoteFields.map((f) => ({
+                  key: f.key,
+                  is_billable_unit: f.is_billable_unit,
+                })),
+                scope,
+                redFlags: context.redFlags,
+                urgency: context.urgency,
+                propertyType: context.propertyType,
+                hasPhoto: context.hasPhoto,
+              })
+            : null;
+
+        // Una sola richiesta: 'quote_request' senza budget per i preventivi,
+        // 'sent' col budget della chat per il messaggio (come RequestDialog).
+        const { data: req, error: reqErr } = await supabase
+          .from("requests")
+          .insert({
+            customer_id: user.id,
+            city_id: cityId,
+            service_id: serviceId,
+            subservice_id: subservice?.id ?? null,
+            scope,
+            quote_mode: quoteMode,
+            status: modo === "messaggio" ? "sent" : "quote_request",
+            problem_description: context.problem ?? message,
+            urgency: context.urgency ?? null,
+            budget_min: modo === "messaggio" ? context.budgetMin ?? null : null,
+            budget_max: modo === "messaggio" ? context.budgetMax ?? null : null,
+            brief_id: context.briefId ?? null,
+            zone_slug: context.zoneSlug ?? null,
+            postal_code: context.postalCode ?? null,
+          })
+          .select("id")
+          .single();
+
+        if (reqErr || !req) throw reqErr ?? new Error("Richiesta non creata");
+        idRichiesta = req.id as string;
+        requestId = idRichiesta;
+
+        // (41.1) L'indirizzo viaggia a parte, mai nella prosa. Se l'insert fallisce
+        // non si annulla la richiesta: il cliente ha comunque chiesto il preventivo
+        // e l'indirizzo si può ridare al momento dell'appuntamento.
+        // (17/10) SOLO nel preventivo, come prima di questa PR: un pro collegato
+        // oggi puo' farsi copiare l'indirizzo creando o confermando da solo un
+        // appuntamento (rilievo di sicurezza, migrazione a parte). Finche' quella
+        // correzione non e' in produzione, il messaggio col budget non lo salva.
+        if (modo === "preventivo" && context.address) {
+          await supabase.from("request_addresses").insert({
+            request_id: req.id,
+            address_line: context.address.slice(0, 200),
+            city_name: context.cityName ?? null,
+          });
+        }
       }
-
-      const subservice = await resolveSubservice(
-        serviceId,
-        context.subserviceSlug
-      );
-      const scope = context.scope ?? {};
-      // Fuori dalla scala se il sotto-servizio non si e' risolto: senza
-      // quote_level di default il risolutore non ha niente da abbassare.
-      const quoteMode =
-        subservice && context.subserviceSlug
-          ? resolveQuoteModeFromScope({
-              subtaskSlug: context.subserviceSlug,
-              defaultQuoteLevel: subservice.quoteLevel,
-              quoteFields: subservice.quoteFields.map((f) => ({
-                key: f.key,
-                is_billable_unit: f.is_billable_unit,
-              })),
-              scope,
-              redFlags: context.redFlags,
-              urgency: context.urgency,
-              propertyType: context.propertyType,
-              hasPhoto: context.hasPhoto,
-            })
-          : null;
-
-      // Una sola richiesta di preventivo (status 'quote_request'), nessun budget.
-      const { data: req, error: reqErr } = await supabase
-        .from("requests")
-        .insert({
-          customer_id: user.id,
-          city_id: cityId,
-          service_id: serviceId,
-          subservice_id: subservice?.id ?? null,
-          scope,
-          quote_mode: quoteMode,
-          status: "quote_request",
-          problem_description: context.problem ?? message,
-          urgency: context.urgency ?? null,
-          budget_min: null,
-          budget_max: null,
-          brief_id: context.briefId ?? null,
-          zone_slug: context.zoneSlug ?? null,
-          postal_code: context.postalCode ?? null,
-        })
-        .select("id")
-        .single();
-
-      if (reqErr || !req) throw reqErr ?? new Error("Richiesta non creata");
-      idRichiesta = req.id as string;
-
-      // (41.1) L'indirizzo viaggia a parte, mai nella prosa. Se l'insert fallisce
-      // non si annulla la richiesta: il cliente ha comunque chiesto il preventivo
-      // e l'indirizzo si può ridare al momento dell'appuntamento.
-      if (context.address) {
-        await supabase.from("request_addresses").insert({
-          request_id: req.id,
-          address_line: context.address.slice(0, 200),
-          city_name: context.cityName ?? null,
-        });
-      }
+      const rid: string = requestId;
 
       // Collega tutti i professionisti selezionati + messaggio iniziale per ciascuno.
       const links = professionals.map((p) => ({
-        request_id: req.id,
+        request_id: rid,
         professional_id: p.id,
-        status: "quote_requested",
+        status: modo === "messaggio" ? "contacted" : "quote_requested",
       }));
       // (022) Un thread per professionista: ognuno riceve il messaggio nel
       // proprio thread, senza più il suffisso "(richiesta a X)" condiviso.
       const msgs = professionals.map((p) => ({
-        request_id: req.id,
+        request_id: rid,
         professional_id: p.id,
         sender_type: "customer",
         sender_id: user.id,
@@ -239,11 +297,12 @@ export function QuoteDialog({
 
       for (const p of professionals) {
         notifyEvent("new_request", {
-          requestId: req.id,
+          requestId: rid,
           professionalId: p.id,
           preview: message,
         });
       }
+      onInviato?.(rid, professionals.map((p) => p.id));
       setDone(true);
     } catch (e) {
       // (16/10) Come RequestDialog: una richiesta nata senza pro collegati
@@ -258,7 +317,9 @@ export function QuoteDialog({
     }
   }
 
-  return (
+  if (!montato) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-bob-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
@@ -273,15 +334,20 @@ export function QuoteDialog({
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
               <CircleCheck className="h-8 w-8 text-emerald-600" aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-semibold text-bob-ink">
-              Preventivi richiesti a {professionals.length}{" "}
-              {professionals.length === 1
-                ? "professionista"
-                : "professionisti"}
+            <h3 className="text-lg font-semibold text-bob-ink" data-testid="quote-inviato">
+              {modo === "messaggio" ? (
+                <>Messaggio inviato a {nomi}</>
+              ) : (
+                <>
+                  Preventivi richiesti a {professionals.length}{" "}
+                  {professionals.length === 1 ? "professionista" : "professionisti"}
+                </>
+              )}
             </h3>
             <p className="text-sm text-bob-ink/70">
-              Trovi tutte le risposte nella tua area personale: ti avviso appena
-              arrivano i preventivi, così confronti i prezzi con calma.
+              {modo === "messaggio"
+                ? "Trovi la richiesta nella tua area personale. Ti avviso appena rispondono, così li confronti con calma."
+                : "Trovi tutte le risposte nella tua area personale: ti avviso appena arrivano i preventivi, così confronti i prezzi con calma."}
             </p>
             <div className="mt-2 flex w-full gap-2">
               <Link href="/dashboard" className="btn-secondary flex-1 py-2.5">
@@ -296,15 +362,21 @@ export function QuoteDialog({
           <>
             <div className="mb-3 flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-bob-ink">
-                  Chiedi un preventivo
+                <h3 className="text-lg font-semibold text-bob-ink" data-testid="quote-titolo">
+                  {modo === "messaggio" ? <>Scrivi a {nomi}</> : "Chiedi un preventivo"}
                 </h3>
                 <p className="text-sm text-bob-ink/70">
-                  Invio la stessa richiesta a{" "}
-                  {professionals.length === 1
-                    ? "questo professionista"
-                    : `questi ${professionals.length} professionisti`}
-                  . Puoi modificare il messaggio.
+                  {modo === "messaggio" ? (
+                    <>Ho già preparato io il messaggio: puoi modificarlo.</>
+                  ) : (
+                    <>
+                      Invio la stessa richiesta a{" "}
+                      {professionals.length === 1
+                        ? "questo professionista"
+                        : `questi ${professionals.length} professionisti`}
+                      . Puoi modificare il messaggio.
+                    </>
+                  )}
                 </p>
               </div>
               <button
@@ -377,19 +449,23 @@ export function QuoteDialog({
                 >
                   {submitting
                     ? "Invio…"
-                    : `Invia richiesta a ${professionals.length} ${
-                        professionals.length === 1 ? "pro" : "pro"
-                      }`}
+                    : modo === "messaggio"
+                      ? professionals.length === 1
+                        ? "Invia messaggio"
+                        : `Invia a ${professionals.length} professionisti`
+                      : `Invia richiesta a ${professionals.length} pro`}
                 </button>
                 <p className="mt-2 text-center text-xs text-bob-ink/65">
-                  Chiedere preventivi è gratis. La fee si applica solo a lavoro
-                  concluso.
+                  {modo === "messaggio"
+                    ? "Usare Bob è gratis. La fee si applica solo a lavoro concluso."
+                    : "Chiedere preventivi è gratis. La fee si applica solo a lavoro concluso."}
                 </p>
               </>
             )}
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
